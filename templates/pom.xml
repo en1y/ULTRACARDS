@@ -11,8 +11,8 @@
     </parent>
 
     <modules>
-        <module>base-game</module>
-        <module>cards</module>
+        <module>game-template</module>
+        <module>cards-template</module>
     </modules>
 
     <groupId>en1y.ultracards.templates</groupId>

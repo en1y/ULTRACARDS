@@ -9,8 +9,10 @@
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <groupId>en1y.ultracards.templates.base-card-game</groupId>
-    <artifactId>base-game</artifactId>
+    <groupId>en1y.ultracards.templates.cards</groupId>
+    <artifactId>cards</artifactId>
+
+    <packaging>pom</packaging>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
