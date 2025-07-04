@@ -11,7 +11,7 @@
 
     <groupId>en1y.ultracards.cards</groupId>
 
-    <artifactId>2</artifactId>
+    <artifactId>cards</artifactId>
     <packaging>pom</packaging>
     <modules>
         <module>italian-cards</module>

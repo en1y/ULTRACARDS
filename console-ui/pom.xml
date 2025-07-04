@@ -9,7 +9,7 @@
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <artifactId>server</artifactId>
+    <artifactId>console-ui</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -18,7 +18,7 @@
     </properties>
 
     <dependencies>
-<!--        Games dependencies       -->
+        <!--        Games dependencies       -->
         <dependency>
             <groupId>en1y.ultracards.games</groupId>
             <artifactId>briskula</artifactId>
@@ -40,7 +40,7 @@
             <version>${project.version}</version>
         </dependency>
 
-<!--        Cards dependencies       -->
+        <!--        Cards dependencies       -->
         <dependency>
             <groupId>en1y.ultracards.cards</groupId>
             <artifactId>italian-cards</artifactId>
@@ -50,13 +50,6 @@
             <groupId>en1y.ultracards.cards</groupId>
             <artifactId>poker-cards</artifactId>
             <version>${project.version}</version>
-        </dependency>
-
-<!--        Console game dependency-->
-        <dependency>
-            <groupId>en1y.cards</groupId>
-            <artifactId>console-game</artifactId>
-            <version>1.0</version>
         </dependency>
     </dependencies>
 

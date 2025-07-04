@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>en1y.ultracards.cards</groupId>
-        <artifactId>2</artifactId>
+        <artifactId>cards</artifactId>
         <version>0.1-PREALPHA</version>
     </parent>
 
@@ -23,5 +23,7 @@
             <artifactId>cards-template</artifactId>
         </dependency>
     </dependencies>
+
+    <build></build>
 
 </project>

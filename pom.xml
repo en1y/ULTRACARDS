@@ -14,6 +14,7 @@
         <module>games</module>
         <module>server</module>
         <module>gui</module>
+        <module>console-ui</module>
     </modules>
 
     <properties>
