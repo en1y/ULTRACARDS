@@ -9,7 +9,6 @@
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <groupId>en1y.ultracards.templates.game-template</groupId>
     <artifactId>game-template</artifactId>
 
     <properties>

@@ -11,7 +11,7 @@
 
     <groupId>en1y.ultracards.cards</groupId>
 
-    <artifactId>cards</artifactId>
+    <artifactId>2</artifactId>
     <packaging>pom</packaging>
     <modules>
         <module>italian-cards</module>
@@ -27,7 +27,7 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>en1y.ultracards.templates.cards-template</groupId>
+                <groupId>en1y.ultracards.templates</groupId>
                 <artifactId>cards-template</artifactId>
                 <version>${project.version}</version>
             </dependency>
