@@ -4,21 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>en1y.ultracards</groupId>
-        <artifactId>ULTRACARDS</artifactId>
+        <groupId>en1y.ultracards.templates</groupId>
+        <artifactId>templates</artifactId>
         <version>0.1-PREALPHA</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <modules>
-        <module>base-game</module>
-        <module>cards</module>
-    </modules>
-
-    <groupId>en1y.ultracards.templates</groupId>
-
-    <artifactId>templates</artifactId>
-    <packaging>pom</packaging>
+    <groupId>en1y.ultracards.templates.base-card-game</groupId>
+    <artifactId>base-game</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
