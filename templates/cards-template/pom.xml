@@ -9,7 +9,7 @@
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <groupId>en1y.ultracards.templates.cards</groupId>
+    <groupId>en1y.ultracards.templates.cards-template</groupId>
     <artifactId>cards</artifactId>
 
     <packaging>pom</packaging>
