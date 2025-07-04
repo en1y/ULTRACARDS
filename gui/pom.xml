@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>en1y.ultracards</groupId>
+        <artifactId>ULTRACARDS</artifactId>
+        <version>0.1-PREALPHA</version>
+    </parent>
+
+    <artifactId>gui</artifactId>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!--        Games dependencies       -->
+        <dependency>
+            <groupId>en1y.ultracards.games</groupId>
+            <artifactId>briskula</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.games</groupId>
+            <artifactId>durak</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.games</groupId>
+            <artifactId>treseta</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.games</groupId>
+            <artifactId>poker</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--        Cards dependencies       -->
+        <dependency>
+            <groupId>en1y.ultracards.cards</groupId>
+            <artifactId>italian-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.cards</groupId>
+            <artifactId>poker-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

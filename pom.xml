@@ -13,6 +13,7 @@
         <module>cards</module>
         <module>games</module>
         <module>server</module>
+        <module>gui</module>
     </modules>
 
     <properties>
