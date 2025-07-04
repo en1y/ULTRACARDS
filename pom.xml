@@ -12,6 +12,7 @@
         <module>templates</module>
         <module>cards</module>
         <module>games</module>
+        <module>server</module>
     </modules>
 
     <properties>
