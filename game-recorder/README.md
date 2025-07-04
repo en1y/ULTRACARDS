@@ -1,4 +1,4 @@
-# `game-recorder`` module.
+# `game-recorder` module.
 
 ## Overview
 
