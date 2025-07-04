@@ -9,6 +9,7 @@
         <version>0.1-PREALPHA</version>
     </parent>
 
+    <groupId>en1y.ultracards.cui</groupId>
     <artifactId>console-ui</artifactId>
 
     <properties>

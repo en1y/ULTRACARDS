@@ -52,11 +52,11 @@
             <version>${project.version}</version>
         </dependency>
 
-<!--        Console game dependency-->
+<!--        game-recorder dependency-->
         <dependency>
-            <groupId>en1y.cards</groupId>
-            <artifactId>console-game</artifactId>
-            <version>1.0</version>
+            <groupId>en1y.ultracards.recorder</groupId>
+            <artifactId>game-recorder</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

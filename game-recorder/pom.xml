@@ -9,6 +9,7 @@
         <version>0.1-PREALPHA</version>
     </parent>
 
+    <groupId>en1y.ultracards.recorder</groupId>
     <artifactId>game-recorder</artifactId>
 
     <properties>
