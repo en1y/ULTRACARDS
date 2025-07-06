@@ -9,6 +9,7 @@ public abstract class AbstractPlayingField
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue>,
-                Player extends AbstractPlayer<CardType, CardValue, Card>>
-        implements PlayingFieldInterface<CardType, CardValue, Card, Player> {
+                Hand extends AbstractHand<CardType, CardValue, Card>,
+                Player extends AbstractPlayer<CardType, CardValue, Card, Hand>>
+        implements PlayingFieldInterface<CardType, CardValue, Card, Hand, Player> {
 }
