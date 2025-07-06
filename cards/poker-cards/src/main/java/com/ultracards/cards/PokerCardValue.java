@@ -13,8 +13,11 @@ public enum PokerCardValue implements CardValueInterface {
     FIVE ("Five", 5),
     SIX ("Six", 6),
     SEVEN ("Seven", 7),
+    EIGHT ("Eight", 8),
+    NINE ("Nine", 9),
+    TEN ("Ten", 10),
     JACK ("Jack", 11),
-    KNIGHT ("Knight", 12),
+    Queen("Queen", 12),
     KING ("King", 13),
     ACE ("Ace", 14);
 

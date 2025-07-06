@@ -7,10 +7,10 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 
 public enum PokerCardType implements CardTypeInterface {
-    COPPE ("Cups"),
-    DENARI ("Coins"),
-    SPADE ("Swords"),
-    BASTONI ("Clubs");
+    HEARTS ("Hearts"),
+    DIAMONDS ("Diamonds"),
+    CLUBS ("Clubs"),
+    SPADES ("Spades");
 
     private static boolean useResourceBundle = false;
     private static ResourceBundle resourceBundle;
