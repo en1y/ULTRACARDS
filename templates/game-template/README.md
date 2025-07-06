@@ -12,6 +12,12 @@
   - You can look at the `GameInterface` to get a deeper understanding of the game logic.
 - `PlayerInterface`
   - Defines methods usually needed for a player in a game.
+- `HandInterface`
+  - Defines methods usually needed for a hand in a game.
+- `DeckInterface`
+  - Defines methods usually needed for a deck in a game.
+- `PlayingFieldInterface`
+  - Defines methods usually needed for a playing field in a game.
 
 ## Abstract Classes
 - `AbstractGame` 
@@ -29,3 +35,9 @@
 - `AbstractPlayingField`
   - An abstract class that implements the playing field logic.
   - Provides default implementations for some methods and defines the structure of a playing field.
+
+## Exceptions
+
+- `DeckException`
+- `HandException`
+- `PlayingFieldException`
