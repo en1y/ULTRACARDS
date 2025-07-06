@@ -8,4 +8,5 @@
   - `PokerCard`: Represents a single poker card.
   - `PokerCardType`: Represents the type of poker card (e.g., hearts, diamonds, clubs, spades).
   - `PokerCardValue`: Represents the value of a poker card (e.g., 2, 3, 4, ..., 10, J, Q, K, A).
+  - `PokerCardFactoryInterface`: An interface defining methods for creating poker cards.
   - `PokerCardFactory`: A factory class to create poker cards.
