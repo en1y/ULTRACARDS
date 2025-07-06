@@ -2,6 +2,6 @@ package com.ultracards.templates.cards;
 
 public interface CardValueInterface {
     String getName();
-    char getSymbol();
+    String getSymbol();
     int getNumber();
 }
