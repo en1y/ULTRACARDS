@@ -4,20 +4,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>en1y.ultracards</groupId>
-        <artifactId>ULTRACARDS</artifactId>
+        <groupId>en1y.ultracards.logic</groupId>
+        <artifactId>game-logic</artifactId>
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <artifactId>games</artifactId>
+    <groupId>en1y.ultracards.cards</groupId>
+
+    <artifactId>cards</artifactId>
     <packaging>pom</packaging>
     <modules>
-        <module>briskula</module>
-        <module>treseta</module>
-        <module>poker</module>
-        <module>durak</module>
+        <module>italian-cards</module>
+        <module>poker-cards</module>
     </modules>
-    <groupId>en1y.ultracards.games</groupId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -28,18 +27,8 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>en1y.ultracards.cards</groupId>
-                <artifactId>italian-cards</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>en1y.ultracards.cards</groupId>
-                <artifactId>poker-cards</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>en1y.ultracards.templates</groupId>
-                <artifactId>game-template</artifactId>
+                <artifactId>cards-template</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

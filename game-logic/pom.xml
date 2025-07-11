@@ -7,18 +7,19 @@
         <groupId>en1y.ultracards</groupId>
         <artifactId>ULTRACARDS</artifactId>
         <version>0.1-PREALPHA</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <modules>
-        <module>game-template</module>
-        <module>cards-template</module>
-    </modules>
+    <artifactId>game-logic</artifactId>
+    <groupId>en1y.ultracards.logic</groupId>
 
-    <groupId>en1y.ultracards.templates</groupId>
-
-    <artifactId>templates</artifactId>
     <packaging>pom</packaging>
+
+    <modules>
+        <module>cards</module>
+        <module>game-recorder</module>
+        <module>games</module>
+        <module>templates</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
