@@ -3,17 +3,21 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>en1y.ultracards.logic</groupId>
+        <artifactId>game-logic</artifactId>
+        <version>0.1-PREALPHA</version>
+    </parent>
 
-    <groupId>en1y.ultracards</groupId>
-    <artifactId>ULTRACARDS</artifactId>
-    <version>0.1-PREALPHA</version>
-    <packaging>pom</packaging>
     <modules>
-        <module>server</module>
-        <module>game-gateway</module>
-        <module>game-logic</module>
-        <module>ui</module>
+        <module>game-template</module>
+        <module>cards-template</module>
     </modules>
+
+    <groupId>en1y.ultracards.templates</groupId>
+
+    <artifactId>templates</artifactId>
+    <packaging>pom</packaging>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
