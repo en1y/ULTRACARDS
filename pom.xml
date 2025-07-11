@@ -9,15 +9,10 @@
     <version>0.1-PREALPHA</version>
     <packaging>pom</packaging>
     <modules>
-        <module>templates</module>
-        <module>cards</module>
-        <module>games</module>
         <module>server</module>
-        <module>gui</module>
-        <module>console-ui</module>
-        <module>game-recorder</module>
         <module>game-gateway</module>
         <module>game-logic</module>
+        <module>ui</module>
     </modules>
 
     <properties>

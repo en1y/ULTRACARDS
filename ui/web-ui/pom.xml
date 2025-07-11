@@ -4,22 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>en1y.ultracards</groupId>
-        <artifactId>ULTRACARDS</artifactId>
+        <groupId>en1y.ultracards.ui</groupId>
+        <artifactId>ui</artifactId>
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <artifactId>game-logic</artifactId>
-    <groupId>en1y.ultracards.logic</groupId>
-
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>cards</module>
-        <module>game-recorder</module>
-        <module>games</module>
-        <module>templates</module>
-    </modules>
+    <artifactId>web-ui</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
