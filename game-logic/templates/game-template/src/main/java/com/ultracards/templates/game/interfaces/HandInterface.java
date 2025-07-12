@@ -55,7 +55,9 @@ public interface HandInterface
         return card;
     }
 
-    boolean isEmpty();
+    default boolean isEmpty() {
+        return getCardsNum() == 0;
+    };
 
     List<Card> getCards();
     int getCapacity();
