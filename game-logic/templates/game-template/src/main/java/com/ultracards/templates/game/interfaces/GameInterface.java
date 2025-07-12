@@ -31,12 +31,12 @@ public interface GameInterface
     void preGameCreateCheck(int numberOfPlayers, int cardsNum);
 
     default void start() {
-        if (getPlayers().isEmpty()) {
+        /*if (getPlayers().isEmpty()) {
             playersSetUp();
         }
         gameStart();
         roundCycle();
-        gameEnd();
+        gameEnd();*/
     }
 
     void restart();
