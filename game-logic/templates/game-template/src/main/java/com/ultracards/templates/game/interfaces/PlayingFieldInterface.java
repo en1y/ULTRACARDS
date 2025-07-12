@@ -6,11 +6,65 @@ import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.model.AbstractHand;
 import com.ultracards.templates.game.model.AbstractPlayer;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 public interface PlayingFieldInterface
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Player extends AbstractPlayer<CardType, CardValue, Card, Hand>> {
+
+    default void init() {
+        setCards(new ArrayList<>());
+        setPlayers(new ArrayList<>());
+    }
+
+    default void play (Card card, Player player) {
+        Objects.requireNonNull(card, "card");
+        Objects.requireNonNull(player, "player");
+
+
+    }
+
+    Player determineRoundWinner();
+
+    default Player getPlayerByPlayedCard(Card card) {
+        Objects.requireNonNull(card, "card");
+
+        var index = getPlayedCards().indexOf(card);
+        if (index < 0 || index >= getPlayers().size()) {
+            throw new IllegalArgumentException("Card not found in played cards or no players available.");
+        }
+
+        return getPlayers().get(index);
+    }
+
+    default Card getPlayedCardByPlayer(Player player) {
+        Objects.requireNonNull(player, "player");
+
+        var index = getPlayers().indexOf(player);
+        if (index < 0 || index >= getPlayedCards().size()) {
+            throw new IllegalArgumentException("Player not found in players or no cards available.");
+        }
+
+        return getPlayedCards().get(index);
+    }
+
+    default void addPlayer (Player player) {
+        getPlayers().add(player);
+    }
+
+    default void addCard (Card card) {
+        getPlayedCards().add(card);
+    }
+
+    List<Card> getPlayedCards();
+    List<Player> getPlayers();
+
+    void setCards(List<Card> cards);
+    void setPlayers(List<Player> players);
 
 }
