@@ -12,4 +12,31 @@ public abstract class AbstractPlayer
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>>
         implements PlayerInterface<CardType, CardValue, Card, Hand, Deck> {
+
+    private Hand hand;
+    private String name;
+
+    public AbstractPlayer(String name) {
+        init(name);
+    }
+
+    @Override
+    public Hand getHand() {
+        return hand;
+    }
+
+    @Override
+    public void setHand(Hand hand) {
+        this.hand = hand;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = name;
+    }
 }
