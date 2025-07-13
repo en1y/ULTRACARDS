@@ -6,7 +6,6 @@ import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.model.AbstractDeck;
 import com.ultracards.templates.game.model.AbstractHand;
 import com.ultracards.templates.game.model.AbstractPlayer;
-import com.ultracards.templates.game.observers.GameSubject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +18,7 @@ public interface GameInterface
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>,
                 Player extends AbstractPlayer<CardType, CardValue, Card, Hand, Deck>,
-                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Deck, Player>>
-        extends GameSubject {
+                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Deck, Player>> {
 
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 
