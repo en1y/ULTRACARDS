@@ -18,6 +18,8 @@ public interface DeckInterface
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>> {
 
+    /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
+
     default void init(int size) {
         setSize(size);
         setCards(
@@ -33,16 +35,9 @@ public interface DeckInterface
         }
     }
 
-    List<Card> createCards(int size);
-
-    void setUp();
-    Deck createDeck(int cardsNum);
-
     default void shuffleCards(List<Card> cards) {
         Collections.shuffle(cards);
     }
-
-    default List<Card> removeNotNeededCards() {return null;}
 
     default Card drawCard() {
         decreaseSize();
@@ -63,9 +58,7 @@ public interface DeckInterface
         return res;
     }
 
-    Hand createHand(int cardsNum);
-
-    private void checkForSufficientNumberOfCards(int cardsNum, String errorMessageToBeFormatted) {
+    default void checkForSufficientNumberOfCards(int cardsNum, String errorMessageToBeFormatted) {
         if (getSize() < cardsNum) {
             throw new DeckException(errorMessageToBeFormatted, cardsNum, getSize());
         }
@@ -79,9 +72,23 @@ public interface DeckInterface
         return getSize() == 0;
     }
 
+    /* **** METHODS THAT ARE NECESSARY **** */
+
+    // init method
+    List<Card> createCards(int size);
+
+    // getHandFromDeck method
+    Hand createHand(int cardsNum);
+
+    // setters
     void setCards(List<Card> cards);
     void setSize(int size);
 
+    // getters
     List<Card> getCards();
     int getSize();
+
+    /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
+
+    default List<Card> removeNotNeededCards() {return null;}
 }
