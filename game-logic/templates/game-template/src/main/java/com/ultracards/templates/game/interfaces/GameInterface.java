@@ -6,8 +6,9 @@ import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.model.AbstractDeck;
 import com.ultracards.templates.game.model.AbstractHand;
 import com.ultracards.templates.game.model.AbstractPlayer;
-import com.ultracards.templates.game.observers.Observer;
+import com.ultracards.templates.game.observers.GameSubject;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public interface GameInterface
@@ -16,37 +17,122 @@ public interface GameInterface
                 Card extends AbstractCard<CardType, CardValue>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Player extends AbstractPlayer<CardType, CardValue, Card, Hand>,
-                Deck extends AbstractDeck<CardType, CardValue, Card>,
-                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Player>> {
+                Deck extends AbstractDeck<CardType, CardValue, Card, Hand>,
+                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Player>>
+        extends GameSubject {
 
-    default void init(int numberOfPlayers, int cardsNum, int cardsInHandNum, List<Player> players) {
+    default void init(int numberOfPlayers, int cardsNum, int cardsInHandNum) {
         setNumberOfPlayers(numberOfPlayers);
+        setPlayers(new ArrayList<>(getNumberOfPlayers()));
         setCardsNum(cardsNum);
         setCardsInHandNum(cardsInHandNum);
-        setPlayers(players);
+        setPlayingField(null);
         preGameCreateCheck(numberOfPlayers, cardsNum);
-        deckSetUp();
     }
 
     void preGameCreateCheck(int numberOfPlayers, int cardsNum);
 
     default void start() {
-        /*if (getPlayers().isEmpty()) {
-            playersSetUp();
+        setDeck(createDeck(getCardsNum()));
+        var removedCards = removeNotNeededCards(getDeck(), getCardsInHandNum());
+        handleRemovedCards(removedCards);
+        var players = createPlayers();
+        if (players.size() < getNumberOfPlayers()) {
+            throw new IllegalArgumentException("Not enough players created. Expected: " + getNumberOfPlayers() + ", but got: " + players.size());
         }
+        setPlayers(players);
+        createPlayersHands(getDeck(), getPlayers());
+        setNumberOfPlayers(getPlayers().size());
         gameStart();
         roundCycle();
-        gameEnd();*/
+        gameEnd();
     }
 
-    void restart();
+    void createPlayersHands(Deck deck, List<Player> players);
 
-    void deckSetUp();
+    default void restart() {
+        setDeck(
+                createDeck(getCardsNum())
+        );
+    }
 
+    default void gameStart(){}
+    default void roundCycle(){
+        while (isGameActive(getDeck(), getPlayers())) {
+            roundStart();
+            setPlayingField(
+                    createPlayingField()
+            );
+            playTurn(getPlayingField(), getPlayers());
+            var roundWinner = determineRoundWinner(getPlayingField());
+            postRoundWinnerDeterminedActions(roundWinner, getPlayingField());
+            drawCards(getPlayers(), getDeck());
+            roundEnd(getPlayingField(), roundWinner);
+        }
+        setPlayingField(null);
+    }
+
+    default void drawCards(List<Player> players, Deck deck) {}
+    default void roundStart() {}
+    default void roundEnd(PlayingField playingField, Player roundWinner) {}
+
+    default void gameEnd() {
+        preGameEnd();
+        var winners = determineGameWinners(getPlayers());
+        postGameWinnersDeterminedActions(winners);
+        postGameEnd();
+    }
+
+    void postGameEnd();
+
+    default void postGameWinnersDeterminedActions(List<Player> winners) {};
+    default List<Player> determineGameWinners(List<Player> players) {
+        return new ArrayList<>();
+    }
+    void preGameEnd();
+
+    default void postRoundWinnerDeterminedActions(Player roundWinner, PlayingField playingField) {}
+
+
+    default List<Card> removeNotNeededCards(Deck deck, int cardsInHandNum) {
+        return new ArrayList<>();
+    }
+    default void handleRemovedCards(List<Card> removedCards) {
+        // Default implementation can be empty or can log the removed cards
+    }
+
+
+
+    default Player determineRoundWinner(PlayingField playingField) {
+        return playingField.determineRoundWinner();
+    }
+
+    void playTurn(PlayingField playingField, List<Player> players);
+
+    PlayingField createPlayingField();
+
+    boolean isGameActive(Deck deck, List<Player> players);
+
+    List<Player> createPlayers();
+
+    default void preCreatePlayers() {};
+
+    Deck createDeck(int cardsNum);
+
+    int getNumberOfPlayers();
+    int getCardsNum();
+    int getCardsInHandNum();
     List<Player> getPlayers();
+    Deck getDeck();
+    PlayingField getPlayingField();
 
     void setNumberOfPlayers(int numberOfPlayers);
     void setCardsNum(int cardsNum);
     void setCardsInHandNum(int cardsInHandNum);
     void setPlayers(List<Player> players);
+    void setDeck(Deck deck);
+    void setPlayingField(PlayingField playingField);
+
+    void addPlayer(Player player);
+    void addPlayers(List<Player> player);
 }
