@@ -15,6 +15,8 @@ public interface PlayerInterface
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>> {
 
+    /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
+
     default void getHandFromDeck(Deck deck, int cardsInHandNumber) {
         Objects.requireNonNull(deck, "deck");
         setHand(
@@ -27,9 +29,16 @@ public interface PlayerInterface
         getHand().drawCard(card);
     }
 
+    /* **** METHODS THAT ARE NECESSARY **** */
+
+    // setter
+    void setHand(Hand hand);
+
+    // getters
     String getName();
     Hand getHand();
 
-    void setHand(Hand hand);
+    /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
 
+    // But nobody came.
 }
