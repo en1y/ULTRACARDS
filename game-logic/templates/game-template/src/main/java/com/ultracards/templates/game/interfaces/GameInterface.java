@@ -51,10 +51,7 @@ public interface GameInterface
     }
 
     default void restart() {
-        setDeck(
-                createDeck(getCardsNum())
-        );
-        // TODO implement the restart logic
+        start();
     }
 
     default void roundCycle(){
