@@ -77,7 +77,7 @@ public interface DeckInterface
     // init method
     List<Card> createCards(int size);
 
-    // getHandFromDeck method
+    // Player.getHandFromDeck() method
     Hand createHand(int cardsNum);
 
     // setters
