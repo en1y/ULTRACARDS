@@ -22,7 +22,7 @@ public interface PlayingFieldInterface
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 
     default void init() {
-        setCards(new ArrayList<>());
+        setPlayedCards(new ArrayList<>());
         setPlayers(new ArrayList<>());
     }
 
@@ -74,7 +74,7 @@ public interface PlayingFieldInterface
     List<Player> getPlayers();
 
     // setters
-    void setCards(List<Card> cards);
+    void setPlayedCards(List<Card> cards);
     void setPlayers(List<Player> players);
 
     /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
