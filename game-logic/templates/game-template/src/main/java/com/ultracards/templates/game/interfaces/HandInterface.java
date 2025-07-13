@@ -14,6 +14,8 @@ public interface HandInterface
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue>> {
 
+    /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
+
     default void init(int capacity) {
         if (capacity <= 0) {
             throw new HandException("Hand capacity: %d, can not be less than 1", capacity);
@@ -59,11 +61,21 @@ public interface HandInterface
         return getCardsNum() == 0;
     };
 
+    /* **** METHODS THAT ARE NECESSARY **** */
+
+    // getters
     List<Card> getCards();
     int getCapacity();
     int getCardsNum();
 
+    // setters
     void setCards(List<Card> cards);
     void setCapacity(int capacity);
     void setCardsNum(int cardsNum);
+
+    /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
+
+    // There are none :)
+
+
 }
