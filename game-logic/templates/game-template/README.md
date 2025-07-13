@@ -41,3 +41,65 @@
 - `DeckException`
 - `HandException`
 - `PlayingFieldException`
+
+---
+
+# GameInterface Methods Workflow
+
+## init(numberOfPlayers, cardsNum, cardsInHandNum)
+- **Sets up game parameters and prepares for game start.**
+- Calls:
+  - `setNumberOfPlayers(numberOfPlayers)`
+  - `setPlayers(new ArrayList<>(getNumberOfPlayers()))`
+  - `setCardsNum(cardsNum)`
+  - `setCardsInHandNum(cardsInHandNum)`
+  - `setPlayingField(null)`
+  - `preGameCreateCheck(numberOfPlayers, cardsNum)`
+
+## start()
+- **Begins the game and handles the main setup and loop.**
+- Calls:
+  - `setDeck(createDeck(getCardsNum()))`
+  - `removeNotNeededCards(getDeck(), getCardsInHandNum())`
+  - `createPlayers()`
+    - Sets the list via `setPlayers(players)`
+    - Throws if created player count doesn't match `getNumberOfPlayers()`
+  - `createPlayersHands(getDeck(), getPlayers())`
+  - Sets number of players: `setNumberOfPlayers(getPlayers().size())`
+  - Main game loop:
+    - While `isGameActive(getDeck(), getPlayers())` returns true:
+      - Calls `roundCycle()`
+  - After the loop:
+    - `setPlayingField(null)`
+    - `gameEnd()`
+
+## restart()
+- **Restarts the game.**
+- Calls:
+  - `start()`
+
+---
+
+### Key Internal Calls
+
+#### roundCycle()
+- Calls:
+  - `setPlayingField(createPlayingField())`
+  - `playTurn(getPlayingField(), getPlayers())`
+  - `determineRoundWinner(getPlayingField())`
+  - `postRoundWinnerDeterminedActions(roundWinner, getPlayingField())`
+  - `drawCards(getPlayers(), getDeck())`
+  - `roundEnd(getPlayingField(), roundWinner)`
+
+#### gameEnd()
+- Calls:
+  - `determineGameWinners(getPlayers())`
+  - `postGameWinnersDeterminedActions(winners)`
+
+---
+
+**Summary:**
+- `init` sets game parameters.
+- `start` creates the deck, players, hands, then repeatedly runs `roundCycle` until the game ends, then finalizes with `gameEnd`.
+- `restart` simply calls `start()`.
+
