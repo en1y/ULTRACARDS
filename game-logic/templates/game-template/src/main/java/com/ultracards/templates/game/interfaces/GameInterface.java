@@ -101,10 +101,10 @@ public interface GameInterface
         // Default implementation can be empty or can log the removed cards
     }
 
-
-
-    default Player determineRoundWinner(PlayingField playingField) {
-        return playingField.determineRoundWinner();
+    // player management methods
+    default void addPlayer(Player player) {
+        Objects.requireNonNull(player, "player must not be null");
+        getPlayers().add(player);
     }
 
     void playTurn(PlayingField playingField, List<Player> players);
