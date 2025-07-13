@@ -4,6 +4,8 @@ import com.ultracards.templates.cards.AbstractCard;
 import com.ultracards.templates.cards.CardTypeInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.exceptions.DeckException;
+import com.ultracards.templates.game.model.AbstractDeck;
+import com.ultracards.templates.game.model.AbstractHand;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +14,9 @@ import java.util.List;
 public interface DeckInterface
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>> {
+                Card extends AbstractCard<CardType, CardValue>,
+                Hand extends AbstractHand<CardType, CardValue, Card>,
+                Deck extends AbstractDeck<CardType, CardValue, Card, Hand>> {
 
     default void init(int size) {
         setSize(size);
@@ -32,7 +36,7 @@ public interface DeckInterface
     List<Card> createCards(int size);
 
     void setUp();
-    DeckInterface<CardType, CardValue, Card> createDeck(int cardsNum);
+    Deck createDeck(int cardsNum);
 
     default void shuffleCards(List<Card> cards) {
         Collections.shuffle(cards);
@@ -59,7 +63,7 @@ public interface DeckInterface
         return res;
     }
 
-    HandInterface<CardType, CardValue, Card> createHand(int cardsNum);
+    Hand createHand(int cardsNum);
 
     private void checkForSufficientNumberOfCards(int cardsNum, String errorMessageToBeFormatted) {
         if (getSize() < cardsNum) {

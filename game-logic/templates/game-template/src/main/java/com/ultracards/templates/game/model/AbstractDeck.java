@@ -8,6 +8,8 @@ import com.ultracards.templates.game.interfaces.DeckInterface;
 public abstract class AbstractDeck
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>>
-        implements DeckInterface<CardType, CardValue, Card> {
+                Card extends AbstractCard<CardType, CardValue>,
+                Hand extends AbstractHand<CardType, CardValue, Card>>
+        implements DeckInterface
+            <CardType, CardValue, Card, Hand, AbstractDeck<CardType, CardValue, Card, Hand>> {
 }
