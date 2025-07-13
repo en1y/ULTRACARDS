@@ -34,8 +34,6 @@ public interface PlayingFieldInterface
         addPlayer(player);
     }
 
-    Player determineRoundWinner();
-
     default Player getPlayerByPlayedCard(Card card) {
         Objects.requireNonNull(card, "card");
 
@@ -66,10 +64,20 @@ public interface PlayingFieldInterface
         getPlayedCards().add(card);
     }
 
+    /* **** METHODS THAT ARE NECESSARY **** */
+
+    // GameInterface.determineRoundWinner() methods
+    Player determineRoundWinner();
+
+    // getters
     List<Card> getPlayedCards();
     List<Player> getPlayers();
 
+    // setters
     void setCards(List<Card> cards);
     void setPlayers(List<Player> players);
 
+    /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
+
+    // Hell is full.
 }
