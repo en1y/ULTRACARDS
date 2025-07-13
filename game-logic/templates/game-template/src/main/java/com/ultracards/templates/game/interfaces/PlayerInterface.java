@@ -17,6 +17,10 @@ public interface PlayerInterface
 
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 
+    default void init (String name) {
+        setName(name);
+    }
+
     default void getHandFromDeck(Deck deck, int cardsInHandNumber) {
         Objects.requireNonNull(deck, "deck");
         setHand(
@@ -33,6 +37,7 @@ public interface PlayerInterface
 
     // setter
     void setHand(Hand hand);
+    void setName(String name);
 
     // getters
     String getName();
