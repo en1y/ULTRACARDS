@@ -17,9 +17,9 @@ public interface GameInterface
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
-                Player extends AbstractPlayer<CardType, CardValue, Card, Hand>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>,
-                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Player>>
+                Player extends AbstractPlayer<CardType, CardValue, Card, Hand, Deck>,
+                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Deck, Player>>
         extends GameSubject {
 
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
