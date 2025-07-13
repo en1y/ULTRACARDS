@@ -77,10 +77,6 @@ public interface GameInterface
     /* **** METHODS THAT ARE NECESSARY **** */
 
     // start methods
-    /**
-     * @param cardsNum
-     * @return Deck instance created by Deck.createDeck() method.
-     */
     Deck createDeck(int cardsNum);
 
     //roundCycle methods
