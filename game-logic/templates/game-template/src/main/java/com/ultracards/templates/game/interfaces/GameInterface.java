@@ -106,33 +106,8 @@ public interface GameInterface
         Objects.requireNonNull(player, "player must not be null");
         getPlayers().add(player);
     }
-
-    void playTurn(PlayingField playingField, List<Player> players);
-
-    PlayingField createPlayingField();
-
-    boolean isGameActive(Deck deck, List<Player> players);
-
-    List<Player> createPlayers();
-
-    default void preCreatePlayers() {};
-
-    Deck createDeck(int cardsNum);
-
-    int getNumberOfPlayers();
-    int getCardsNum();
-    int getCardsInHandNum();
-    List<Player> getPlayers();
-    Deck getDeck();
-    PlayingField getPlayingField();
-
-    void setNumberOfPlayers(int numberOfPlayers);
-    void setCardsNum(int cardsNum);
-    void setCardsInHandNum(int cardsInHandNum);
-    void setPlayers(List<Player> players);
-    void setDeck(Deck deck);
-    void setPlayingField(PlayingField playingField);
-
-    void addPlayer(Player player);
-    void addPlayers(List<Player> player);
+    default void addPlayers(List<Player> players) {
+        Objects.requireNonNull(players, "players must not be null");
+        getPlayers().addAll(players);
+    }
 }
