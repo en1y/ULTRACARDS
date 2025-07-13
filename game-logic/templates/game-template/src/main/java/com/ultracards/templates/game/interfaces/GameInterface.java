@@ -22,7 +22,7 @@ public interface GameInterface
                 PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Player>>
         extends GameSubject {
 
-    /***** DEFAULT METHODS THAT ARE IMPLEMENTED *****/
+    /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 
     default void init(int numberOfPlayers, int cardsNum, int cardsInHandNum) {
         setNumberOfPlayers(numberOfPlayers);
@@ -74,9 +74,13 @@ public interface GameInterface
         return playingField.determineRoundWinner();
     }
 
-    /***** METHODS THAT ARE NECESSARY *****/
+    /* **** METHODS THAT ARE NECESSARY **** */
 
     // start methods
+    /**
+     * @param cardsNum
+     * @return Deck instance created by Deck.createDeck() method.
+     */
     Deck createDeck(int cardsNum);
 
     //roundCycle methods
@@ -99,7 +103,7 @@ public interface GameInterface
     void setDeck(Deck deck);
     void setPlayingField(PlayingField playingField);
 
-    /***** DEFAULT METHODS THAT ARE NOT NECESSARY *****/
+    /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
 
     // init methods
     void preGameCreateCheck(int numberOfPlayers, int cardsNum);
