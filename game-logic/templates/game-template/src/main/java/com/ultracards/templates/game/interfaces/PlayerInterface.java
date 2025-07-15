@@ -28,9 +28,8 @@ public interface PlayerInterface
         );
     }
 
-    default void playCard(Card card) {
-        Objects.requireNonNull(card);
-        getHand().drawCard(card);
+    default Card playCard() {
+        return getHand().drawCard(getHand().getCards().get(0));
     }
 
     /* **** METHODS THAT ARE NECESSARY **** */

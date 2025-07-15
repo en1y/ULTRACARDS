@@ -30,7 +30,7 @@ public interface PlayingFieldInterface
         Objects.requireNonNull(card, "card");
         Objects.requireNonNull(player, "player");
         addCard(card);
-        player.playCard(card);
+        player.playCard();
         addPlayer(player);
     }
 
