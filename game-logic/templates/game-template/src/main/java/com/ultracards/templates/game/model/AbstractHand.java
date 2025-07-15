@@ -6,6 +6,7 @@ import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.HandInterface;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 public abstract class AbstractHand
         <CardType extends CardTypeInterface,
@@ -49,5 +50,14 @@ public abstract class AbstractHand
     @Override
     public void setCardsNum(int cardsNum) {
         this.cardsNum = cardsNum;
+    }
+
+    @Override
+    public String toString() {
+        var res = new StringJoiner(", ");
+        for (var card : cards) {
+            res.add(card.toString());
+        }
+        return "Hand: [" + res + "]";
     }
 }

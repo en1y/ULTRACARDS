@@ -39,4 +39,9 @@ public abstract class AbstractPlayer
     public void setName(String name) {
         this.name = name;
     }
+
+    @Override
+    public String toString() {
+        return "Player '" + getName() + "' with hand: '" + getHand() + "'";
+    }
 }

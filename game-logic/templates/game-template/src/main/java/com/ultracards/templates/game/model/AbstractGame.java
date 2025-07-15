@@ -88,4 +88,15 @@ public abstract class AbstractGame
     public void setCardsInHandNum(int cardsInHandNum) {
         this.cardsInHandNum = cardsInHandNum;
     }
+
+    @Override
+    public String toString() {
+        var res = new StringBuilder();
+        res.append("players:\n");
+        for (var player : players) {
+            res.append("- ").append(player.toString()).append("\n");
+        }
+        res.append(playingField.toString()).append("\n");
+        return res.toString();
+    }
 }
