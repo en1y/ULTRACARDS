@@ -26,6 +26,7 @@ public interface DeckInterface
                 createCards(getSize())
         );
         shuffleCards(getCards());
+        removeNotNeededCards();
         checkCardsLength();
     }
 
