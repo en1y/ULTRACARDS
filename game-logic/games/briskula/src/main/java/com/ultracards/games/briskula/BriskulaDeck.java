@@ -30,6 +30,11 @@ public class BriskulaDeck extends AbstractDeck<ItalianCardType, ItalianCardValue
 
     public void appendCard (BriskulaCard card) {
         getCards().add(card);
+        increaseSize();
+    }
+
+    private void increaseSize() {
+        setSize(getSize() + 1);
     }
 
     public int getHandCapacity() {
