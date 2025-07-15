@@ -4,6 +4,7 @@ import com.ultracards.cards.ItalianCardType;
 import com.ultracards.cards.ItalianCardValue;
 import com.ultracards.templates.game.model.AbstractDeck;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BriskulaDeck extends AbstractDeck<ItalianCardType, ItalianCardValue, BriskulaCard, BriskulaHand> {
@@ -18,13 +19,14 @@ public class BriskulaDeck extends AbstractDeck<ItalianCardType, ItalianCardValue
 
     @Override
     public List<BriskulaCard> createCards(int size) {
-        throw new UnsupportedOperationException("BriskulaDeck.createCards() not supported yet."); // TODO: implement this method
-//        return new ItalianCardFactory().getCards();
+        return new BriskulaCardFactory().getCards();
     }
 
     @Override
     public BriskulaHand createHand(int cardsNum) {
-        throw new UnsupportedOperationException("BriskulaDeck.createHand() not supported yet."); // TODO: implement this method
+        var hand = new BriskulaHand(handCapacity);
+        hand.addCards(drawXCards(cardsNum));
+        return hand;
     }
 
     public int getHandCapacity() {
