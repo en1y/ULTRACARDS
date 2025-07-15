@@ -6,6 +6,7 @@ import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.PlayingFieldInterface;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 public abstract class AbstractPlayingField
         <CardType extends CardTypeInterface,
@@ -40,5 +41,16 @@ public abstract class AbstractPlayingField
     @Override
     public void setPlayers(List<Player> players) {
         this.players = players;
+    }
+
+    @Override
+    public String toString() {
+        var res = new StringJoiner(", ");
+
+        for (var card : cards) {
+            res.add(card.toString());
+        }
+
+        return "Played cards:[" + res + "]";
     }
 }

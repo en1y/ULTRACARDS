@@ -6,6 +6,7 @@ import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.DeckInterface;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 public abstract class AbstractDeck
         <CardType extends CardTypeInterface,
@@ -40,5 +41,16 @@ public abstract class AbstractDeck
     @Override
     public void setCards(List<Card> cards) {
         this.cards = cards;
+    }
+
+    @Override
+    public String toString() {
+        var res = new StringJoiner(", ");
+
+        for (var card : getCards()) {
+            res.add(card.toString());
+        }
+
+        return "Deck: [" + res + "]";
     }
 }
