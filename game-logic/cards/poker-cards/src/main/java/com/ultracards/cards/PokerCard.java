@@ -4,7 +4,7 @@ import com.ultracards.templates.cards.AbstractCard;
 
 import java.util.Locale;
 
-public class PokerCard extends AbstractCard<PokerCardType, PokerCardValue> {
+public class PokerCard extends AbstractCard<PokerCardType, PokerCardValue, PokerCard> {
 
     public PokerCard(PokerCardType pokerCardType, PokerCardValue pokerCardValue) {
         super(pokerCardType, pokerCardValue);
