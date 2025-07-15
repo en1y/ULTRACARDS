@@ -10,7 +10,7 @@ import java.util.List;
 public abstract class AbstractDeck
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>,
+                Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>>
         implements DeckInterface
             <CardType, CardValue, Card, Hand, AbstractDeck<CardType, CardValue, Card, Hand>> {

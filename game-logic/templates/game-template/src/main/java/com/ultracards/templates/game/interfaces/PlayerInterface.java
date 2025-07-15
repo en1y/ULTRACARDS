@@ -11,7 +11,7 @@ import java.util.Objects;
 public interface PlayerInterface
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>,
+                Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>> {
 
@@ -28,9 +28,8 @@ public interface PlayerInterface
         );
     }
 
-    default void playCard(Card card) {
-        Objects.requireNonNull(card);
-        getHand().drawCard(card);
+    default Card playCard() {
+        return getHand().drawCard(getHand().getCards().get(0));
     }
 
     /* **** METHODS THAT ARE NECESSARY **** */

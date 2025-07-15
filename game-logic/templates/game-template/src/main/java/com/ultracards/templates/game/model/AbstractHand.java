@@ -10,7 +10,7 @@ import java.util.List;
 public abstract class AbstractHand
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>>
+                Card extends AbstractCard<CardType, CardValue, Card>>
         implements HandInterface<CardType, CardValue, Card> {
 
     private List<Card> cards;

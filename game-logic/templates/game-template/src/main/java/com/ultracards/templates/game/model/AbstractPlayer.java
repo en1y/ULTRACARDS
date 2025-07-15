@@ -8,7 +8,7 @@ import com.ultracards.templates.game.interfaces.PlayerInterface;
 public abstract class AbstractPlayer
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>,
+                Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>>
         implements PlayerInterface<CardType, CardValue, Card, Hand, Deck> {

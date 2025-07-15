@@ -4,7 +4,7 @@ import com.ultracards.templates.cards.CardFactoryInterface;
 
 import java.util.List;
 
-public interface PokerCardFactoryInterface<Card extends PokerCard> extends CardFactoryInterface<PokerCardType, PokerCardValue, Card> {
+public interface PokerCardFactoryInterface<Card extends PokerCard<Card>> extends CardFactoryInterface<PokerCardType, PokerCardValue, Card> {
     List<Card> create24CardDeck();
     List<Card> create36CardDeck();
     List<Card> create52CardDeck();

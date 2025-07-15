@@ -14,7 +14,7 @@ import java.util.Objects;
 public interface PlayingFieldInterface
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>,
+                Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>,
                 Player extends AbstractPlayer<CardType, CardValue, Card, Hand, Deck>> {
@@ -30,7 +30,7 @@ public interface PlayingFieldInterface
         Objects.requireNonNull(card, "card");
         Objects.requireNonNull(player, "player");
         addCard(card);
-        player.playCard(card);
+        player.playCard();
         addPlayer(player);
     }
 
