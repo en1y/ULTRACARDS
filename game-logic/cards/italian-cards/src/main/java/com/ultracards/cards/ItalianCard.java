@@ -4,7 +4,7 @@ import com.ultracards.templates.cards.AbstractCard;
 
 import java.util.Locale;
 
-public class ItalianCard extends AbstractCard<ItalianCardType, ItalianCardValue, ItalianCard> {
+public class ItalianCard<Card extends ItalianCard<Card>> extends AbstractCard<ItalianCardType, ItalianCardValue, Card> {
 
     public ItalianCard(ItalianCardType italianCardType, ItalianCardValue italianCardValue) {
         super(italianCardType, italianCardValue);
