@@ -14,7 +14,6 @@ public class BriskulaDeck extends AbstractDeck<ItalianCardType, ItalianCardValue
     public BriskulaDeck(int handCapacity) {
         super(40);
         this.handCapacity = handCapacity;
-        setCards(createCards(getSize()));
     }
 
     @Override
