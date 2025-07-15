@@ -12,7 +12,7 @@ import java.util.Objects;
 public interface HandInterface
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>> {
+                Card extends AbstractCard<CardType, CardValue, Card>> {
 
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 

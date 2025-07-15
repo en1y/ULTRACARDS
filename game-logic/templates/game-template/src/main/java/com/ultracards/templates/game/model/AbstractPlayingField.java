@@ -10,7 +10,7 @@ import java.util.List;
 public abstract class AbstractPlayingField
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>,
+                Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>,
                 Player extends AbstractPlayer<CardType, CardValue, Card, Hand, Deck>>

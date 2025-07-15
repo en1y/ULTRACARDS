@@ -14,7 +14,7 @@ import java.util.List;
 public interface DeckInterface
         <CardType extends CardTypeInterface,
                 CardValue extends CardValueInterface,
-                Card extends AbstractCard<CardType, CardValue>,
+                Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>> {
 
