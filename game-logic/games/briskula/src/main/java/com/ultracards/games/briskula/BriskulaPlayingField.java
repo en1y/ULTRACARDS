@@ -23,4 +23,12 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardType, 
         );
         return getPlayerByPlayedCard(winningCard);
     }
+
+    public int calcTotalPoints() {
+        var res = 0;
+        for (var card : getPlayedCards()) {
+            res += card.getPoints();
+        }
+        return res;
+    }
 }
