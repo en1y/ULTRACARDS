@@ -9,6 +9,10 @@ public class BriskulaCard extends ItalianCard<BriskulaCard> {
 
     private final int points;
 
+    public BriskulaCard() {
+        this(ItalianCardType.BASTONI, ItalianCardValue.KING); // Default constructor for serialization/deserialization
+    }
+
     public BriskulaCard(ItalianCardType italianCardType, ItalianCardValue italianCardValue) {
         super(italianCardType, italianCardValue);
         this.points =
