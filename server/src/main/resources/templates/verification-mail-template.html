@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ULTRACARDS Verification Code</title>
+  <style>
+    /* Basic reset for email clients */
+    body, table, td {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Force full width in Gmail iOS */
+    .main-table {
+      width: 100% !important;
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+      }
+
+      .email-container {
+        background-color: #2c2c2c !important;
+        box-shadow: none !important;
+      }
+
+      .highlight-box {
+        background-color: #333333 !important;
+        color: #00bfff !important;
+      }
+
+      a, span, p, h2 {
+        color: #ffffff !important;
+      }
+
+      .footer {
+        color: #bbbbbb !important;
+      }
+    }
+  </style>
+</head>
+<body style="background-color: #f4f4f4;">
+<table class="main-table" width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 0;">
+  <tr>
+    <td align="center">
+      <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <tr>
+          <td align="center" style="padding-bottom: 20px;">
+            <h2 style="color: #333333;">
+              <b style="color: red;">ULTRACARDS</b> Verification Code
+            </h2>
+          </td>
+        </tr>
+        <tr>
+          <td style="color: #555555; font-size: 16px; line-height: 1.5;">
+            <p>Hello, <strong>${username}</strong>,</p>
+            <p>Your verification code is:</p>
+            <div class="highlight-box" style="margin: 20px 0; padding: 15px; background-color: #e0f3ff; border-radius: 6px; text-align: center;">
+              <span style="font-size: 28px; font-weight: bold; color: #007BFF;">${code}</span>
+            </div>
+            <p>Please enter this code in the app. It will expire in <strong>10 minutes</strong>.</p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" class="footer" style="padding-top: 30px; font-size: 12px; color: #999999;">
+            <p>If you didn’t request this, please ignore this email.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
