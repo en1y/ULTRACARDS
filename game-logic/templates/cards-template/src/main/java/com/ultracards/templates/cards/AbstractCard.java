@@ -2,8 +2,8 @@ package com.ultracards.templates.cards;
 
 public abstract class AbstractCard<Type extends CardTypeInterface, Value extends CardValueInterface, Card extends AbstractCard<Type, Value, Card>> implements Comparable<Card> {
 
-    private final Type type;
-    private final Value value;
+    private Type type;
+    private Value value;
 
     public AbstractCard(Type type, Value value) {
         this.type = type;
@@ -16,6 +16,14 @@ public abstract class AbstractCard<Type extends CardTypeInterface, Value extends
 
     public Value getValue() {
         return value;
+    }
+
+    public void setValue(Value value) {
+        this.value = value;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
     }
 
     @Override
