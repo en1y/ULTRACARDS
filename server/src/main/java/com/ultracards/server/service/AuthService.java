@@ -67,7 +67,7 @@ public class AuthService {
         }
     }
 
-    public boolean verifyCode(String email, String code) {
+    public String verifyCode(String email, String code) {
         var user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("No user found with email: " + email));
 
@@ -81,6 +81,7 @@ public class AuthService {
         verCode.setUsed(true);
         codeRepository.save(verCode);
 
-        return true;
+        return "";
+//        return generateJwtToken(user); // TODO: implement JWT handling
     }
 }
