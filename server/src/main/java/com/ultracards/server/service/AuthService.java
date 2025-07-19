@@ -75,7 +75,11 @@ public class AuthService {
         try {
             emailService.sendVerificationEmail(user, verificationCode);
         } catch (MessagingException | UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+            // Mark the code as used since we couldn't send it
+            verificationCode.setUsed(true);
+            codeRepository.save(verificationCode);
+
+            throw new IllegalStateException("Failed to send verification email: " + e.getMessage(), e);
         }
     }
 
