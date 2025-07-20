@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="fragments/header :: head('Welcome')">
+    <title>Welcome - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <main class="container">
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="logo">
+                    <strong style="color: #ff3333;">ULTRACARDS</strong>
+                </h1>
+                <p>Welcome to the ultimate card gaming experience!</p>
+                
+                <div class="mt-20 mb-20">
+                    <a href="/auth" class="btn btn-primary">Login / Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div th:replace="fragments/footer :: footer"></div>
+</body>
+</html>

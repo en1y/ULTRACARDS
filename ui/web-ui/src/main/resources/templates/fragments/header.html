@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' - ULTRACARDS'">ULTRACARDS</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/theme.js}"></script>
+</head>
+
+<body>
+    <header th:fragment="header">
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <a th:href="${isGamesPage} ? '/games' : '/'">
+                        <strong style="color: #ff3333;">ULTRACARDS</strong>
+                    </a>
+                </div>
+                <div class="theme-toggle-container">
+                    <label class="theme-switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">Switch to Light Mode</span>
+                </div>
+            </nav>
+        </div>
+    </header>
+</body>
+</html>
