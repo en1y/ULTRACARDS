@@ -28,12 +28,12 @@ public class BriskulaGame extends AbstractGame<ItalianCardType, ItalianCardValue
     @Override
     public void postRoundWinnerDeterminedActions(BriskulaPlayer roundWinner, BriskulaPlayingField briskulaPlayingField) {
         var winPoints = briskulaPlayingField.calcTotalPoints();
-        roundWinner.addPoints(winPoints);
+        roundWinner.addPoints(winPoints, briskulaPlayingField.getPlayedCards());
 
         Collections.rotate(getPlayers(), getPlayers().indexOf(roundWinner)*-1);
 
         if (areTeamsEnabled()) {
-            getPlayers().get(2).addPoints(winPoints); // Because the winning player is now 1st so the 3rd player is his teammate
+            getPlayers().get(2).addPoints(winPoints, briskulaPlayingField.getPlayedCards()); // Because the winning player is now 1st so the 3rd player is his teammate
         }
     }
 
