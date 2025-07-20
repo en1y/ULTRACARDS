@@ -42,11 +42,23 @@ public class AuthService {
 
     public static final int CODE_VALIDITY_MINUTES = 10;
 
-    public void registerUser(String email, String username) {
+
+    public void authorizeUser(String email) {
+        var user = userRepository.findByEmail(email);
+
+        if (user.isEmpty()) {
+            registerUser(email);
+        } else {
+            loginUser(email);
+        }
+
+    }
+
+    public void registerUser(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             throw new IllegalStateException("User with such email already exists!");
         });
-        var user = new UserEntity(email, username, Role.PLAYER);
+        var user = new UserEntity(email, "", Role.PLAYER);
         userRepository.save(user);
 
         generateAndSendCode(user);

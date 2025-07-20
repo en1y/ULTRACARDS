@@ -1,6 +1,7 @@
 package com.ultracards.server.controllers;
 
 import com.ultracards.server.dto.AuthResponseDTO;
+import com.ultracards.server.dto.EmailRequestDTO;
 import com.ultracards.server.dto.VerifyCodeRequestDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.RefreshTokenEntity;
@@ -31,6 +32,28 @@ public class AuthController {
         this.authService = authService;
         this.refreshTokenService = refreshTokenService;
         this.userRepository = userRepository;
+    }
+
+    @PostMapping("/set-username")
+    public ResponseEntity<Void> setUsername(@RequestBody EmailRequestDTO request) {
+        try {
+            var user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+            user.setUsername(request.getUsername());
+            userRepository.save(user);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PostMapping("/authorize")
+    public ResponseEntity<Void> authorize(@RequestBody EmailRequestDTO request) {
+        try {
+            authService.authorizeUser(request.getEmail());
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
 
     @PostMapping("/verify") // After email verification
