@@ -35,8 +35,8 @@ public class WebSecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
-                .requestMatchers("/auth/login").permitAll()
-                .requestMatchers("/auth/register").permitAll()
+                .requestMatchers("auth/authorize").permitAll()
+                .requestMatchers("/auth/set-username").permitAll()
                 .requestMatchers("/auth/verify").permitAll()
                 .requestMatchers("/auth/refresh").permitAll()
                 .requestMatchers("/auth/logout").permitAll()

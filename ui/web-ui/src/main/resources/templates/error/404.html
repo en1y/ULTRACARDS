@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="fragments/header :: head('Page Not Found')">
+    <title>Page Not Found - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <main class="container">
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="error-title">Page Not Found</h1>
+                <div class="error-code">404</div>
+                <p class="error-message">The page you are looking for could not be found.</p>
+                <p>The page might have been removed, had its name changed, or is temporarily unavailable.</p>
+                
+                <div class="mt-20 mb-20">
+                    <a href="/" class="btn btn-primary">Return to Home</a>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div th:replace="fragments/footer :: footer"></div>
+</body>
+</html>

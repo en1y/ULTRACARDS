@@ -24,6 +24,7 @@
         <module>console-ui</module>
         <module>web-ui</module>
         <module>gui</module>
+        <module>card-to-png</module>
     </modules>
 
 </project>

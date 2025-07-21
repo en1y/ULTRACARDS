@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' - ULTRACARDS'">ULTRACARDS</title>
+
+    <!-- Styles -->
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+
+    <!-- Scripts -->
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+
+<body>
+<header th:fragment="header" class="site-header">
+    <div class="container">
+        <nav class="navbar" role="navigation" aria-label="Main navigation">
+            <!-- Logo -->
+            <div class="logo">
+                <a th:href="${isGamesPage} ? '/games' : '/'" class="logo-link">
+                    <div class="logo-box">
+                        <strong>ULTRACARDS</strong>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Navigation Controls -->
+            <div class="nav-controls">
+                <!-- Auth Buttons -->
+                <div class="auth-controls" th:if="${isAuthenticated != null}">
+                    <a th:if="${!isAuthenticated}" href="/auth" class="btn btn-primary">Log In / Sign Up</a>
+                    <div th:if="${isAuthenticated}" class="user-info">
+                        <span class="username-display" th:text="${username}">Username</span>
+                        <a href="/auth/logout" class="btn btn-logout">Log Out</a>
+                    </div>
+                </div>
+
+                <!-- Theme Toggle -->
+                <div class="theme-toggle-container">
+                    <label class="theme-switch" for="theme-toggle">
+                        <input type="checkbox" id="theme-toggle" aria-label="Toggle dark mode">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+</body>
+</html>

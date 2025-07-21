@@ -6,17 +6,14 @@ import com.ultracards.server.entity.auth.VerificationCode;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.VerificationCodeRepository;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.mail.MessagingException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalUnit;
 import java.util.Date;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -42,11 +39,23 @@ public class AuthService {
 
     public static final int CODE_VALIDITY_MINUTES = 10;
 
-    public void registerUser(String email, String username) {
+
+    public void authorizeUser(String email) {
+        var user = userRepository.findByEmail(email);
+
+        if (user.isEmpty()) {
+            registerUser(email);
+        } else {
+            loginUser(email);
+        }
+
+    }
+
+    public void registerUser(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             throw new IllegalStateException("User with such email already exists!");
         });
-        var user = new UserEntity(email, username, Role.PLAYER);
+        var user = new UserEntity(email, "", Role.PLAYER);
         userRepository.save(user);
 
         generateAndSendCode(user);

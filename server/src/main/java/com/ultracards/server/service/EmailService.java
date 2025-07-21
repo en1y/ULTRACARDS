@@ -35,7 +35,12 @@ public class EmailService {
     public void sendVerificationEmail(UserEntity user, VerificationCode code) throws MessagingException, UnsupportedEncodingException {
         var context = new Context();
         context.setVariable("code", code.getCode());
-        context.setVariable("username", user.getUsername());
+
+        var username = user.getUsername();
+        if (username.isEmpty())
+            context.setVariable("username", "new player");
+        else
+            context.setVariable("username", username);
 
         var htmlContent = templateEngine.process("verification-mail-template", context);
 
