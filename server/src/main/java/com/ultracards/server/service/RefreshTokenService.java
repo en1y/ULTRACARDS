@@ -6,6 +6,7 @@ import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.auth.RefreshTokenRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;

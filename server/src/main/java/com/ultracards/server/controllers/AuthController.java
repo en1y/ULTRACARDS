@@ -48,6 +48,7 @@ public class AuthController {
 
     @PostMapping("/authorize")
     public ResponseEntity<Void> authorize(@RequestBody EmailRequestDTO request) {
+        System.out.println("I am here");
         try {
             authService.authorizeUser(request.getEmail());
             return ResponseEntity.ok().build();

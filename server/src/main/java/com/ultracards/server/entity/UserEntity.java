@@ -29,6 +29,7 @@ public class UserEntity {
         this.email = email;
         this.username = username;
         this.role = role;
+        enabled = true;
     }
 
     public Long getId() {

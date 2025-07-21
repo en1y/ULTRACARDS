@@ -15,7 +15,11 @@
                 <p>Welcome to the ultimate card gaming experience!</p>
                 
                 <div class="mt-20 mb-20">
-                    <a href="/auth" class="btn btn-primary">Login / Sign Up</a>
+                    <!-- Show login button only for non-authenticated users -->
+                    <a th:if="${!isAuthenticated}" href="/auth" class="btn btn-primary">Login / Sign Up</a>
+                    
+                    <!-- Show games button only for authenticated users -->
+                    <a th:if="${isAuthenticated}" href="/games" class="btn btn-primary">Go to Games</a>
                 </div>
             </div>
         </div>

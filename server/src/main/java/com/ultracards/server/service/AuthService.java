@@ -6,17 +6,14 @@ import com.ultracards.server.entity.auth.VerificationCode;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.VerificationCodeRepository;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.mail.MessagingException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalUnit;
 import java.util.Date;
 import java.util.concurrent.ThreadLocalRandom;
 

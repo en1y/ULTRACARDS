@@ -59,6 +59,25 @@ body {
   margin: 20px 0;
 }
 
+/* Logo box styling */
+.logo-box {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.logo-box strong {
+  color: white !important;
+  text-decoration: none !important;
+}
+
+.logo a {
+  text-decoration: none;
+}
+
 /* Header and footer */
 header, footer {
   background-color: var(--secondary-color);
@@ -208,12 +227,57 @@ input, select {
   cursor: not-allowed;
 }
 
+/* Navigation controls */
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.auth-controls {
+  margin-right: 10px;
+}
+
+.username-display {
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+/* User info container */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Logout button */
+.btn-logout {
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--accent-color);
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
 /* Theme toggle switch */
 .theme-switch {
   position: relative;
   display: inline-block;
   width: 60px;
   height: 34px;
+}
+
+/* Compact theme switch */
+.theme-switch.compact {
+  width: 46px;
+  height: 24px;
 }
 
 .theme-switch input {
@@ -246,12 +310,25 @@ input, select {
   border-radius: 50%;
 }
 
+/* Compact slider adjustments */
+.theme-switch.compact .slider:before {
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+}
+
 input:checked + .slider {
   background-color: var(--primary-color);
 }
 
 input:checked + .slider:before {
   transform: translateX(26px);
+}
+
+/* Compact slider transform adjustment */
+.theme-switch.compact input:checked + .slider:before {
+  transform: translateX(22px);
 }
 
 /* Utility classes */
