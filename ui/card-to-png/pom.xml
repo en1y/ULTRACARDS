@@ -4,15 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>en1y.ultracards</groupId>
-        <artifactId>ULTRACARDS</artifactId>
+        <groupId>en1y.ultracards.ui</groupId>
+        <artifactId>ui</artifactId>
         <version>0.1-PREALPHA</version>
     </parent>
 
-    <artifactId>ui</artifactId>
-    <groupId>en1y.ultracards.ui</groupId>
-
-    <packaging>pom</packaging>
+    <artifactId>card-to-png</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -20,11 +17,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <modules>
-        <module>console-ui</module>
-        <module>web-ui</module>
-        <module>gui</module>
-        <module>card-to-png</module>
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>en1y.ultracards.cards</groupId>
+            <artifactId>italian-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>en1y.ultracards.cards</groupId>
+            <artifactId>poker-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 
 </project>
