@@ -1,11 +1,15 @@
-package com.ultracards.server.dto;
+package com.ultracards.gateway.dto;
 
+/**
+ * Data Transfer Object for verification code requests.
+ * Matches the server's VerifyCodeRequestDTO structure.
+ */
 public class VerifyCodeRequestDTO {
 
     private String email;
     private String code;
 
-    public VerifyCodeRequestDTO(){}
+    public VerifyCodeRequestDTO() {}
 
     public VerifyCodeRequestDTO(String email, String code) {
         this.email = email;
