@@ -1,6 +1,7 @@
 package com.ultracards.server.entity.games;
 
 import com.ultracards.server.entity.UserEntity;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
 
@@ -24,6 +25,12 @@ public class GameEntity {
     @Column(name = "status", nullable = false)
     private String status;
 
+    private String gameName;
+
+    @ManyToOne
+    @JoinColumn(name = "creator_id")
+    private UserEntity creator;
+
     @ManyToMany
     @JoinTable(
         name = "game_players",
@@ -32,7 +39,8 @@ public class GameEntity {
     )
     private List<UserEntity> players;
 
-    @Column(name = "game_state", columnDefinition = "jsonb")
+    @Type(value = JsonBinaryType.class)
+    @Column(name = "game_state", columnDefinition = "jsonb", nullable = false)
     private String gameStateJson;
 
     @Column(name = "created_at", nullable = false)
@@ -41,10 +49,24 @@ public class GameEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
     public GameEntity() {
         this.id = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void addPlayer(UserEntity user) {
+        if (this.players.contains(user))
+            throw new IllegalArgumentException("Player is already a part of this game");
+        this.players.add(user);
+    }
+
+    public void removePlayer(UserEntity user) {
+        if (!this.players.remove(user))
+            throw new IllegalArgumentException("Player is not in this game");
     }
 
     public String getId() {
@@ -69,6 +91,14 @@ public class GameEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getGameName() {
+        return gameName;
+    }
+
+    public void setGameName(String gameName) {
+        this.gameName = gameName;
     }
 
     public List<UserEntity> getPlayers() {
@@ -101,5 +131,21 @@ public class GameEntity {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public UserEntity getCreator() {
+        return creator;
+    }
+
+    public void setCreator(UserEntity creator) {
+        this.creator = creator;
     }
 }

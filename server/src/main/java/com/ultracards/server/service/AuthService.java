@@ -1,5 +1,6 @@
 package com.ultracards.server.service;
 
+import com.ultracards.gateway.dto.BasicUserDTO;
 import com.ultracards.server.entity.Role;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.VerificationCode;
@@ -10,6 +11,8 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
@@ -20,25 +23,41 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class AuthService {
 
+    public static final int CODE_VALIDITY_MINUTES = 10;
+
     private final UserRepository userRepository;
     private final VerificationCodeRepository codeRepository;
     private final EmailService emailService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${app.jwt.secret.token}")
     private String JWT_SECRET;
     @Value("${app.jwt.token.valid.time.minutes}")
     private Long JWT_TOKEN_VALID_TIME_MINUTES;
 
-    public AuthService(UserRepository userRepository,
-                       VerificationCodeRepository codeRepository,
-                       EmailService emailService) {
+    public AuthService(UserRepository userRepository, VerificationCodeRepository codeRepository, EmailService emailService, RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.codeRepository = codeRepository;
         this.emailService = emailService;
+        this.refreshTokenService = refreshTokenService;
     }
 
-    public static final int CODE_VALIDITY_MINUTES = 10;
 
+    public ResponseEntity<Void> isUserActive(BasicUserDTO user) {
+        try {
+            var userEntity = userRepository.findById(user.getUserId());
+
+            if (userEntity.isEmpty()) return ResponseEntity.status(HttpStatus.I_AM_A_TEAPOT).build();
+
+            if (refreshTokenService.isValid(user.getToken())) {
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
 
     public void authorizeUser(String email) {
         var user = userRepository.findByEmail(email);

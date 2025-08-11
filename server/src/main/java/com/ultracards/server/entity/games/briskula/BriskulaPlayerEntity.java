@@ -20,13 +20,31 @@ public class BriskulaPlayerEntity extends BriskulaPlayer{
         super(user.getUsername());
     }
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
 
     @Override
     @Column(name = "points")
@@ -41,19 +59,4 @@ public class BriskulaPlayerEntity extends BriskulaPlayer{
         return super.getWonCards();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public UserEntity getUser() {
-        return user;
-    }
-
-    public void setUser(UserEntity user) {
-        this.user = user;
-    }
 }

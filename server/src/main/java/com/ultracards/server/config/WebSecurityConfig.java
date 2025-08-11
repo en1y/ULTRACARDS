@@ -1,6 +1,5 @@
 package com.ultracards.server.config;
 
-import com.ultracards.server.entity.auth.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -21,12 +20,6 @@ import java.util.List;
 @EnableMethodSecurity
 public class WebSecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public WebSecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -35,15 +28,17 @@ public class WebSecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
-                .requestMatchers("auth/authorize").permitAll()
+                .requestMatchers("/auth/authorize").permitAll()
                 .requestMatchers("/auth/set-username").permitAll()
                 .requestMatchers("/auth/verify").permitAll()
                 .requestMatchers("/auth/refresh").permitAll()
                 .requestMatchers("/auth/logout").permitAll()
+                    .requestMatchers("/auth/user-active").permitAll()
+                    .requestMatchers("/api/games/**").permitAll()
+                    .requestMatchers("/active").permitAll()
                 // Protected endpoints
                 .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            );
 
         return http.build();
     }

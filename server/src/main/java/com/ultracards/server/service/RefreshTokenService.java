@@ -41,6 +41,11 @@ public class RefreshTokenService {
         return token.getExpiryDate().isBefore(Instant.now());
     }
 
+    public boolean isValid(String token) {
+        var tokenEntity = findByToken(token);
+        return tokenEntity.isPresent() && !isExpired(tokenEntity.get());
+    }
+
     public void deleteRefreshToken(RefreshTokenEntity token) {
         tokenRepository.delete(token);
     }

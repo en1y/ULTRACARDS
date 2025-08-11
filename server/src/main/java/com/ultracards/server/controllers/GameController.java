@@ -1,9 +1,10 @@
 package com.ultracards.server.controllers;
 
-import com.ultracards.server.dto.games.GameActionRequestDTO;
-import com.ultracards.server.dto.games.GameCreationRequestDTO;
-import com.ultracards.server.dto.games.GameResponseDTO;
-import com.ultracards.server.dto.games.GameSummaryDTO;
+import com.ultracards.gateway.dto.games.GameActionRequestDTO;
+import com.ultracards.gateway.dto.games.GameCreationRequestDTO;
+import com.ultracards.gateway.dto.games.GameResponseDTO;
+import com.ultracards.gateway.dto.games.GameSummaryDTO;
+import com.ultracards.server.repositories.games.GameRepository;
 import com.ultracards.server.service.games.GameService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +20,11 @@ import java.util.List;
 public class GameController {
 
     private final GameService gameService;
+    private final GameRepository gameRepository;
 
-    public GameController(GameService gameService) {
+    public GameController(GameService gameService, GameRepository gameRepository) {
         this.gameService = gameService;
+        this.gameRepository = gameRepository;
     }
 
     /**
@@ -51,7 +54,7 @@ public class GameController {
     @GetMapping("/{gameId}")
     public ResponseEntity<GameResponseDTO> getGame(@PathVariable String gameId) {
         try {
-            GameResponseDTO game = gameService.getGame(gameId);
+            var game = gameService.getGame(gameId);
             return ResponseEntity.ok(game);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -103,6 +106,17 @@ public class GameController {
             }
             
             return ResponseEntity.ok(games);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/{gameId}")
+    public ResponseEntity<Void> deactivateGames(@PathVariable String gameId) {
+        try {
+            var game = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found with id: " + gameId));
+            gameService.deactivateGamesByPlayer(game.getCreator().getId());
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
