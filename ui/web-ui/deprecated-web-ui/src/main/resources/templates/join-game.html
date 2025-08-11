@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/header :: head('Join Game')}">
+    <title>Join Game - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <main>
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="logo">
+                    <strong class="logo-text">ULTRACARDS</strong>
+                </h1>
+                <h2>Join Game</h2>
+                <p>Select a game to join</p>
+            </div>
+            
+            <div class="form-group mt-20">
+                <label for="gameTypeFilter">Filter by Game Type</label>
+                <select id="gameTypeFilter" name="gameTypeFilter">
+                    <option value="all">All Games</option>
+                    <option value="briskula" selected>Briskula</option>
+                    <option value="durak" disabled>Durak (Coming Soon)</option>
+                    <option value="treseta" disabled>Treseta (Coming Soon)</option>
+                    <option value="poker" disabled>Poker (Coming Soon)</option>
+                </select>
+            </div>
+            
+            <!-- Error messages -->
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            
+            <div class="game-list mt-20">
+                <!-- No games message -->
+                <div th:if="${availableGames == null or availableGames.isEmpty()}" class="text-center">
+                    <p>No games available to join. Why not create one?</p>
+                    <a href="/games/create" class="btn btn-primary mt-10">Create Game</a>
+                </div>
+                
+                <!-- Available games list -->
+                <div th:each="game : ${availableGames}" class="card game-entry mt-10">
+                    <div class="flex space-between align-center">
+                        <div>
+                            <h3 th:text="${game.toString()}">Game Title</h3>
+                            <p th:text="${'Players: ' + game.playerCount}">Players</p>
+                            <div class="player-list">
+                                <div th:each="playerName : ${game.playerNames}" class="player-avatar" 
+                                     th:text="${#strings.substring(playerName, 0, 1)}">P</div>
+                            </div>
+                        </div>
+                        <div>
+                            <form action="/games/join" method="post">
+                                <input type="hidden" name="gameId" th:value="${game.gameId}">
+                                <button type="submit" class="btn btn-primary">Join Game</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-20">
+                <a href="/games" class="btn">Back to Game Selection</a>
+            </div>
+        </div>
+    </main>
+    
+    <div th:replace="~{fragments/footer :: footer}"></div>
+    
+    <script>
+        // Simple filtering functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterSelect = document.getElementById('gameTypeFilter');
+            const gameEntries = document.querySelectorAll('.game-entry');
+            
+            filterSelect.addEventListener('change', function() {
+                const selectedType = this.value;
+                
+                // In a real app, this would filter the games based on the selected type
+                // For now, we'll just log the selected type
+                console.log('Selected game type:', selectedType);
+                
+                // Simulate filtering by hiding/showing games
+                if (selectedType === 'all') {
+                    gameEntries.forEach(entry => {
+                        entry.style.display = 'block';
+                    });
+                } else {
+                    // In this demo, all games are Briskula, so we don't need to hide any
+                    // In a real app, we would check the game type and hide/show accordingly
+                }
+            });
+        });
+    </script>
+</body>
+</html>
