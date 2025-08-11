@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/header :: head('Game Lobby')}">
+    <title>Game Lobby - ULTRACARDS</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+
+
+    <style>
+        .logo-text {
+            color: var(--primary-color);
+        }
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: var(--button-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: bold;
+        }
+
+        .host-indicator {
+            font-size: 12px;
+            color: var(--primary-color);
+            margin-top: 2px;
+        }
+
+        .host-badge {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--button-text);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .empty-player {
+            opacity: 0.5;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .setting-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .game-link-input {
+            width: 80%;
+            padding: 8px;
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            margin-right: 5px;
+        }
+
+        .link-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        .waiting-message {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: var(--secondary-color);
+            border-radius: 5px;
+            border-left: 4px solid var(--primary-color);
+            color: var(--text-color);
+        }
+        .horizontal-item {
+            border: 1px solid black;
+        }
+    </style>
+    <link>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+<main>
+    <div class="card mt-20">
+        <div class="text-center">
+            <h1 class="logo">
+                <strong class="logo-text">ULTRACARDS</strong>
+            </h1>
+            <h2 th:text="${gameType + ' Game Lobby'}">Game Lobby</h2>
+            <p th:if="${gameOptions != null and gameName != null}"
+               th:text="${'Game Name: ' + gameName}">Game Name</p>
+            <p th:text="${'Game ID: ' + gameId}">Game ID</p>
+            <p th:text="${'Status: Waiting for players'}">Status</p>
+        </div>
+
+        <!-- Error messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <!-- Player count information -->
+        <div class="text-center mt-10">
+            <p th:text="${'Players: ' + players.size() + ' / ' + maxPlayers}">Players: 1/4</p>
+            <div th:if="${isHost}" class="host-badge">You are the host</div>
+        </div>
+
+        <!-- Players container -->
+        <div class="players-container mt-20">
+            <h3>Players</h3>
+
+            <div class="horizontal-container">
+                <!-- Current players -->
+                <div th:each="player : ${players}" class="horizontal-item">
+                    <div class="horizontal-container">
+                        <div class="player-avatar" th:text="${#strings.substring(player.username, 0, 1)}">A</div>
+                        <div class="player-info">
+                            <div class="player-name"
+                                 th:text="${player.username + (player.playerId == currentUserId ? ' (You)' : '')}">Player
+                                Name
+                            </div>
+                            <div th:if="${player.playerId == hostId}" class="host-indicator">Host</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty slots -->
+                <div th:if="${players.size() < maxPlayers}"
+                     th:each="i : ${#numbers.sequence(1, maxPlayers - players.size())}"
+                     class="horizontal-item">
+                    <div class="horizontal-container">
+                        <div class="player-avatar">?</div>
+                        <div class="player-info">
+                            <div class="player-name">Waiting for player...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game settings -->
+        <div class="game-settings mt-20">
+            <h3>Game Settings</h3>
+            <div class="horizontal-container">
+                <div class="horizontal-item">
+                    <div class="setting-label">Game Type:</div>
+                    <div class="setting-value" th:text="${gameType}">Briskula</div>
+                </div>
+                <div class="horizontal-item">
+                    <div class="setting-label">Max Players:</div>
+                    <div class="setting-value" th:text="${maxPlayers}">4</div>
+                </div>
+                <div th:if="${gameOptions != null and gameOptions.cardsInHand != null}" class="horizontal-item">
+                    <div class="setting-label">Cards in Hand:</div>
+                    <div class="setting-value" th:text="${gameOptions.cardsInHand}">3</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game controls -->
+        <div class="game-controls mt-20 text-center">
+            <div th:if="${isHost}">
+                <form th:action="@{/games/start-game(gameId=${gameId})}" method="post">
+                    <input type="hidden" name="gameId" th:value="${gameId}">
+                    <button type="submit" class="btn btn-primary"
+                            th:disabled="${players.size() < minPlayers}"
+                            th:text="${players.size() < minPlayers ? 'Waiting for more players...' : 'Start Game'}">
+                        Start Game
+                    </button>
+                </form>
+                <p th:if="${players.size() < minPlayers}" class="mt-10">
+                    Need at least <span th:text="${minPlayers}">2</span> players to start
+                </p>
+            </div>
+
+            <div th:if="${!isHost}" class="waiting-message">
+                <p>Waiting for the host to start the game...</p>
+            </div>
+
+            <form th:action="@{/games/leave}" method="post" class="mt-10">
+                <input type="hidden" name="gameId" th:value="${gameId}">
+                <button type="submit" class="btn">Leave Game</button>
+            </form>
+
+            <div class="share-link mt-20">
+                <p>Share this link with friends to join:</p>
+                <div class="link-container">
+                    <input type="text" readonly id="gameLink" th:value="${gameLink}" class="game-link-input">
+                    <button onclick="copyGameLink()" class="btn btn-small">Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+<script>
+    function copyGameLink() {
+        const linkInput = document.getElementById('gameLink');
+        linkInput.select();
+        document.execCommand('copy');
+        alert('Game link copied to clipboard!');
+    }
+
+    setTimeout(function () {
+        window.location.reload();
+    }, 5000);
+</script>
+</body>
+</html>

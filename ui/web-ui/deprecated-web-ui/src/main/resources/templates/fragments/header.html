@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+    <head th:fragment="head(title)">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title th:text="${title} + ' - ULTRACARDS'">ULTRACARDS</title>
+
+        <!-- Styles -->
+        <link rel="stylesheet" th:href="@{/css/styles.css}">
+
+
+        <!-- Scripts -->
+        <script th:src="@{/js/theme.js}" defer></script>
+
+        <style>
+            /* ULTRACARDS logo styling */
+            .logo {
+                font-weight: bold;
+                color: var(--primary-color);
+                font-size: 2.5rem;
+                text-align: center;
+                margin: 20px 0;
+            }
+
+            /* Logo box styling */
+            .logo-box {
+                background-color: var(--primary-color);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 8px;
+                display: inline-block;
+                text-decoration: none;
+                transition: background-color 0.3s ease;
+            }
+
+            .logo-box:hover {
+                background-color: var(--primary-hover-color);
+            }
+
+            .logo-box strong {
+                color: var(--button-text) !important;
+                text-decoration: none !important;
+            }
+
+            .logo a {
+                text-decoration: none;
+            }
+        </style>
+    </head>
+
+    <body>
+        <header th:fragment="header" class="site-header">
+            <div>
+                <nav class="navbar" role="navigation" aria-label="Main navigation">
+                    <!-- Logo -->
+                    <div class="logo">
+                        <a th:href="${isGamesPage} ? '/games' : '/'">
+                            <div class="logo-box">
+                                <strong>ULTRACARDS</strong>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Navigation Controls -->
+                    <div class="nav-controls">
+                        <!-- Auth Buttons -->
+                        <div th:if="${isAuthenticated != null}">
+                            <a th:if="${!isAuthenticated}" href="/auth" class="btn btn-primary">Log In / Sign Up</a>
+                            <div th:if="${isAuthenticated}" class="user-info">
+                                <span class="username-display" th:text="${username}">Username</span>
+                                <a href="/auth/logout" class="btn btn-logout">Log Out</a>
+                            </div>
+                        </div>
+
+                        <!-- Theme Toggle -->
+                        <div class="theme-toggle-container">
+                            <label class="theme-switch" for="theme-toggle">
+                                <input type="checkbox" id="theme-toggle" aria-label="Toggle dark mode">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </header>
+    </body>
+</html>

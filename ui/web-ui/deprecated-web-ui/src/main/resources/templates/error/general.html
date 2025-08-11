@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/header :: head('Error')}">
+    <title>Error - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <main>
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="error-title">Error</h1>
+                <div class="error-code" th:if="${statusCode}">
+                    <span th:text="${statusCode}">500</span>
+                </div>
+                <p class="error-message" th:text="${errorMessage}">An unexpected error occurred</p>
+                
+                <div class="mt-20 mb-20">
+                    <a href="/" class="btn btn-primary">Return to Home</a>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

@@ -2,7 +2,7 @@ package com.ultracards.server.service.games;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ultracards.server.dto.games.*;
+import com.ultracards.gateway.dto.games.*;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.repositories.UserRepository;
@@ -10,8 +10,9 @@ import com.ultracards.server.repositories.games.GameRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -38,15 +39,18 @@ public class GameService {
      */
     @Transactional
     public GameResponseDTO createGame(GameCreationRequestDTO request) {
-        List<UserEntity> players = request.getPlayerIds().stream()
+        var players = request.getPlayerIds().stream()
                 .map(id -> userRepository.findById(id)
                         .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        GameEntity gameEntity = new GameEntity();
+        var gameEntity = new GameEntity();
         gameEntity.setGameType(request.getGameType());
+        gameEntity.setCreator(userRepository.findById(request.getCreatorId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + request.getCreatorId())));
         gameEntity.setStatus("CREATED");
         gameEntity.setPlayers(players);
+        gameEntity.setGameName(request.getGameName());
 
         try {
             // Store game options as part of the game state
@@ -68,7 +72,7 @@ public class GameService {
      * @return the game
      */
     public GameResponseDTO getGame(String gameId) {
-        GameEntity gameEntity = gameRepository.findById(gameId)
+        GameEntity gameEntity = gameRepository.findByIdAndActiveTrue(gameId)
                 .orElseThrow(() -> new IllegalArgumentException("Game not found with id: " + gameId));
         return convertToResponseDTO(gameEntity);
     }
@@ -76,48 +80,42 @@ public class GameService {
     /**
      * Update a game with an action.
      *
-     * @param gameId the game ID
+     * @param gameId  the game ID
      * @param request the game action request
      * @return the updated game
      */
     @Transactional
     public GameResponseDTO updateGame(String gameId, GameActionRequestDTO request) {
-        GameEntity gameEntity = gameRepository.findById(gameId)
+        var game = gameRepository.findByIdAndActiveTrue(gameId)
                 .orElseThrow(() -> new IllegalArgumentException("Game not found with id: " + gameId));
 
-        // Verify player is part of the game
-        UserEntity player = userRepository.findById(request.getPlayerId())
+        var player = userRepository.findById(request.getPlayerId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + request.getPlayerId()));
-        
-        if (!gameEntity.getPlayers().contains(player)) {
-            throw new IllegalArgumentException("Player is not part of this game");
-        }
 
-        try {
-            // Update game state based on action
-            Map<String, Object> gameState = objectMapper.readValue(gameEntity.getGameStateJson(), Map.class);
-            
-            // Store action in game state history
-            List<Map<String, Object>> actions = (List<Map<String, Object>>) gameState.getOrDefault("actions", new ArrayList<>());
-            Map<String, Object> action = new HashMap<>();
-            action.put("playerId", request.getPlayerId());
-            action.put("actionType", request.getActionType());
-            action.put("actionParams", request.getActionParams());
-            action.put("timestamp", LocalDateTime.now().toString());
-            actions.add(action);
-            gameState.put("actions", actions);
-            
-            // In a real implementation, you would process the action based on game type and update the game state accordingly
-            // For now, we just store the action in the history
-            
-            gameEntity.setGameStateJson(objectMapper.writeValueAsString(gameState));
-            gameEntity.setUpdatedAt(LocalDateTime.now());
-            
-            gameEntity = gameRepository.save(gameEntity);
-            return convertToResponseDTO(gameEntity);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error processing game state", e);
+        var actionType = GameAction.valueOf(request.getActionType());
+
+        if (GameAction.JOIN_GAME.equals(actionType)) {
+
+            game.addPlayer(player);
+            gameRepository.save(game);
+
+        } else if (GameAction.LEAVE_GAME.equals(actionType)) {
+
+            game.removePlayer(player);
+            if (game.getCreator().equals(player)) {
+                game.setActive(false);
+            }
+            if (game.getPlayers().isEmpty()) {
+                game.setActive(false);
+            }
+            gameRepository.save(game);
+
+        } else if (GameAction.START_GAME.equals(actionType)) {
+            // TODO: Implement starting game
+        } else {
+            throw new IllegalArgumentException("Unsupported action type: " + actionType);
         }
+        return convertToResponseDTO(game);
     }
 
     /**
@@ -126,7 +124,7 @@ public class GameService {
      * @return a list of all games
      */
     public List<GameSummaryDTO> listGames() {
-        return gameRepository.findAll().stream()
+        return gameRepository.findAllByActiveTrue().stream()
                 .map(this::convertToSummaryDTO)
                 .collect(Collectors.toList());
     }
@@ -138,7 +136,7 @@ public class GameService {
      * @return a list of games with the specified status
      */
     public List<GameSummaryDTO> listGamesByStatus(String status) {
-        return gameRepository.findByStatus(status).stream()
+        return gameRepository.findByStatusAndActiveTrue(status).stream()
                 .map(this::convertToSummaryDTO)
                 .collect(Collectors.toList());
     }
@@ -150,9 +148,20 @@ public class GameService {
      * @return a list of games with the specified game type
      */
     public List<GameSummaryDTO> listGamesByType(String gameType) {
-        return gameRepository.findByGameType(gameType).stream()
+        return gameRepository.findByGameTypeAndActiveTrue(gameType).stream()
                 .map(this::convertToSummaryDTO)
                 .collect(Collectors.toList());
+    }
+
+    public void deactivateGamesByPlayer(Long playerId) {
+        var player = userRepository.findById(playerId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + playerId));
+
+        gameRepository.findByPlayerAndActiveTrue(player)
+                .forEach(game -> {
+                    game.setActive(false);
+                    gameRepository.save(game);
+                });
     }
 
     /**
@@ -162,10 +171,10 @@ public class GameService {
      * @return a list of games that include the specified player
      */
     public List<GameSummaryDTO> listGamesByPlayer(Long playerId) {
-        UserEntity player = userRepository.findById(playerId)
+        var player = userRepository.findById(playerId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + playerId));
-        
-        return gameRepository.findByPlayer(player).stream()
+
+        return gameRepository.findByPlayerAndActiveTrue(player).stream()
                 .map(this::convertToSummaryDTO)
                 .collect(Collectors.toList());
     }
@@ -183,7 +192,8 @@ public class GameService {
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        
+        dto.setGameName(entity.getGameName());
+
         // Convert players to DTOs
         List<GamePlayerDTO> playerDTOs = entity.getPlayers().stream()
                 .map(player -> {
@@ -196,14 +206,14 @@ public class GameService {
                 })
                 .collect(Collectors.toList());
         dto.setPlayers(playerDTOs);
-        
+
         try {
             // Parse game state from JSON
             dto.setGameState(objectMapper.readValue(entity.getGameStateJson(), Map.class));
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error deserializing game state", e);
         }
-        
+
         return dto;
     }
 
@@ -218,15 +228,17 @@ public class GameService {
         dto.setGameId(entity.getId());
         dto.setGameType(entity.getGameType());
         dto.setStatus(entity.getStatus());
+        dto.setPlayerCount(entity.getPlayers().size());
+        dto.setCreator(entity.getCreator().getId());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        dto.setPlayerCount(entity.getPlayers().size());
-        
+        dto.setGameName(entity.getGameName());
+
         List<String> playerNames = entity.getPlayers().stream()
                 .map(UserEntity::getUsername)
                 .collect(Collectors.toList());
         dto.setPlayerNames(playerNames);
-        
+
         return dto;
     }
 }

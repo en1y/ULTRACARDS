@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/header :: head('Game')}">
+    <title>Game - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <main>
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="logo">
+                    <strong style="color: #ff3333;">ULTRACARDS</strong>
+                </h1>
+                <h2 th:text="${gameType + ' Game #' + gameId}">Game</h2>
+                <p th:text="${'Status: ' + gameStatus}">Status</p>
+            </div>
+            
+            <!-- Error messages -->
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            
+            <!-- Game table with players -->
+            <div class="game-container mt-20">
+                <!-- Opponent players -->
+                <div class="opponents-container">
+                    <div class="flex space-between">
+                        <!-- Display other players (not the current user) -->
+                        <div th:each="player : ${players}" th:if="${player.playerId != currentUserId}" class="player-box">
+                            <div class="player-avatar" th:text="${#strings.substring(player.username, 0, 1)}">A</div>
+                            <div class="player-info">
+                                <div class="player-name" th:text="${player.username}">Player Name</div>
+                                <div class="card-count" th:if="${player.playerState != null and player.playerState.cardCount != null}" 
+                                     th:text="${'Cards: ' + player.playerState.cardCount}">Cards: 0</div>
+                                <div class="card-count" th:if="${player.playerState == null or player.playerState.cardCount == null}">Cards: ?</div>
+                            </div>
+                        </div>
+                        
+                        <!-- If there are fewer than 3 other players, add placeholders -->
+                        <div th:if="${players.size() < 2}" class="player-box empty-player">
+                            <div class="player-avatar">?</div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                            </div>
+                        </div>
+                        
+                        <div th:if="${players.size() < 3}" class="player-box empty-player">
+                            <div class="player-avatar">?</div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                            </div>
+                        </div>
+                        
+                        <div th:if="${players.size() < 4}" class="player-box empty-player">
+                            <div class="player-avatar">?</div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Game table -->
+                <div class="game-table mt-20 mb-20">
+                    <!-- Cards on the table -->
+                    <div class="table-cards">
+                        <!-- Display cards on the table if available in game state -->
+                        <div th:if="${gameState != null and gameState.tableCards != null}" 
+                             th:each="card, cardStat : ${gameState.tableCards}" class="playing-card"
+                             th:style="${'position: absolute; top: 40%; left: ' + (30 + cardStat.index * 15) + '%;'}">
+                            <!-- Card content -->
+                            <div th:text="${card.suit + ' ' + card.rank}" class="card-content">Card</div>
+                        </div>
+                        
+                        <!-- Display trump card if available -->
+                        <div th:if="${gameState != null and gameState.trumpCard != null}" 
+                             class="playing-card trump-card" style="position: absolute; top: 20%; left: 80%;">
+                            <div th:text="${gameState.trumpCard.suit + ' ' + gameState.trumpCard.rank}" class="card-content">Trump</div>
+                            <div class="trump-indicator">Trump</div>
+                        </div>
+                        
+                        <!-- Display game status message if available -->
+                        <div th:if="${gameState != null and gameState.message != null}" 
+                             class="game-message" style="position: absolute; top: 70%; left: 50%; transform: translate(-50%, -50%);">
+                            <div th:text="${gameState.message}" class="message-content">Game Message</div>
+                        </div>
+                        
+                        <!-- Display empty table message if no cards on table -->
+                        <div th:if="${gameState == null or gameState.tableCards == null or gameState.tableCards.isEmpty()}" 
+                             class="empty-table-message" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                            <div class="message-content">Table is empty</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Current player's hand -->
+                <div class="current-player-container">
+                    <div class="player-box">
+                        <div class="player-avatar" th:if="${currentPlayer != null}" 
+                             th:text="${#strings.substring(currentPlayer.username, 0, 1)}">Y</div>
+                        <div class="player-avatar" th:if="${currentPlayer == null}">Y</div>
+                        <div class="player-info">
+                            <div class="player-name" th:if="${currentPlayer != null}" 
+                                 th:text="${currentPlayer.username + ' (You)'}">You</div>
+                            <div class="player-name" th:if="${currentPlayer == null}">You</div>
+                            <div class="card-count" th:if="${currentPlayer != null and currentPlayer.playerState != null and currentPlayer.playerState.cardCount != null}" 
+                                 th:text="${'Cards: ' + currentPlayer.playerState.cardCount}">Cards: 0</div>
+                            <div class="card-count" th:if="${currentPlayer == null or currentPlayer.playerState == null or currentPlayer.playerState.cardCount == null}">Cards: 0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="hand mt-20">
+                        <!-- Display cards if available in player state -->
+                        <div th:if="${currentPlayer != null and currentPlayer.playerState != null and currentPlayer.playerState.cards != null}" 
+                             th:each="card : ${currentPlayer.playerState.cards}" class="playing-card">
+                            <!-- Card content -->
+                            <div th:text="${card.suit + ' ' + card.rank}" class="card-content">Card</div>
+                        </div>
+                        
+                        <!-- Display placeholder cards if no cards available -->
+                        <div th:if="${currentPlayer == null or currentPlayer.playerState == null or currentPlayer.playerState.cards == null}">
+                            <div class="playing-card">
+                                <div class="card-content">?</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="game-controls mt-20 text-center">
+                <!-- Game action buttons based on game state -->
+                <div th:if="${gameStatus == 'IN_PROGRESS' and currentPlayer != null}">
+                    <!-- Play card button - only enabled if it's the player's turn -->
+                    <button th:if="${gameState != null and gameState.currentPlayerId != null and gameState.currentPlayerId == currentUserId}"
+                            id="playCardBtn" class="btn btn-primary">Play Selected Card</button>
+                    
+                    <!-- Disabled button if it's not the player's turn -->
+                    <button th:if="${gameState == null or gameState.currentPlayerId == null or gameState.currentPlayerId != currentUserId}"
+                            class="btn" disabled>Waiting for other players...</button>
+                    
+                    <!-- Game-specific action buttons -->
+                    <div th:if="${gameType == 'briskula'}" class="mt-10">
+                        <button th:if="${gameState != null and gameState.canTakeTrick == true and gameState.currentPlayerId == currentUserId}"
+                                id="takeTrickBtn" class="btn btn-success">Take Trick</button>
+                    </div>
+                </div>
+                
+                <!-- Game over state -->
+                <div th:if="${gameStatus == 'FINISHED'}">
+                    <h3>Game Over</h3>
+                    <p th:if="${gameState != null and gameState.winner != null}" 
+                       th:text="${'Winner: ' + gameState.winner}">Winner</p>
+                    <a href="/games" class="btn btn-primary mt-10">Back to Games</a>
+                </div>
+                
+                <!-- Leave game button -->
+                <a href="/games" class="btn mt-10">Leave Game</a>
+            </div>
+            
+            <!-- Hidden form for submitting game actions -->
+            <form id="gameActionForm" th:action="@{/games/action}" method="post" style="display: none;">
+                <input type="hidden" name="gameId" th:value="${gameId}">
+                <input type="hidden" name="playerId" th:value="${currentUserId}">
+                <input type="hidden" id="actionType" name="actionType" value="">
+                <input type="hidden" id="actionParams" name="actionParams" value="">
+            </form>
+        </div>
+    </main>
+    
+    <div th:replace="~{fragments/footer :: footer}"></div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Card selection functionality
+            const cards = document.querySelectorAll('.hand .playing-card');
+            let selectedCard = null;
+            
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // Toggle selection
+                    if (selectedCard) {
+                        selectedCard.classList.remove('selected');
+                    }
+                    
+                    if (selectedCard !== this) {
+                        this.classList.add('selected');
+                        selectedCard = this;
+                    } else {
+                        selectedCard = null;
+                    }
+                });
+            });
+            
+            // Play card button
+            const playCardBtn = document.getElementById('playCardBtn');
+            if (playCardBtn) {
+                playCardBtn.addEventListener('click', function() {
+                    if (selectedCard) {
+                        // Get card index
+                        const cardIndex = Array.from(cards).indexOf(selectedCard);
+                        
+                        // Set form values
+                        document.getElementById('actionType').value = 'PLAY_CARD';
+                        document.getElementById('actionParams').value = JSON.stringify({
+                            cardIndex: cardIndex
+                        });
+                        
+                        // Submit form
+                        document.getElementById('gameActionForm').submit();
+                    } else {
+                        alert('Please select a card to play');
+                    }
+                });
+            }
+            
+            // Take trick button (for Briskula)
+            const takeTrickBtn = document.getElementById('takeTrickBtn');
+            if (takeTrickBtn) {
+                takeTrickBtn.addEventListener('click', function() {
+                    // Set form values
+                    document.getElementById('actionType').value = 'TAKE_TRICK';
+                    document.getElementById('actionParams').value = JSON.stringify({});
+                    
+                    // Submit form
+                    document.getElementById('gameActionForm').submit();
+                });
+            }
+            
+            // Auto-refresh game state every 5 seconds if not the player's turn
+            const isPlayerTurn = document.querySelector('button[disabled]') !== null;
+            if (!isPlayerTurn) {
+                setTimeout(function() {
+                    window.location.reload();
+                }, 5000);
+            }
+        });
+    </script>
+    
+    <style>
+        /* Additional styles for game elements */
+        .playing-card {
+            width: 80px;
+            height: 120px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin: 0 5px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .playing-card.selected {
+            border: 3px solid #ff3333;
+            transform: translateY(-10px);
+        }
+        
+        .card-content {
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .trump-indicator {
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            color: #ff3333;
+            font-weight: bold;
+        }
+        
+        .empty-player {
+            opacity: 0.5;
+        }
+        
+        .game-message {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</body>
+</html>

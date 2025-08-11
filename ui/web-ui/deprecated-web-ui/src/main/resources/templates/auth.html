@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+    <head th:replace="~{fragments/header :: head('Login / Sign Up')}">
+        <title>Login / Sign Up - ULTRACARDS</title>
+        <link rel="stylesheet" th:href="@{/css/styles.css}">
+    </head>
+    <style>
+        .code-input {
+            padding: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+    </style>
+    <body style="display: flex; flex-direction: column; min-height: 100vh;">
+        <div th:replace="~{fragments/header :: header}"></div>
+
+        <main class="flex align-center justify-center" style="min-height: 90vh;">
+            <div class="card" style="max-width: 500px; width: 100%;">
+                <div class="text-center">
+                    <h1 class="logo mb-10">
+                        <strong style="color: var(--primary-color);">ULTRACARDS</strong>
+                    </h1>
+                    <h2 style="margin-bottom: 10px;">Login / Sign Up</h2>
+                </div>
+
+                <!-- Step 1: Email submission -->
+                <div class="mt-20">
+                    <form id="email-form" th:style="${email != null ? 'display: none;' : ''}">
+                        <div class="form-group">
+                            <h3><label for="email-input"><b>Email</b></label></h3>
+                            <input type="email" id="email-input" required>
+                        </div>
+
+                        <div class="alert alert-info"></div>
+
+                        <div class="text-center mt-20">
+                            <button type="submit" id="submit-email" class="btn btn-primary">Continue</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 2: Verification code -->
+                <div class="mt-20">
+                    <form id="auth-form" th:action="@{/auth/complete}" method="post"
+                          th:style="${email == null || needUsername == true ? 'display: none;' : ''}">
+                        <div class="form-group">
+                            <h3><label for="verificationCode"><b>Verification Code</b></label></h3>
+                            <div id="code-container" style="display: flex; justify-content: center; gap: 10px;">
+                                <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+                                       required>
+                                <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+                                       required>
+                                <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+                                       required>
+                                <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+                                       required>
+                                <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+                                       required>
+                                <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+                                       required>
+                                <input type="hidden" name="verificationCode" id="verificationCode" required>
+                            </div>
+                            <small>Enter the verification code sent to your email</small>
+                        </div>
+
+                        <div class="alert alert-info"></div>
+
+                        <div th:if="${errorMessage}" class="alert alert-error">
+                            <p th:text="${errorMessage}">Error message</p>
+                        </div>
+
+                        <div class="text-center mt-20">
+                            <button type="submit" class="btn btn-primary">Login / Sign Up</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 3: Username input -->
+                <div class="mt-20">
+                    <form id="username-form" th:action="@{/auth/set-username}" method="post"
+                          th:style="${needUsername != true ? 'display: none;' : ''}">
+                        <input type="hidden" name="email" th:value="${email}"/>
+
+                        <div class="form-group">
+                            <h3><label for="username"><b>Username</b></label></h3>
+                            <input type="text" id="username" name="username" required>
+                            <small>Please enter a username for your account</small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <p>Your account was created successfully, but you need to set a username.</p>
+                        </div>
+
+                        <div th:if="${errorMessage}" class="alert alert-error">
+                            <p th:text="${errorMessage}">Error message</p>
+                        </div>
+
+                        <div class="text-center mt-20">
+                            <button type="submit" class="btn btn-primary">Set Username</button>
+                        </div>
+                    </form>
+
+                </div>
+
+                <div class="text-center mt-20">
+                    <a href="/" class="btn">Back to Welcome</a>
+                </div>
+            </div>
+        </main>
+
+        <div th:replace="~{fragments/footer :: footer}"></div>
+        <script th:src="@{/js/email-verification.js}"></script>
+        <script th:src="@{/js/code-input-validation.js}"></script>
+        <script th:src="@{/js/verification-code-handler.js}"></script>
+    </body>
+</html>

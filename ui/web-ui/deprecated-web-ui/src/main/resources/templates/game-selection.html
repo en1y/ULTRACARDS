@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/header :: head('Game Selection')}">
+    <title>Game Selection - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <main>
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="logo">
+                    <strong style="color: #ff3333;">ULTRACARDS</strong>
+                </h1>
+                <h2>Game Selection</h2>
+                <p>Choose an option to start playing</p>
+            </div>
+            
+            <!-- Error messages -->
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            
+            <div class="game-options">
+                <div class="game-option">
+                    <h3>Create Game</h3>
+                    <p>Start a new game and invite friends</p>
+                    <a href="/games/create" class="btn btn-primary mt-20">Create Game</a>
+                </div>
+                
+                <div class="game-option">
+                    <h3>Join Game</h3>
+                    <p>Join an existing game</p>
+                    <a href="/games/join" class="btn btn-primary mt-20">Join Game</a>
+                </div>
+            </div>
+            
+            <!-- Available Games Section -->
+            <div th:if="${availableGames != null and not availableGames.isEmpty()}" class="mt-30">
+                <h3>Available Games</h3>
+                <div class="game-list">
+                    <div th:each="game : ${availableGames}" class="card game-entry mt-10">
+                        <div class="flex space-between align-center">
+                            <div>
+                                <h4 th:text="${game.toString()}">Game Title</h4>
+                                <p th:text="${'Status: ' + game.status}">Status</p>
+                                <p th:text="${'Players: ' + game.playerCount}">Players</p>
+                                <div class="player-list">
+                                    <div th:each="playerName : ${game.playerNames}" class="player-avatar" 
+                                         th:text="${#strings.substring(playerName, 0, 1)}">P</div>
+                                </div>
+                            </div>
+                            <div>
+                                <form action="/games/join" method="post">
+                                    <input type="hidden" name="gameId" th:value="${game.gameId}">
+                                    <button type="submit" class="btn btn-primary">Join Game</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

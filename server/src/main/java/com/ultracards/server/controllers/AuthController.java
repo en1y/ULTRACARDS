@@ -1,8 +1,10 @@
 package com.ultracards.server.controllers;
 
-import com.ultracards.server.dto.AuthResponseDTO;
-import com.ultracards.server.dto.EmailRequestDTO;
-import com.ultracards.server.dto.VerifyCodeRequestDTO;
+import com.ultracards.gateway.dto.AuthResponseDTO;
+import com.ultracards.gateway.dto.BasicUserDTO;
+import com.ultracards.gateway.dto.EmailRequestDTO;
+import com.ultracards.gateway.dto.VerifyCodeRequestDTO;
+import com.ultracards.server.converter.AuthResponseCreator;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.RefreshTokenEntity;
 import com.ultracards.server.repositories.UserRepository;
@@ -16,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
@@ -34,6 +35,11 @@ public class AuthController {
         this.userRepository = userRepository;
     }
 
+    @PostMapping("user-active")
+    public ResponseEntity<Void> isUserActive(@RequestBody BasicUserDTO user) {
+        return authService.isUserActive(user);
+    }
+
     @PostMapping("/set-username")
     public ResponseEntity<Void> setUsername(@RequestBody EmailRequestDTO request) {
         try {
@@ -48,7 +54,6 @@ public class AuthController {
 
     @PostMapping("/authorize")
     public ResponseEntity<Void> authorize(@RequestBody EmailRequestDTO request) {
-        System.out.println("I am here");
         try {
             authService.authorizeUser(request.getEmail());
             return ResponseEntity.ok().build();
@@ -66,7 +71,7 @@ public class AuthController {
         var refreshToken = refreshTokenService.createRefreshToken(user);
         setRefreshTokenCookie(refreshToken.getToken(), response);
 
-        return ResponseEntity.ok(new AuthResponseDTO(jwt, user));
+        return ResponseEntity.ok(AuthResponseCreator.create(refreshToken.getToken(), user));
     }
 
     @PostMapping("/refresh")
@@ -88,7 +93,7 @@ public class AuthController {
          RefreshTokenEntity newRefreshToken = refreshTokenService.createRefreshToken(user);
          setRefreshTokenCookie(newRefreshToken.getToken(), response);
 
-        return ResponseEntity.ok(new AuthResponseDTO(jwt, user));
+        return ResponseEntity.ok(AuthResponseCreator.create(jwt, user));
     }
 
     @PostMapping("/logout")

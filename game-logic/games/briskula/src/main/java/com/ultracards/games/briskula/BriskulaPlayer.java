@@ -9,7 +9,7 @@ import java.util.List;
 
 public class BriskulaPlayer extends AbstractPlayer<ItalianCardType, ItalianCardValue, BriskulaCard, BriskulaHand, BriskulaDeck> {
     private int points;
-    private final List<BriskulaCard> wonCards;
+    private List<BriskulaCard> wonCards;
 
     public BriskulaPlayer(String name) {
         super(name);
@@ -25,7 +25,15 @@ public class BriskulaPlayer extends AbstractPlayer<ItalianCardType, ItalianCardV
         return points;
     }
 
+    public void setPoints(int points) {
+        this.points = points;
+    }
+
     public List<BriskulaCard> getWonCards() {
         return wonCards;
+    }
+
+    public void setWonCards(List<BriskulaCard> wonCards) {
+        this.wonCards = wonCards;
     }
 }

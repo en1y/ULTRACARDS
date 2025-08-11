@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/header :: head('Server Error')}">
+    <title>Server Error - ULTRACARDS</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <main>
+        <div class="card mt-20">
+            <div class="text-center">
+                <h1 class="error-title">Server Error</h1>
+                <div class="error-code">500</div>
+                <p class="error-message">Internal server error occurred.</p>
+                <p>I'm sorry! But it's either you forget about the problem and carry on with your day or submit the problem here: <a href="https://github.com/en1y/ULTRACARDS/issues" style="color: cornflowerblue">ULTRACARDS/issues</a>.</p>
+                
+                <div class="mt-20 mb-20">
+                    <a href="/" class="btn btn-primary">Return to Home</a>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

@@ -16,6 +16,28 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>3.5.0</version>
+            </plugin>
+        </plugins>
+    </build>
 
     <dependencies>
         <!--        Games dependencies       -->
@@ -49,6 +71,13 @@
         <dependency>
             <groupId>en1y.ultracards.cards</groupId>
             <artifactId>poker-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- game-gateway for the DTOs -->
+        <dependency>
+            <groupId>en1y.ultracards</groupId>
+            <artifactId>game-gateway</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -97,7 +126,15 @@
             <version>3.5.0</version>
         </dependency>
 
-<!--        JJWT dependencies (needed for authorization)-->
+<!--        Hibernate dependency-->
+        <dependency>
+            <groupId>com.vladmihalcea</groupId>
+            <artifactId>hibernate-types-60</artifactId>
+            <version>2.21.1</version>
+        </dependency>
+<!--Fucking bullshit. For some reason hibernate passes varchar into psql column of type jsonb. So that is why I need to use this dependency-->
+
+        <!--        JJWT dependencies (needed for authorization)-->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
@@ -168,6 +205,11 @@
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>5.3.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+            <version>3.5.0</version>
         </dependency>
     </dependencies>
 
