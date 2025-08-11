@@ -1,4 +1,4 @@
-package com.ultracards.server.dto.games;
+package com.ultracards.gateway.dto.games;
 
 import java.util.Map;
 
@@ -8,15 +8,13 @@ import java.util.Map;
 public class GameActionRequestDTO {
     private Long playerId;
     private String actionType;
-    private Map<String, Object> actionParams;
 
     public GameActionRequestDTO() {
     }
 
-    public GameActionRequestDTO(Long playerId, String actionType, Map<String, Object> actionParams) {
+    public GameActionRequestDTO(Long playerId, GameAction actionType) {
         this.playerId = playerId;
-        this.actionType = actionType;
-        this.actionParams = actionParams;
+        this.actionType = actionType.name();
     }
 
     public Long getPlayerId() {
@@ -33,13 +31,5 @@ public class GameActionRequestDTO {
 
     public void setActionType(String actionType) {
         this.actionType = actionType;
-    }
-
-    public Map<String, Object> getActionParams() {
-        return actionParams;
-    }
-
-    public void setActionParams(Map<String, Object> actionParams) {
-        this.actionParams = actionParams;
     }
 }

@@ -1,6 +1,11 @@
-package com.ultracards.server.dto;
+package com.ultracards.gateway.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 public class EmailRequestDTO {
+    @Email
+    @NotBlank
     private String email;
     private String username;
 

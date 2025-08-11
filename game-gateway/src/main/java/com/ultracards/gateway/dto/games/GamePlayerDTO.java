@@ -1,4 +1,4 @@
-package com.ultracards.server.dto.games;
+package com.ultracards.gateway.dto.games;
 
 import java.util.Map;
 
