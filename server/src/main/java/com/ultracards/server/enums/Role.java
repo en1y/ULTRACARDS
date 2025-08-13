@@ -1,4 +1,4 @@
-package com.ultracards.server.entity;
+package com.ultracards.server.enums;
 
 public enum Role {
     PLAYER, MODERATOR, ADMIN;
