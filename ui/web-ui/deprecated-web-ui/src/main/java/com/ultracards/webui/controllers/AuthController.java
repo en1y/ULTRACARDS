@@ -1,9 +1,6 @@
 package com.ultracards.webui.controllers;
 
-import com.ultracards.gateway.dto.AuthResponseDTO;
-import com.ultracards.gateway.dto.EmailRequestDTO;
-import com.ultracards.gateway.dto.VerifyCodeRequestDTO;
-import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.LegacyAuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,7 +9,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -41,12 +37,12 @@ public class AuthController extends BaseController {
 
     private final RestTemplate restTemplate;
     private final String serverBaseUrl;
-    private final AuthService authService;
+    private final LegacyAuthService legacyAuthService;
 
-    public AuthController(RestTemplate restTemplate, String serverBaseUrl, AuthService authService) {
+    public AuthController(RestTemplate restTemplate, String serverBaseUrl, LegacyAuthService legacyAuthService) {
         this.restTemplate = restTemplate;
         this.serverBaseUrl = serverBaseUrl;
-        this.authService = authService;
+        this.legacyAuthService = legacyAuthService;
     }
 
     /**
@@ -92,7 +88,7 @@ public class AuthController extends BaseController {
             // Store email in session for the verification step
             session.setAttribute("pendingEmail", email);
             try {
-                authService.sendEmail(email);
+                legacyAuthService.sendEmail(email);
                 return "{\"success\": true, \"message\": \"Verification code sent to " + email + "\"}";
             } catch (HttpClientErrorException e) {
                 return "{\"success\": false, \"message\": \"Authorization failed.\"}";
@@ -144,7 +140,7 @@ public class AuthController extends BaseController {
         }
         
         try {
-            var responseEntity = authService.sendVerificationCode(email, verificationCode);
+            var responseEntity = legacyAuthService.sendVerificationCode(email, verificationCode);
             var authResponse = responseEntity.getBody();
 
             if (authResponse != null) {
@@ -225,7 +221,7 @@ public class AuthController extends BaseController {
         
         try {
 
-            authService.setUsername(email, username);
+            legacyAuthService.setUsername(email, username);
             session.setAttribute("username", username);
             
             // Redirect to game selection page after successful username update
@@ -255,7 +251,7 @@ public class AuthController extends BaseController {
             
             // Send logout request to server
             if (refreshToken != null) {
-                authService.logout(refreshToken);
+                legacyAuthService.logout(refreshToken);
             }
         } catch (Exception e) {
             // Log error but continue with logout

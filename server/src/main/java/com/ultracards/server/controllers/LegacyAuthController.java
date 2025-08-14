@@ -21,7 +21,7 @@ import java.time.Duration;
 
 @RestController
 @RequestMapping("/auth")
-public class AuthController {
+public class LegacyAuthController {
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
@@ -29,7 +29,7 @@ public class AuthController {
     @Value("${app.jwt.token.valid.time.minutes:15}")
     private int jwtExpirationMinutes;
 
-    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
+    public LegacyAuthController(AuthService authService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
         this.authService = authService;
         this.refreshTokenService = refreshTokenService;
         this.userRepository = userRepository;
