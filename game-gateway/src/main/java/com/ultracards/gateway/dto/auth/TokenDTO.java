@@ -1,6 +1,9 @@
 package com.ultracards.gateway.dto.auth;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class TokenDTO {
+    @NotBlank
     private String token;
 
     public TokenDTO(String token) {
