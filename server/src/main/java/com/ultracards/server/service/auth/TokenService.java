@@ -30,13 +30,13 @@ public class TokenService {
         return URL_ENCODER.encodeToString(bytes);
     }
 
-    public String createToken(UserEntity user) {
+    public TokenEntity createToken(UserEntity user) {
         try {
             var token = new TokenEntity();
             token.setUser(user);
             token.setToken(createTokenValue());
             token.setExpiresAt(Instant.now().plusSeconds(tokenDurationMinutes * 60));
-            return tokenRepository.save(token).getToken();
+            return tokenRepository.save(token);
         } catch (DataIntegrityViolationException e) {
             return createToken(user);
         }
@@ -47,7 +47,7 @@ public class TokenService {
                 .orElseThrow( () -> new IllegalArgumentException("Invalid token") );
 
         if (tokenEntity.getExpiresAt().isAfter(Instant.now())) {
-            return ValidationResult.proceed(tokenEntity.getUser());
+            return ValidationResult.proceed(tokenEntity);
         }
         if (tokenEntity.isActive()) {
             tokenEntity.setActive(false);

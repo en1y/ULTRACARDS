@@ -8,7 +8,7 @@ import com.ultracards.server.converter.AuthResponseCreator;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.RefreshTokenEntity;
 import com.ultracards.server.repositories.UserRepository;
-import com.ultracards.server.service.AuthService;
+import com.ultracards.server.service.LegacyAuthService;
 import com.ultracards.server.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,14 +22,14 @@ import java.time.Duration;
 @RestController
 @RequestMapping("/auth")
 public class LegacyAuthController {
-    private final AuthService authService;
+    private final LegacyAuthService authService;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
 
     @Value("${app.jwt.token.valid.time.minutes:15}")
     private int jwtExpirationMinutes;
 
-    public LegacyAuthController(AuthService authService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
+    public LegacyAuthController(LegacyAuthService authService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
         this.authService = authService;
         this.refreshTokenService = refreshTokenService;
         this.userRepository = userRepository;
@@ -66,7 +66,7 @@ public class LegacyAuthController {
     public ResponseEntity<AuthResponseDTO> verifyCode(@RequestBody VerifyCodeRequestDTO request, HttpServletResponse response) {
         var jwt = authService.verifyCode(request.getEmail(), request.getCode());
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + request.getEmail()));
+                .orElseThrow(() -> new IllegalArgumentException("UserEntity not found with email: " + request.getEmail()));
 
         var refreshToken = refreshTokenService.createRefreshToken(user);
         setRefreshTokenCookie(refreshToken.getToken(), response);

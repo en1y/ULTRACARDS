@@ -1,16 +1,13 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.AuthResponseDTO;
-import com.ultracards.gateway.dto.EmailRequestDTO;
-import com.ultracards.gateway.dto.VerifyCodeRequestDTO;
-import jakarta.validation.constraints.Email;
+import com.ultracards.gateway.dto.auth.UsernameDTO;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -24,51 +21,22 @@ public class AuthService {
     // You still have to initiate it if you are not using Spring
     // If you are using Spring you can initiate the serverBaseUrl bean
     public AuthService(RestTemplate restTemplate,
-                       @Qualifier("serverBaseUrl") String serverBaseUrl) {
+                             @Qualifier("serverBaseUrl") String serverBaseUrl) {
         this.restTemplate = restTemplate;
         this.serverBaseUrl = serverBaseUrl;
     }
 
-    public void sendEmail (@NotBlank @Email String email) {
-        var requestDTO = new EmailRequestDTO(email);
-        restTemplate.postForEntity(
-                serverBaseUrl + "/auth/authorize",
-                requestDTO,
-                Void.class);
-    }
-
-    public ResponseEntity<AuthResponseDTO> sendVerificationCode(
-            @NotBlank @Email String email,
-            @NotBlank String verificationCode
-    ) {
-        var requestDTO = new VerifyCodeRequestDTO(email, verificationCode);
-        return restTemplate.postForEntity(
-                serverBaseUrl + "/auth/verify",
-                requestDTO,
-                AuthResponseDTO.class);
-    }
-
-    public void setUsername(
-            @NotBlank @Email String email,
-            @NotBlank String username
-    ) {
-        EmailRequestDTO requestDTO = new EmailRequestDTO(email, username);
-
-        restTemplate.postForEntity(
-                serverBaseUrl + "/auth/set-username",
-                requestDTO,
-                Void.class);
-    }
-
-    public void logout(String refreshToken) {
+    public UsernameDTO updateUsername (@NotBlank String token, @NotBlank String username) {
         var headers = new HttpHeaders();
-        headers.add("Cookie", "refreshToken=" + refreshToken);
-        var entity = new HttpEntity<Void>(headers);
-        restTemplate.exchange(
-                serverBaseUrl + "/auth/logout",
-                HttpMethod.POST,
-                entity,
-                Void.class);
-    }
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(HttpHeaders.COOKIE, "token=" + token);
 
+        var entity = new HttpEntity<>(new UsernameDTO(username), headers);
+        return restTemplate.exchange(
+                serverBaseUrl + "/api/auth/username",
+                HttpMethod.PUT,
+                entity,
+                UsernameDTO.class
+        ).getBody();
+    }
 }
