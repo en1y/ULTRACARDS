@@ -40,6 +40,8 @@ public class GameNavigationInterceptor implements HandlerInterceptor {
 
             if (user.isEmpty()) return true;
 
+
+            // TODO: Work with the class, remove if needed
             /*if (isUserValid != null && !isUserValid) {
                 clearCookies(request, response);
             }

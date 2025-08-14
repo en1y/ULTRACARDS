@@ -1,6 +1,5 @@
 package com.ultracards.server.service.games.briskula;
 
-import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
 import com.ultracards.server.repositories.games.briskula.BriskulaPlayerEntityRepository;
 import org.springframework.stereotype.Service;
