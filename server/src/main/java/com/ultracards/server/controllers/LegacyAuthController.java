@@ -26,7 +26,7 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
 
-    @Value("${app.jwt.token.valid.time.minutes}")
+    @Value("${app.jwt.token.valid.time.minutes:15}")
     private int jwtExpirationMinutes;
 
     public AuthController(AuthService authService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
