@@ -73,20 +73,14 @@ public class AuthService {
         }
     }
 
-    private void processRotatedToken(ValidationResult validationResult, HttpServletResponse response) {
-        var cookie = new Cookie("token", validationResult.getToken().toString());
-
-        cookie.setMaxAge(tokenDurationMinutes * 60);
-        response.addCookie(cookie);
-    }
-
-    public void sendVerificationEmail(@Valid EmailDTO emailDTO) {
+    public void sendVerificationEmail(@Valid EmailDTO emailDTO, HttpServletResponse response) {
 
         var user = userService.getUserByEmail(emailDTO);
         var code = verificationCodeService.createVerificationCode(user);
 
         try {
             emailService.sendVerificationEmail(user, code);
+            response.addCookie(new Cookie("token", tokenService.getTokenByUser(user).toString()));
         } catch (MessagingException e) {
             log.error("Failed to send verification email to {}", emailDTO.getEmail(), e);
             throw new IllegalStateException("Failed to send verification email: " + e.getMessage(), e);
@@ -94,5 +88,12 @@ public class AuthService {
             log.error("Wrong file encoding was used to send verification email to {}", emailDTO.getEmail(), e);
             throw new IllegalStateException("Wrong file encoding was used to send verification email. " + e.getMessage(), e);
         }
+    }
+
+    private void processRotatedToken(ValidationResult validationResult, HttpServletResponse response) {
+        var cookie = new Cookie("token", validationResult.getToken().toString());
+
+        cookie.setMaxAge(tokenDurationMinutes * 60);
+        response.addCookie(cookie);
     }
 }

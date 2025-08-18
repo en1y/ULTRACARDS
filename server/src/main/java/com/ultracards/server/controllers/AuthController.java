@@ -1,15 +1,20 @@
 package com.ultracards.server.controllers;
 
+import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.server.service.AuthService;
+import com.ultracards.server.service.auth.TokenService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/api/auth")
@@ -17,19 +22,64 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class AuthController {
 
     private final AuthService authService;
+    private final TokenService tokenService;
 
     @Value("${app.max-length.username}")
     private Integer MAX_USERNAME_LENGTH;
 
-
-
     @PutMapping("/username")
-    public ResponseEntity<UsernameDTO> updateUsername(@RequestBody UsernameDTO username, @CookieValue(name = "token") String token) {
+    public ResponseEntity<UsernameDTO> updateUsername(
+            @Valid @RequestBody UsernameDTO username,
+            @NotBlank @CookieValue(name = "token") String token,
+            HttpServletResponse response) {
+
         if (username.getUsername().length() <= MAX_USERNAME_LENGTH) {
-            var res = new UsernameDTO(authService.updateUsername(username, token));
-            return ResponseEntity.ok(res);
+            var newUsername = authService.updateUsername(username, token, response);
+
+            if (newUsername == null)
+                return redirectToLogout();
+
+            return ResponseEntity.ok(new UsernameDTO(newUsername));
         } else {
             return ResponseEntity.badRequest().build();
         }
+
+    }
+
+    @GetMapping("/username")
+    public ResponseEntity<UsernameDTO> getUsername(
+            @NotBlank @CookieValue(name = "token") String token,
+            HttpServletResponse response) {
+        var username = authService.getUsername(token, response);
+
+        if (username == null)
+            return redirectToLogout();
+
+        return ResponseEntity.ok(new UsernameDTO(username));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String token,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        authService.logout(token, request, response);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/email/send")
+    public ResponseEntity<Void> sendVerificationEmail(
+            @Valid @RequestBody EmailDTO emailDTO,
+            HttpServletResponse response
+    ) {
+        authService.sendVerificationEmail(emailDTO, response);
+        return ResponseEntity.ok().build();
+    }
+
+    private <T> ResponseEntity<T> redirectToLogout() {
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, "/api/auth/logout")
+                .build();
     }
 }
