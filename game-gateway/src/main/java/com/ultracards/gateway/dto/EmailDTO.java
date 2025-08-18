@@ -21,4 +21,9 @@ public class EmailDTO {
     public void setEmail(String email) {
         this.email = email;
     }
+
+    @Override
+    public String toString() {
+        return getEmail();
+    }
 }

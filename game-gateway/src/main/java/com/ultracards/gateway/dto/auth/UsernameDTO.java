@@ -1,23 +1,17 @@
 package com.ultracards.gateway.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 public class UsernameDTO {
-    @NotBlank
+    @NotBlank @NotNull
     private String username;
-
-    public UsernameDTO() {
-    }
-
-    public UsernameDTO(String username) {
-        this.username = username;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
 }
