@@ -1,5 +1,6 @@
 package com.ultracards.server.service.auth;
 
+import com.ultracards.gateway.dto.auth.TokenDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.repositories.auth.TokenRepository;
@@ -30,7 +31,7 @@ public class TokenService {
         return URL_ENCODER.encodeToString(bytes);
     }
 
-    public TokenEntity createToken(UserEntity user) {
+    private TokenEntity createToken(UserEntity user) {
         try {
             var token = new TokenEntity();
             token.setUser(user);
@@ -42,8 +43,8 @@ public class TokenService {
         }
     }
 
-    public ValidationResult validateToken(String token) {
-        var tokenEntity = tokenRepository.findByToken(token)
+    public ValidationResult validateToken(TokenDTO token) {
+        var tokenEntity = tokenRepository.findByToken(token.getToken())
                 .orElseThrow( () -> new IllegalArgumentException("Invalid token") );
 
         if (tokenEntity.getExpiresAt().isAfter(Instant.now())) {
@@ -55,7 +56,23 @@ public class TokenService {
             return ValidationResult.rotated(createToken(tokenEntity.getUser()));
         }
         return ValidationResult.logout();
+    }
 
+    public TokenEntity getTokenByUser(UserEntity user) {
+        var token = tokenRepository.findByUser(user);
+        if (token.isPresent()) {
+            return validateToken(new TokenDTO(token.get().getToken())).getToken();
+        }
+        return createToken(user);
+    }
+
+    public void deleteTokenIfExists(String token) {
+        var tokenEntity = tokenRepository.findByToken(token).orElse(null);
+        if (tokenEntity == null) return;
+
+        tokenRepository.delete(
+                tokenEntity
+        );
     }
 
 }
