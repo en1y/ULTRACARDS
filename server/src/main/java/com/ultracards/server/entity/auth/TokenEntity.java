@@ -30,7 +30,12 @@ public class TokenEntity {
     @Column(nullable = false)
     private boolean active = true;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
+
+    @Override
+    public String toString() {
+        return getToken();
+    }
 }
