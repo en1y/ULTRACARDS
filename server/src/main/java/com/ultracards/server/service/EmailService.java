@@ -4,6 +4,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.VerificationCode;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -14,26 +15,23 @@ import org.thymeleaf.context.Context;
 import java.io.UnsupportedEncodingException;
 
 @Service
+@RequiredArgsConstructor
 public class EmailService {
+    @Value("${app.code.validity-minutes:10}")
+    private int CODE_VALIDITY_MINUTES;
+    @Value("${spring.mail.username}")
+    String fromEmail;
+    @Value("${app.mail.from.name}")
+    String fromName;
+
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
-    private final String fromEmail;
-    private final String fromName;
 
-    public EmailService(
-            JavaMailSender mailSender,
-            TemplateEngine templateEngine,
-            @Value("${spring.mail.username}") String fromEmail,
-            @Value("${app.mail.from.name}") String fromName) {
-        this.mailSender = mailSender;
-        this.templateEngine = templateEngine;
-        this.fromEmail = fromEmail;
-        this.fromName = fromName;
-    }
 
     public void sendVerificationEmail(UserEntity user, VerificationCode code) throws MessagingException, UnsupportedEncodingException {
         var context = new Context();
         context.setVariable("code", code.getCode());
+        context.setVariable("verificationCodeValidityMinutes", CODE_VALIDITY_MINUTES);
 
         var username = user.getUsername();
         if (username.isEmpty())
