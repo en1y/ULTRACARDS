@@ -3,78 +3,55 @@ package com.ultracards.server.entity.auth;
 
 import com.ultracards.server.entity.UserEntity;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "verification_codes")
 public class VerificationCode {
+    @Setter
+    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
+    @Getter
     @Column(nullable = false)
     private String code;
 
+    @Setter
+    @Getter
     @Column(nullable = false)
-    private LocalDateTime expirationTime;
+    private Instant expirationTime;
 
+    @Setter
+    @Getter
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
+    @Setter
+    @Getter
     @Column(nullable = false)
     private boolean used = false;
 
     public VerificationCode() {}
 
-    public VerificationCode(UserEntity user, String code, LocalDateTime expirationTime) {
+    public VerificationCode(UserEntity user, String code, Instant expirationTime) {
         this.user = user;
         this.code = code;
         this.expirationTime = expirationTime;
     }
 
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expirationTime);
+        return Instant.now().isAfter(expirationTime);
+    }
+    public boolean isValid() {
+        return !isExpired() && !isUsed();
     }
 
-    public UserEntity getUser() {
-        return user;
-    }
-
-    public void setUser(UserEntity user) {
-        this.user = user;
-    }
-
-    public LocalDateTime getExpirationTime() {
-        return expirationTime;
-    }
-
-    public void setExpirationTime(LocalDateTime expirationTime) {
-        this.expirationTime = expirationTime;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public boolean isUsed() {
-        return used;
-    }
-
-    public void setUsed(boolean used) {
-        this.used = used;
-    }
 }

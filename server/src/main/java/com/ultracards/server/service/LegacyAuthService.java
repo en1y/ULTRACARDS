@@ -18,7 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -93,8 +95,8 @@ public class LegacyAuthService {
         );
 
         var token = String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1_000_000));
-        var timeNow = LocalDateTime.now();
-        var verificationCode = new VerificationCode(user, token, timeNow.plusMinutes(CODE_VALIDITY_MINUTES));
+        var timeNow = Instant.now();
+        var verificationCode = new VerificationCode(user, token, timeNow.plus(CODE_VALIDITY_MINUTES, ChronoUnit.MINUTES));
 
         codeRepository.save(verificationCode);
 

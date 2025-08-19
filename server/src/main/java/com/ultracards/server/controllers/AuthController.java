@@ -2,12 +2,14 @@ package com.ultracards.server.controllers;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
+import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.service.AuthService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -75,6 +77,22 @@ public class AuthController {
     ) {
         authService.sendVerificationEmail(emailDTO, response);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/email/verify")
+    public ResponseEntity<Void> verifyCode(
+            @CookieValue(name = "refreshToken", required = false) String token,
+            @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        var res = authService.verifyCode(verificationCodeDTO, token, response);
+
+        if (res == null)
+            return redirectToLogout();
+
+        if (res) return ResponseEntity.ok().build();
+        else return ResponseEntity.badRequest().build(); // TODO: finish implementing in gateway/
     }
 
     private <T> ResponseEntity<T> redirectToLogout() {

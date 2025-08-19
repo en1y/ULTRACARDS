@@ -1,12 +1,13 @@
 package com.ultracards.server.service;
 
 import com.ultracards.gateway.dto.EmailDTO;
-import com.ultracards.gateway.dto.EmailRequestDTO;
 import com.ultracards.gateway.dto.auth.TokenDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
+import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.auth.TokenService;
 import com.ultracards.server.service.auth.ValidationResult;
+import com.ultracards.server.service.auth.VerificationCodeService;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -88,6 +89,21 @@ public class AuthService {
             log.error("Wrong file encoding was used to send verification email to {}", emailDTO.getEmail(), e);
             throw new IllegalStateException("Wrong file encoding was used to send verification email. " + e.getMessage(), e);
         }
+    }
+
+    public Boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO, String token, HttpServletResponse response) {
+        var validatedToken = tokenService.validateToken(new TokenDTO(token));
+
+        if (validatedToken.getStatus().equals(LOGOUT)) return null;
+        if (validatedToken.getStatus().equals(ROTATED))
+            processRotatedToken(validatedToken, response);
+
+        var user = validatedToken.getUser();
+        var code = verificationCodeService.getVerificationCodeByUser(user);
+
+        if (code == null) return null;
+
+        return code.getCode().equals(verificationCodeDTO.getCode());
     }
 
     private void processRotatedToken(ValidationResult validationResult, HttpServletResponse response) {
