@@ -92,7 +92,7 @@ public class AuthController {
             return redirectToLogout();
 
         if (res) return ResponseEntity.ok().build();
-        else return ResponseEntity.badRequest().build(); // TODO: finish implementing in gateway/
+        else return ResponseEntity.badRequest().build();
     }
 
     private <T> ResponseEntity<T> redirectToLogout() {

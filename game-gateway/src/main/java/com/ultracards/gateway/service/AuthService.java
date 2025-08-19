@@ -2,9 +2,11 @@ package com.ultracards.gateway.service;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
+import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -86,6 +88,26 @@ public class AuthService {
                 Void.class);
 
         return response.getHeaders();
+    }
+
+    public boolean verifyCode(
+            @NotBlank
+            @Pattern(regexp = "\\d{6}", message = "Code must be exactly 6 digits")
+            String verificationCode,
+            @NotNull HttpHeaders headers
+    ) {
+
+        var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode), headers);
+        entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        var response = restTemplate.postForEntity(
+                serverBaseUrl + "/api/auth/email/verification",
+                entity,
+                Void.class);
+
+        updateHeaders(headers, response.getHeaders());
+
+        return response.getStatusCode().is2xxSuccessful();
+
     }
 
     private void updateHeaders(HttpHeaders oldHeaders, HttpHeaders newHeaders) {
