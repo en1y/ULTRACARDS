@@ -8,5 +8,5 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BriskulaPlayerEntityRepository extends JpaRepository<BriskulaPlayerEntity, Long> {
-    Optional<List<BriskulaPlayerEntity>> findByUser(UserEntity user);
+    List<BriskulaPlayerEntity> findByUser(UserEntity user);
 }
