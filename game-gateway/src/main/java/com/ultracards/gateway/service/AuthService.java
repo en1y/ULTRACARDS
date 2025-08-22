@@ -1,8 +1,10 @@
 package com.ultracards.gateway.service;
 
 import com.ultracards.gateway.dto.EmailDTO;
+import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -76,7 +77,7 @@ public class AuthService {
 
 
     /**
-     * @param email
+     * @param email - email to which the verification code will be sent
      * @return HttpHeaders with session cookie. You should keep the HttpHeader for further usage
      */
     public HttpHeaders sendVerificationEmail(@NotBlank @Email String email) {
@@ -108,6 +109,37 @@ public class AuthService {
 
         return response.getStatusCode().is2xxSuccessful();
 
+    }
+
+    public ProfileDTO getProfile(@NotNull HttpHeaders headers) {
+        var entity = new HttpEntity<>(headers);
+
+        var response = restTemplate.exchange(
+                serverBaseUrl + "/api/auth/profile",
+                HttpMethod.GET,
+                entity,
+                ProfileDTO.class
+        );
+
+        updateHeaders(headers, response.getHeaders());
+
+        return response.getBody();
+    }
+
+    public ProfileDTO updateProfile(
+            @NotNull HttpHeaders headers,
+            @Valid ProfileDTO profileDTO
+    ) {
+        var entity = new HttpEntity<>(profileDTO, headers);
+        var response = restTemplate.postForEntity(
+                serverBaseUrl + "/api/auth/profile",
+                entity,
+                ProfileDTO.class
+        );
+
+        updateHeaders(headers, response.getHeaders());
+
+        return response.getBody();
     }
 
     private void updateHeaders(HttpHeaders oldHeaders, HttpHeaders newHeaders) {

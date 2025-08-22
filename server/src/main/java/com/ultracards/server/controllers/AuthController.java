@@ -1,6 +1,7 @@
 package com.ultracards.server.controllers;
 
 import com.ultracards.gateway.dto.EmailDTO;
+import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.service.AuthService;
@@ -83,7 +84,6 @@ public class AuthController {
     public ResponseEntity<Void> verifyCode(
             @CookieValue(name = "refreshToken", required = false) String token,
             @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
-            HttpServletRequest request,
             HttpServletResponse response
     ) {
         var res = authService.verifyCode(verificationCodeDTO, token, response);
@@ -93,6 +93,30 @@ public class AuthController {
 
         if (res) return ResponseEntity.ok().build();
         else return ResponseEntity.badRequest().build();
+    }
+
+    @GetMapping("/email/profile")
+    public ResponseEntity<ProfileDTO> getProfile(
+            @CookieValue(name = "refreshToken", required = false) String token,
+            HttpServletResponse response
+    ) {
+        var res = authService.getProfile(token, response);
+        if (res == null)
+            return redirectToLogout();
+        return ResponseEntity.ok(res);
+    }
+
+    @PostMapping
+    public ResponseEntity<ProfileDTO> updateProfile(
+            @CookieValue(name = "refreshToken", required = false) String token,
+            @RequestBody @Valid ProfileDTO profileDTO,
+            HttpServletResponse response
+    ) {
+        var res = authService.updateProfile(token, profileDTO, response);
+
+        if (res == null)
+            return redirectToLogout();
+        return ResponseEntity.ok(res);
     }
 
     private <T> ResponseEntity<T> redirectToLogout() {

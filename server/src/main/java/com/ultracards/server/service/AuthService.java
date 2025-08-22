@@ -1,10 +1,14 @@
 package com.ultracards.server.service;
 
 import com.ultracards.gateway.dto.EmailDTO;
+import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.TokenDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
+import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.repositories.UserRepository;
+import com.ultracards.server.repositories.games.PlayerEntity;
+import com.ultracards.server.repositories.games.briskula.BriskulaPlayerEntityRepository;
 import com.ultracards.server.service.auth.TokenService;
 import com.ultracards.server.service.auth.ValidationResult;
 import com.ultracards.server.service.auth.VerificationCodeService;
@@ -12,6 +16,7 @@ import jakarta.mail.MessagingException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 import static com.ultracards.server.enums.TokenValidationResultStatus.*;
 
@@ -27,6 +33,7 @@ import static com.ultracards.server.enums.TokenValidationResultStatus.*;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final BriskulaPlayerEntityRepository briskulaPlayerEntityRepository;
     @Value("${app.token.duration-minutes:15}")
     private int tokenDurationMinutes;
 
@@ -106,10 +113,77 @@ public class AuthService {
         return code.getCode().equals(verificationCodeDTO.getCode());
     }
 
+    public ProfileDTO getProfile(String token, HttpServletResponse response) {
+        var validatedToken = tokenService.validateToken(new TokenDTO(token));
+
+        if (validatedToken.getStatus().equals(LOGOUT)) return null;
+        if (validatedToken.getStatus().equals(ROTATED))
+            processRotatedToken(validatedToken, response);
+
+        var user = validatedToken.getUser();
+        return createProfileByUser(user);
+    }
+
+    public ProfileDTO updateProfile(
+            String token,
+            @Valid ProfileDTO profileDTO,
+            HttpServletResponse response) {
+
+        var validatedToken = tokenService.validateToken(new TokenDTO(token));
+
+        if (validatedToken.getStatus().equals(LOGOUT)) return null;
+        if (validatedToken.getStatus().equals(ROTATED))
+            processRotatedToken(validatedToken, response);
+
+        var user = validatedToken.getUser();
+        return updateProfileByUser(user, profileDTO);
+    }
+
+    private ProfileDTO updateProfileByUser(UserEntity user, @Valid ProfileDTO profileDTO) {
+        user.setUsername(profileDTO.getUsername());
+        user.setEmail(profileDTO.getEmail());
+        userRepository.save(user);
+        return profileDTO;
+    }
+
     private void processRotatedToken(ValidationResult validationResult, HttpServletResponse response) {
         var cookie = new Cookie("token", validationResult.getToken().toString());
 
         cookie.setMaxAge(tokenDurationMinutes * 60);
         response.addCookie(cookie);
+    }
+
+    private ProfileDTO createProfileByUser(UserEntity user) {
+        var profile = new ProfileDTO();
+
+        profile.setUsername(user.getUsername());
+        profile.setEmail(user.getEmail());
+
+        var briskulaPlayers = briskulaPlayerEntityRepository.findByUser(user);
+        profile.setBriskulaGamesPlayed(
+                briskulaPlayers.size()
+        );
+        profile.setBriskulaGamesWon(
+                countGamesWon(briskulaPlayers)
+        );
+
+        profile.setDurakGamesPlayed(0);
+        profile.setDurakGamesWon(0);
+
+        profile.setPokerGamesPlayed(0);
+        profile.setPokerGamesWon(0);
+
+        profile.setTresetaGamesPlayed(0);
+        profile.setTresetaGamesWon(0);
+
+        return profile;
+    }
+
+    private int countGamesWon (List<? extends PlayerEntity> players) {
+        var gamesWon = 0;
+        for (var player : players) {
+            if (player.isWinner()) gamesWon++;
+        }
+        return gamesWon;
     }
 }
