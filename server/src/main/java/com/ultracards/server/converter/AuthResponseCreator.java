@@ -9,7 +9,7 @@ public class AuthResponseCreator {
                 token,
                 user.getEmail(),
                 user.getUsername(),
-                user.getRole().name(),
+                user.getRoles().toString(),
                 user.getId()
         );
     }

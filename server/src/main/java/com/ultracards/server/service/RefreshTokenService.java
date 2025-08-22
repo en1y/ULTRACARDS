@@ -17,7 +17,7 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private final RefreshTokenRepository tokenRepository;
-    @Value("${app.refresh-token.duration-days}")
+    @Value("${app.refresh-token.duration-days:10}")
     private long refreshTokenDurationDays;
 
     public RefreshTokenService(RefreshTokenRepository tokenRepository, UserRepository userRepository) {
