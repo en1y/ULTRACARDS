@@ -4,13 +4,16 @@ import com.ultracards.games.briskula.BriskulaCard;
 import com.ultracards.games.briskula.BriskulaPlayer;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.briskula.converters.BriskulaCardConverter;
+import com.ultracards.server.repositories.games.PlayerEntity;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
 @Entity
 @Table(name = "briskula_players")
-public class BriskulaPlayerEntity extends BriskulaPlayer{
+public class BriskulaPlayerEntity extends BriskulaPlayer implements PlayerEntity {
 
     public BriskulaPlayerEntity() {
         super(null);
@@ -20,8 +23,10 @@ public class BriskulaPlayerEntity extends BriskulaPlayer{
         super(user.getUsername());
     }
 
+    @Setter
     private Long id;
 
+    @Setter
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
@@ -32,18 +37,10 @@ public class BriskulaPlayerEntity extends BriskulaPlayer{
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     public UserEntity getUser() {
         return user;
-    }
-
-    public void setUser(UserEntity user) {
-        this.user = user;
     }
 
     @Override
@@ -59,4 +56,7 @@ public class BriskulaPlayerEntity extends BriskulaPlayer{
         return super.getWonCards();
     }
 
+    @Column
+    @Getter @Setter
+    private boolean isWinner;
 }
