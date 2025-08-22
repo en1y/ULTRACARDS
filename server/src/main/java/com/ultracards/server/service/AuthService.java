@@ -158,6 +158,8 @@ public class AuthService {
 
         profile.setUsername(user.getUsername());
         profile.setEmail(user.getEmail());
+        profile.setRoles(user.getRoles().toString());
+        profile.setId(user.getId());
 
         var briskulaPlayers = briskulaPlayerEntityRepository.findByUser(user);
         profile.setBriskulaGamesPlayed(

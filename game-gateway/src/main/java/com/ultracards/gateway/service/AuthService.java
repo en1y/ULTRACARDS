@@ -80,7 +80,9 @@ public class AuthService {
      * @param email - email to which the verification code will be sent
      * @return HttpHeaders with session cookie. You should keep the HttpHeader for further usage
      */
-    public HttpHeaders sendVerificationEmail(@NotBlank @Email String email) {
+    public HttpHeaders sendVerificationEmail(
+            @NotBlank @Email String email,
+            @NotNull HttpHeaders headers) {
         var entity = new HttpEntity<>(new EmailDTO(email), new HttpHeaders());
         entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         var response = restTemplate.postForEntity(

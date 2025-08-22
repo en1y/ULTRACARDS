@@ -1,6 +1,6 @@
 package com.ultracards.webui.controllers;
 
-import com.ultracards.gateway.service.LegacyAuthService;
+import com.ultracards.gateway.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,14 +35,10 @@ public class AuthController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-    private final RestTemplate restTemplate;
-    private final String serverBaseUrl;
-    private final LegacyAuthService legacyAuthService;
+    private final AuthService authService;
 
-    public AuthController(RestTemplate restTemplate, String serverBaseUrl, LegacyAuthService legacyAuthService) {
-        this.restTemplate = restTemplate;
-        this.serverBaseUrl = serverBaseUrl;
-        this.legacyAuthService = legacyAuthService;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
     /**
@@ -79,7 +75,11 @@ public class AuthController extends BaseController {
      */
     @PostMapping("/send-code")
     @ResponseBody
-    public String sendVerificationCode(@RequestParam("email") String email, Model model, HttpSession session) {
+    public String sendVerificationCode(
+            @RequestParam("email") String email,
+            Model model,
+            HttpSession session,
+            HttpHeaders headers) {
         // Check if user is already authenticated
         if (isAuthenticated(session)) {
             return "{\"success\": false, \"message\": \"You are already logged in.\"}";
@@ -88,7 +88,7 @@ public class AuthController extends BaseController {
             // Store email in session for the verification step
             session.setAttribute("pendingEmail", email);
             try {
-                legacyAuthService.sendEmail(email);
+                authService.sendVerificationEmail(email, headers);
                 return "{\"success\": true, \"message\": \"Verification code sent to " + email + "\"}";
             } catch (HttpClientErrorException e) {
                 return "{\"success\": false, \"message\": \"Authorization failed.\"}";
@@ -116,6 +116,7 @@ public class AuthController extends BaseController {
             @RequestParam("verificationCode") @NotBlank String verificationCode,
             Model model,
             HttpSession session,
+            HttpHeaders headers,
             HttpServletResponse response) {
 
         // Check if user is already authenticated
@@ -140,27 +141,19 @@ public class AuthController extends BaseController {
         }
         
         try {
-            var responseEntity = legacyAuthService.sendVerificationCode(email, verificationCode);
-            var authResponse = responseEntity.getBody();
+            var verificationSuccess = authService.verifyCode(verificationCode, headers);
 
-            if (authResponse != null) {
-                // Store authentication data in session
-                session.setAttribute("token", authResponse.getToken());
-                session.setAttribute("email", authResponse.getEmail());
-                session.setAttribute("username", authResponse.getUsername());
-                session.setAttribute("role", authResponse.getRole());
-                session.setAttribute("userId", authResponse.getUserId());
+            if (verificationSuccess) {
+                var profile = authService.getProfile(headers);
+                session.setAttribute("token", getCookieValue(headers, "token"));
+                session.setAttribute("email", profile.getEmail());
+                session.setAttribute("username", profile.getUsername());
+                session.setAttribute("role", profile.getRoles());
+                session.setAttribute("userId", profile.getId());
                 session.setAttribute("authenticated", true);
                 
-                // Copy any cookies from the response
-                if (responseEntity.getHeaders().containsKey(HttpHeaders.SET_COOKIE)) {
-                    for (String cookie : Objects.requireNonNull(responseEntity.getHeaders().get(HttpHeaders.SET_COOKIE))) {
-                        response.addHeader(HttpHeaders.SET_COOKIE, cookie);
-                    }
-                }
-                
                 // Check if username is empty
-                var username = authResponse.getUsername();
+                var username = profile.getUsername();
                 if (username == null || username.trim().isEmpty()) {
                     // Show username input field
                     model.addAttribute("email", email);
@@ -204,6 +197,7 @@ public class AuthController extends BaseController {
             @RequestParam("email") @NotBlank @Email String email,
             @RequestParam("username") @NotBlank String username,
             Model model,
+            HttpHeaders headers,
             HttpSession session) {
         // Check if user is already fully authenticated with a username
         if (isAuthenticated(session) && session.getAttribute("username") != null 
@@ -221,8 +215,8 @@ public class AuthController extends BaseController {
         
         try {
 
-            legacyAuthService.setUsername(email, username);
-            session.setAttribute("username", username);
+            var newUsername = authService.updateUsername(headers, username);
+            session.setAttribute("username", newUsername);
             
             // Redirect to game selection page after successful username update
             return "redirect:/games";
@@ -235,7 +229,7 @@ public class AuthController extends BaseController {
     }
     
     @GetMapping("/logout")
-    public String logout(HttpSession session, HttpServletRequest request, HttpServletResponse response) {
+    public String logout(HttpSession session, HttpServletRequest request, HttpServletResponse response, HttpHeaders headers) {
         try {
             // Get refresh token cookie
             var cookies = request.getCookies();
@@ -251,7 +245,7 @@ public class AuthController extends BaseController {
             
             // Send logout request to server
             if (refreshToken != null) {
-                legacyAuthService.logout(refreshToken);
+                authService.logout(headers);
             }
         } catch (Exception e) {
             // Log error but continue with logout
@@ -268,5 +262,22 @@ public class AuthController extends BaseController {
         }
         
         return "redirect:/";
+    }
+
+    private String getCookieValue(HttpHeaders headers, String cookieName) {
+        for (String cookieHeader : Objects.requireNonNull(headers.get(HttpHeaders.COOKIE))) {
+            String[] cookies = cookieHeader.split(";");
+            for (String cookie : cookies) {
+                String[] parts = cookie.trim().split("=", 2);
+                if (parts.length == 2) {
+                    String name = parts[0].trim();
+                    String value = parts[1].trim();
+                    if (name.equals(cookieName)) {
+                        return value;
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

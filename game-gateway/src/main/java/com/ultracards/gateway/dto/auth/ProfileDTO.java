@@ -16,6 +16,9 @@ public class ProfileDTO {
     private String email;
     @NotBlank
     private String username;
+    @NotBlank
+    private String roles;
+    private long id;
     private int gamesPlayed;
     private int gamesWon;
     private int briskulaGamesPlayed;
