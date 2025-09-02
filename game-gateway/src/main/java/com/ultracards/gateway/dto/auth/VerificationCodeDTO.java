@@ -7,11 +7,12 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.apache.commons.text.StringEscapeUtils;
 
-@AllArgsConstructor
 @NoArgsConstructor
-@Setter
+@AllArgsConstructor
 @Getter
+@Setter
 public class VerificationCodeDTO {
     @NotBlank
     @Pattern(regexp = "\\d{6}", message = "Code must be exactly 6 digits")

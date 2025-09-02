@@ -2,10 +2,9 @@ package com.ultracards.gateway.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.Pattern;
+import lombok.*;
+import org.apache.commons.text.StringEscapeUtils;
 
 @Getter
 @Setter
@@ -15,6 +14,8 @@ public class ProfileDTO {
     @NotBlank @Email
     private String email;
     @NotBlank
+    @Pattern(regexp = "^[A-Za-z0-9_.-]{1,64}$",
+            message = "Username may contain letters, digits, dot, underscore, and dash (1–64 chars).")
     private String username;
     @NotBlank
     private String roles;
