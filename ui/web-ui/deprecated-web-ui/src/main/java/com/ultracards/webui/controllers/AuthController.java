@@ -1,6 +1,7 @@
 package com.ultracards.webui.controllers;
 
 import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.ClientTokenHolder;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -76,10 +77,13 @@ public class AuthController extends BaseController {
     @PostMapping("/send-code")
     @ResponseBody
     public String sendVerificationCode(
-            @RequestParam("email") String email,
+            @RequestParam("email") @Email String email,
             Model model,
             HttpSession session,
-            HttpHeaders headers) {
+            HttpServletRequest request,
+            HttpServletResponse response,
+            @RequestHeader HttpHeaders headers
+    ) {
         // Check if user is already authenticated
         if (isAuthenticated(session)) {
             return "{\"success\": false, \"message\": \"You are already logged in.\"}";
@@ -88,7 +92,9 @@ public class AuthController extends BaseController {
             // Store email in session for the verification step
             session.setAttribute("pendingEmail", email);
             try {
-                authService.sendVerificationEmail(email, headers);
+                var token = new ClientTokenHolder(getRefreshToken(headers));
+                authService.sendVerificationEmail(email, token);
+                response.addCookie(createCookie(token));
                 return "{\"success\": true, \"message\": \"Verification code sent to " + email + "\"}";
             } catch (HttpClientErrorException e) {
                 return "{\"success\": false, \"message\": \"Authorization failed.\"}";
@@ -116,7 +122,7 @@ public class AuthController extends BaseController {
             @RequestParam("verificationCode") @NotBlank String verificationCode,
             Model model,
             HttpSession session,
-            HttpHeaders headers,
+            @RequestHeader HttpHeaders headers,
             HttpServletResponse response) {
 
         // Check if user is already authenticated
@@ -141,17 +147,20 @@ public class AuthController extends BaseController {
         }
         
         try {
-            var verificationSuccess = authService.verifyCode(verificationCode, headers);
+            var token = new ClientTokenHolder(getRefreshToken(headers));
+            var verificationSuccess = authService.verifyCode(verificationCode, token);
+            response.addCookie(createCookie(token));
 
             if (verificationSuccess) {
-                var profile = authService.getProfile(headers);
+                var profile = authService.getProfile(token);
                 session.setAttribute("token", getCookieValue(headers, "token"));
                 session.setAttribute("email", profile.getEmail());
                 session.setAttribute("username", profile.getUsername());
                 session.setAttribute("role", profile.getRoles());
                 session.setAttribute("userId", profile.getId());
                 session.setAttribute("authenticated", true);
-                
+                response.addCookie(createCookie(token));
+
                 // Check if username is empty
                 var username = profile.getUsername();
                 if (username == null || username.trim().isEmpty()) {
@@ -197,8 +206,10 @@ public class AuthController extends BaseController {
             @RequestParam("email") @NotBlank @Email String email,
             @RequestParam("username") @NotBlank String username,
             Model model,
-            HttpHeaders headers,
-            HttpSession session) {
+            @RequestHeader HttpHeaders headers,
+            HttpSession session,
+            HttpServletResponse response
+    ) {
         // Check if user is already fully authenticated with a username
         if (isAuthenticated(session) && session.getAttribute("username") != null 
                 && !((String)session.getAttribute("username")).isEmpty()) {
@@ -215,8 +226,10 @@ public class AuthController extends BaseController {
         
         try {
 
-            var newUsername = authService.updateUsername(headers, username);
+            var tokenHolder = new ClientTokenHolder(getCookieValue(headers, "token"));
+            var newUsername = authService.updateUsername(tokenHolder, username);
             session.setAttribute("username", newUsername);
+            response.addCookie(createCookie(tokenHolder));
             
             // Redirect to game selection page after successful username update
             return "redirect:/games";
@@ -229,7 +242,7 @@ public class AuthController extends BaseController {
     }
     
     @GetMapping("/logout")
-    public String logout(HttpSession session, HttpServletRequest request, HttpServletResponse response, HttpHeaders headers) {
+    public String logout(HttpSession session, HttpServletRequest request, HttpServletResponse response, @RequestHeader HttpHeaders headers) {
         try {
             // Get refresh token cookie
             var cookies = request.getCookies();
@@ -245,7 +258,9 @@ public class AuthController extends BaseController {
             
             // Send logout request to server
             if (refreshToken != null) {
-                authService.logout(headers);
+                var token = new ClientTokenHolder(getRefreshToken(headers));
+                authService.logout(token);
+                response.addCookie(createCookie(token));
             }
         } catch (Exception e) {
             // Log error but continue with logout
@@ -264,7 +279,7 @@ public class AuthController extends BaseController {
         return "redirect:/";
     }
 
-    private String getCookieValue(HttpHeaders headers, String cookieName) {
+    private String getCookieValue(@RequestHeader HttpHeaders headers, String cookieName) {
         for (String cookieHeader : Objects.requireNonNull(headers.get(HttpHeaders.COOKIE))) {
             String[] cookies = cookieHeader.split(";");
             for (String cookie : cookies) {
@@ -279,5 +294,13 @@ public class AuthController extends BaseController {
             }
         }
         return null;
+    }
+
+    private String getRefreshToken(@RequestHeader HttpHeaders headers) {
+        return getCookieValue(headers, "refreshToken");
+    }
+
+    private Cookie createCookie (ClientTokenHolder tokenHolder) {
+        return new Cookie("refreshToken", tokenHolder.getToken());
     }
 }

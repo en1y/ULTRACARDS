@@ -40,7 +40,7 @@ public class GameNavigationInterceptor implements HandlerInterceptor {
             var userId = (Long) session.getAttribute("userId");
             var token = (String) session.getAttribute("token");
 
-            log.warn("Request URI: " + requestURI + " by user " + userId);
+            log.debug("Request URI: {} by user {}", requestURI, userId);
 
             var isUserValid = userService.isUserValid(userId, token);
 

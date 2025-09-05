@@ -11,10 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -36,9 +33,9 @@ public class AuthService {
     }
 
     public UsernameDTO updateUsername (
-            @NotNull HttpHeaders headers,
+            @NotNull ClientTokenHolder tokenHolder,
             @NotBlank String username) {
-        var entity = new HttpEntity<>(new UsernameDTO(username), headers);
+        var entity = new HttpEntity<>(new UsernameDTO(username), createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
                 serverBaseUrl + "/api/auth/username",
                 HttpMethod.PUT,
@@ -46,12 +43,12 @@ public class AuthService {
                 UsernameDTO.class
         );
 
-        updateHeaders(headers, response.getHeaders());
+        updateTokenHolder(tokenHolder, response.getHeaders());
         return response.getBody();
     }
 
-    public UsernameDTO getUsername (@NotNull HttpHeaders headers) {
-        var entity = new HttpEntity<>(headers);
+    public UsernameDTO getUsername (@NotNull ClientTokenHolder tokenHolder) {
+        var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
                 serverBaseUrl + "/api/auth/username",
                 HttpMethod.GET,
@@ -59,32 +56,32 @@ public class AuthService {
                 UsernameDTO.class
         );
 
-        updateHeaders(headers, response.getHeaders());
+        updateTokenHolder(tokenHolder, response.getHeaders());
 
         return response.getBody();
     }
 
-    public void logout (@NotNull HttpHeaders headers) {
-        var entity = new HttpEntity<>(headers);
+    public void logout (@NotNull ClientTokenHolder tokenHolder) {
+        var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
                 serverBaseUrl + "/api/auth/logout",
                 HttpMethod.POST,
                 entity,
                 Void.class
         );
-        updateHeaders(headers, response.getHeaders());
+        updateTokenHolder(tokenHolder, response.getHeaders());
     }
 
 
     /**
      * @param email - email to which the verification code will be sent
-     * @return HttpHeaders with session cookie. You should keep the HttpHeader for further usage
+     * @return Give an empty ClientTokenHolder object. It will be passed to each
      */
     public HttpHeaders sendVerificationEmail(
             @NotBlank @Email String email,
-            @NotNull HttpHeaders headers) {
-        var entity = new HttpEntity<>(new EmailDTO(email), new HttpHeaders());
-        entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+            @NotNull ClientTokenHolder tokenHolder) {
+        var entity = new HttpEntity<>(new EmailDTO(email), createHeaders(tokenHolder.getToken()));
+
         var response = restTemplate.postForEntity(
                 serverBaseUrl + "/api/auth/email/send",
                 entity,
@@ -97,24 +94,24 @@ public class AuthService {
             @NotBlank
             @Pattern(regexp = "\\d{6}", message = "Code must be exactly 6 digits")
             String verificationCode,
-            @NotNull HttpHeaders headers
+            @NotNull ClientTokenHolder tokenHolder
     ) {
 
-        var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode), headers);
+        var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode), createHeaders(tokenHolder.getToken()));
         entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         var response = restTemplate.postForEntity(
                 serverBaseUrl + "/api/auth/email/verification",
                 entity,
                 Void.class);
 
-        updateHeaders(headers, response.getHeaders());
+        updateTokenHolder(tokenHolder, response.getHeaders());
 
         return response.getStatusCode().is2xxSuccessful();
 
     }
 
-    public ProfileDTO getProfile(@NotNull HttpHeaders headers) {
-        var entity = new HttpEntity<>(headers);
+    public ProfileDTO getProfile(@NotNull ClientTokenHolder tokenHolder) {
+        var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
 
         var response = restTemplate.exchange(
                 serverBaseUrl + "/api/auth/profile",
@@ -123,35 +120,46 @@ public class AuthService {
                 ProfileDTO.class
         );
 
-        updateHeaders(headers, response.getHeaders());
+        updateTokenHolder(tokenHolder, response.getHeaders());
 
         return response.getBody();
     }
 
     public ProfileDTO updateProfile(
-            @NotNull HttpHeaders headers,
+            @NotNull ClientTokenHolder tokenHolder,
             @Valid ProfileDTO profileDTO
     ) {
-        var entity = new HttpEntity<>(profileDTO, headers);
+        var entity = new HttpEntity<>(profileDTO, createHeaders(tokenHolder.getToken()));
         var response = restTemplate.postForEntity(
                 serverBaseUrl + "/api/auth/profile",
                 entity,
                 ProfileDTO.class
         );
 
-        updateHeaders(headers, response.getHeaders());
+        updateTokenHolder(tokenHolder, response.getHeaders());
 
         return response.getBody();
     }
 
-    private void updateHeaders(HttpHeaders oldHeaders, HttpHeaders newHeaders) {
-        var setCookies = newHeaders.get(HttpHeaders.SET_COOKIE);
-        if (setCookies != null && !setCookies.isEmpty()) {
-            var cookies = setCookies.stream()
-                    .map(c -> c.split(";", 2)[0])
-                    .collect(Collectors.joining("; "));
-            oldHeaders.remove(HttpHeaders.COOKIE);
-            oldHeaders.add(HttpHeaders.COOKIE, cookies);
+    private HttpHeaders createHeaders(String token) {
+        var headers = new HttpHeaders();
+        var cookie = ResponseCookie.from("refreshToken", token);
+        headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
+        return headers;
+    }
+
+    private void updateTokenHolder(@NotNull ClientTokenHolder tokenHolder, HttpHeaders headers) {
+        var cookies = headers.get(HttpHeaders.SET_COOKIE);
+
+        if (cookies != null && !cookies.isEmpty()) {
+            for (var cookie : cookies) {
+                if (cookie.startsWith("refreshToken=")) {
+                    var refreshToken = cookie.split(";", 2)[0] // "refreshToken=abc123"
+                            .split("=", 2)[1]; // "abc123"
+                    tokenHolder.setToken(refreshToken);
+                    return;
+                }
+            }
         }
     }
 }
