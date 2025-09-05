@@ -5,14 +5,19 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.repositories.auth.TokenRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.AccessDeniedException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 
+import static com.ultracards.server.enums.TokenValidationResultStatus.*;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TokenService {
@@ -43,19 +48,52 @@ public class TokenService {
         }
     }
 
-    public ValidationResult validateToken(TokenDTO token) {
-        var tokenEntity = tokenRepository.findByToken(token.getToken())
+    public TokenEntity getToken(String token) {
+         return tokenRepository.findByToken(token)
                 .orElseThrow( () -> new IllegalArgumentException("Invalid token") );
+    }
+
+    public ValidationResult validateToken(TokenDTO token) {
+        var tokenEntity = getToken(token.getToken());
 
         if (tokenEntity.getExpiresAt().isAfter(Instant.now())) {
             return ValidationResult.proceed(tokenEntity);
         }
-        if (tokenEntity.isActive()) {
-            tokenEntity.setActive(false);
-            tokenRepository.save(tokenEntity);
-            return ValidationResult.rotated(createToken(tokenEntity.getUser()));
+
+        var user = tokenEntity.getUser();
+        var isTokenActive = tokenEntity.isActive();
+        tokenRepository.delete(tokenEntity);
+
+        if (isTokenActive) {
+            return ValidationResult.rotated(createToken(user));
         }
         return ValidationResult.logout();
+    }
+
+    public TokenEntity rotateToken (String token) throws AccessDeniedException {
+        return rotateToken(new TokenDTO(token));
+    }
+
+    public TokenEntity rotateToken (TokenDTO token) throws AccessDeniedException {
+        var validatedToken = validateToken(token);
+        var tokenValidationStatus = validatedToken.getStatus();
+
+        if (tokenValidationStatus.equals(LOGOUT)) {
+            log.info("Token \"{}\" is invalid. Redirecting to logout.", token.getToken());
+            throw new AccessDeniedException("Token is invalid. Redirecting to logout");
+        }
+
+        if (tokenValidationStatus.equals(ROTATED) ||
+                tokenValidationStatus.equals(PROCEED)) {
+            return validatedToken.getToken();
+        }
+
+        log.error("Token status \"{}\" is not supported. Redirecting to logout.", tokenValidationStatus);
+        throw new UnsupportedOperationException("Invalid token status: " + tokenValidationStatus);
+    }
+
+    public TokenEntity rotateToken (TokenEntity token) throws AccessDeniedException {
+        return rotateToken(new TokenDTO(token.getToken()));
     }
 
     public TokenEntity getTokenByUser(UserEntity user) {

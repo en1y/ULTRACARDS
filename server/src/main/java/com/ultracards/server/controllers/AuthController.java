@@ -4,7 +4,9 @@ import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
+import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.service.AuthService;
+import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,53 +14,72 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.http.*;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
+import java.nio.file.AccessDeniedException;
+
+@Slf4j
+@RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
     private final TokenService tokenService;
+    private final UserService userService;
+
+    @Value("${app.cookie-token.duration-days:15}")
+    private int tokenDurationDays;
 
     @Value("${app.max-length.username}")
     private Integer MAX_USERNAME_LENGTH;
 
-    @PutMapping("/username")
+    @PutMapping(
+            value = "/username",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @ResponseBody
     public ResponseEntity<UsernameDTO> updateUsername(
+            @NotBlank @CookieValue(name = "refreshToken") String token,
             @Valid @RequestBody UsernameDTO username,
-            @NotBlank @CookieValue(name = "token") String token,
-            HttpServletResponse response) {
+            BindingResult errors) {
 
-        if (username.getUsername().length() <= MAX_USERNAME_LENGTH) {
-            var newUsername = authService.updateUsername(username, token, response);
+        var tokenEntity = tokenService.getToken(token);
 
-            if (newUsername == null)
-                return redirectToLogout();
-
-            return ResponseEntity.ok(new UsernameDTO(newUsername));
-        } else {
+        if (errors.hasErrors() || username.getUsername().length() > MAX_USERNAME_LENGTH) {
             return ResponseEntity.badRequest().build();
         }
 
+        username = new UsernameDTO(authService.updateUsername(username, tokenEntity));
+
+        if (username.getUsername() == null)
+            return redirectToLogout();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/username")
     public ResponseEntity<UsernameDTO> getUsername(
-            @NotBlank @CookieValue(name = "token") String token,
-            HttpServletResponse response) {
-        var username = authService.getUsername(token, response);
+            @NotBlank @CookieValue(name = "refreshToken") String token,
+            BindingResult errors) {
+
+        var tokenEntity = tokenService.getToken(token);
+
+        if (errors.hasErrors())
+            return ResponseEntity.badRequest().build();
+
+        var username = authService.getUsername(tokenEntity);
 
         if (username == null)
             return redirectToLogout();
 
-        return ResponseEntity.ok(new UsernameDTO(username));
+        return ResponseEntity
+                .ok().build();
+
     }
 
     @PostMapping("/logout")
@@ -73,50 +94,89 @@ public class AuthController {
 
     @PostMapping("/email/send")
     public ResponseEntity<Void> sendVerificationEmail(
+            @CookieValue(name = "refreshToken", required = false) String token,
             @Valid @RequestBody EmailDTO emailDTO,
-            HttpServletResponse response
+            BindingResult errors
     ) {
-        authService.sendVerificationEmail(emailDTO, response);
-        return ResponseEntity.ok().build();
+        if (errors.hasErrors()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            var tokenEntity = getNullifiableToken(token, emailDTO);
+
+            authService.sendVerificationEmail(emailDTO, tokenEntity);
+
+            return ResponseEntity.ok().build();
+
+        } catch (AccessDeniedException e) {
+            return redirectToLogout();
+        }
     }
 
     @PostMapping("/email/verify")
     public ResponseEntity<Void> verifyCode(
             @CookieValue(name = "refreshToken", required = false) String token,
             @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
-            HttpServletResponse response
+            BindingResult errors
     ) {
-        var res = authService.verifyCode(verificationCodeDTO, token, response);
+        var tokenEntity = tokenService.getToken(token);
 
-        if (res == null)
-            return redirectToLogout();
+        if (errors.hasErrors())
+            return ResponseEntity.badRequest().build();
 
-        if (res) return ResponseEntity.ok().build();
-        else return ResponseEntity.badRequest().build();
+        var isVerificationCodeCorrect = authService.verifyCode(verificationCodeDTO, tokenEntity);
+
+        if (!isVerificationCodeCorrect)
+            return ResponseEntity.badRequest().build();
+        return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/email/profile")
+    @GetMapping("/profile")
     public ResponseEntity<ProfileDTO> getProfile(
-            @CookieValue(name = "refreshToken", required = false) String token,
-            HttpServletResponse response
+            @CookieValue(name = "refreshToken", required = false) String token
     ) {
-        var res = authService.getProfile(token, response);
-        if (res == null)
-            return redirectToLogout();
+
+        var tokenEntity = tokenService.getToken(token);
+
+        var res = authService.getProfile(tokenEntity);
+
         return ResponseEntity.ok(res);
     }
 
-    @PostMapping
+    @PostMapping("/profile")
     public ResponseEntity<ProfileDTO> updateProfile(
             @CookieValue(name = "refreshToken", required = false) String token,
             @RequestBody @Valid ProfileDTO profileDTO,
-            HttpServletResponse response
+            BindingResult errors
     ) {
-        var res = authService.updateProfile(token, profileDTO, response);
+        var tokenEntity = tokenService.getToken(token);
+        if (errors.hasErrors()) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        if (res == null)
-            return redirectToLogout();
+        var res = authService.updateProfile(profileDTO, tokenEntity);
+
         return ResponseEntity.ok(res);
+    }
+
+    private TokenEntity getNullifiableToken(String token, EmailDTO emailDTO) throws AccessDeniedException {
+        if (token == null) {
+            var user = userService.getUserByEmail(emailDTO);
+            return tokenService.getTokenByUser(user);
+        } else {
+            return tokenService.getToken(token);
+        }
+    }
+
+    private ResponseCookie createResponseCookie(TokenEntity token) {
+        return ResponseCookie
+                .from("refreshToken", token.getToken())
+                .path("/")
+                .maxAge((long) tokenDurationDays * 3600 * 24) // I want the cookie to stay for longer so that the user doesn't need to log in as often after being inactive
+                .sameSite("Strict")
+                .httpOnly(true)
+                .build();
     }
 
     private <T> ResponseEntity<T> redirectToLogout() {

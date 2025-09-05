@@ -20,6 +20,7 @@ import java.util.List;
 @EnableMethodSecurity
 public class WebSecurityConfig {
 
+    // TODO: Make this Filter actually meaningful
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -34,7 +35,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/refresh").permitAll()
                 .requestMatchers("/auth/logout").permitAll()
                     .requestMatchers("/auth/user-active").permitAll()
-                    .requestMatchers("/api/games/**").permitAll()
+                    .requestMatchers("/api/**").permitAll()
                     .requestMatchers("/active").permitAll()
                 // Protected endpoints
                 .anyRequest().authenticated()

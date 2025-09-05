@@ -6,6 +6,7 @@ import com.ultracards.gateway.dto.auth.TokenDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.games.PlayerEntity;
 import com.ultracards.server.repositories.games.briskula.BriskulaPlayerEntityRepository;
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 import static com.ultracards.server.enums.TokenValidationResultStatus.*;
@@ -43,27 +45,15 @@ public class AuthService {
     private final TokenService tokenService;
     private final EmailService emailService;
 
-    public String updateUsername (UsernameDTO username, String token, HttpServletResponse response) {
-        var validatedToken = tokenService.validateToken(new TokenDTO(token));
-
-        if (validatedToken.getStatus().equals(LOGOUT)) return null;
-        if (validatedToken.getStatus().equals(ROTATED))
-            processRotatedToken(validatedToken, response);
-
-        var userEntity = validatedToken.getUser();
+    public String updateUsername (UsernameDTO username, TokenEntity token) {
+        var userEntity = token.getUser();
         userEntity.setUsername(username.getUsername());
         userEntity = userRepository.save(userEntity);
         return userEntity.getUsername();
     }
 
-    public String getUsername (String token, HttpServletResponse response) {
-        var validatedToken = tokenService.validateToken(new TokenDTO(token));
-
-        if (validatedToken.getStatus().equals(LOGOUT)) return null;
-        if (validatedToken.getStatus().equals(ROTATED))
-            processRotatedToken(validatedToken, response);
-
-        return validatedToken.getUser().getUsername();
+    public String getUsername (TokenEntity token) {
+        return token.getUser().getUsername();
     }
 
     public void logout(String token, HttpServletRequest request, HttpServletResponse response) {
@@ -81,14 +71,13 @@ public class AuthService {
         }
     }
 
-    public void sendVerificationEmail(@Valid EmailDTO emailDTO, HttpServletResponse response) {
+    public void sendVerificationEmail(@Valid EmailDTO emailDTO, TokenEntity token) {
 
-        var user = userService.getUserByEmail(emailDTO);
+        var user = token.getUser();
         var code = verificationCodeService.createVerificationCode(user);
 
         try {
             emailService.sendVerificationEmail(user, code);
-            response.addCookie(new Cookie("token", tokenService.getTokenByUser(user).toString()));
         } catch (MessagingException e) {
             log.error("Failed to send verification email to {}", emailDTO.getEmail(), e);
             throw new IllegalStateException("Failed to send verification email: " + e.getMessage(), e);
@@ -98,14 +87,8 @@ public class AuthService {
         }
     }
 
-    public Boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO, String token, HttpServletResponse response) {
-        var validatedToken = tokenService.validateToken(new TokenDTO(token));
-
-        if (validatedToken.getStatus().equals(LOGOUT)) return null;
-        if (validatedToken.getStatus().equals(ROTATED))
-            processRotatedToken(validatedToken, response);
-
-        var user = validatedToken.getUser();
+    public Boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO, TokenEntity token) {
+        var user = token.getUser();
         var code = verificationCodeService.getVerificationCodeByUser(user);
 
         if (code == null) return null;
@@ -113,29 +96,16 @@ public class AuthService {
         return code.getCode().equals(verificationCodeDTO.getCode());
     }
 
-    public ProfileDTO getProfile(String token, HttpServletResponse response) {
-        var validatedToken = tokenService.validateToken(new TokenDTO(token));
-
-        if (validatedToken.getStatus().equals(LOGOUT)) return null;
-        if (validatedToken.getStatus().equals(ROTATED))
-            processRotatedToken(validatedToken, response);
-
-        var user = validatedToken.getUser();
+    public ProfileDTO getProfile(TokenEntity token) {
+        var user = token.getUser();
         return createProfileByUser(user);
     }
 
     public ProfileDTO updateProfile(
-            String token,
             @Valid ProfileDTO profileDTO,
-            HttpServletResponse response) {
-
-        var validatedToken = tokenService.validateToken(new TokenDTO(token));
-
-        if (validatedToken.getStatus().equals(LOGOUT)) return null;
-        if (validatedToken.getStatus().equals(ROTATED))
-            processRotatedToken(validatedToken, response);
-
-        var user = validatedToken.getUser();
+            TokenEntity token
+    ) {
+        var user = token.getUser();
         return updateProfileByUser(user, profileDTO);
     }
 
