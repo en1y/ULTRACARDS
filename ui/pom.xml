@@ -22,7 +22,7 @@
 
     <modules>
         <module>console-ui</module>
-        <module>web-ui</module>
+        <module>web-uis</module>
         <module>gui</module>
         <module>card-to-png</module>
     </modules>

@@ -13,6 +13,7 @@
 
     <modules>
         <module>deprecated-web-ui</module>
+        <module>web-ui</module>
     </modules>
 
     <packaging>pom</packaging>
