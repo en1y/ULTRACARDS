@@ -20,15 +20,15 @@ import java.util.Map;
 @Service
 public class GameService {
     private final RestTemplate restTemplate;
-    private final String serverBaseUrl;
+    private final String serverUrl;
 
     @Autowired
     // You still have to initiate it if you are not using Spring
-    // If you are using Spring you can initiate the serverBaseUrl bean
+    // If you are using Spring you can initiate the serverUrl bean
     public GameService(RestTemplate restTemplate,
-                       @Qualifier("serverBaseUrl") String serverBaseUrl) {
+                       @Qualifier("serverUrl") String serverUrl) {
         this.restTemplate = restTemplate;
-        this.serverBaseUrl = serverBaseUrl;
+        this.serverUrl = serverUrl;
     }
 
     /**
@@ -61,7 +61,7 @@ public class GameService {
         var entity = new HttpEntity<>(requestDTO, headers);
 
         return restTemplate.exchange(
-                serverBaseUrl + "/api/games",
+                serverUrl + "/api/games",
                 HttpMethod.POST,
                 entity,
                 GameResponseDTO.class).getBody();
@@ -79,7 +79,7 @@ public class GameService {
         var entity = new HttpEntity<Void>(headers);
 
         return restTemplate.exchange(
-                serverBaseUrl + "/api/games/" + gameId,
+                serverUrl + "/api/games/" + gameId,
                 HttpMethod.GET,
                 entity,
                 GameResponseDTO.class).getBody();
@@ -100,7 +100,7 @@ public class GameService {
         var entity = new HttpEntity<>(requestDTO, headers);
 
         return restTemplate.exchange(
-                serverBaseUrl + "/api/games/" + gameId,
+                serverUrl + "/api/games/" + gameId,
                 HttpMethod.PUT,
                 entity,
                 GameResponseDTO.class).getBody();
@@ -117,7 +117,7 @@ public class GameService {
         var entity = new HttpEntity<>(headers);
 
         var response = restTemplate.exchange(
-                serverBaseUrl + "/api/games",
+                serverUrl + "/api/games",
                 HttpMethod.GET,
                 entity,
                 new ParameterizedTypeReference<List<GameSummaryDTO>>() {});
@@ -133,7 +133,7 @@ public class GameService {
      */
     public List<GameSummaryDTO> listGamesByStatus(String status, String token) {
         var url = UriComponentsBuilder.fromUri(
-                    URI.create(serverBaseUrl + "/api/games")
+                    URI.create(serverUrl + "/api/games")
                 ).queryParam("status", status)
                 .toUriString();
 
@@ -148,7 +148,7 @@ public class GameService {
      * @return A list of games with the specified game type
      */
     public List<GameSummaryDTO> listGamesByType(String gameType, String token) {
-        var url = UriComponentsBuilder.fromUri(URI.create(serverBaseUrl + "/api/games"))
+        var url = UriComponentsBuilder.fromUri(URI.create(serverUrl + "/api/games"))
                 .queryParam("gameType", gameType)
                 .toUriString();
 
@@ -163,7 +163,7 @@ public class GameService {
      * @return A list of games that include the specified player
      */
     public List<GameSummaryDTO> listGamesByPlayer(Long playerId, String token) {
-        var url = UriComponentsBuilder.fromUri(URI.create(serverBaseUrl + "/api/games"))
+        var url = UriComponentsBuilder.fromUri(URI.create(serverUrl + "/api/games"))
                 .queryParam("playerId", playerId)
                 .toUriString();
 
@@ -173,7 +173,7 @@ public class GameService {
     public void stopGame(GameSummaryDTO game, String token) {
 
         var url = UriComponentsBuilder
-                .fromUri(URI.create(serverBaseUrl + "/api/games/" + game.getGameId()))
+                .fromUri(URI.create(serverUrl + "/api/games/" + game.getGameId()))
                 .toUriString();
         var headers = createAuthHeaders(token);
         var entity = new HttpEntity<>(headers);

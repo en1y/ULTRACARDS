@@ -36,8 +36,8 @@ public class RestTemplateConfig {
      * @return The server base URL
      */
     @Bean
-    @Qualifier("serverBaseUrl")
-    public String serverBaseUrl() {
+    @Qualifier("serverUrl")
+    public String serverUrl() {
         return serverProtocol + "://" + serverHostname+ ":" + serverPort;
     }
 }

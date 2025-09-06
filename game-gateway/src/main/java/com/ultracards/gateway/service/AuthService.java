@@ -21,15 +21,15 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private final RestTemplate restTemplate;
-    private final String serverBaseUrl;
+    private final String serverUrl;
 
     @Autowired
     // You still have to initiate it if you are not using Spring
-    // If you are using Spring you can initiate the serverBaseUrl bean
+    // If you are using Spring you can initiate the serverUrl bean
     public AuthService(RestTemplate restTemplate,
-                             @Qualifier("serverBaseUrl") String serverBaseUrl) {
+                             @Qualifier("serverUrl") String serverUrl) {
         this.restTemplate = restTemplate;
-        this.serverBaseUrl = serverBaseUrl;
+        this.serverUrl = serverUrl;
     }
 
     public UsernameDTO updateUsername (
@@ -37,7 +37,7 @@ public class AuthService {
             @NotBlank String username) {
         var entity = new HttpEntity<>(new UsernameDTO(username), createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
-                serverBaseUrl + "/api/auth/username",
+                serverUrl + "/api/auth/username",
                 HttpMethod.PUT,
                 entity,
                 UsernameDTO.class
@@ -50,7 +50,7 @@ public class AuthService {
     public UsernameDTO getUsername (@NotNull ClientTokenHolder tokenHolder) {
         var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
-                serverBaseUrl + "/api/auth/username",
+                serverUrl + "/api/auth/username",
                 HttpMethod.GET,
                 entity,
                 UsernameDTO.class
@@ -64,7 +64,7 @@ public class AuthService {
     public void logout (@NotNull ClientTokenHolder tokenHolder) {
         var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
-                serverBaseUrl + "/api/auth/logout",
+                serverUrl + "/api/auth/logout",
                 HttpMethod.POST,
                 entity,
                 Void.class
@@ -83,7 +83,7 @@ public class AuthService {
         var entity = new HttpEntity<>(new EmailDTO(email), createHeaders(tokenHolder.getToken()));
 
         var response = restTemplate.postForEntity(
-                serverBaseUrl + "/api/auth/email/send",
+                serverUrl + "/api/auth/email/send",
                 entity,
                 Void.class);
 
@@ -100,7 +100,7 @@ public class AuthService {
         var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode), createHeaders(tokenHolder.getToken()));
         entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         var response = restTemplate.postForEntity(
-                serverBaseUrl + "/api/auth/email/verification",
+                serverUrl + "/api/auth/email/verification",
                 entity,
                 Void.class);
 
@@ -114,7 +114,7 @@ public class AuthService {
         var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
 
         var response = restTemplate.exchange(
-                serverBaseUrl + "/api/auth/profile",
+                serverUrl + "/api/auth/profile",
                 HttpMethod.GET,
                 entity,
                 ProfileDTO.class
@@ -131,7 +131,7 @@ public class AuthService {
     ) {
         var entity = new HttpEntity<>(profileDTO, createHeaders(tokenHolder.getToken()));
         var response = restTemplate.postForEntity(
-                serverBaseUrl + "/api/auth/profile",
+                serverUrl + "/api/auth/profile",
                 entity,
                 ProfileDTO.class
         );

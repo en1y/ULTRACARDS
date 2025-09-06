@@ -24,45 +24,28 @@ public class ServerService {
 
     private ServerIssueResolver serverIssue;
     private ServerIssueResolver serverConnectionIssue;
+    private String serverUrl;
 
-    @Value("${app.ultracards.server.protocol}")
-    private String serverProtocol;
-    @Value("${app.ultracards.server.hostname}")
-    private String serverHostname;
-    @Value("${app.ultracards.server.port}")
-    private String serverPort;
-
-    // Should not be used since it should be autowired by Spring
     @Autowired
     public ServerService(RestTemplate restTemplate,
+                         @Qualifier("serverUrl")  String serverUrl,
                          @Qualifier("serverIssue") ServerIssueResolver serverIssue,
                          @Qualifier("serverConnectionIssue") ServerIssueResolver serverConnectionIssue) {
         this.restTemplate = restTemplate;
+        this.serverUrl = serverUrl;
         this.serverIssue = serverIssue;
         this.serverConnectionIssue = serverConnectionIssue;
     }
 
-    public ServerService(RestTemplate restTemplate, String serverProtocol, String serverHostname, String serverPort) {
+    public ServerService(RestTemplate restTemplate, String serverUrl) {
         this.restTemplate = restTemplate;
-        this.serverProtocol = serverProtocol;
-        this.serverHostname = serverHostname;
-        this.serverPort = serverPort;
-    }
-
-    public ServerService(RestTemplate restTemplate, String serverProtocol, String serverHostname, String serverPort, ServerIssueResolver serverIssue, ServerIssueResolver serverConnectionIssue) {
-        this.restTemplate = restTemplate;
-        this.serverProtocol = serverProtocol;
-        this.serverHostname = serverHostname;
-        this.serverPort = serverPort;
-        this.serverIssue = serverIssue;
-        this.serverConnectionIssue = serverConnectionIssue;
+        this.serverUrl = serverUrl;
     }
 
     @PostConstruct
     @Scheduled(fixedRate = 10000) // every 10 seconds
     public void checkIsTheServerUp() {
-        var serverBaseUrl = serverProtocol + "://" + serverHostname + ":" + serverPort;
-        var url = URI.create(serverBaseUrl + "/active").toString();
+        var url = URI.create(serverUrl + "/active").toString();
 
         try {
             var res = restTemplate.exchange(url, HttpMethod.GET, null, Void.class);

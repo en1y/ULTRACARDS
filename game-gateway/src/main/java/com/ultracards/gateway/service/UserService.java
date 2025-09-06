@@ -16,12 +16,12 @@ public class UserService {
     private static final Log log = LogFactory.getLog(UserService.class);
 
     private RestTemplate restTemplate;
-    private String serverBaseUrl;
+    private String serverUrl;
 
     public UserService(RestTemplate restTemplate,
-                       @Qualifier("serverBaseUrl") String serverBaseUrl) {
+                       @Qualifier("serverUrl") String serverUrl) {
         this.restTemplate = restTemplate;
-        this.serverBaseUrl = serverBaseUrl;
+        this.serverUrl = serverUrl;
     }
 
 //    TODO: implement this method
@@ -41,7 +41,7 @@ public class UserService {
 
         try {
             var res = restTemplate.exchange(
-                    serverBaseUrl + "/auth/user-active",
+                    serverUrl + "/auth/user-active",
                     HttpMethod.POST,
                     entity,
                     ResponseEntity.class);
