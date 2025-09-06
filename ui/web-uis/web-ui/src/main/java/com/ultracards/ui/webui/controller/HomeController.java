@@ -1,0 +1,56 @@
+package com.ultracards.ui.webui.controller;
+
+import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.ClientTokenHolder;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@Controller
+@RequiredArgsConstructor
+public class HomeController {
+
+    private final AuthService authService;
+
+    @GetMapping("/")
+    public String index(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response,
+            Model model
+    ) {
+        String username = null;
+
+        if (refreshToken != null) {
+            var tokenHolder = new ClientTokenHolder(refreshToken);
+            username = authService.getUsername(tokenHolder).getUsername();
+            response.addCookie(createCookie(tokenHolder));
+        }
+
+        var auth = !(username == null);
+
+        var name = (username != null && !username.isBlank()) ? username : "Bob.";
+
+        model.addAttribute("isAuthenticated", auth);
+        model.addAttribute("username", name);
+        // Theme can be overridden by client via localStorage; server default is light
+        model.addAttribute("theme", "light");
+
+        return "index";
+    }
+
+    private Cookie createCookie(ClientTokenHolder tokenHolder) {
+        var cookie = new Cookie("refreshToken", tokenHolder.getToken());
+        cookie.setPath("/");
+        cookie.setMaxAge(60*60*24);
+        cookie.setHttpOnly(true);
+        return cookie;
+    }
+
+}
+
