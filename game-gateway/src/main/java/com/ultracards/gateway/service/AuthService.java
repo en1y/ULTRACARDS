@@ -100,7 +100,7 @@ public class AuthService {
             @NotBlank
             @Pattern(regexp = "\\d{6}", message = "Code must be exactly 6 digits")
             String verificationCode,
-            @NotNull ClientTokenHolder tokenHolder
+            ClientTokenHolder tokenHolder
     ) {
 
         var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode), createHeaders(tokenHolder.getToken()));
