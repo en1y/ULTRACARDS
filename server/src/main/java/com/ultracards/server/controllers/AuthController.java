@@ -78,7 +78,7 @@ public class AuthController {
             return redirectToLogout();
 
         return ResponseEntity
-                .ok().build();
+                .ok(new UsernameDTO(username));
 
     }
 
