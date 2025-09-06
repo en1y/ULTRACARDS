@@ -23,12 +23,12 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <version>6.2.5</version>
+            <version>6.2.10</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
-            <version>6.2.5</version>
+            <version>6.2.10</version>
         </dependency>
 
         <!-- Validation API -->
@@ -38,7 +38,7 @@
             <version>3.0.2</version>
         </dependency>
 
-        <!-- Annotation api -->
+        <!-- Annotation API -->
         <dependency>
             <groupId>jakarta.annotation</groupId>
             <artifactId>jakarta.annotation-api</artifactId>
@@ -46,7 +46,7 @@
             <scope>compile</scope>
         </dependency>
 
-        <!--        Hibernate dependency-->
+        <!-- Hibernate dependency-->
         <dependency>
             <groupId>com.vladmihalcea</groupId>
             <artifactId>hibernate-types-60</artifactId>
