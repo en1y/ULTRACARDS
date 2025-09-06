@@ -33,7 +33,6 @@ public class UserEntity {
     @Column(nullable = false, unique = true, length = 320)
     private String email;
 
-    @NotBlank
     @Column(nullable = false, length = 50)
     private String username;
 
