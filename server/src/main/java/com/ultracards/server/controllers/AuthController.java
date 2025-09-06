@@ -169,16 +169,6 @@ public class AuthController {
         }
     }
 
-    private ResponseCookie createResponseCookie(TokenEntity token) {
-        return ResponseCookie
-                .from("refreshToken", token.getToken())
-                .path("/")
-                .maxAge((long) tokenDurationDays * 3600 * 24) // I want the cookie to stay for longer so that the user doesn't need to log in as often after being inactive
-                .sameSite("Strict")
-                .httpOnly(true)
-                .build();
-    }
-
     private <T> ResponseEntity<T> redirectToLogout() {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, "/api/auth/logout")
