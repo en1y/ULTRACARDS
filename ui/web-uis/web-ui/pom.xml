@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.ultracards.ui</groupId>
 	<artifactId>web-ui</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1-PREALPHA</version>
 	<name>Web UI</name>
 	<description>Web UI project for ULTRACARDS</description>
 	<url/>
@@ -30,6 +30,15 @@
 		<java.version>17</java.version>
 	</properties>
 	<dependencies>
+
+        <!-- gateway dependency -->
+        <dependency>
+            <groupId>en1y.ultracards</groupId>
+            <artifactId>game-gateway</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Spring dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
@@ -47,16 +56,19 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Lombok dependency -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+
 	</dependencies>
 
 	<build>
