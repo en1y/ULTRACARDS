@@ -75,19 +75,25 @@ public class AuthService {
 
     /**
      * @param email - email to which the verification code will be sent
-     * @return Give an empty ClientTokenHolder object. It will be passed to each
      */
-    public HttpHeaders sendVerificationEmail(
+    public void sendVerificationEmail(
             @NotBlank @Email String email,
             @NotNull ClientTokenHolder tokenHolder) {
         var entity = new HttpEntity<>(new EmailDTO(email), createHeaders(tokenHolder.getToken()));
 
-        var response = restTemplate.postForEntity(
+        restTemplate.postForEntity(
                 serverUrl + "/api/auth/email/send",
                 entity,
                 Void.class);
+    }
 
-        return response.getHeaders();
+    public void sendVerificationEmail(@NotBlank @Email String email) {
+        var entity = new HttpEntity<>(new EmailDTO(email));
+
+        restTemplate.postForEntity(
+                serverUrl + "/api/auth/email/send",
+                entity,
+                Void.class);
     }
 
     public boolean verifyCode(
