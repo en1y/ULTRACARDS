@@ -15,6 +15,12 @@
     localStorage.setItem(storageKey, theme);
     const btn = toggleBtn();
     if (btn) btn.setAttribute('aria-pressed', theme === 'dark');
+    try {
+      const src = theme === 'dark' ? '/pics/profile_icon_light.svg' : '/pics/profile_icon_dark.svg';
+      document.querySelectorAll('[data-avatar]').forEach((img) => {
+        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+      });
+    } catch {}
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -61,6 +67,8 @@ function guardXSS(value) {
   const closeButtons = () => overlay()?.querySelectorAll('[data-close]') || [];
   const stepEls = () => overlay()?.querySelectorAll('[data-step]') || [];
   const openBtn = () => document.querySelector('[data-action="open-login"]');
+  // Keep the email captured in step 1 for use in verification
+  let pendingEmail = null;
 
   function showStep(id) {
     stepEls().forEach((el) => {
@@ -72,6 +80,22 @@ function guardXSS(value) {
     const ov = overlay();
     if (!ov) return;
     ov.classList.add('active');
+    // Reset all fields so nothing is memorised between openings
+    try {
+      const emailInput = document.querySelector('#email-input');
+      if (emailInput) emailInput.value = '';
+      const codeBoxes = Array.from(document.querySelectorAll('.code-box'));
+      codeBoxes.forEach(b => b.value = '');
+      const userInput = document.querySelector('#username-input');
+      if (userInput) userInput.value = '';
+      const emailError = document.querySelector('#email-error');
+      const codeError = document.querySelector('#code-error');
+      const userError = document.querySelector('#username-error');
+      if (emailError) emailError.textContent = '';
+      if (codeError) codeError.textContent = '';
+      if (userError) userError.textContent = '';
+      pendingEmail = null;
+    } catch {}
     showStep('email');
   }
 
@@ -79,15 +103,29 @@ function guardXSS(value) {
     const ov = overlay();
     if (!ov) return;
     ov.classList.remove('active');
+    // Also clear inputs on close so next open is clean
+    try {
+      const emailInput = document.querySelector('#email-input');
+      if (emailInput) emailInput.value = '';
+      const codeBoxes = Array.from(document.querySelectorAll('.code-box'));
+      codeBoxes.forEach(b => b.value = '');
+      const userInput = document.querySelector('#username-input');
+      if (userInput) userInput.value = '';
+      const emailError = document.querySelector('#email-error');
+      const codeError = document.querySelector('#code-error');
+      const userError = document.querySelector('#username-error');
+      if (emailError) emailError.textContent = '';
+      if (codeError) codeError.textContent = '';
+      if (userError) userError.textContent = '';
+      pendingEmail = null;
+    } catch {}
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     const btn = openBtn();
     if (btn) btn.addEventListener('click', openModal);
+    // Only the X button (data-close in modal header) can close the modal.
     closeButtons().forEach((b) => b.addEventListener('click', closeModal));
-    overlay()?.addEventListener('click', (e) => {
-      if (e.target === overlay()) closeModal();
-    });
 
     // Step 1: email submit
     const emailForm = document.querySelector('#email-step-form');
@@ -103,10 +141,11 @@ function guardXSS(value) {
       const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!re.test(email)) { emailError.textContent = 'Please enter a valid email'; return; }
       try {
-        const res = await fetch('/auth/email', {
+        const res = await fetch('/api/auth/email/send', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
         });
         // Proceed regardless; backend should send the code
+        pendingEmail = email;
         showStep('code');
         // Focus first code box
         document.querySelector('.code-box')?.focus();
@@ -125,8 +164,36 @@ function guardXSS(value) {
         if (box.value && idx < codeBoxes.length - 1) codeBoxes[idx + 1].focus();
       });
       box.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !box.value && idx > 0) {
-          codeBoxes[idx - 1].focus();
+        const prev = () => codeBoxes[idx - 1];
+        const next = () => codeBoxes[idx + 1];
+
+        if (e.key === 'ArrowLeft' && idx > 0) { prev()?.focus(); return; }
+        if (e.key === 'ArrowRight' && idx < codeBoxes.length - 1) { next()?.focus(); return; }
+
+        // Backspace behavior
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          if (box.value) {
+            box.value = '';
+          } else if (idx > 0) {
+            // Delete left cell when current is empty
+            const p = prev();
+            if (p) { p.value = ''; p.focus(); }
+          }
+          return;
+        }
+
+        // Delete behavior
+        if (e.key === 'Delete') {
+          e.preventDefault();
+          if (box.value) {
+            box.value = '';
+          } else if (idx < codeBoxes.length - 1) {
+            // Delete right cell when current is empty
+            const n = next();
+            if (n) { n.value = ''; }
+          }
+          return;
         }
       });
       box.addEventListener('paste', (e) => {
@@ -137,8 +204,8 @@ function guardXSS(value) {
         for (let i = 0; i < digits.length; i++) {
           codeBoxes[i].value = digits[i];
         }
-        const next = codeBoxes[digits.length - 1] || codeBoxes[0];
-        next?.focus();
+        const nxt = codeBoxes[digits.length - 1] || codeBoxes[0];
+        nxt?.focus();
       });
     });
 
@@ -149,12 +216,21 @@ function guardXSS(value) {
       codeError.textContent = '';
       const code = codeValue();
       if (code.length !== 6 || /\D/.test(code)) { codeError.textContent = 'Enter the 6 digit code'; return; }
+      if (!pendingEmail) { codeError.textContent = 'Missing email. Go back and enter your email.'; return; }
       try {
-        const res = await fetch('/auth/verify-code', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
+        const res = await fetch('/api/auth/email/verify', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, email: pendingEmail })
         });
         let needsUsername = true;
-        try { const data = await res.json(); needsUsername = !!data?.needsUsername; } catch {}
+        try {
+          const data = await res.json();
+          if (data && data.success === true) {
+            needsUsername = !!data.needsUsername;
+          } else {
+            codeError.textContent = 'Verification failed. Try again.';
+            return;
+          }
+        } catch {}
         if (needsUsername) {
           showStep('username');
           document.querySelector('#username-input')?.focus();
@@ -178,8 +254,8 @@ function guardXSS(value) {
       if (!x.ok) { userError.textContent = x.message; return; }
       if (username.length < 3) { userError.textContent = 'Username must be at least 3 characters'; return; }
       try {
-        const res = await fetch('/auth/set-username', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username })
+        const res = await fetch('/api/auth/username', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username })
         });
         window.location.reload();
       } catch (err) {
@@ -188,4 +264,3 @@ function guardXSS(value) {
     });
   });
 })();
-

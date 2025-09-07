@@ -87,9 +87,9 @@ public class AuthService {
         }
     }
 
-    public Boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO, TokenEntity token) {
-        var user = token.getUser();
-        var code = verificationCodeService.getVerificationCodeByUser(user);
+    public Boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO) {
+
+        var code = verificationCodeService.getVerificationCodeByEmail(verificationCodeDTO.getEmail());
 
         if (code == null) return null;
 

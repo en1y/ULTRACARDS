@@ -9,13 +9,14 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -37,7 +38,7 @@ public class AuthService {
             @NotBlank String username) {
         var entity = new HttpEntity<>(new UsernameDTO(username), createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
-                serverUrl + "/api/auth/username",
+                serverUrl + "api/auth/username",
                 HttpMethod.PUT,
                 entity,
                 UsernameDTO.class
@@ -50,21 +51,20 @@ public class AuthService {
     public UsernameDTO getUsername (@NotNull ClientTokenHolder tokenHolder) {
         var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
-                serverUrl + "/api/auth/username",
+                serverUrl + "api/auth/username",
                 HttpMethod.GET,
                 entity,
                 UsernameDTO.class
         );
 
         updateTokenHolder(tokenHolder, response.getHeaders());
-
         return response.getBody();
     }
 
     public void logout (@NotNull ClientTokenHolder tokenHolder) {
         var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
         var response = restTemplate.exchange(
-                serverUrl + "/api/auth/logout",
+                serverUrl + "api/auth/logout",
                 HttpMethod.POST,
                 entity,
                 Void.class
@@ -82,7 +82,7 @@ public class AuthService {
         var entity = new HttpEntity<>(new EmailDTO(email), createHeaders(tokenHolder.getToken()));
 
         restTemplate.postForEntity(
-                serverUrl + "/api/auth/email/send",
+                serverUrl + "api/auth/email/send",
                 entity,
                 Void.class);
     }
@@ -91,22 +91,41 @@ public class AuthService {
         var entity = new HttpEntity<>(new EmailDTO(email));
 
         restTemplate.postForEntity(
-                serverUrl + "/api/auth/email/send",
+                serverUrl + "api/auth/email/send",
                 entity,
                 Void.class);
+    }
+
+    public boolean verifyCode(
+            @Valid VerificationCodeDTO verificationCode,
+            ClientTokenHolder tokenHolder
+    ) {
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        var entity = new HttpEntity<>(verificationCode, headers);
+
+        var response = restTemplate.postForEntity(
+                serverUrl + "api/auth/email/verify",
+                entity,
+                Void.class
+        );
+
+        updateTokenHolder(tokenHolder, response.getHeaders());
+
+        return response.getStatusCode().is2xxSuccessful();
     }
 
     public boolean verifyCode(
             @NotBlank
             @Pattern(regexp = "\\d{6}", message = "Code must be exactly 6 digits")
             String verificationCode,
-            ClientTokenHolder tokenHolder
+            @NotNull ClientTokenHolder tokenHolder
     ) {
-
-        var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode), createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode, getProfile(tokenHolder).getEmail()), createHeaders(tokenHolder.getToken()));
         entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
         var response = restTemplate.postForEntity(
-                serverUrl + "/api/auth/email/verification",
+                serverUrl + "api/auth/email/verify",
                 entity,
                 Void.class);
 
@@ -120,7 +139,7 @@ public class AuthService {
         var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
 
         var response = restTemplate.exchange(
-                serverUrl + "/api/auth/profile",
+                serverUrl + "api/auth/profile",
                 HttpMethod.GET,
                 entity,
                 ProfileDTO.class
@@ -137,7 +156,7 @@ public class AuthService {
     ) {
         var entity = new HttpEntity<>(profileDTO, createHeaders(tokenHolder.getToken()));
         var response = restTemplate.postForEntity(
-                serverUrl + "/api/auth/profile",
+                serverUrl + "api/auth/profile",
                 entity,
                 ProfileDTO.class
         );
@@ -149,8 +168,8 @@ public class AuthService {
 
     private HttpHeaders createHeaders(String token) {
         var headers = new HttpHeaders();
-        var cookie = ResponseCookie.from("refreshToken", token);
-        headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
+        var cookie = ResponseCookie.from("refreshToken", token).build();
+        headers.add(HttpHeaders.COOKIE, cookie.toString());
         return headers;
     }
 

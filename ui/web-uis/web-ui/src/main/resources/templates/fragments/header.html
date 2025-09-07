@@ -4,21 +4,26 @@
     <div class="uc-header-inner">
       <a class="uc-brand" href="/">ULTRACARDS</a>
       <div class="uc-actions">
-        <!-- Authenticated: show username and profile -->
+        <!-- Theme toggle (slider) on the left -->
+        <button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme">
+          <span class="thumb" aria-hidden="true">
+            <span class="ico sun">☀️</span>
+            <span class="ico moon">🌙</span>
+          </span>
+        </button>
+
+        <!-- Authenticated: show username and profile as one item -->
         <div th:if="${isAuthenticated}">
-          <a class="btn" th:href="@{/profile}" th:text="${username} ?: 'Bob.'">Bob.</a>
-          <a class="uc-avatar" th:href="@{/profile}">👤</a>
+          <a class="profile-chip" th:href="@{/profile}">
+            <span class="username" th:text="${username} ?: 'Bob.'">Bob.</span>
+            <img class="avatar" data-avatar th:src="@{/pics/profile_icon_dark.svg}" alt="Profile" />
+          </a>
         </div>
 
         <!-- Not authenticated: show Login/Signup trigger -->
         <div th:unless="${isAuthenticated}">
           <button class="btn btn-accent" type="button" data-action="open-login">Log In / Sign Up</button>
         </div>
-
-        <!-- Theme toggle -->
-        <button class="btn" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme">
-          🌓
-        </button>
       </div>
     </div>
   </header>
@@ -64,7 +69,7 @@
               <small id="code-error" class="error"></small>
             </div>
             <div class="actions">
-              <button class="btn" type="button" data-close>Cancel</button>
+              <button class="btn" type="button" data-cancel>Cancel</button>
               <button class="btn btn-accent" type="submit">Verify</button>
             </div>
           </form>
@@ -80,7 +85,7 @@
               <small id="username-error" class="error"></small>
             </div>
             <div class="actions">
-              <button class="btn" type="button" data-close>Cancel</button>
+              <button class="btn" type="button" data-cancel>Cancel</button>
               <button class="btn btn-accent" type="submit">Save</button>
             </div>
           </form>

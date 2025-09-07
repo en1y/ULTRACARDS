@@ -1,8 +1,10 @@
 package com.ultracards.server.service.auth;
 
+import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.VerificationCode;
 import com.ultracards.server.repositories.VerificationCodeRepository;
+import com.ultracards.server.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 @RequiredArgsConstructor
 public class VerificationCodeService {
+    private final UserService userService;
     @Value("${app.code.validity-minutes:10}")
     private int CODE_VALIDITY_MINUTES;
 
@@ -34,6 +37,12 @@ public class VerificationCodeService {
 
         verificationCode = codeRepository.save(verificationCode);
         return verificationCode;
+    }
+
+    public VerificationCode getVerificationCodeByEmail(String email) {
+        return getVerificationCodeByUser(
+                userService.getUserByEmail(new EmailDTO(email))
+        );
     }
 
     public VerificationCode getVerificationCodeByUser(UserEntity user) {

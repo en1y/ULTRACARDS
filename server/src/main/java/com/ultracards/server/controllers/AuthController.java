@@ -8,8 +8,10 @@ import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.service.AuthService;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.auth.TokenService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -59,18 +61,15 @@ public class AuthController {
 
         if (username.getUsername() == null)
             return redirectToLogout();
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(username);
     }
 
     @GetMapping("/username")
     public ResponseEntity<UsernameDTO> getUsername(
-            @NotBlank @CookieValue(name = "refreshToken") String token,
-            BindingResult errors) {
+            @NotBlank @CookieValue(name = "refreshToken") String token
+            ) {
 
         var tokenEntity = tokenService.getToken(token);
-
-        if (errors.hasErrors())
-            return ResponseEntity.badRequest().build();
 
         var username = authService.getUsername(tokenEntity);
 
@@ -106,7 +105,6 @@ public class AuthController {
             var tokenEntity = getNullifiableToken(token, emailDTO);
 
             authService.sendVerificationEmail(emailDTO, tokenEntity);
-
             return ResponseEntity.ok().build();
 
         } catch (AccessDeniedException e) {
@@ -116,20 +114,23 @@ public class AuthController {
 
     @PostMapping("/email/verify")
     public ResponseEntity<Void> verifyCode(
-            @CookieValue(name = "refreshToken", required = false) String token,
             @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
             BindingResult errors
     ) {
-        var tokenEntity = tokenService.getToken(token);
-
         if (errors.hasErrors())
             return ResponseEntity.badRequest().build();
 
-        var isVerificationCodeCorrect = authService.verifyCode(verificationCodeDTO, tokenEntity);
+        var isVerificationCodeCorrect = authService.verifyCode(verificationCodeDTO);
 
         if (!isVerificationCodeCorrect)
             return ResponseEntity.badRequest().build();
-        return ResponseEntity.ok().build();
+
+        var token =
+                tokenService.getTokenByUser(
+                        userService.getUserByEmail(
+                                new EmailDTO(verificationCodeDTO.getEmail())));
+        var cookie = ResponseCookie.from("refreshToken", token.getToken()).build();
+        return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).build();
     }
 
     @GetMapping("/profile")

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ULTRACARDS</title>
   <link rel="stylesheet" th:href="@{/css/theme.css}" />
 </head>
-<body th:attr="data-theme=${theme}">
+<body>
 
   <div th:replace="fragments/header :: header"></div>
 
@@ -23,8 +23,8 @@
       </p>
     </section>
 
-    <div class="container" th:if="${isAuthenticated}">
-      <a class="btn btn-accent" th:href="@{/games}">Go to Games</a>
+    <div class="container center-full" th:if="${isAuthenticated}">
+      <a class="btn btn-accent" th:href="@{/games}">Go To Games</a>
     </div>
   </main>
 
@@ -33,4 +33,3 @@
   <script th:src="@{/js/ui.js}"></script>
 </body>
 </html>
-

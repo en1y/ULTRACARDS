@@ -31,7 +31,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws IOException, ServletException {
         String path = req.getRequestURI();
         // Skip paths that shouldn't rotate
-        if (path.startsWith("/api/auth/logout") || path.startsWith("/public")) {
+        if (path.startsWith("/api/auth/logout") || path.startsWith("/public") || path.startsWith("/active") || path.startsWith("/api/auth/email/")) {
             chain.doFilter(req, res);
             return;
         }
@@ -46,6 +46,9 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         try {
             var rotatedToken = tokenService.rotateToken(token);
 
+            if (!rotatedToken.getToken().equals(token)) {
+                System.out.println("WHHHAAAAT");
+            }
             // make it available to controllers/services
             req.setAttribute("tokenEntity", rotatedToken);
 

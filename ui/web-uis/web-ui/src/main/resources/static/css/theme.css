@@ -61,6 +61,11 @@ img { max-width: 100%; display: block; }
   font-weight: 800;
   letter-spacing: 0.5px;
   color: var(--color-accent);
+  font-size: 1.8rem;
+  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  border: 1px solid var(--color-border);
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
 }
 
 .uc-actions {
@@ -78,6 +83,8 @@ img { max-width: 100%; display: block; }
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.04s ease;
+  font-weight: 700;
+  font-size: 1.05rem;
 }
 
 .btn:hover { border-color: var(--color-accent); }
@@ -98,6 +105,33 @@ img { max-width: 100%; display: block; }
   background: var(--color-surface-2);
   font-size: 18px;
 }
+
+/* Profile chip (username + avatar as one control) */
+.profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 9999px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.profile-chip:hover { border-color: var(--color-accent); }
+
+.profile-chip img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+/* Theme-based avatar switching */
+.avatar-light { display: none; }
+.avatar-dark { display: none; }
+[data-theme="light"] .avatar-light { display: block; }
+[data-theme="dark"] .avatar-dark { display: block; }
 
 /* Inputs and fields */
 .field {
@@ -207,3 +241,47 @@ input:focus, .code-box:focus {
 
 .footer small { display: block; text-align: center; }
 
+/* Utility: center children horizontally */
+.center { display: flex; justify-content: center; }
+/* Full-width centering helper */
+.center-full { display: grid; place-items: center; width: 100%; }
+
+/* Theme slider toggle */
+.theme-toggle {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  padding: 0;
+  border-radius: 9999px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.theme-toggle .thumb {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  box-shadow: 0 1px 3px var(--color-shadow);
+  left: 3px;
+  transition: transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle .thumb .ico { font-size: 14px; line-height: 1; }
+.theme-toggle .thumb .moon { display: none; }
+.theme-toggle[aria-pressed="true"] .thumb .sun { display: none; }
+.theme-toggle[aria-pressed="true"] .thumb .moon { display: inline; }
+
+/* When pressed (dark mode), move thumb to the right */
+.theme-toggle[aria-pressed="true"] .thumb {
+  transform: translateX(28px);
+}
