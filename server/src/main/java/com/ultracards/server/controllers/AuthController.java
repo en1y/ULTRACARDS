@@ -47,15 +47,15 @@ public class AuthController {
     )
     @ResponseBody
     public ResponseEntity<UsernameDTO> updateUsername(
-            @NotBlank @CookieValue(name = "refreshToken") String token,
+            @NotNull @RequestAttribute("tokenEntity") String token,
             @Valid @RequestBody UsernameDTO username,
             BindingResult errors) {
-
-        var tokenEntity = tokenService.getToken(token);
 
         if (errors.hasErrors() || username.getUsername().length() > MAX_USERNAME_LENGTH) {
             return ResponseEntity.badRequest().build();
         }
+
+        var tokenEntity = tokenService.getToken(token);
 
         username = new UsernameDTO(authService.updateUsername(username, tokenEntity));
 
@@ -66,11 +66,9 @@ public class AuthController {
 
     @GetMapping("/username")
     public ResponseEntity<UsernameDTO> getUsername(
-            @NotBlank @CookieValue(name = "refreshToken") String token
+            @NotNull @RequestAttribute("tokenEntity") String token
             ) {
-
         var tokenEntity = tokenService.getToken(token);
-
         var username = authService.getUsername(tokenEntity);
 
         if (username == null)
@@ -83,7 +81,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @CookieValue(name = "refreshToken", required = false) String token,
+            @RequestAttribute(name = "tokenEntity", required = false) String token,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -93,7 +91,7 @@ public class AuthController {
 
     @PostMapping("/email/send")
     public ResponseEntity<Void> sendVerificationEmail(
-            @CookieValue(name = "refreshToken", required = false) String token,
+            @RequestAttribute(name = "tokenEntity", required = false) String token,
             @Valid @RequestBody EmailDTO emailDTO,
             BindingResult errors
     ) {
@@ -102,7 +100,11 @@ public class AuthController {
         }
 
         try {
+            var userByEmail = userService.userExistsByEmail(emailDTO);
             var tokenEntity = getNullifiableToken(token, emailDTO);
+
+            if (userByEmail && !tokenEntity.getUser().getEmail().equals(emailDTO.getEmail()))
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
 
             authService.sendVerificationEmail(emailDTO, tokenEntity);
             return ResponseEntity.ok().build();
@@ -114,9 +116,15 @@ public class AuthController {
 
     @PostMapping("/email/verify")
     public ResponseEntity<Void> verifyCode(
+            @RequestAttribute(name = "tokenEntity", required = false) String token,
             @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
             BindingResult errors
     ) {
+        TokenEntity tokenEntity = null;
+        if (token != null) {
+            tokenEntity = tokenService.getToken(token);
+            verificationCodeDTO.setEmail(tokenEntity.getUser().getEmail());
+        }
         if (errors.hasErrors())
             return ResponseEntity.badRequest().build();
 
@@ -125,21 +133,20 @@ public class AuthController {
         if (!isVerificationCodeCorrect)
             return ResponseEntity.badRequest().build();
 
-        var token =
+        if (tokenEntity == null)
+            tokenEntity =
                 tokenService.getTokenByUser(
                         userService.getUserByEmail(
                                 new EmailDTO(verificationCodeDTO.getEmail())));
-        var cookie = ResponseCookie.from("refreshToken", token.getToken()).build();
+        var cookie = ResponseCookie.from("refreshToken", tokenEntity.getToken()).build();
         return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).build();
     }
 
     @GetMapping("/profile")
     public ResponseEntity<ProfileDTO> getProfile(
-            @CookieValue(name = "refreshToken", required = false) String token
-    ) {
-
+            @RequestAttribute("tokenEntity") String token
+            ) {
         var tokenEntity = tokenService.getToken(token);
-
         var res = authService.getProfile(tokenEntity);
 
         return ResponseEntity.ok(res);
@@ -147,15 +154,15 @@ public class AuthController {
 
     @PostMapping("/profile")
     public ResponseEntity<ProfileDTO> updateProfile(
-            @CookieValue(name = "refreshToken", required = false) String token,
+            @RequestAttribute("tokenEntity") String token,
             @RequestBody @Valid ProfileDTO profileDTO,
             BindingResult errors
     ) {
-        var tokenEntity = tokenService.getToken(token);
         if (errors.hasErrors()) {
             return ResponseEntity.badRequest().build();
         }
 
+        var tokenEntity = tokenService.getToken(token);
         var res = authService.updateProfile(profileDTO, tokenEntity);
 
         return ResponseEntity.ok(res);

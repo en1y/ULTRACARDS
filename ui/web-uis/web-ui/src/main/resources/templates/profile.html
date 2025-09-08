@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile • ULTRACARDS</title>
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('uc-theme');
+        var theme = (t === 'dark' || t === 'light') ? t : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { /* no-op */ }
+    })();
+  </script>
+  <link rel="stylesheet" th:href="@{/css/theme.css}" />
+  <style>
+    .profile-layout { display: grid; grid-template-columns: 240px 1fr; gap: 1rem; }
+    .profile-sidebar { position: sticky; top: 72px; align-self: start; }
+    .profile-tabs { display: flex; flex-direction: column; gap: 0.4rem; }
+    .profile-tabs a { padding: 0.6rem 0.8rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
+    .profile-tabs a.active, .profile-tabs a:hover { border-color: var(--color-accent); }
+    .profile-section { scroll-margin-top: 86px; }
+    .cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { border: 1px solid var(--color-border); background: var(--color-bg); border-radius: 14px; box-shadow: 0 6px 24px var(--color-shadow); padding: 1rem; }
+    .row { display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; align-items: center; }
+    .row + .row { margin-top: 0.75rem; }
+    .muted { color: color-mix(in oklab, var(--color-text) 70%, transparent); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; }
+    .stat { border: 1px dashed var(--color-border); border-radius: 12px; padding: 0.75rem; text-align: center; }
+    /* Vertical table for history */
+    .vtable { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .vtable th, .vtable td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--color-border); }
+    .vtable th { text-align: left; }
+    .vtable th[scope="row"] { width: 40%; color: color-mix(in oklab, var(--color-text) 80%, transparent); }
+    .vtable tr.group th { padding-top: 1rem; border-top: 2px solid var(--color-border); color: var(--color-accent); text-transform: uppercase; letter-spacing: 0.02em; }
+    .inline-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.75rem; }
+    html { scroll-behavior: smooth; }
+  </style>
+</head>
+<body>
+
+  <div th:replace="fragments/header :: header"></div>
+
+  <main class="container">
+    <h1>Profile</h1>
+
+    <div class="profile-layout">
+      <!-- Left tabs -->
+      <nav class="profile-sidebar">
+        <div class="profile-tabs" role="tablist">
+          <a href="#info" class="tab" data-tab="#info" role="tab" aria-controls="info">User Information</a>
+          <a href="#history" class="tab" data-tab="#history" role="tab" aria-controls="history">Game History</a>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <div>
+        <!-- User Information section -->
+        <section id="info" class="profile-section" aria-labelledby="info-title">
+          <div class="cards">
+            <div class="card">
+              <h2 id="info-title">User Information</h2>
+              <form id="profile-form" th:action="@{/profile}" th:object="${profile}" method="post" novalidate>
+                <!-- Hidden fields to satisfy DTO validation and preserve identity -->
+                <input type="hidden" th:field="*{roles}" />
+                <input type="hidden" th:field="*{id}" />
+                <div class="row">
+                  <label for="email">Email</label>
+                  <div class="field">
+                    <input id="email" name="email" type="email" th:field="*{email}"
+                           placeholder="you@example.com" required maxlength="254" />
+                    <small id="email-error" class="error" th:if="${#fields.hasErrors('email')}" th:text="${#fields.errors('email')[0]}"></small>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <label for="username">Username</label>
+                  <div class="field">
+                    <input id="username" name="username" type="text" th:field="*{username}"
+                           placeholder="Your username" required maxlength="64"
+                           pattern="^[A-Za-z0-9_.\-]{1,64}$" />
+                    <small class="help">Allowed: letters, digits, dot, underscore, dash (1–64).</small>
+                    <small id="username-error" class="error" th:if="${#fields.hasErrors('username')}" th:text="${#fields.errors('username')[0]}"></small>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <span class="muted">Roles</span>
+                  <div th:text="${profile.roles}">USER</div>
+                </div>
+                <div class="row">
+                  <span class="muted">ID</span>
+                  <div th:text="${profile.id}">0</div>
+                </div>
+
+                <!-- Keep non-editable fields out of the form model binding -->
+                <div class="inline-actions">
+                  <button class="btn" type="button" id="cancel-edit">Cancel</button>
+                  <button class="btn btn-accent" type="submit">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- Game History section -->
+        <section id="history" class="profile-section" aria-labelledby="history-title" style="margin-top: 2rem;">
+          <div class="card">
+            <h2 id="history-title">Game History</h2>
+            <table class="vtable">
+              <tbody>
+                <tr>
+                  <th scope="row">Total Played</th>
+                  <td th:text="${profile.gamesPlayed}">0</td>
+                </tr>
+                <tr>
+                  <th scope="row">Total Won</th>
+                  <td th:text="${profile.gamesWon}">0</td>
+                </tr>
+
+                <tr class="group">
+                  <th colspan="2">Briškula</th>
+                </tr>
+                <tr>
+                  <th scope="row">Played</th>
+                  <td th:text="${profile.briskulaGamesPlayed}">0</td>
+                </tr>
+                <tr>
+                  <th scope="row">Won</th>
+                  <td th:text="${profile.briskulaGamesWon}">0</td>
+                </tr>
+
+                <tr class="group">
+                  <th colspan="2">Poker</th>
+                </tr>
+                <tr>
+                  <th scope="row">Played</th>
+                  <td th:text="${profile.pokerGamesPlayed}">0</td>
+                </tr>
+                <tr>
+                  <th scope="row">Won</th>
+                  <td th:text="${profile.pokerGamesWon}">0</td>
+                </tr>
+
+                <tr class="group">
+                  <th colspan="2">Trešeta</th>
+                </tr>
+                <tr>
+                  <th scope="row">Played</th>
+                  <td th:text="${profile.tresetaGamesPlayed}">0</td>
+                </tr>
+                <tr>
+                  <th scope="row">Won</th>
+                  <td th:text="${profile.tresetaGamesWon}">0</td>
+                </tr>
+
+                <tr class="group">
+                  <th colspan="2">Durak</th>
+                </tr>
+                <tr>
+                  <th scope="row">Played</th>
+                  <td th:text="${profile.durakGamesPlayed}">0</td>
+                </tr>
+                <tr>
+                  <th scope="row">Won</th>
+                  <td th:text="${profile.durakGamesWon}">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div th:replace="fragments/footer :: footer"></div>
+
+  <script th:src="@{/js/ui.js}"></script>
+  <script th:src="@{/js/profile.js}"></script>
+</body>
+</html>

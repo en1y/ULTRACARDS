@@ -65,10 +65,12 @@ function guardXSS(value) {
 (function () {
   const overlay = () => document.querySelector('#login-modal');
   const closeButtons = () => overlay()?.querySelectorAll('[data-close]') || [];
+  const cancelButtons = () => overlay()?.querySelectorAll('[data-cancel]') || [];
   const stepEls = () => overlay()?.querySelectorAll('[data-step]') || [];
   const openBtn = () => document.querySelector('[data-action="open-login"]');
   // Keep the email captured in step 1 for use in verification
   let pendingEmail = null;
+  let context = { mode: 'login', onVerified: null };
 
   function showStep(id) {
     stepEls().forEach((el) => {
@@ -76,7 +78,7 @@ function guardXSS(value) {
     });
   }
 
-  function openModal() {
+  function openModal(initialStep = 'email') {
     const ov = overlay();
     if (!ov) return;
     ov.classList.add('active');
@@ -96,7 +98,7 @@ function guardXSS(value) {
       if (userError) userError.textContent = '';
       pendingEmail = null;
     } catch {}
-    showStep('email');
+    showStep(initialStep);
   }
 
   function closeModal() {
@@ -123,9 +125,14 @@ function guardXSS(value) {
 
   document.addEventListener('DOMContentLoaded', () => {
     const btn = openBtn();
-    if (btn) btn.addEventListener('click', openModal);
+    if (btn) btn.addEventListener('click', () => openModal());
     // Only the X button (data-close in modal header) can close the modal.
     closeButtons().forEach((b) => b.addEventListener('click', closeModal));
+    // Make in-modal Cancel buttons actually close and reset the modal
+    cancelButtons().forEach((b) => b.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeModal();
+    }));
 
     // Step 1: email submit
     const emailForm = document.querySelector('#email-step-form');
@@ -142,9 +149,38 @@ function guardXSS(value) {
       if (!re.test(email)) { emailError.textContent = 'Please enter a valid email'; return; }
       try {
         const res = await fetch('/api/auth/email/send', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email })
         });
-        // Proceed regardless; backend should send the code
+        if (!res.ok) {
+          // Adapt to ApiExceptionHandler: show messages under email input and keep email step visible
+          try {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const data = await res.json();
+              const msgs = [];
+              if (Array.isArray(data?.globalErrors)) msgs.push(...data.globalErrors);
+              if (data?.errors) {
+                const perField = Object.values(data.errors).filter(Boolean);
+                msgs.push(...perField);
+              }
+              if (Array.isArray(data?.messages)) msgs.push(...data.messages);
+              const unique = msgs.filter((m, i, a) => a.indexOf(m) === i);
+              emailError.textContent = unique.length ? unique.join('\n') : (data?.message || 'Could not send code.');
+            } else {
+              const txt = await res.text();
+              emailError.textContent = txt || 'Could not send code.';
+            }
+          } catch {
+            emailError.textContent = 'Could not send code.';
+          }
+          showStep('email');
+          pendingEmail = null;
+          return;
+        }
+        // Success: proceed to code entry
         pendingEmail = email;
         showStep('code');
         // Focus first code box
@@ -219,7 +255,10 @@ function guardXSS(value) {
       if (!pendingEmail) { codeError.textContent = 'Missing email. Go back and enter your email.'; return; }
       try {
         const res = await fetch('/api/auth/email/verify', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, email: pendingEmail })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ code, email: pendingEmail })
         });
         let needsUsername = true;
         try {
@@ -231,6 +270,13 @@ function guardXSS(value) {
             return;
           }
         } catch {}
+        if (context.mode === 'verify-only') {
+          try { context.onVerified && context.onVerified(pendingEmail); } catch {}
+          pendingEmail = null;
+          context = { mode: 'login', onVerified: null };
+          closeModal();
+          return;
+        }
         if (needsUsername) {
           showStep('username');
           document.querySelector('#username-input')?.focus();
@@ -255,12 +301,72 @@ function guardXSS(value) {
       if (username.length < 3) { userError.textContent = 'Username must be at least 3 characters'; return; }
       try {
         const res = await fetch('/api/auth/username', {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username })
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username })
         });
         window.location.reload();
       } catch (err) {
         userError.textContent = 'Could not set username. Try again.';
       }
     });
+    // Expose a small API for in-app email verification flows (e.g., profile email change)
+    window.UCAuth = {
+      // Opens the modal, prefills email, sends code, and calls onVerified(email) on success
+      verifyEmail: async (email, onVerified, onError) => {
+        const ov = overlay();
+        if (!ov) return;
+        context = { mode: 'verify-only', onVerified };
+        // Open directly on code step; do not show email step at all in this flow
+        openModal('code');
+        try {
+          const emailInput = document.querySelector('#email-input');
+          const emailError = document.querySelector('#email-error');
+          if (emailInput) emailInput.value = email || '';
+          if (emailError) emailError.textContent = '';
+          // Send code right away using the same API as the login flow
+          const res = await fetch('/api/auth/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email })
+          });
+          if (!res.ok) {
+            // Parse errors so the profile page can show them below its email field
+            let message = 'Could not send code.';
+            try {
+              const ct = res.headers.get('content-type') || '';
+              if (ct.includes('application/json')) {
+                const data = await res.json();
+                const msgs = [];
+                if (Array.isArray(data?.globalErrors)) msgs.push(...data.globalErrors);
+                if (data?.errors) {
+                  const perField = Object.values(data.errors).filter(Boolean);
+                  msgs.push(...perField);
+                }
+                if (Array.isArray(data?.messages)) msgs.push(...data.messages);
+                const unique = msgs.filter((m, i, a) => a.indexOf(m) === i);
+                message = unique.length ? unique.join('\n') : (data?.message || message);
+              } else {
+                const txt = await res.text();
+                message = txt || message;
+              }
+            } catch {}
+            // Close the modal and report the error back to the caller (profile page)
+            closeModal();
+            try { if (typeof onError === 'function') onError(message); } catch {}
+            return;
+          }
+          pendingEmail = email;
+          showStep('code');
+          document.querySelector('.code-box')?.focus();
+        } catch (e) {
+          // Close modal and surface error to caller (stay on profile page)
+          closeModal();
+          try { if (typeof onError === 'function') onError('Network error. Try again.'); } catch {}
+        }
+      }
+    };
   });
 })();

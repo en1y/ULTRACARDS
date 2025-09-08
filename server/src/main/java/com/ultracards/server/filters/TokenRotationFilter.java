@@ -50,7 +50,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
                 System.out.println("WHHHAAAAT");
             }
             // make it available to controllers/services
-            req.setAttribute("tokenEntity", rotatedToken);
+            req.setAttribute("tokenEntity", rotatedToken.getToken());
 
             // set rotatedToken cookie
             var cookie = getCookie(rotatedToken);

@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ULTRACARDS</title>
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('uc-theme');
+        var theme = (t === 'dark' || t === 'light') ? t : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { /* no-op */ }
+    })();
+  </script>
   <link rel="stylesheet" th:href="@{/css/theme.css}" />
 </head>
 <body>

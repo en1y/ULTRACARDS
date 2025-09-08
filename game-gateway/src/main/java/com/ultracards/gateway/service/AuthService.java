@@ -18,6 +18,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import javax.security.auth.login.AccountLockedException;
+
 @Service
 public class AuthService {
 
@@ -78,13 +80,17 @@ public class AuthService {
      */
     public void sendVerificationEmail(
             @NotBlank @Email String email,
-            @NotNull ClientTokenHolder tokenHolder) {
+            @NotNull ClientTokenHolder tokenHolder) throws AccountLockedException {
         var entity = new HttpEntity<>(new EmailDTO(email), createHeaders(tokenHolder.getToken()));
 
-        restTemplate.postForEntity(
+        var res = restTemplate.postForEntity(
                 serverUrl + "api/auth/email/send",
                 entity,
                 Void.class);
+
+        if (res.getStatusCode() == HttpStatus.CONFLICT) {
+            throw new AccountLockedException("Account with this email already exists");
+        }
     }
 
     public void sendVerificationEmail(@NotBlank @Email String email) {
@@ -100,7 +106,7 @@ public class AuthService {
             @Valid VerificationCodeDTO verificationCode,
             ClientTokenHolder tokenHolder
     ) {
-        var headers = new HttpHeaders();
+        var headers = tokenHolder.getToken() != null ? createHeaders(tokenHolder.getToken()) : new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         var entity = new HttpEntity<>(verificationCode, headers);
 

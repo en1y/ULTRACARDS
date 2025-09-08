@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,6 +29,10 @@ public class UserService {
     public UserEntity getUserByEmail(@Valid EmailDTO email) {
         var user = userRepository.findByEmail(email.getEmail());
         return user.orElseGet(() -> createUser(email));
+    }
+
+    public boolean userExistsByEmail(@Valid EmailDTO email) {
+        return userRepository.findByEmail(email.getEmail()).isPresent();
     }
 
 }

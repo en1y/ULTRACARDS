@@ -11,9 +11,11 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.security.auth.login.AccountLockedException;
 import java.util.Map;
 
 @RestController
@@ -27,22 +29,43 @@ public class AuthController {
 
     @PostMapping("/email/send")
     public ResponseEntity<?> sendEmail(
-            @Valid @RequestBody EmailDTO email
+            @Valid @RequestBody EmailDTO email,
+            @CookieValue(name = "refreshToken", required = false) String token,
+            HttpServletResponse response
     ) {
-        authService.sendVerificationEmail(email.getEmail());
+        if (token == null) {
+            authService.sendVerificationEmail(email.getEmail());
+        } else {
+            var tokenHolder = new ClientTokenHolder(token);
+            try {
+                authService.sendVerificationEmail(email.getEmail(), tokenHolder);
+            } catch (AccountLockedException e) {
+                // In case of 409
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(Map.of(
+                                "error", "ACCOUNT_LOCKED",
+                                "message", e.getMessage()
+                        ));
+            }
+            response.addCookie(createCookie(tokenHolder));
+        }
         return ResponseEntity.ok().body(Map.of("status", "ok"));
     }
 
     @PostMapping("/email/verify")
     public ResponseEntity<Map<String, Object>> verifyEmail(
+            @CookieValue(name = "refreshToken", required = false) String token,
             @Valid @RequestBody VerificationCodeDTO code,
             HttpServletResponse response
     ) {
-        var tokenHolder = new ClientTokenHolder();
+        var tokenHolder = token == null ?
+            new ClientTokenHolder() : new ClientTokenHolder(token);
+
 
         var success = authService.verifyCode(code, tokenHolder);
 
-        boolean needsUsername = true;
+        var needsUsername = true;
         if (success) {
             response.addCookie(createCookie(tokenHolder));
             var usernameDTO = authService.getUsername(tokenHolder);

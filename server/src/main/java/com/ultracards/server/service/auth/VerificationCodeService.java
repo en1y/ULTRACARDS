@@ -8,6 +8,7 @@ import com.ultracards.server.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -53,6 +54,13 @@ public class VerificationCodeService {
         else return null;
     }
 
+    @Transactional
+    public void setVerificationCodeUsed (VerificationCode code) {
+        code.setUsed(true);
+        codeRepository.save(code);
+    }
+
+    @Transactional
     public boolean validateVerificationCode(VerificationCode code) {
         if (!code.isValid()) return false;
         code.setUsed(true);

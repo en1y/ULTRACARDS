@@ -91,9 +91,14 @@ public class AuthService {
 
         var code = verificationCodeService.getVerificationCodeByEmail(verificationCodeDTO.getEmail());
 
-        if (code == null) return null;
+        if (code == null || !code.isValid()) return null;
 
-        return code.getCode().equals(verificationCodeDTO.getCode());
+        var res = code.getCode().equals(verificationCodeDTO.getCode());
+
+        if (res)
+            verificationCodeService.setVerificationCodeUsed(code);
+
+        return res;
     }
 
     public ProfileDTO getProfile(TokenEntity token) {
@@ -117,7 +122,7 @@ public class AuthService {
     }
 
     private void processRotatedToken(ValidationResult validationResult, HttpServletResponse response) {
-        var cookie = new Cookie("token", validationResult.getToken().toString());
+        var cookie = new Cookie("refreshToken", validationResult.getToken().toString());
 
         cookie.setMaxAge(tokenDurationMinutes * 60);
         response.addCookie(cookie);

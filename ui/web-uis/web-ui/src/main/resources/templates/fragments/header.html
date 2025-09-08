@@ -29,7 +29,8 @@
   </header>
 
   <!-- Login modal (outside header so it centers on screen) -->
-  <div id="login-modal" class="modal-overlay" th:if="${!isAuthenticated}">
+  <!-- Login/Verification modal is available for both auth and non-auth flows -->
+  <div id="login-modal" class="modal-overlay">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
       <header>
         <strong id="login-title">Welcome to ULTRACARDS</strong>
