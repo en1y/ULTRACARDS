@@ -79,11 +79,9 @@ public class UserEntity {
     public void setRoles(Set<Role> roles) {
         this.roles.clear();
         if (roles != null) {
-            roles.forEach(role -> {
-                this.roles.add(new UserRole(
-                        this, role
-                ));
-            });
+            roles.forEach(role -> this.roles.add(new UserRole(
+                    this, role
+            )));
         }
     }
 

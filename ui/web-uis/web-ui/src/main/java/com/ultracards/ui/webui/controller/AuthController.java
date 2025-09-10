@@ -1,15 +1,12 @@
 package com.ultracards.ui.webui.controller;
 
 import com.ultracards.gateway.dto.EmailDTO;
-import com.ultracards.gateway.dto.UserDTO;
-import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.gateway.service.AuthService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

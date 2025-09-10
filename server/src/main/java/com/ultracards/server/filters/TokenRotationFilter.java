@@ -6,10 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,6 +16,8 @@ import java.nio.file.AccessDeniedException;
 
 @Component
 public class TokenRotationFilter extends OncePerRequestFilter {
+    @Value("${app.cookie-token.duration-days:15}")
+    private int tokenDurationDays;
 
     private final TokenService tokenService;
 
@@ -36,7 +36,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = readCookie(req, "refreshToken"); // or "token", just be consistent
+        String token = readRefreshToken(req);
 
         if (token == null || token.isBlank()) {
             chain.doFilter(req, res);
@@ -46,9 +46,6 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         try {
             var rotatedToken = tokenService.rotateToken(token);
 
-            if (!rotatedToken.getToken().equals(token)) {
-                System.out.println("WHHHAAAAT");
-            }
             // make it available to controllers/services
             req.setAttribute("tokenEntity", rotatedToken.getToken());
 
@@ -66,24 +63,18 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     private ResponseCookie getCookie(TokenEntity rotated) {
         return ResponseCookie.from("refreshToken", rotated.getToken())
                 .path("/")
-                .maxAge(15L * 24 * 3600) // externalize if you like
+                .maxAge(24L * 3600 * tokenDurationDays)
                 .httpOnly(true)
                 .sameSite("Strict")
                 .build();
     }
 
-    private String readCookie(HttpServletRequest req, String name) {
+    private String readRefreshToken(HttpServletRequest req) {
         if (req.getCookies() == null) return null;
         for (var c : req.getCookies()) {
-            if (name.equals(c.getName())) return c.getValue();
+            if ("refreshToken".equals(c.getName())) return c.getValue();
         }
         return null;
-    }
-
-    private <T> ResponseEntity<T> redirectToLogout() {
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .header(HttpHeaders.LOCATION, "/api/auth/logout")
-                .build();
     }
 }
 

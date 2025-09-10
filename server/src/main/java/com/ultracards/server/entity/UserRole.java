@@ -2,6 +2,8 @@ package com.ultracards.server.entity;
 
 import com.ultracards.server.enums.Role;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 
@@ -11,14 +13,19 @@ import java.util.Objects;
 public class UserRole {
     @Id
     @GeneratedValue
+    @Getter
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, updatable = false)
+    @Setter
+    @Getter
     private UserEntity user;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
+    @Setter
+    @Getter
     private Role role;
 
     public UserRole() {}
@@ -27,14 +34,6 @@ public class UserRole {
         this.user = user;
         this.role = role;
     }
-
-    public Long getId() { return id; }
-
-    public UserEntity getUser() { return user; }
-    public void setUser(UserEntity user) { this.user = user; }
-
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
 
     @Override
     public boolean equals(Object o) {

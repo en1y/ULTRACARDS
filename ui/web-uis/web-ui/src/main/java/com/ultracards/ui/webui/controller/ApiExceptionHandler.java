@@ -34,7 +34,7 @@ public class ApiExceptionHandler {
             // Try to forward the upstream JSON body (if any) so the UI can display all messages
             try {
                 var raw = ex.getResponseBodyAsString();
-                if (raw != null && !raw.isBlank()) {
+                if (!raw.isBlank()) {
                     var trimmed = raw.trim();
                     // If it looks like JSON, forward it directly
                     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -59,7 +59,6 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MissingRequestCookieException.class)
     public ResponseEntity<?> handleMissingRequestCookie(
-            MissingRequestCookieException ex,
             HttpServletRequest request,
             HttpServletResponse response
     ) {

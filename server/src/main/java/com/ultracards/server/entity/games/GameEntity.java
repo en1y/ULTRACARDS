@@ -3,6 +3,8 @@ package com.ultracards.server.entity.games;
 import com.ultracards.server.entity.UserEntity;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
@@ -14,6 +16,8 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "games")
+@Getter
+@Setter
 public class GameEntity {
     @Id
     private String id;
@@ -66,85 +70,5 @@ public class GameEntity {
     public void removePlayer(UserEntity user) {
         if (!this.players.remove(user))
             throw new IllegalArgumentException("Player is not in this game");
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getGameType() {
-        return gameType;
-    }
-
-    public void setGameType(String gameType) {
-        this.gameType = gameType;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getGameName() {
-        return gameName;
-    }
-
-    public void setGameName(String gameName) {
-        this.gameName = gameName;
-    }
-
-    public List<UserEntity> getPlayers() {
-        return players;
-    }
-
-    public void setPlayers(List<UserEntity> players) {
-        this.players = players;
-    }
-
-    public String getGameStateJson() {
-        return gameStateJson;
-    }
-
-    public void setGameStateJson(String gameStateJson) {
-        this.gameStateJson = gameStateJson;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public UserEntity getCreator() {
-        return creator;
-    }
-
-    public void setCreator(UserEntity creator) {
-        this.creator = creator;
     }
 }

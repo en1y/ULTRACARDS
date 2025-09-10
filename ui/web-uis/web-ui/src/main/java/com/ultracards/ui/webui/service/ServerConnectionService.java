@@ -1,7 +1,6 @@
 package com.ultracards.ui.webui.service;
 
 import com.ultracards.gateway.service.ServerService;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

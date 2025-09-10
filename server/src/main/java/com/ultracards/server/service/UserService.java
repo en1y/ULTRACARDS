@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +33,11 @@ public class UserService {
 
     public boolean userExistsByEmail(@Valid EmailDTO email) {
         return userRepository.findByEmail(email.getEmail()).isPresent();
+    }
+
+    public void updateLastLogInDate(@Valid UserEntity user) {
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
     }
 
 }

@@ -8,10 +8,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
@@ -119,26 +115,6 @@ public class AuthService {
         updateTokenHolder(tokenHolder, response.getHeaders());
 
         return response.getStatusCode().is2xxSuccessful();
-    }
-
-    public boolean verifyCode(
-            @NotBlank
-            @Pattern(regexp = "\\d{6}", message = "Code must be exactly 6 digits")
-            String verificationCode,
-            @NotNull ClientTokenHolder tokenHolder
-    ) {
-        var entity = new HttpEntity<>(new VerificationCodeDTO(verificationCode, getProfile(tokenHolder).getEmail()), createHeaders(tokenHolder.getToken()));
-        entity.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
-        var response = restTemplate.postForEntity(
-                serverUrl + "api/auth/email/verify",
-                entity,
-                Void.class);
-
-        updateTokenHolder(tokenHolder, response.getHeaders());
-
-        return response.getStatusCode().is2xxSuccessful();
-
     }
 
     public ProfileDTO getProfile(@NotNull ClientTokenHolder tokenHolder) {

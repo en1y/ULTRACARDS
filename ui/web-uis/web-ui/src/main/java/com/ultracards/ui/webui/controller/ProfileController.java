@@ -7,7 +7,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -72,6 +71,10 @@ public class ProfileController {
             username = authService.getUsername(tokenHolder).getUsername();
             response.addCookie(createCookie(tokenHolder));
         }
+        setBasicModelAttributes(model, username);
+    }
+
+    static void setBasicModelAttributes(Model model, String username) {
         var auth = !(username == null);
         var name = (username != null && !username.isBlank()) ? username : "Bob.";
         model.addAttribute("isAuthenticated", auth);

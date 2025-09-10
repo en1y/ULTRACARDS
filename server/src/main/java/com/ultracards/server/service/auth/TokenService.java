@@ -76,7 +76,7 @@ public class TokenService {
 
     public TokenEntity rotateToken (TokenDTO token) throws AccessDeniedException {
         var validatedToken = validateToken(token);
-        var tokenValidationStatus = validatedToken.getStatus();
+        var tokenValidationStatus = validatedToken.status();
 
         if (tokenValidationStatus.equals(LOGOUT)) {
             log.info("Token \"{}\" is invalid. Redirecting to logout.", token.getToken());
@@ -85,21 +85,17 @@ public class TokenService {
 
         if (tokenValidationStatus.equals(ROTATED) ||
                 tokenValidationStatus.equals(PROCEED)) {
-            return validatedToken.getToken();
+            return validatedToken.token();
         }
 
         log.error("Token status \"{}\" is not supported. Redirecting to logout.", tokenValidationStatus);
         throw new UnsupportedOperationException("Invalid token status: " + tokenValidationStatus);
     }
 
-    public TokenEntity rotateToken (TokenEntity token) throws AccessDeniedException {
-        return rotateToken(new TokenDTO(token.getToken()));
-    }
-
     public TokenEntity getTokenByUser(UserEntity user) {
         var token = tokenRepository.findByUser(user);
         if (token.isPresent()) {
-            return validateToken(new TokenDTO(token.get().getToken())).getToken();
+            return validateToken(new TokenDTO(token.get().getToken())).token();
         }
         return createToken(user);
     }

@@ -12,7 +12,6 @@
     <artifactId>web-ui-parent</artifactId>
 
     <modules>
-        <module>deprecated-web-ui</module>
         <module>web-ui</module>
     </modules>
 

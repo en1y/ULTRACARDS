@@ -2,42 +2,27 @@ package com.ultracards.server.service;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
-import com.ultracards.gateway.dto.auth.TokenDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.repositories.UserRepository;
-import com.ultracards.server.repositories.games.PlayerEntity;
-import com.ultracards.server.repositories.games.briskula.BriskulaPlayerEntityRepository;
 import com.ultracards.server.service.auth.TokenService;
-import com.ultracards.server.service.auth.ValidationResult;
 import com.ultracards.server.service.auth.VerificationCodeService;
 import jakarta.mail.MessagingException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.file.AccessDeniedException;
-import java.util.List;
-
-import static com.ultracards.server.enums.TokenValidationResultStatus.*;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-
-    private final BriskulaPlayerEntityRepository briskulaPlayerEntityRepository;
-    @Value("${app.token.duration-minutes:15}")
-    private int tokenDurationMinutes;
 
     private final VerificationCodeService verificationCodeService;
     private final UserService userService;
@@ -95,8 +80,10 @@ public class AuthService {
 
         var res = code.getCode().equals(verificationCodeDTO.getCode());
 
-        if (res)
+        if (res) {
             verificationCodeService.setVerificationCodeUsed(code);
+            userService.updateLastLogInDate(code.getUser());
+        }
 
         return res;
     }
@@ -121,13 +108,6 @@ public class AuthService {
         return profileDTO;
     }
 
-    private void processRotatedToken(ValidationResult validationResult, HttpServletResponse response) {
-        var cookie = new Cookie("refreshToken", validationResult.getToken().toString());
-
-        cookie.setMaxAge(tokenDurationMinutes * 60);
-        response.addCookie(cookie);
-    }
-
     private ProfileDTO createProfileByUser(UserEntity user) {
         var profile = new ProfileDTO();
 
@@ -136,13 +116,8 @@ public class AuthService {
         profile.setRoles(user.getRoles().toString());
         profile.setId(user.getId());
 
-        var briskulaPlayers = briskulaPlayerEntityRepository.findByUser(user);
-        profile.setBriskulaGamesPlayed(
-                briskulaPlayers.size()
-        );
-        profile.setBriskulaGamesWon(
-                countGamesWon(briskulaPlayers)
-        );
+        profile.setBriskulaGamesPlayed(0);
+        profile.setBriskulaGamesWon(0);
 
         profile.setDurakGamesPlayed(0);
         profile.setDurakGamesWon(0);
@@ -154,13 +129,5 @@ public class AuthService {
         profile.setTresetaGamesWon(0);
 
         return profile;
-    }
-
-    private int countGamesWon (List<? extends PlayerEntity> players) {
-        var gamesWon = 0;
-        for (var player : players) {
-            if (player.isWinner()) gamesWon++;
-        }
-        return gamesWon;
     }
 }

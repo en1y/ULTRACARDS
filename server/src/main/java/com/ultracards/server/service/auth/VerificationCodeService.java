@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -59,13 +58,4 @@ public class VerificationCodeService {
         code.setUsed(true);
         codeRepository.save(code);
     }
-
-    @Transactional
-    public boolean validateVerificationCode(VerificationCode code) {
-        if (!code.isValid()) return false;
-        code.setUsed(true);
-        codeRepository.save(code);
-        return true;
-    }
-
 }

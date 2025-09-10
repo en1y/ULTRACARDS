@@ -8,12 +8,9 @@ import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.service.AuthService;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.auth.TokenService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,9 +30,6 @@ public class AuthController {
     private final AuthService authService;
     private final TokenService tokenService;
     private final UserService userService;
-
-    @Value("${app.cookie-token.duration-days:15}")
-    private int tokenDurationDays;
 
     @Value("${app.max-length.username}")
     private Integer MAX_USERNAME_LENGTH;

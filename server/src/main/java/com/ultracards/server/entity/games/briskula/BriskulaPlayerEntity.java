@@ -4,7 +4,6 @@ import com.ultracards.games.briskula.BriskulaCard;
 import com.ultracards.games.briskula.BriskulaPlayer;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.briskula.converters.BriskulaCardConverter;
-import com.ultracards.server.repositories.games.PlayerEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,7 +12,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "briskula_players")
-public class BriskulaPlayerEntity extends BriskulaPlayer implements PlayerEntity {
+public class BriskulaPlayerEntity extends BriskulaPlayer {
 
     public BriskulaPlayerEntity() {
         super(null);
