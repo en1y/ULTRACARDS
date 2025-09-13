@@ -1,5 +1,12 @@
 package com.ultracards.server.enums;
 
-public enum Role {
-    PLAYER, MODERATOR, ADMIN
+import org.springframework.security.core.GrantedAuthority;
+
+public enum Role implements GrantedAuthority {
+    USER, MODERATOR, ADMIN;
+
+    @Override
+    public String getAuthority() {
+        return "ROLE_" + name();
+    }
 }

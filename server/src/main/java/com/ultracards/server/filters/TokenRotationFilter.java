@@ -6,67 +6,110 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.hibernate.LazyInitializationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 
 @Component
+@RequiredArgsConstructor
 public class TokenRotationFilter extends OncePerRequestFilter {
-    @Value("${app.cookie-token.duration-days:15}")
-    private int tokenDurationDays;
+
+    private static final Logger log = LoggerFactory.getLogger(TokenRotationFilter.class);
 
     private final TokenService tokenService;
 
-    public TokenRotationFilter(TokenService tokenService) {
-        this.tokenService = tokenService;
-    }
+    @Value("${app.cookie-token.duration-days:15}")
+    private int tokenDurationDays;
+
+    @Value("${app.cookie-token.same-site:Lax}")
+    private String sameSite;
+
+    @Value("${app.cookie-token.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-token.domain:}")
+    private String cookieDomain;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req,
                                     HttpServletResponse res,
                                     FilterChain chain) throws IOException, ServletException {
-        String path = req.getRequestURI();
-        // Skip paths that shouldn't rotate
-        if (path.startsWith("/api/auth/logout") || path.startsWith("/public") || path.startsWith("/active") || path.startsWith("/api/auth/email/")) {
+
+        if (shouldBypass(req)) {
             chain.doFilter(req, res);
             return;
         }
 
-        String token = readRefreshToken(req);
-
+        var token = readRefreshToken(req);
         if (token == null || token.isBlank()) {
             chain.doFilter(req, res);
             return;
         }
 
         try {
+            // 1) rotate token
             var rotatedToken = tokenService.rotateToken(token);
 
-            // make it available to controllers/services
-            req.setAttribute("tokenEntity", rotatedToken.getToken());
+            // 2) reissue cookie
+            var cookie = getRefreshToken(rotatedToken);
 
-            // set rotatedToken cookie
-            var cookie = getCookie(rotatedToken);
             res.addHeader("Set-Cookie", cookie.toString());
 
+            // 3) expose token string for controllers that use @RequestAttribute("tokenEntity")
+            req.setAttribute("refreshToken", rotatedToken.getToken());
+
+            // 4) authenticate the request so Spring Security stops throwing 401
+            var user = rotatedToken.getUser();
+            var authorities = user.getAuthorities(); // e.g., Set<Role> with Role implements GrantedAuthority
+            var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+            var context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(auth);
+            SecurityContextHolder.setContext(context);
+
             chain.doFilter(req, res);
-        } catch (AccessDeniedException ex) {
-            res.setStatus(HttpServletResponse.SC_FOUND);
-            res.setHeader("Location", "/api/auth/logout");
+        } catch (LazyInitializationException ex) {
+            log.error("Lazy init exception. Hibernate is a bitch. {}", ex.getMessage());
+        } catch (Exception ex) {
+            // rotation/validation failed -> unauthenticated
+            log.error("Error while validating with token.", ex);
+            SecurityContextHolder.clearContext();
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }
     }
 
-    private ResponseCookie getCookie(TokenEntity rotated) {
-        return ResponseCookie.from("refreshToken", rotated.getToken())
+    private ResponseCookie getRefreshToken(TokenEntity rotated) {
+        var cookie = ResponseCookie.from("refreshToken", rotated.getToken())
                 .path("/")
-                .maxAge(24L * 3600 * tokenDurationDays)
                 .httpOnly(true)
-                .sameSite("Strict")
-                .build();
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .maxAge(24L * 3600 * tokenDurationDays);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) cookie.domain(cookieDomain);
+
+        return cookie.build();
+    }
+
+    private boolean shouldBypass(HttpServletRequest req) {
+        var path = req.getRequestURI();
+        var method = req.getMethod();
+        if ("OPTIONS".equals(method)) return true;
+        // endpoints where rotation/auth is inappropriate
+        return path.startsWith("/active")
+                || path.startsWith("/public")
+                || path.startsWith("/api/auth/logout")
+                || path.startsWith("/api/auth/email/");
     }
 
     private String readRefreshToken(HttpServletRequest req) {

@@ -12,12 +12,18 @@
           </span>
         </button>
 
-        <!-- Authenticated: show username and profile as one item -->
+        <!-- Authenticated: show username + avatar with dropdown menu -->
         <div th:if="${isAuthenticated}">
-          <a class="profile-chip" th:href="@{/profile}">
-            <span class="username" th:text="${username} ?: 'Bob.'">Bob.</span>
-            <img class="avatar" data-avatar th:src="@{/pics/profile_icon_dark.svg}" alt="Profile" />
-          </a>
+          <div class="profile-menu" data-profile-menu>
+            <button class="profile-chip" type="button" data-profile-menu-trigger aria-haspopup="true" aria-expanded="false">
+              <span class="username" th:text="${username} ?: 'Bob.'">Bob.</span>
+              <img class="avatar" data-avatar th:src="@{/pics/profile_icon_dark.svg}" alt="Profile" />
+            </button>
+            <div class="profile-dropdown" role="menu" aria-hidden="true">
+              <a class="menu-item" th:href="@{/profile}" role="menuitem">Profile</a>
+              <button class="menu-item danger" type="button" role="menuitem" data-action="logout">Log out</button>
+            </div>
+          </div>
         </div>
 
         <!-- Not authenticated: show Login/Signup trigger -->

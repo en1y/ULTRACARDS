@@ -150,8 +150,7 @@ public class AuthService {
 
     private HttpHeaders createHeaders(String token) {
         var headers = new HttpHeaders();
-        var cookie = ResponseCookie.from("refreshToken", token).build();
-        headers.add(HttpHeaders.COOKIE, cookie.toString());
+        headers.add(HttpHeaders.COOKIE, "refreshToken=" + token);
         return headers;
     }
 

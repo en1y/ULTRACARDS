@@ -52,6 +52,53 @@
   }, { passive: true });
 })();
 
+// Profile dropdown + logout
+(function () {
+  function initProfileMenu() {
+    const menu = document.querySelector('[data-profile-menu]');
+    if (!menu) return;
+    const trigger = menu.querySelector('[data-profile-menu-trigger]');
+    const panel = menu.querySelector('.profile-dropdown');
+    const logoutBtn = menu.querySelector('[data-action="logout"]');
+
+    function open() {
+      menu.classList.add('open');
+      trigger?.setAttribute('aria-expanded', 'true');
+      panel?.setAttribute('aria-hidden', 'false');
+    }
+    function close() {
+      menu.classList.remove('open');
+      trigger?.setAttribute('aria-expanded', 'false');
+      panel?.setAttribute('aria-hidden', 'true');
+    }
+    function toggle(e) {
+      e?.stopPropagation();
+      if (menu.classList.contains('open')) close(); else open();
+    }
+
+    trigger?.addEventListener('click', toggle);
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close();
+    });
+
+    logoutBtn?.addEventListener('click', async () => {
+      close();
+      const ok = window.confirm('This will log you out and clear your session. Are you sure?');
+      if (!ok) return;
+      try {
+        await fetch('/api/auth/logout', { method: 'GET', credentials: 'include' });
+      } catch {}
+      // Hard redirect to home so any stale state is gone
+      window.location.href = '/';
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initProfileMenu);
+})();
+
 // Simple XSS guard: returns { ok, message }
 function guardXSS(value) {
   if (typeof value !== 'string') return { ok: false, message: 'Invalid input' };

@@ -29,7 +29,7 @@ public class TokenEntity {
     @Column(nullable = false)
     private boolean active = true;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 

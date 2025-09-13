@@ -11,10 +11,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(name = "users")
@@ -22,7 +23,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Getter
 @Setter
-public class UserEntity {
+public class UserEntity implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,13 +55,20 @@ public class UserEntity {
     @Column(name = "last_login")
     private Instant lastLoginAt;
 
-    @OneToMany(
-            mappedBy = "user",
-            fetch = FetchType.LAZY,
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_user_roles_user")),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uk_user_roles_user_role",
+                    columnNames = {"user_id", "role"}
+            )
     )
-    private Set<UserRole> roles = new HashSet<>();
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 32)
+    private Set<Role> roles = new HashSet<>();
+
+    /* -------- Basic entity constructor -------- */
 
     public UserEntity(String email, String username) {
         this.email = email;
@@ -68,25 +76,55 @@ public class UserEntity {
         enabled = true;
     }
 
-    public void addRole(Role role) {
-        roles.add(new UserRole(this, role));
-    }
+    /* -------- convenience API -------- */
 
-    public void removeRole(Role role) {
-        roles.removeIf(userRole -> userRole.getRole().equals(role));
-    }
+    public boolean addRole(Role role) { return roles.add(role); }
+    public boolean removeRole(Role role) { return roles.remove(role); }
+    public boolean hasRole(Role role) { return roles.contains(role); }
 
-    public void setRoles(Set<Role> roles) {
-        this.roles.clear();
-        if (roles != null) {
-            roles.forEach(role -> this.roles.add(new UserRole(
-                    this, role
-            )));
-        }
+    /* ----------- UserDetails ----------- */
+
+    @Override
+    public Collection<Role> getAuthorities() {
+        return getRoles();
     }
 
     @Override
+    public String getPassword() {
+        // My app has passwordless auth so I return null
+        return null;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return getStatus().equals(Status.ACTIVE);
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return !getStatus().equals(Status.DISABLED);
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return !getStatus().equals(Status.DISABLED);
+    }
+
+    /* ------------- toString ------------- */
+
+    @Override
     public String toString() {
-        return getUsername();
+        return String.format("%s: [%s]", getUsername(),  getRoles().toString());
+    }
+    /* ----------- equals/hashCode ---------- */
+
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof UserEntity that)) return false;
+        if (id != null && that.id != null) return Objects.equals(id, that.id);
+        return Objects.equals(username, that.username);
+    }
+    @Override public int hashCode() {
+        return id != null ? Objects.hash(id) : Objects.hash(username);
     }
 }

@@ -40,7 +40,7 @@
 </head>
 <body>
 
-  <div th:replace="fragments/header :: header"></div>
+  <div th:replace="~{fragments/header :: header}"></div>
 
   <main class="container">
     <h1>Profile</h1>
@@ -174,7 +174,7 @@
     </div>
   </main>
 
-  <div th:replace="fragments/footer :: footer"></div>
+  <div th:replace="~{fragments/footer :: footer}"></div>
 
   <script th:src="@{/js/ui.js}"></script>
   <script th:src="@{/js/profile.js}"></script>

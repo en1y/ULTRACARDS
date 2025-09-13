@@ -97,30 +97,6 @@ public class ApiExceptionHandler {
     private void nukeAllCookies(HttpServletRequest request,
                                 HttpServletResponse response) {
         // Nuke all cookies the client sent
-        var cookies = request.getCookies();
-        if (cookies != null) {
-            for (var in : cookies) {
-                // Best effort: match name + path (+ domain if present), set Max-Age=0
-                var out = new Cookie(in.getName(), "");
-                out.setMaxAge(0);
-                out.setPath(in.getPath() != null ? in.getPath() : "/");
-                if (in.getDomain() != null) out.setDomain(in.getDomain());
-                // Preserve flags so deletion works over the same scheme
-                out.setHttpOnly(in.isHttpOnly());
-                out.setSecure(in.getSecure() || request.isSecure());
-                response.addCookie(out);
-
-                // Also try deleting at root path in case original path was different
-                if (in.getPath() != null && !"/".equals(in.getPath())) {
-                    var root = new Cookie(in.getName(), "");
-                    root.setMaxAge(0);
-                    root.setPath("/");
-                    if (in.getDomain() != null) root.setDomain(in.getDomain());
-                    root.setHttpOnly(in.isHttpOnly());
-                    root.setSecure(in.getSecure() || request.isSecure());
-                    response.addCookie(root);
-                }
-            }
-        }
+        AuthController.nukeAllCookies(request, response);
     }
 }

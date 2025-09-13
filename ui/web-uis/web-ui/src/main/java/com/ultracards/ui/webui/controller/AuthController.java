@@ -6,23 +6,30 @@ import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.gateway.service.AuthService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.security.auth.login.AccountLockedException;
+import java.time.Duration;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
+
+    @Value("${app.cookie-token.duration-days:15}")
+    private int cookieTokenDurationDays;
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     @PostMapping("/email/send")
     public ResponseEntity<?> sendEmail(
@@ -45,7 +52,7 @@ public class AuthController {
                                 "message", e.getMessage()
                         ));
             }
-            response.addCookie(createCookie(tokenHolder));
+            response.addHeader(HttpHeaders.SET_COOKIE, createCookie(tokenHolder).toString());
         }
         return ResponseEntity.ok().body(Map.of("status", "ok"));
     }
@@ -64,11 +71,12 @@ public class AuthController {
 
         var needsUsername = true;
         if (success) {
-            response.addCookie(createCookie(tokenHolder));
+            response.addHeader(HttpHeaders.SET_COOKIE, createCookie(tokenHolder).toString());
             var usernameDTO = authService.getUsername(tokenHolder);
             var username = usernameDTO != null ? usernameDTO.getUsername() : null;
             needsUsername = (username == null || username.isBlank());
         }
+        // TODO: add a clause if the success is false
 
         return ResponseEntity.ok().body(Map.of(
                 "success", success,
@@ -88,15 +96,52 @@ public class AuthController {
                 username.getUsername()
         );
 
-        response.addCookie(createCookie(tokenHolder));
+        response.addHeader(HttpHeaders.SET_COOKIE, createCookie(tokenHolder).toString());
         return ResponseEntity.ok(newUsername);
     }
 
-    private Cookie createCookie(ClientTokenHolder tokenHolder) {
-        var cookie = new Cookie("refreshToken", tokenHolder.getToken());
-        cookie.setPath("/");
-        cookie.setMaxAge(60*60*24);
-        cookie.setHttpOnly(true);
-        return cookie;
+    @GetMapping("/logout")
+    public void logout(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        nukeAllCookies(request, response);
+    }
+
+    private ResponseCookie createCookie(ClientTokenHolder tokenHolder) {
+        return ResponseCookie.from("refreshToken", tokenHolder.getToken())
+                .httpOnly(true)
+                .path("/")
+                .maxAge(Duration.ofDays(cookieTokenDurationDays))
+                .sameSite("Lax")
+                .build();
+    }
+
+    static void nukeAllCookies(HttpServletRequest request, HttpServletResponse response) {
+        var cookies = request.getCookies();
+        if (cookies != null) {
+            for (var in : cookies) {
+                // Best effort: match name + path (+ domain if present), set Max-Age=0
+                var out = new Cookie(in.getName(), "");
+                out.setMaxAge(0);
+                out.setPath(in.getPath() != null ? in.getPath() : "/");
+                if (in.getDomain() != null) out.setDomain(in.getDomain());
+                // Preserve flags so deletion works over the same scheme
+                out.setHttpOnly(in.isHttpOnly());
+                out.setSecure(in.getSecure() || request.isSecure());
+                response.addCookie(out);
+
+                // Also try deleting at root path in case original path was different
+                if (in.getPath() != null && !"/".equals(in.getPath())) {
+                    var root = new Cookie(in.getName(), "");
+                    root.setMaxAge(0);
+                    root.setPath("/");
+                    if (in.getDomain() != null) root.setDomain(in.getDomain());
+                    root.setHttpOnly(in.isHttpOnly());
+                    root.setSecure(in.getSecure() || request.isSecure());
+                    response.addCookie(root);
+                }
+            }
+        }
     }
 }

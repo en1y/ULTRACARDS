@@ -17,7 +17,7 @@
 </head>
 <body>
 
-  <div th:replace="fragments/header :: header"></div>
+  <div th:replace="~{fragments/header :: header}"></div>
 
   <main>
     <section class="hero container">
@@ -37,7 +37,7 @@
     </div>
   </main>
 
-  <div th:replace="fragments/footer :: footer"></div>
+  <div th:replace="~{fragments/footer :: footer}"></div>
 
   <script th:src="@{/js/ui.js}"></script>
 </body>

@@ -30,10 +30,12 @@ public class ServerConnectionService {
 
     @Scheduled(fixedRateString = "${app.ultracards.server.check-interval-ms:10000}", initialDelayString = "5000")
     public void checkIsTheServerUp() {
-
         if (shuttingDown || !context.isActive() || Thread.currentThread().isInterrupted()) {
             return;
         }
+
+        // TODO: get the logging back up
+        if (true) return;
 
         var serverConnectionStatus = serverService.isTheServerUp();
 

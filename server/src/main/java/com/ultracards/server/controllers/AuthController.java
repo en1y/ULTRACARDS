@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,8 +41,9 @@ public class AuthController {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     @ResponseBody
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
     public ResponseEntity<UsernameDTO> updateUsername(
-            @NotNull @RequestAttribute("tokenEntity") String token,
+            @NotNull @RequestAttribute("refreshToken") String token,
             @Valid @RequestBody UsernameDTO username,
             BindingResult errors) {
 
@@ -59,8 +61,9 @@ public class AuthController {
     }
 
     @GetMapping("/username")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
     public ResponseEntity<UsernameDTO> getUsername(
-            @NotNull @RequestAttribute("tokenEntity") String token
+            @NotNull @RequestAttribute("refreshToken") String token
             ) {
         var tokenEntity = tokenService.getToken(token);
         var username = authService.getUsername(tokenEntity);
@@ -75,7 +78,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @RequestAttribute(name = "tokenEntity", required = false) String token,
+            @RequestAttribute(name = "refreshToken", required = false) String token,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -85,7 +88,7 @@ public class AuthController {
 
     @PostMapping("/email/send")
     public ResponseEntity<Void> sendVerificationEmail(
-            @RequestAttribute(name = "tokenEntity", required = false) String token,
+            @RequestAttribute(name = "refreshToken", required = false) String token,
             @Valid @RequestBody EmailDTO emailDTO,
             BindingResult errors
     ) {
@@ -110,7 +113,7 @@ public class AuthController {
 
     @PostMapping("/email/verify")
     public ResponseEntity<Void> verifyCode(
-            @RequestAttribute(name = "tokenEntity", required = false) String token,
+            @RequestAttribute(name = "refreshToken", required = false) String token,
             @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
             BindingResult errors
     ) {
@@ -137,8 +140,9 @@ public class AuthController {
     }
 
     @GetMapping("/profile")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
     public ResponseEntity<ProfileDTO> getProfile(
-            @RequestAttribute("tokenEntity") String token
+            @RequestAttribute("refreshToken") String token
             ) {
         var tokenEntity = tokenService.getToken(token);
         var res = authService.getProfile(tokenEntity);
@@ -147,8 +151,9 @@ public class AuthController {
     }
 
     @PostMapping("/profile")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
     public ResponseEntity<ProfileDTO> updateProfile(
-            @RequestAttribute("tokenEntity") String token,
+            @RequestAttribute("refreshToken") String token,
             @RequestBody @Valid ProfileDTO profileDTO,
             BindingResult errors
     ) {

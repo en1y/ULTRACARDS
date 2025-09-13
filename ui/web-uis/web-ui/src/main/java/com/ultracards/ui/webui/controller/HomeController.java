@@ -9,6 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 
 @Controller
 @RequiredArgsConstructor
@@ -18,14 +19,14 @@ public class HomeController {
 
     @GetMapping("/")
     public String index(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            @CookieValue(name = "refreshToken", required = false) String token,
             HttpServletResponse response,
             Model model
     ) {
         String username = null;
 
-        if (refreshToken != null) {
-            var tokenHolder = new ClientTokenHolder(refreshToken);
+        if (token != null) {
+            var tokenHolder = new ClientTokenHolder(token);
             username = authService.getUsername(tokenHolder).getUsername();
             response.addCookie(createCookie(tokenHolder));
         }
