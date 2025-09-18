@@ -1,5 +1,5 @@
 package com.ultracards.server.enums;
 
-public enum Status {
+public enum UserStatus {
     ACTIVE, DISABLED, DELETED
 }

@@ -1,7 +1,8 @@
 package com.ultracards.server.entity;
 
-import com.ultracards.server.enums.Role;
-import com.ultracards.server.enums.Status;
+import com.ultracards.server.enums.UserRole;
+import com.ultracards.server.enums.UserStatus;
+import com.ultracards.server.enums.games.GameType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,7 +12,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
@@ -42,7 +42,7 @@ public class UserEntity implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private Status status = Status.ACTIVE;
+    private UserStatus status = UserStatus.ACTIVE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -66,7 +66,7 @@ public class UserEntity implements UserDetails {
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 32)
-    private Set<Role> roles = new HashSet<>();
+    private Set<UserRole> roles = new HashSet<>();
 
     /* -------- Basic entity constructor -------- */
 
@@ -78,14 +78,14 @@ public class UserEntity implements UserDetails {
 
     /* -------- convenience API -------- */
 
-    public boolean addRole(Role role) { return roles.add(role); }
-    public boolean removeRole(Role role) { return roles.remove(role); }
-    public boolean hasRole(Role role) { return roles.contains(role); }
+    public boolean addRole(UserRole role) { return roles.add(role); }
+    public boolean removeRole(UserRole role) { return roles.remove(role); }
+    public boolean hasRole(UserRole role) { return roles.contains(role); }
 
     /* ----------- UserDetails ----------- */
 
     @Override
-    public Collection<Role> getAuthorities() {
+    public Collection<UserRole> getAuthorities() {
         return getRoles();
     }
 
@@ -97,17 +97,17 @@ public class UserEntity implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return getStatus().equals(Status.ACTIVE);
+        return getStatus().equals(UserStatus.ACTIVE);
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return !getStatus().equals(Status.DISABLED);
+        return !getStatus().equals(UserStatus.DISABLED);
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return !getStatus().equals(Status.DISABLED);
+        return !getStatus().equals(UserStatus.DISABLED);
     }
 
     /* ------------- toString ------------- */

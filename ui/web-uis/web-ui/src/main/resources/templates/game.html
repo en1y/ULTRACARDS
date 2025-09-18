@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ultracards - Game</title>
+    <script>
+      (function(){try{var t=localStorage.getItem('uc-theme');var th=(t==='dark'||t==='light')?t:'light';document.documentElement.setAttribute('data-theme',th);}catch(e){}})();
+    </script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}" />
+    <script th:src="@{/webjars/stomp-websocket/stomp.min.js}"></script>
+    <style>
+        .briskula-layout { display:flex; flex-direction:column; gap:1.25rem; margin-top:1.5rem; }
+        .briskula-summary { display:flex; flex-wrap:wrap; gap:1.5rem; align-items:center; font-size:0.95rem; }
+        .briskula-summary span.value { font-weight:600; }
+        .briskula-trump-card img { width:72px; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
+        .briskula-opponents { display:flex; flex-wrap:wrap; gap:0.75rem; }
+        .briskula-player-card { flex:1 1 220px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-surface); padding:0.85rem; box-shadow:0 6px 14px rgba(0,0,0,0.08); transition:transform .15s ease, box-shadow .15s ease; }
+        .briskula-player-card.self { border-color: var(--color-accent); box-shadow:0 8px 20px rgba(0,0,0,0.12); }
+        .briskula-player-card.turn { transform:translateY(-4px); box-shadow:0 12px 24px rgba(0,0,0,0.18); }
+        .briskula-player-card .name { font-weight:700; margin-bottom:0.35rem; }
+        .briskula-table { display:flex; justify-content:center; align-items:flex-end; gap:1.5rem; min-height:200px; border-radius:16px; border:1px solid var(--color-border); background:var(--color-surface); padding:1.25rem; box-shadow:inset 0 0 40px rgba(0,0,0,0.08); }
+        .briskula-table .played-card { text-align:center; display:flex; flex-direction:column; align-items:center; gap:0.4rem; }
+        .briskula-table .played-card img { width:96px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+        .briskula-hand { margin-top:0.5rem; }
+        .briskula-hand h3 { margin-bottom:0.5rem; }
+        .briskula-hand-cards { display:flex; flex-wrap:wrap; gap:0.85rem; }
+        .briskula-card-img { width:110px; height:auto; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.25); cursor:pointer; transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease; }
+        .briskula-card-img.playable:hover { transform:translateY(-8px); box-shadow:0 16px 28px rgba(0,0,0,0.3); }
+        .briskula-card-img.disabled { opacity:0.35; cursor:not-allowed; box-shadow:none; }
+        .briskula-status { min-height:1.5rem; font-weight:600; }
+        @media (max-width: 768px) {
+            .briskula-card-img { width:88px; }
+            .briskula-table { flex-wrap:wrap; }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="fragments/header :: header"></div>
+
+<main class="container">
+    <div th:if="${param.error}">
+        <div class="card" style="padding: 0.75rem; margin-bottom: .75rem; border-left: 4px solid var(--color-accent);">
+            <b th:text="${param.error[0] == 'not_enough_players' ? 'Cannot start the game yet.' : 'Could not save settings.'}">Error</b>
+            <div th:text="${param.error[0] == 'not_enough_players' ? 'Please wait until required number of players join.' : 'Try again in a moment.'}"></div>
+        </div>
+    </div>
+    <div th:if="${param.saved}">
+        <div class="card" style="padding: 0.75rem; margin-bottom: .75rem; border-left: 4px solid #2e7d32;">
+            <b>Settings saved.</b>
+        </div>
+    </div>
+    <div th:if="${lobby != null}" id="lobby-container" th:attr="data-lobby-id=${lobby.id},data-owner-id=${lobby.ownerId},data-max-players=${lobby.maxPlayers},data-current-user=${currentUserId},data-player-count=${lobby.players != null ? #lists.size(lobby.players) : 1}">
+        <h1 th:text="${lobby.lobbyName != null ? lobby.lobbyName : 'Lobby ' + lobby.id}"></h1>
+        <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start;">
+            <div class="card" style="flex:1 1 320px; padding:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:600; font-size:1rem;">Lobby Info</div>
+                        <div style="font-size:.9rem; opacity:.75;">Owner: <span id="lobby-owner" th:text="${lobby.ownerUsername != null ? lobby.ownerUsername : lobby.ownerId}"></span></div>
+                    </div>
+                    <span class="chip" th:text="${lobby.gameType}"></span>
+                </div>
+                <div style="margin-top:0.75rem; font-size:.95rem;">
+                    <div>Players: <b id="player-count" th:text="${lobby.players != null ? #lists.size(lobby.players) : #lists.size(lobby.playerIds)}"></b>/<span id="player-max" th:text="${lobby.maxPlayers}"></span></div>
+                </div>
+                <div style="margin-top:1rem;">
+                    <div style="font-weight:600; margin-bottom:.35rem;">Players</div>
+                    <ul id="lobby-players" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.35rem;">
+                        <li th:each="player : ${lobby.players}" style="display:flex; align-items:center; gap:0.5rem; font-size:.95rem;">
+                            <span style="width:30px; height:30px; border-radius:50%; background:var(--color-surface); display:inline-flex; align-items:center; justify-content:center; font-weight:600;">
+                                <span th:text="${player.username != null && player.username.length() > 0 ? player.username.substring(0,1).toUpperCase() : 'U'}"></span>
+                            </span>
+                            <span th:text="${player.username != null ? player.username : 'User ' + player.id}"></span>
+                            <span th:if="${player.id == lobby.ownerId}" style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-surface); border:1px solid var(--color-border);">Owner</span>
+                            <span th:if="${player.id == currentUserId}" style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-accent); color:var(--color-bg);">You</span>
+                            <form th:if="${isOwner and player.id != lobby.ownerId}" method="post" th:action="@{/game/kick}" style="margin-left:auto;">
+                                <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
+                                <input type="hidden" name="playerId" th:value="${player.id}" />
+                                <button class="btn" type="submit" style="padding:0.25rem 0.75rem; font-size:.8rem;">Kick</button>
+                            </form>
+                        </li>
+                        <li th:if="${lobby.players == null or #lists.isEmpty(lobby.players)}" style="font-size:.9rem; opacity:.75;">Waiting for players…</li>
+                    </ul>
+                </div>
+                <form th:if="${!isOwner}" method="post" th:action="@{/game/leave}" style="margin-top:0.75rem;">
+                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
+                    <button class="btn" type="submit">Leave Lobby</button>
+                </form>
+            </div>
+
+            <div class="card" style="flex:1 1 320px; padding:1rem;" th:if="${isOwner}">
+                <button type="button" id="toggle-lobby-settings" class="btn" style="margin-bottom:0.75rem;">
+                    Lobby Settings
+                </button>
+                <form id="lobby-settings-form" method="post" th:action="@{/game/settings}"
+                      style="display:none; flex-direction:column; gap:0.75rem;">
+                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
+                    <div>
+                        <label>Lobby Name</label>
+                        <input type="text" name="lobbyName" th:value="${lobby.lobbyName}"/>
+                    </div>
+                    <div class="field" th:if="${lobby.gameType == 'BRISKULA'}" style="min-width:260px;">
+                        <label>Rules</label>
+                        <div class="uc-select">
+                            <select name="configJson" id="lobby-config" th:value="${lobby.configJson}">
+                                <option value="TWO_PLAYERS">2 players — 3 cards</option>
+                                <option value="TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH">2 players — 4 cards</option>
+                                <option value="THREE_PLAYERS">3 players — 3 cards</option>
+                                <option value="FOUR_PLAYERS_NO_TEAMS">4 players — no teams</option>
+                                <option value="FOUR_PLAYERS_WITH_TEAMS">4 players — teams</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field" style="min-width:160px;">
+                        <label>Players</label>
+                        <div class="uc-select">
+                            <select name="maxPlayers" id="lobby-max" th:value="${lobby.maxPlayers}">
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit">Save</button>
+                </form>
+
+                <div id="lobby-waiting" class="card" style="padding:0.75rem; margin-top:1rem; border-left:4px solid var(--color-border);" th:attrappend="style=${lobbyFull} ? ' display:none;' : ''">
+                    <b>Waiting for players</b>
+                    <div>You need a full lobby before starting the game.</div>
+                </div>
+                <form method="post" th:action="@{/game/start}" style="margin-top: 1rem;">
+                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
+                    <button id="start-button" type="submit" th:disabled="${!lobbyFull}">Start Game</button>
+                </form>
+                <form method="post" th:action="@{/game/disband}" style="margin-top:0.75rem;">
+                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
+                    <button class="btn danger" type="submit">Delete Lobby</button>
+                </form>
+            </div>
+
+            <div class="card" style="flex:1 1 320px; padding:1rem;" th:unless="${isOwner}">
+                <h3>Lobby Settings</h3>
+                <div style="display:flex; flex-direction:column; gap:0.65rem; margin-top:0.5rem; font-size:.95rem;">
+                    <div>
+                        <span style="opacity:.75;">Game Type:</span>
+                        <b th:text="${lobby.gameType}"></b>
+                    </div>
+                    <div>
+                        <span style="opacity:.75;">Max Players:</span>
+                        <b th:text="${lobby.maxPlayers}"></b>
+                    </div>
+                    <div>
+                        <span style="opacity:.75;">Rules:</span>
+                        <b th:switch="${lobby.configJson}">
+                            <span th:case="'TWO_PLAYERS'">2 players — 3 cards</span>
+                            <span th:case="'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH'">2 players — 4 cards</span>
+                            <span th:case="'THREE_PLAYERS'">3 players — 3 cards</span>
+                            <span th:case="'FOUR_PLAYERS_NO_TEAMS'">4 players — no teams</span>
+                            <span th:case="'FOUR_PLAYERS_WITH_TEAMS'">4 players — teams</span>
+                            <span th:case="*">Standard</span>
+                        </b>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${game != null}" id="game-container"
+         th:attr="data-game-id=${game.id},data-current-user=${currentUserId},data-is-briskula=${isBriskula}">
+        <h1 th:text="${game.gameName}"></h1>
+        <div class="card" style="padding:0.85rem; margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:1rem; align-items:center;">
+            <div>Type: <b th:text="${game.gameType}"></b></div>
+            <div>Status: <span th:text="${game.active ? 'Active' : 'Finished'}"></span></div>
+            <div>Updated: <span th:text="${#temporals.format(game.updatedAt, 'HH:mm:ss')}"></span></div>
+        </div>
+
+        <script type="application/json" id="initial-game-state" th:if="${game.stateJson != null}"
+                th:utext="${game.stateJson}"></script>
+
+        <div th:if="${isBriskula}" class="briskula-layout">
+            <div class="briskula-summary">
+                <div>Trump: <span id="briskula-trump" class="value">-</span></div>
+                <div>Deck left: <span id="briskula-deck" class="value">0</span></div>
+                <div>Turn: <span id="briskula-turn" class="value">-</span></div>
+            </div>
+            <div class="briskula-trump-card">
+                <img id="briskula-trump-image" alt="Trump card" src="" style="display:none;"/>
+            </div>
+            <div id="briskula-opponents" class="briskula-opponents"></div>
+            <div id="briskula-table" class="briskula-table"></div>
+            <div class="briskula-hand">
+                <h3>Your Hand</h3>
+                <div id="briskula-hand" class="briskula-hand-cards"></div>
+            </div>
+            <div id="briskula-status" class="briskula-status"></div>
+        </div>
+
+        <div th:unless="${isBriskula}" class="card" style="margin-top:1rem; padding:1rem;">
+            <p style="margin:0;">Real-time gameplay for this title is not yet available.</p>
+        </div>
+    </div>
+</main>
+
+<div th:replace="fragments/footer :: footer"></div>
+<script th:src="@{/js/ui.js}"></script>
+<script th:inline="javascript">
+    (function(){
+        const lobbyEl = document.getElementById('lobby-container');
+        if (!lobbyEl || !window.Stomp) return;
+        const lobbyId = lobbyEl.dataset.lobbyId;
+        if (!lobbyId) return;
+        const wsUrl = /*[[${serverWsUrl}]]*/ 'ws://localhost:8080/ws';
+        const currentUser = lobbyEl.dataset.currentUser || null;
+        let currentPlayerCount = parseInt(lobbyEl.dataset.playerCount || '1', 10);
+        const settingsToggle = document.getElementById('toggle-lobby-settings');
+        const settingsForm = document.getElementById('lobby-settings-form');
+        const configSelect = document.getElementById('lobby-config');
+        const maxSelect = document.getElementById('lobby-max');
+
+        if (settingsToggle && settingsForm) {
+            settingsForm.style.display = 'none';
+            settingsToggle.addEventListener('click', () => {
+                const open = settingsForm.style.display !== 'none';
+                settingsForm.style.display = open ? 'none' : 'flex';
+                settingsToggle.textContent = open ? 'Lobby Settings' : 'Hide Lobby Settings';
+            });
+        }
+
+        if (configSelect && maxSelect) {
+            const presets = {
+                2: [
+                    { value: 'TWO_PLAYERS', label: '3 cards each' },
+                    { value: 'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH', label: '4 cards each' }
+                ],
+                3: [
+                    { value: 'THREE_PLAYERS', label: '3 cards each' }
+                ],
+                4: [
+                    { value: 'FOUR_PLAYERS_NO_TEAMS', label: 'No teams' },
+                    { value: 'FOUR_PLAYERS_WITH_TEAMS', label: 'Teams' }
+                ]
+            };
+
+            const rebuildOptions = () => {
+                const selected = parseInt(maxSelect.value, 10);
+                const options = presets[selected] || [];
+                const current = configSelect.value;
+                configSelect.innerHTML = '';
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.textContent = opt.label;
+                    if (opt.value === current) option.selected = true;
+                    configSelect.appendChild(option);
+                });
+                if (!options.some(opt => opt.value === current) && configSelect.firstElementChild) {
+                    configSelect.firstElementChild.selected = true;
+                }
+
+                const optionsEls = maxSelect.querySelectorAll('option');
+                optionsEls.forEach(opt => {
+                    const val = parseInt(opt.value, 10);
+                    opt.disabled = !Number.isNaN(val) && val < currentPlayerCount;
+                });
+                const currentVal = parseInt(maxSelect.value, 10);
+                if (Number.isNaN(currentVal) || currentPlayerCount > currentVal) {
+                    maxSelect.value = String(currentPlayerCount);
+                }
+            };
+
+            maxSelect.addEventListener('change', rebuildOptions);
+            rebuildOptions();
+        }
+
+        const client = Stomp.client(wsUrl);
+        let lobbyHasStarted = false;
+        let lobbyHeartbeatTimer = null;
+        const sendLobbyHeartbeat = () => {
+            if (!currentUser || !client.connected) return;
+            client.send(`/app/lobbies/${lobbyId}/heartbeat`, {}, JSON.stringify({
+                gameId: null,
+                sentAt: new Date().toISOString(),
+                userId: Number(currentUser)
+            }));
+        };
+        const clearHeartbeat = () => {
+            if (lobbyHeartbeatTimer) {
+                clearInterval(lobbyHeartbeatTimer);
+                lobbyHeartbeatTimer = null;
+            }
+        };
+        client.reconnect_delay = 3000;
+        client.connect({}, function(){
+            if (currentUser) {
+                sendLobbyHeartbeat();
+                lobbyHeartbeatTimer = setInterval(sendLobbyHeartbeat, 5000);
+            }
+            client.subscribe('/topic/lobbies', function(msg){
+                try {
+                    const ev = JSON.parse(msg.body);
+                    if (!ev || !ev.lobby || ev.lobby.id !== lobbyId) return;
+                    if (ev.eventType === 'STARTED') {
+                        clearHeartbeat();
+                        lobbyHasStarted = true;
+                        if (currentUser && isPlayer(ev.lobby.players, currentUser) && ev.gameId) {
+                            window.location.href = '/game?gameId=' + ev.gameId;
+                        }
+                        return;
+                    }
+                    if (ev.eventType === 'DELETED') {
+                        clearHeartbeat();
+                        if (lobbyHasStarted) return;
+                        window.location.href = '/games';
+                        return;
+                    }
+                    applyLobby(ev.lobby);
+                } catch(e) {/* ignore */}
+            });
+        }, function(){ /* auto reconnect */ });
+
+        window.addEventListener('beforeunload', () => {
+            clearHeartbeat();
+            if (client && client.connected) {
+                client.disconnect(() => {});
+            }
+        });
+
+        function isPlayer(players, userId) {
+            if (!players || !userId) return false;
+            const target = String(userId);
+            return players.some(p => p && String(p.id) === target);
+        }
+
+        function applyLobby(lobby){
+            if (!lobby.playerIds) lobby.playerIds = [];
+            if (!lobby.players) lobby.players = [];
+            if (currentUser && !isPlayer(lobby.players, currentUser)) {
+                clearHeartbeat();
+                window.location.href = '/games';
+                return;
+            }
+            const ownerId = lobby.ownerId != null ? String(lobby.ownerId) : '';
+            lobbyEl.dataset.ownerId = ownerId;
+            const ownerSpan = document.getElementById('lobby-owner');
+            if (ownerSpan) {
+                const ownerName = lobby.ownerUsername || resolveOwnerName(lobby.players, ownerId) || ownerId;
+                ownerSpan.textContent = ownerName;
+            }
+
+            const playerCount = lobby.players.length ? lobby.players.length : lobby.playerIds.length;
+            currentPlayerCount = playerCount;
+            lobbyEl.dataset.playerCount = String(playerCount);
+            const countEl = document.getElementById('player-count');
+            if (countEl) countEl.textContent = playerCount;
+
+            const max = lobby.maxPlayers != null ? lobby.maxPlayers : '';
+            lobbyEl.dataset.maxPlayers = max;
+            const maxEl = document.getElementById('player-max');
+            if (maxEl) maxEl.textContent = max;
+
+            const list = document.getElementById('lobby-players');
+            if (list) {
+                list.innerHTML = renderPlayers(lobby.players, ownerId, currentUser);
+            }
+
+            const waiting = document.getElementById('lobby-waiting');
+            const startBtn = document.getElementById('start-button');
+            const lobbyFull = !lobby.maxPlayers || playerCount >= lobby.maxPlayers;
+            if (startBtn) startBtn.disabled = !lobbyFull;
+            if (waiting) {
+                waiting.style.display = lobbyFull ? 'none' : '';
+            }
+
+            const maxSelect = document.getElementById('lobby-max');
+            const configSelect = document.getElementById('lobby-config');
+            if (maxSelect) {
+                const options = maxSelect.querySelectorAll('option');
+                options.forEach(opt => {
+                    const val = parseInt(opt.value, 10);
+                    opt.disabled = !Number.isNaN(val) && val < playerCount;
+                });
+                const currentVal = parseInt(maxSelect.value, 10);
+                if (Number.isNaN(currentVal) || playerCount > currentVal) {
+                    maxSelect.value = String(playerCount);
+                }
+                if (lobby.maxPlayers) {
+                    maxSelect.value = lobby.maxPlayers;
+                }
+                maxSelect.dispatchEvent(new Event('change'));
+                if (configSelect && lobby.configJson) {
+                    configSelect.value = lobby.configJson;
+                }
+            }
+        }
+
+        function renderPlayers(players, ownerId, currentUserId){
+            if (!players || players.length === 0) {
+                return '<li style="font-size:.9rem; opacity:.75;">Waiting for players…</li>';
+            }
+            const isOwnerUser = currentUserId && ownerId && String(ownerId) === String(currentUserId);
+            return players.map(p => {
+                const pid = p.id != null ? String(p.id) : '';
+                const initial = (p.username && p.username.length) ? escapeHtml(p.username.charAt(0).toUpperCase()) : 'U';
+                const nameLabel = escapeHtml(p.username || ('User ' + pid));
+                const ownerBadge = pid === ownerId
+                    ? ' <span style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-surface); border:1px solid var(--color-border);">Owner</span>'
+                    : '';
+                const selfBadge = currentUserId && pid === currentUserId
+                    ? ' <span style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-accent); color:var(--color-bg);">You</span>'
+                    : '';
+                const kickForm = isOwnerUser && pid !== ownerId
+                    ? `<form method="post" action="/game/kick" style="margin-left:auto;">
+                         <input type="hidden" name="lobbyId" value="${lobbyId}" />
+                         <input type="hidden" name="playerId" value="${pid}" />
+                         <button class="btn" type="submit" style="padding:0.25rem 0.75rem; font-size:.8rem;">Kick</button>
+                       </form>`
+                    : '';
+                return `<li style="display:flex; align-items:center; gap:0.5rem; font-size:.95rem;">`
+                    + `<span style=\"width:30px; height:30px; border-radius:50%; background:var(--color-surface); display:inline-flex; align-items:center; justify-content:center; font-weight:600;\">${initial}</span>`
+                    + `<span>${nameLabel}</span>`
+                    + ownerBadge
+                    + selfBadge
+                    + kickForm
+                    + `</li>`;
+            }).join('');
+        }
+
+        function resolveOwnerName(players, ownerId){
+            if (!players || !players.length) return null;
+            for (const p of players) {
+                if (String(p.id) === ownerId) {
+                    return p.username || ownerId;
+                }
+            }
+            return null;
+        }
+
+        function escapeHtml(str){
+            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+        }
+    })();
+
+    (function(){
+        const gameEl = document.getElementById('game-container');
+        if (!gameEl || !window.Stomp) return;
+
+        const gameId = gameEl.dataset.gameId;
+        const isBriskula = String(gameEl.dataset.isBriskula).toLowerCase() === 'true';
+        const currentUserId = gameEl.dataset.currentUser ? String(gameEl.dataset.currentUser) : null;
+        if (!gameId || !isBriskula) return;
+
+        const wsUrl = /*[[${serverWsUrl}]]*/ 'ws://localhost:8080/ws';
+        const client = Stomp.client(wsUrl);
+        client.reconnect_delay = 3000;
+        client.debug = null;
+
+        const cardImageCache = new Map();
+
+        const stateScript = document.getElementById('initial-game-state');
+        let gameState = null;
+        if (stateScript && stateScript.textContent) {
+            try {
+                gameState = JSON.parse(stateScript.textContent);
+            } catch (ignore) {
+                gameState = null;
+            }
+        }
+
+        client.connect({}, function(){
+            client.subscribe(`/topic/games/${gameId}/events`, function(msg){
+                try {
+                    const event = JSON.parse(msg.body);
+                    if (!event || !event.payloadJson) return;
+                    const payload = JSON.parse(event.payloadJson);
+                    if (event.eventType === 'STATE' || event.eventType === 'STARTED') {
+                        updateState(payload);
+                    }
+                    if (event.eventType === 'FINISHED') {
+                        updateState(payload);
+                    }
+                } catch (e) {
+                    console.error('Failed to process game event', e);
+                }
+            });
+        }, function(){ /* reconnect handled by client */ });
+
+        if (gameState) {
+            updateState(gameState);
+        }
+
+        let playPending = false;
+
+        function updateState(state) {
+            gameState = state;
+            renderBriskula(state);
+        }
+
+        function renderBriskula(state) {
+            playPending = false;
+            const trumpLabel = document.getElementById('briskula-trump');
+            if (trumpLabel) {
+                const trumpCard = state.trumpCard;
+                const text = trumpCard ? `${formatValue(trumpCard.value)} of ${formatSuit(trumpCard.suit)}` : formatSuit(state.trumpSuit);
+                trumpLabel.textContent = text;
+            }
+
+            const deckLabel = document.getElementById('briskula-deck');
+            if (deckLabel) deckLabel.textContent = state.deckRemaining ?? 0;
+
+            const turnLabel = document.getElementById('briskula-turn');
+            if (turnLabel) turnLabel.textContent = state.currentTurnUsername || '—';
+
+            const trumpImage = document.getElementById('briskula-trump-image');
+            if (trumpImage) {
+                if (state.trumpCard && state.trumpCard.code) {
+                    trumpImage.alt = `${formatValue(state.trumpCard.value)} of ${formatSuit(state.trumpCard.suit)}`;
+                    trumpImage.style.display = '';
+                    loadCardFace(state.trumpCard, trumpImage);
+                } else {
+                    trumpImage.style.display = 'none';
+                }
+            }
+
+            renderPlayers(state);
+            renderTrick(state);
+            renderHand(state);
+            renderStatus(state);
+        }
+
+        function renderPlayers(state) {
+            const container = document.getElementById('briskula-opponents');
+            if (!container) return;
+            const players = state.players || [];
+            if (!players.length) {
+                container.innerHTML = '<div style="opacity:0.6;">Waiting for players...</div>';
+                return;
+            }
+            container.innerHTML = players.map(p => {
+                const classes = ['briskula-player-card'];
+                if (currentUserId != null && sameUser(p.userId, currentUserId)) classes.push('self');
+                if (p.currentTurn) classes.push('turn');
+                const name = escapeHtml(p.username || (`Player ${p.userId}`));
+                return `<div class="${classes.join(' ')}">`
+                    + `<div class="name">${name}</div>`
+                    + `<div>Points: <b>${p.points ?? 0}</b></div>`
+                    + `<div>Cards in hand: ${p.handSize ?? 0}</div>`
+                    + `<div>Won cards: ${p.capturedCards ?? 0}</div>`
+                    + `</div>`;
+            }).join('');
+        }
+
+        function renderTrick(state) {
+            const table = document.getElementById('briskula-table');
+            if (!table) return;
+            const trick = state.trick || [];
+            if (!trick.length) {
+                table.innerHTML = '<div style="opacity:0.6;">Waiting for cards...</div>';
+                return;
+            }
+            table.innerHTML = '';
+            trick.forEach(entry => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'played-card';
+                const img = document.createElement('img');
+                img.alt = entry.card ? `${formatValue(entry.card.value)} of ${formatSuit(entry.card.suit)}` : 'Card';
+                wrapper.appendChild(img);
+                const name = document.createElement('div');
+                name.textContent = entry.username || (`Player ${entry.userId}`);
+                wrapper.appendChild(name);
+                table.appendChild(wrapper);
+                if (entry.card) {
+                    loadCardFace(entry.card, img);
+                }
+            });
+        }
+
+        function renderHand(state) {
+            const handEl = document.getElementById('briskula-hand');
+            if (!handEl) return;
+            handEl.innerHTML = '';
+            const me = (state.players || []).find(p => currentUserId != null && sameUser(p.userId, currentUserId));
+            if (!me) {
+                handEl.innerHTML = '<div style="opacity:0.6;">Spectating...</div>';
+                return;
+            }
+            const canPlay = !state.finished && currentUserId != null && sameUser(state.currentTurnUserId, currentUserId);
+            const cards = me.hand || [];
+            if (!cards.length) {
+                handEl.innerHTML = '<div style="opacity:0.6;">No cards in hand.</div>';
+                return;
+            }
+            cards.forEach(card => {
+                const img = document.createElement('img');
+                img.alt = `${formatValue(card.value)} of ${formatSuit(card.suit)}`;
+                img.className = 'briskula-card-img' + (canPlay ? ' playable' : ' disabled');
+                if (canPlay) {
+                    img.addEventListener('click', () => attemptPlay(card));
+                }
+                if (!canPlay) {
+                    img.classList.add('disabled');
+                }
+                handEl.appendChild(img);
+                loadCardFace(card, img);
+            });
+        }
+
+        function renderStatus(state) {
+            const status = document.getElementById('briskula-status');
+            if (!status) return;
+            if (state.finished) {
+                const winners = (state.winners || []).map(id => {
+                    const player = (state.players || []).find(p => sameUser(p.userId, id));
+                    return player ? player.username : `Player ${id}`;
+                }).filter(Boolean);
+                status.textContent = winners.length ? `Game over. Winner${winners.length > 1 ? 's' : ''}: ${winners.join(', ')}.` : 'Game over.';
+                return;
+            }
+            if (!state.currentTurnUserId) {
+                status.textContent = 'Waiting for the next turn...';
+                return;
+            }
+            if (currentUserId != null && sameUser(state.currentTurnUserId, currentUserId)) {
+                status.textContent = 'Your turn. Pick a card to play.';
+            } else {
+                const player = (state.players || []).find(p => sameUser(p.userId, state.currentTurnUserId));
+                status.textContent = player ? `Waiting for ${player.username}...` : 'Waiting for opponent...';
+            }
+        }
+
+        function attemptPlay(card) {
+            if (playPending || !client.connected) return;
+            playPending = true;
+            try {
+                const payload = { suit: card.suit, value: card.value };
+                client.send(`/app/games/${gameId}/action`, {}, JSON.stringify({
+                    gameId: gameId,
+                    actionType: 'PLAY_CARD',
+                    payloadJson: JSON.stringify(payload)
+                }));
+                setTimeout(() => { playPending = false; }, 600);
+            } catch (e) {
+                console.error('Failed to play card', e);
+                playPending = false;
+            }
+        }
+
+        function loadCardFace(card, img) {
+            if (!card || !card.suit || !card.value) {
+                return;
+            }
+            const key = `${card.suit}:${card.value}`;
+            img.src = '/images/italian-cards/back/modiano.png';
+            const cached = cardImageCache.get(key);
+            if (cached) {
+                img.src = cached.face;
+                return;
+            }
+            fetch(`/api/cards/italian/${card.suit}/${card.value}`)
+                .then(res => res.ok ? res.json() : Promise.reject(res.status))
+                .then(data => {
+                    cardImageCache.set(key, data);
+                    img.src = data.face;
+                })
+                .catch(() => {
+                    img.src = '/images/italian-cards/back/modiano.png';
+                });
+        }
+
+        function formatSuit(suit) {
+            if (!suit) return '';
+            return suit.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        function formatValue(value) {
+            if (!value) return '';
+            return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        function sameUser(a, b) {
+            if (a == null || b == null) return false;
+            return String(a) === String(b);
+        }
+
+        function escapeHtml(str){
+            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+        }
+    })();
+</script>
+</body>
+</html>

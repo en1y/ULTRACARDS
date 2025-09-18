@@ -2,7 +2,7 @@ package com.ultracards.server.enums;
 
 import org.springframework.security.core.GrantedAuthority;
 
-public enum Role implements GrantedAuthority {
+public enum UserRole implements GrantedAuthority {
     USER, MODERATOR, ADMIN;
 
     @Override

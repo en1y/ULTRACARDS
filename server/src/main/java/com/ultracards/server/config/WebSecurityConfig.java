@@ -31,6 +31,7 @@ public class WebSecurityConfig {
                 .addFilterBefore(tokenRotationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/active").permitAll()
+                        .requestMatchers("/ws", "/ws/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/email/send").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/email/verify").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()

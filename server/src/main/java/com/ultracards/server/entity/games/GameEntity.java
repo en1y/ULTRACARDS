@@ -1,6 +1,7 @@
 package com.ultracards.server.entity.games;
 
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.enums.games.GameType;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -20,13 +21,15 @@ import java.util.UUID;
 @Setter
 public class GameEntity {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "game_type", nullable = false)
     private String gameType;
 
-    @Column(name = "status", nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private GameType type;
 
     private String gameName;
 
@@ -55,10 +58,19 @@ public class GameEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
-    public GameEntity() {
-        this.id = UUID.randomUUID().toString();
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    @PrePersist
+    public void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = createdAt;
+        }
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
     public void addPlayer(UserEntity user) {

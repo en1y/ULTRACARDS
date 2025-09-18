@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 
 @Component
 @RequiredArgsConstructor
@@ -70,7 +71,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
 
             // 4) authenticate the request so Spring Security stops throwing 401
             var user = rotatedToken.getUser();
-            var authorities = user.getAuthorities(); // e.g., Set<Role> with Role implements GrantedAuthority
+            var authorities = user.getAuthorities(); // e.g., Set<UserRole> with UserRole implements GrantedAuthority
             var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
             var context = SecurityContextHolder.createEmptyContext();
@@ -80,7 +81,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             chain.doFilter(req, res);
         } catch (LazyInitializationException ex) {
             log.error("Lazy init exception. Hibernate is a bitch. {}", ex.getMessage());
-        } catch (Exception ex) {
+        } catch (AccessDeniedException ex) {
             // rotation/validation failed -> unauthenticated
             log.error("Error while validating with token.", ex);
             SecurityContextHolder.clearContext();

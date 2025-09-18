@@ -41,7 +41,7 @@ public class AuthController {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     @ResponseBody
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<UsernameDTO> updateUsername(
             @NotNull @RequestAttribute("refreshToken") String token,
             @Valid @RequestBody UsernameDTO username,
@@ -61,7 +61,7 @@ public class AuthController {
     }
 
     @GetMapping("/username")
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<UsernameDTO> getUsername(
             @NotNull @RequestAttribute("refreshToken") String token
             ) {
@@ -140,7 +140,7 @@ public class AuthController {
     }
 
     @GetMapping("/profile")
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<ProfileDTO> getProfile(
             @RequestAttribute("refreshToken") String token
             ) {
@@ -151,7 +151,7 @@ public class AuthController {
     }
 
     @PostMapping("/profile")
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.Role).USER.name())")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<ProfileDTO> updateProfile(
             @RequestAttribute("refreshToken") String token,
             @RequestBody @Valid ProfileDTO profileDTO,

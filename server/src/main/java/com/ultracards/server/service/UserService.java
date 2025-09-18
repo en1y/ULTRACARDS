@@ -2,7 +2,7 @@ package com.ultracards.server.service;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.enums.Role;
+import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.repositories.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class UserService {
         if (email.getEmail().length() > MAX_EMAIL_LENGTH)
             throw new IllegalArgumentException("Email too long");
         var user = new UserEntity(email.getEmail(), "");
-        user.addRole(Role.USER);
+        user.addRole(UserRole.USER);
         user = userRepository.save(user);
         return user;
     }

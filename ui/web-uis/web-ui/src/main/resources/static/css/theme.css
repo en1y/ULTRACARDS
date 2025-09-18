@@ -90,6 +90,17 @@ img { max-width: 100%; display: block; }
 .btn:hover { border-color: var(--color-accent); }
 .btn:active { transform: translateY(1px); }
 
+.btn.danger {
+  border-color: color-mix(in oklab, var(--color-accent) 60%, var(--color-border));
+  background: color-mix(in oklab, var(--color-surface) 80%, var(--color-accent));
+  color: var(--color-accent);
+}
+
+.btn.danger:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-surface) 60%, var(--color-accent));
+}
+
 .btn-accent {
   border-color: var(--color-accent);
 }
@@ -261,6 +272,55 @@ input:focus, .code-box:focus {
   padding: 4rem 1rem 2.5rem;
   text-align: center;
 }
+
+/* Cards and chips */
+.card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 20px var(--color-shadow);
+}
+
+.chip {
+  display: inline-block;
+  padding: .15rem .45rem;
+  font-size: .85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  background: var(--color-surface);
+}
+
+/* Custom Select (theme-aware) */
+.uc-select { position: relative; display: inline-block; width: 100%; }
+.uc-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 0.6rem 2rem 0.6rem 0.75rem; /* space for arrow */
+  outline: none;
+  transition: border-color 0.15s ease, background 0.2s ease;
+}
+.uc-select select:hover { border-color: var(--color-accent); }
+.uc-select select:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 20%, transparent); }
+.uc-select::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  top: 50%;
+  right: 0.75rem;
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--color-text); /* triangle arrow using theme color */
+  transform: translateY(-15%);
+}
+/* Option popup colors (limited browser support) */
+select option { color: var(--color-text); background: var(--color-bg); }
 
 .hero h1 {
   margin: 0 0 0.6rem 0;

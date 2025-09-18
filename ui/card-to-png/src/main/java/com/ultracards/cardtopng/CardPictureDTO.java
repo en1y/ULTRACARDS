@@ -2,7 +2,7 @@ package com.ultracards.cardtopng;
 
 import java.awt.image.BufferedImage;
 
-class CardPictureDTO {
+public class CardPictureDTO {
 
     private BufferedImage face;
     private BufferedImage back;

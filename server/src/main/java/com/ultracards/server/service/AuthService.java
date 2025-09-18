@@ -6,9 +6,11 @@ import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.TokenEntity;
+import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.auth.TokenService;
 import com.ultracards.server.service.auth.VerificationCodeService;
+import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,6 +31,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final EmailService emailService;
+    private final UserGamesStatsService userGamesStatsService;
 
     public String updateUsername (UsernameDTO username, TokenEntity token) {
         var userEntity = token.getUser();
@@ -116,17 +119,31 @@ public class AuthService {
         profile.setRoles(user.getRoles().toString());
         profile.setId(user.getId());
 
-        profile.setBriskulaGamesPlayed(0);
-        profile.setBriskulaGamesWon(0);
+        var gamesWon = userGamesStatsService.getByUser(user);
 
-        profile.setDurakGamesPlayed(0);
-        profile.setDurakGamesWon(0);
+        if (gamesWon == null) {
+            return profile;
+        }
 
-        profile.setPokerGamesPlayed(0);
-        profile.setPokerGamesWon(0);
+        profile.setBriskulaGamesPlayed(
+                gamesWon.getGamesPlayed(GameType.BRISKULA));
+        profile.setBriskulaGamesWon(
+                gamesWon.getGamesWon(GameType.BRISKULA));
 
-        profile.setTresetaGamesPlayed(0);
-        profile.setTresetaGamesWon(0);
+        profile.setDurakGamesPlayed(
+                gamesWon.getGamesPlayed(GameType.DURAK));
+        profile.setDurakGamesWon(
+                gamesWon.getGamesWon(GameType.DURAK));
+
+        profile.setTresetaGamesPlayed(
+                gamesWon.getGamesPlayed(GameType.TRESETA));
+        profile.setTresetaGamesWon(
+                gamesWon.getGamesWon(GameType.TRESETA));
+
+        profile.setPokerGamesPlayed(
+                gamesWon.getGamesPlayed(GameType.POKER));
+        profile.setPokerGamesWon(
+                gamesWon.getGamesWon(GameType.POKER));
 
         return profile;
     }
