@@ -6,14 +6,16 @@
     <parent>
         <groupId>en1y.ultracards.ui</groupId>
         <artifactId>ui</artifactId>
-        <version>0.1-PREALPHA</version>
+        <version>0.1.0</version>
     </parent>
 
     <artifactId>gui</artifactId>
+    <name>GUI</name>
+    <description>GUI module for the ULTRACARDS project</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

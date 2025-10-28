@@ -3,17 +3,20 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>en1y.ultracards.ui</groupId>
         <artifactId>ui</artifactId>
-        <version>0.1-PREALPHA</version>
+        <version>0.1.0</version>
     </parent>
 
     <artifactId>card-to-png</artifactId>
+    <name>UI Card To Png</name>
+    <description>Converts a card into it's PNG alternative</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

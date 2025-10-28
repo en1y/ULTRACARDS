@@ -6,7 +6,10 @@
 
     <groupId>en1y.ultracards</groupId>
     <artifactId>ULTRACARDS</artifactId>
-    <version>0.1-PREALPHA</version>
+    <!--    semantic versioning    -->
+    <version>0.1.0</version>
+    <name>ULTRACARDS parent</name>
+
     <packaging>pom</packaging>
     <modules>
         <module>server</module>
@@ -15,9 +18,66 @@
         <module>ui</module>
     </modules>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>3.5.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.validation</groupId>
+                <artifactId>jakarta.validation-api</artifactId>
+                <version>${jakarta-validation.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.annotation</groupId>
+                <artifactId>jakarta.annotation-api</artifactId>
+                <version>${jakarta-annotation.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${projectlombok.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>25</java.version>
+
+        <!-- spring versions -->
+        <spring.version>6.2.10</spring.version>
+        <spring-boot.version>3.5.7</spring-boot.version>
+
+        <!-- jakarta versions -->
+        <jakarta-validation.version>3.0.2</jakarta-validation.version>
+        <jakarta-annotation.version>2.1.1</jakarta-annotation.version>
+
+        <!-- jackson versions -->
+        <jackson.version>2.20.0</jackson.version>
+
+        <!-- Lombok -->
+        <projectlombok.version>1.18.38</projectlombok.version>
+
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
