@@ -17,7 +17,7 @@ import java.io.UnsupportedEncodingException;
 @Service
 @RequiredArgsConstructor
 public class EmailService {
-    @Value("${app.code.validity-minutes:10}")
+    @Value("${app.verification-code.validity-minutes:10}")
     private int CODE_VALIDITY_MINUTES;
     @Value("${spring.mail.username}")
     String fromEmail;

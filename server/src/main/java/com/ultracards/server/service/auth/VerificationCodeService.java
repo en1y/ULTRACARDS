@@ -18,7 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class VerificationCodeService {
     private final UserService userService;
-    @Value("${app.code.validity-minutes:10}")
+    @Value("${app.verification-code.validity-minutes:10}")
     private int CODE_VALIDITY_MINUTES;
 
     private final VerificationCodeRepository codeRepository;
