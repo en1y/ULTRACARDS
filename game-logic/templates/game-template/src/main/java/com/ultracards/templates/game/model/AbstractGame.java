@@ -1,21 +1,20 @@
 package com.ultracards.templates.game.model;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.GameInterface;
-import com.ultracards.templates.game.interfaces.PlayingFieldInterface;
 
 import java.util.List;
 
 public abstract class AbstractGame
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
                 Deck extends AbstractDeck<CardType, CardValue, Card, Hand>,
                 Player extends AbstractPlayer<CardType, CardValue, Card, Hand, Deck>,
-                PlayingField extends PlayingFieldInterface<CardType, CardValue, Card, Hand, Deck, Player>>
+                PlayingField extends AbstractPlayingField<CardType, CardValue, Card, Hand, Deck, Player>>
         implements GameInterface <CardType, CardValue, Card, Hand, Deck, Player, PlayingField> {
 
     private Deck deck;
@@ -25,8 +24,8 @@ public abstract class AbstractGame
     private int cardsNum;
     private int cardsInHandNum;
 
-    public AbstractGame(int numberOfPlayers, int cardsNum, int cardsInHandNum) {
-        init(numberOfPlayers, cardsNum, cardsInHandNum);
+    public AbstractGame(List<Player> players, int cardsNum, int cardsInHandNum) {
+        init(players, cardsNum, cardsInHandNum);
     }
 
     @Override

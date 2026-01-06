@@ -1,7 +1,7 @@
 package com.ultracards.templates.game.interfaces;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.exceptions.DeckException;
 import com.ultracards.templates.game.model.AbstractDeck;
@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 
 public interface DeckInterface
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
@@ -45,8 +45,8 @@ public interface DeckInterface
         if (getSize() < 0) {
             throw new DeckException("Deck size should be >= 0 but instead it is %d", getSize());
         }
-        return getCards().remove(0);
-    };
+        return getCards().removeFirst();
+    }
 
     default List<Card> drawXCards(int cardsNum) {
         checkForSufficientNumberOfCards(cardsNum, "Can not draw %d cards since there are only %d cards left in the deck");

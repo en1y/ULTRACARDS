@@ -1,17 +1,17 @@
 package com.ultracards.templates.cards;
 
-public abstract class AbstractCard<Type extends CardTypeInterface, Value extends CardValueInterface, Card extends AbstractCard<Type, Value, Card>> implements Comparable<Card> {
+public abstract class AbstractCard<Suit extends CardSuitInterface, Value extends CardValueInterface, Card extends AbstractCard<Suit, Value, Card>> implements Comparable<Card> {
 
-    private Type type;
+    private Suit suit;
     private Value value;
 
-    public AbstractCard(Type type, Value value) {
-        this.type = type;
+    public AbstractCard(Suit suit, Value value) {
+        this.suit = suit;
         this.value = value;
     }
 
-    public Type getType() {
-        return type;
+    public Suit getSuit() {
+        return suit;
     }
 
     public Value getValue() {
@@ -22,8 +22,8 @@ public abstract class AbstractCard<Type extends CardTypeInterface, Value extends
         this.value = value;
     }
 
-    public void setType(Type type) {
-        this.type = type;
+    public void setSuit(Suit suit) {
+        this.suit = suit;
     }
 
     @Override

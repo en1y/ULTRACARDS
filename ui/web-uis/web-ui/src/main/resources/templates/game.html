@@ -9,28 +9,427 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}" />
     <script th:src="@{/webjars/stomp-websocket/stomp.min.js}"></script>
     <style>
-        .briskula-layout { display:flex; flex-direction:column; gap:1.25rem; margin-top:1.5rem; }
-        .briskula-summary { display:flex; flex-wrap:wrap; gap:1.5rem; align-items:center; font-size:0.95rem; }
-        .briskula-summary span.value { font-weight:600; }
-        .briskula-trump-card img { width:72px; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
-        .briskula-opponents { display:flex; flex-wrap:wrap; gap:0.75rem; }
-        .briskula-player-card { flex:1 1 220px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-surface); padding:0.85rem; box-shadow:0 6px 14px rgba(0,0,0,0.08); transition:transform .15s ease, box-shadow .15s ease; }
-        .briskula-player-card.self { border-color: var(--color-accent); box-shadow:0 8px 20px rgba(0,0,0,0.12); }
-        .briskula-player-card.turn { transform:translateY(-4px); box-shadow:0 12px 24px rgba(0,0,0,0.18); }
-        .briskula-player-card .name { font-weight:700; margin-bottom:0.35rem; }
-        .briskula-table { display:flex; justify-content:center; align-items:flex-end; gap:1.5rem; min-height:200px; border-radius:16px; border:1px solid var(--color-border); background:var(--color-surface); padding:1.25rem; box-shadow:inset 0 0 40px rgba(0,0,0,0.08); }
-        .briskula-table .played-card { text-align:center; display:flex; flex-direction:column; align-items:center; gap:0.4rem; }
-        .briskula-table .played-card img { width:96px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
-        .briskula-hand { margin-top:0.5rem; }
-        .briskula-hand h3 { margin-bottom:0.5rem; }
-        .briskula-hand-cards { display:flex; flex-wrap:wrap; gap:0.85rem; }
-        .briskula-card-img { width:110px; height:auto; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.25); cursor:pointer; transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease; }
-        .briskula-card-img.playable:hover { transform:translateY(-8px); box-shadow:0 16px 28px rgba(0,0,0,0.3); }
-        .briskula-card-img.disabled { opacity:0.35; cursor:not-allowed; box-shadow:none; }
-        .briskula-status { min-height:1.5rem; font-weight:600; }
-        @media (max-width: 768px) {
-            .briskula-card-img { width:88px; }
-            .briskula-table { flex-wrap:wrap; }
+        .lobby-grid { display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start; }
+        .lobby-card { flex:1 1 320px; padding:1rem; }
+        .rules-list { list-style:disc; padding-left:1.2rem; margin:0.5rem 0 0; }
+        .briskula-shell {
+            --felt: #1f6f52;
+            --felt-dark: #123d2f;
+            --felt-bright: #2c8b64;
+            --wood: #3a2215;
+            --gold: #e0b45b;
+            --ink: #1b1410;
+            display:flex;
+            flex-direction:column;
+            gap:1.25rem;
+            margin-top:1rem;
+            font-family: "Cormorant Garamond", "Garamond", "Palatino Linotype", serif;
+        }
+        .briskula-head {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            flex-wrap:wrap;
+            gap:0.75rem;
+        }
+        .briskula-title {
+            font-size:2rem;
+            letter-spacing:0.04em;
+            text-transform:uppercase;
+        }
+        .meta-row { display:flex; gap:0.75rem; flex-wrap:wrap; }
+        .meta-pill {
+            padding:0.4rem 0.75rem;
+            border-radius:999px;
+            border:1px solid rgba(0,0,0,0.15);
+            background:linear-gradient(120deg, rgba(255,255,255,0.95), rgba(244,236,220,0.95));
+            font-weight:600;
+            font-size:0.95rem;
+            color:var(--ink);
+        }
+        .table-wrap {
+            position:relative;
+            display:flex;
+            justify-content:center;
+            padding:2.5rem 1rem 1.5rem;
+        }
+        .table-surface {
+            position:relative;
+            width:min(620px, 100%);
+            aspect-ratio:1 / 1;
+            border-radius:999px;
+            border:14px solid var(--wood);
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), transparent 45%),
+                radial-gradient(circle at 70% 40%, rgba(255,255,255,0.08), transparent 50%),
+                radial-gradient(circle at 50% 55%, var(--felt-bright), var(--felt-dark) 62%);
+            box-shadow:0 30px 60px rgba(20,10,4,0.35), inset 0 0 45px rgba(0,0,0,0.35);
+            overflow:visible;
+            animation: table-rise 520ms ease-out both;
+        }
+        .table-surface::after {
+            content:"";
+            position:absolute;
+            inset:0;
+            background-image:radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size:22px 22px;
+            opacity:0.4;
+            pointer-events:none;
+        }
+        .player-ring { position:absolute; inset:-320px; pointer-events:none; }
+        .player-seat {
+            position:absolute;
+            width:170px;
+            text-align:center;
+            color:#f7f2e7;
+            text-shadow:0 2px 10px rgba(0,0,0,0.35);
+            transition:transform 280ms ease, filter 280ms ease;
+            animation: seat-fade 420ms ease both;
+            pointer-events:auto;
+        }
+        .player-seat.is-turn { filter:drop-shadow(0 0 14px rgba(224,180,91,0.8)); }
+        .seat-name {
+            font-size:1.05rem;
+            font-weight:700;
+            margin-bottom:0.25rem;
+        }
+        .seat-points {
+            font-size:0.9rem;
+            opacity:0.9;
+        }
+        .seat-cards {
+            display:flex;
+            justify-content:center;
+            flex-wrap:wrap;
+            gap:0.25rem;
+            margin:0.35rem 0;
+        }
+        .seat-card {
+            width:34px;
+            border-radius:6px;
+            box-shadow:0 6px 12px rgba(0,0,0,0.35);
+            background:#efe6d0;
+        }
+        .table-center {
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            display:flex;
+            align-items:center;
+            gap:1.4rem;
+            z-index:2;
+        }
+        .trick-area {
+            min-width:160px;
+            min-height:160px;
+            display:flex;
+            flex-wrap:wrap;
+            gap:0;
+            align-items:center;
+            justify-content:center;
+            position:relative;
+            overflow:visible;
+        }
+        .trick-card {
+            width:70px;
+            border-radius:8px;
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+            transform:rotate(var(--spin, 0deg));
+            transition:transform 180ms ease, box-shadow 180ms ease;
+            margin-left:-22px;
+            cursor:pointer;
+            position:relative;
+            z-index:1;
+        }
+        .trick-card:first-child { margin-left:0; }
+        .trick-card:hover {
+            transform:rotate(var(--spin, 0deg)) scale(1.18);
+            box-shadow:0 20px 26px rgba(0,0,0,0.4);
+            z-index:4;
+        }
+        .deck-stack {
+            position:absolute;
+            right:10%;
+            top:50%;
+            transform:translateY(-50%);
+            display:flex;
+            flex-direction:column;
+            align-items:flex-start;
+            gap:0.25rem;
+            z-index:2;
+        }
+        .trump-slot {
+            position:relative;
+            width:140px;
+            height:80px;
+            overflow:hidden;
+            z-index:1;
+        }
+        .trump-slot:hover { overflow:visible; z-index:4; }
+        .deck-count {
+            font-size:0.9rem;
+            color:#f7f2e7;
+        }
+        .deck-tower {
+            position:relative;
+            width:96px;
+            height:132px;
+            z-index:3;
+        }
+        .deck-tower img {
+            position:absolute;
+            width:90px;
+            border-radius:8px;
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+        }
+        .deck-tower img:nth-child(1) { left:0; top:0; transform:rotate(-2deg); }
+        .deck-tower img:nth-child(2) { left:4px; top:-3px; transform:rotate(2deg); }
+        .deck-tower img:nth-child(3) { left:8px; top:-6px; transform:rotate(-1deg); }
+        .trump-card {
+            width:104px;
+            border-radius:8px;
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+            transform:rotate(90deg) translateX(10px);
+            transform-origin:center;
+            position:absolute;
+            left:-52px;
+            bottom:-20px;
+            z-index:1;
+            cursor:pointer;
+            transition:transform 180ms ease, box-shadow 180ms ease;
+        }
+        .deck-stack.is-empty .deck-tower {
+            display:none;
+        }
+        .trump-card:hover {
+            transform:rotate(90deg) translateX(10px) scale(1.12);
+            box-shadow:0 18px 24px rgba(0,0,0,0.4);
+            z-index:4;
+        }
+        .drop-zone {
+            position:absolute;
+            top:50%;
+            left:50%;
+            width:180px;
+            height:180px;
+            transform:translate(-50%, -50%);
+            border-radius:50%;
+            border:2px dashed rgba(255,255,255,0.4);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#f5eddc;
+            font-weight:600;
+            text-align:center;
+            padding:0.75rem;
+            z-index:1;
+            pointer-events:auto;
+            transition:border-color 180ms ease, background 180ms ease;
+        }
+        .drop-zone.active {
+            border-color:var(--gold);
+            background:rgba(255,255,255,0.08);
+        }
+        .hand-zone {
+            display:flex;
+            flex-direction:column;
+            gap:0.75rem;
+            background:linear-gradient(120deg, rgba(255,255,255,0.95), rgba(248,241,229,0.95));
+            border-radius:18px;
+            padding:0.75rem 1rem;
+            border:1px solid rgba(0,0,0,0.12);
+            box-shadow:0 12px 30px rgba(26,18,10,0.18);
+            width:fit-content;
+            max-width:100%;
+            align-self:center;
+        }
+        .hand-row {
+            display:flex;
+            align-items:flex-start;
+            justify-content:center;
+            gap:1rem;
+            flex-wrap:wrap;
+        }
+        .info-panel {
+            min-width:190px;
+            max-width:260px;
+            padding:0.75rem 0.9rem;
+            border-radius:14px;
+            background:rgba(255,255,255,0.9);
+            border:1px solid rgba(0,0,0,0.1);
+            color:var(--ink);
+            font-weight:600;
+            display:flex;
+            flex-direction:column;
+            gap:0.4rem;
+        }
+        .info-panel small { font-weight:500; opacity:0.7; }
+        .info-row { display:flex; justify-content:space-between; gap:0.5rem; }
+        .info-label { opacity:0.75; }
+        .hand-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            font-size:1.05rem;
+            font-weight:700;
+            text-transform:uppercase;
+            letter-spacing:0.08em;
+            color:var(--ink);
+        }
+        .hand-cards {
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            gap:0;
+            overflow:visible;
+        }
+        .hand-card {
+            width:clamp(68px, 10vw, 96px);
+            border-radius:10px;
+            box-shadow:0 10px 20px rgba(0,0,0,0.2);
+            cursor:grab;
+            transition:transform 160ms ease, box-shadow 160ms ease;
+            background:#f7f1e3;
+            animation: deal-in 340ms ease both;
+            margin-left:-26px;
+            position:relative;
+            z-index:1;
+        }
+        .hand-card:first-child { margin-left:0; }
+        .hand-card.played {
+            opacity:0;
+            transform:translateY(-16px) scale(0.9);
+            transition:transform 220ms ease, opacity 220ms ease;
+        }
+        .drag-ghost {
+            position:fixed;
+            width:96px;
+            border-radius:10px;
+            pointer-events:none;
+            z-index:999;
+            box-shadow:0 20px 40px rgba(0,0,0,0.35);
+            transform:translate(-50%, -50%) scale(1.05);
+            transition:transform 120ms ease;
+        }
+        .drag-ghost.snap {
+            transform:translate(-50%, -50%) scale(0.9);
+        }
+        .drop-zone.ready {
+            border-color:var(--gold);
+            background:rgba(255,255,255,0.08);
+        }
+        .trump-zoom {
+            position:fixed;
+            inset:0;
+            z-index:1000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:rgba(0,0,0,0.65);
+            backdrop-filter:blur(4px);
+        }
+        .trump-zoom img {
+            max-width:92vw;
+            max-height:92vh;
+            border-radius:12px;
+            box-shadow:0 30px 60px rgba(0,0,0,0.5);
+        }
+        .hand-card.is-disabled {
+            opacity:0.5;
+            cursor:not-allowed;
+            transform:none;
+            box-shadow:none;
+        }
+        .hand-card:hover:not(.is-disabled) {
+            transform:translateY(-10px) scale(1.12);
+            box-shadow:0 20px 32px rgba(0,0,0,0.32);
+            z-index:6;
+        }
+        .seat-avatar {
+            width:44px;
+            height:44px;
+            border-radius:10px;
+            background:#6f6f72;
+            color:#ffffff;
+            font-weight:700;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin:0 auto 0.35rem;
+            border:2px solid var(--color-accent);
+            box-shadow:0 6px 12px rgba(0,0,0,0.35);
+        }
+        body {
+            background:
+                radial-gradient(circle at top, rgba(208,178,130,0.22), transparent 50%),
+                linear-gradient(160deg, #f5f1e9, #e8dbc6);
+        }
+        [data-theme="dark"] body {
+            background:
+                radial-gradient(circle at top, rgba(60,50,40,0.55), transparent 50%),
+                linear-gradient(160deg, #131415, #1f1f22);
+        }
+        [data-theme="dark"] .table-surface {
+            box-shadow:0 30px 60px rgba(0,0,0,0.55), inset 0 0 45px rgba(0,0,0,0.55);
+        }
+        [data-theme="dark"] .hand-zone {
+            background:rgba(20,20,22,0.9);
+            border-color:var(--color-border);
+            color:var(--color-text);
+        }
+        [data-theme="dark"] .info-panel {
+            background:rgba(20,20,22,0.9);
+            border-color:var(--color-border);
+            color:var(--color-text);
+        }
+        [data-theme="dark"] .hand-header {
+            color:var(--color-text);
+        }
+        [data-theme="dark"] .meta-pill {
+            background:rgba(28,28,30,0.9);
+            border-color:var(--color-border);
+            color:var(--color-text);
+        }
+        @keyframes table-rise {
+            from { transform:scale(0.98); opacity:0; }
+            to { transform:scale(1); opacity:1; }
+        }
+        @keyframes seat-fade {
+            from { opacity:0; transform:translateY(6px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+        @keyframes deal-in {
+            from { opacity:0; transform:translateY(8px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+        @keyframes fly-card {
+            from { transform:translate(var(--from-x), var(--from-y)) scale(0.9); opacity:0.95; }
+            to { transform:translate(var(--to-x), var(--to-y)) scale(1); opacity:0.2; }
+        }
+        .deal-card {
+            position:fixed;
+            left:0;
+            top:0;
+            width:90px;
+            border-radius:10px;
+            box-shadow:0 18px 28px rgba(0,0,0,0.35);
+            pointer-events:none;
+            z-index:500;
+            animation:fly-card 480ms ease-out forwards;
+        }
+        @media (max-width: 900px) {
+            .table-surface { width:min(560px, 100%); }
+            .player-seat { width:140px; }
+            .hand-card { width:clamp(62px, 11vw, 86px); }
+        }
+        @media (max-width: 640px) {
+            .table-surface { width:min(480px, 100%); border-width:10px; }
+            .player-seat { width:120px; }
+            .seat-card { width:28px; }
+            .hand-card { width:clamp(58px, 14vw, 74px); }
+            .drop-zone { width:150px; height:150px; font-size:0.9rem; }
+            .deck-stack { right:10%; }
         }
     </style>
 </head>
@@ -38,165 +437,56 @@
 <div th:replace="fragments/header :: header"></div>
 
 <main class="container">
-    <div th:if="${param.error}">
-        <div class="card" style="padding: 0.75rem; margin-bottom: .75rem; border-left: 4px solid var(--color-accent);">
-            <b th:text="${param.error[0] == 'not_enough_players' ? 'Cannot start the game yet.' : 'Could not save settings.'}">Error</b>
-            <div th:text="${param.error[0] == 'not_enough_players' ? 'Please wait until required number of players join.' : 'Try again in a moment.'}"></div>
-        </div>
-    </div>
-    <div th:if="${param.saved}">
-        <div class="card" style="padding: 0.75rem; margin-bottom: .75rem; border-left: 4px solid #2e7d32;">
-            <b>Settings saved.</b>
-        </div>
-    </div>
-    <div th:if="${lobby != null}" id="lobby-container" th:attr="data-lobby-id=${lobby.id},data-owner-id=${lobby.ownerId},data-max-players=${lobby.maxPlayers},data-current-user=${currentUserId},data-player-count=${lobby.players != null ? #lists.size(lobby.players) : 1}">
-        <h1 th:text="${lobby.lobbyName != null ? lobby.lobbyName : 'Lobby ' + lobby.id}"></h1>
-        <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start;">
-            <div class="card" style="flex:1 1 320px; padding:1rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-weight:600; font-size:1rem;">Lobby Info</div>
-                        <div style="font-size:.9rem; opacity:.75;">Owner: <span id="lobby-owner" th:text="${lobby.ownerUsername != null ? lobby.ownerUsername : lobby.ownerId}"></span></div>
-                    </div>
-                    <span class="chip" th:text="${lobby.gameType}"></span>
-                </div>
-                <div style="margin-top:0.75rem; font-size:.95rem;">
-                    <div>Players: <b id="player-count" th:text="${lobby.players != null ? #lists.size(lobby.players) : #lists.size(lobby.playerIds)}"></b>/<span id="player-max" th:text="${lobby.maxPlayers}"></span></div>
-                </div>
-                <div style="margin-top:1rem;">
-                    <div style="font-weight:600; margin-bottom:.35rem;">Players</div>
-                    <ul id="lobby-players" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.35rem;">
-                        <li th:each="player : ${lobby.players}" style="display:flex; align-items:center; gap:0.5rem; font-size:.95rem;">
-                            <span style="width:30px; height:30px; border-radius:50%; background:var(--color-surface); display:inline-flex; align-items:center; justify-content:center; font-weight:600;">
-                                <span th:text="${player.username != null && player.username.length() > 0 ? player.username.substring(0,1).toUpperCase() : 'U'}"></span>
-                            </span>
-                            <span th:text="${player.username != null ? player.username : 'User ' + player.id}"></span>
-                            <span th:if="${player.id == lobby.ownerId}" style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-surface); border:1px solid var(--color-border);">Owner</span>
-                            <span th:if="${player.id == currentUserId}" style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-accent); color:var(--color-bg);">You</span>
-                            <form th:if="${isOwner and player.id != lobby.ownerId}" method="post" th:action="@{/game/kick}" style="margin-left:auto;">
-                                <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
-                                <input type="hidden" name="playerId" th:value="${player.id}" />
-                                <button class="btn" type="submit" style="padding:0.25rem 0.75rem; font-size:.8rem;">Kick</button>
-                            </form>
-                        </li>
-                        <li th:if="${lobby.players == null or #lists.isEmpty(lobby.players)}" style="font-size:.9rem; opacity:.75;">Waiting for players…</li>
-                    </ul>
-                </div>
-                <form th:if="${!isOwner}" method="post" th:action="@{/game/leave}" style="margin-top:0.75rem;">
-                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
-                    <button class="btn" type="submit">Leave Lobby</button>
-                </form>
-            </div>
-
-            <div class="card" style="flex:1 1 320px; padding:1rem;" th:if="${isOwner}">
-                <button type="button" id="toggle-lobby-settings" class="btn" style="margin-bottom:0.75rem;">
-                    Lobby Settings
-                </button>
-                <form id="lobby-settings-form" method="post" th:action="@{/game/settings}"
-                      style="display:none; flex-direction:column; gap:0.75rem;">
-                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
-                    <div>
-                        <label>Lobby Name</label>
-                        <input type="text" name="lobbyName" th:value="${lobby.lobbyName}"/>
-                    </div>
-                    <div class="field" th:if="${lobby.gameType == 'BRISKULA'}" style="min-width:260px;">
-                        <label>Rules</label>
-                        <div class="uc-select">
-                            <select name="configJson" id="lobby-config" th:value="${lobby.configJson}">
-                                <option value="TWO_PLAYERS">2 players — 3 cards</option>
-                                <option value="TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH">2 players — 4 cards</option>
-                                <option value="THREE_PLAYERS">3 players — 3 cards</option>
-                                <option value="FOUR_PLAYERS_NO_TEAMS">4 players — no teams</option>
-                                <option value="FOUR_PLAYERS_WITH_TEAMS">4 players — teams</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="field" style="min-width:160px;">
-                        <label>Players</label>
-                        <div class="uc-select">
-                            <select name="maxPlayers" id="lobby-max" th:value="${lobby.maxPlayers}">
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit">Save</button>
-                </form>
-
-                <div id="lobby-waiting" class="card" style="padding:0.75rem; margin-top:1rem; border-left:4px solid var(--color-border);" th:attrappend="style=${lobbyFull} ? ' display:none;' : ''">
-                    <b>Waiting for players</b>
-                    <div>You need a full lobby before starting the game.</div>
-                </div>
-                <form method="post" th:action="@{/game/start}" style="margin-top: 1rem;">
-                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
-                    <button id="start-button" type="submit" th:disabled="${!lobbyFull}">Start Game</button>
-                </form>
-                <form method="post" th:action="@{/game/disband}" style="margin-top:0.75rem;">
-                    <input type="hidden" name="lobbyId" th:value="${lobby.id}" />
-                    <button class="btn danger" type="submit">Delete Lobby</button>
-                </form>
-            </div>
-
-            <div class="card" style="flex:1 1 320px; padding:1rem;" th:unless="${isOwner}">
-                <h3>Lobby Settings</h3>
-                <div style="display:flex; flex-direction:column; gap:0.65rem; margin-top:0.5rem; font-size:.95rem;">
-                    <div>
-                        <span style="opacity:.75;">Game Type:</span>
-                        <b th:text="${lobby.gameType}"></b>
-                    </div>
-                    <div>
-                        <span style="opacity:.75;">Max Players:</span>
-                        <b th:text="${lobby.maxPlayers}"></b>
-                    </div>
-                    <div>
-                        <span style="opacity:.75;">Rules:</span>
-                        <b th:switch="${lobby.configJson}">
-                            <span th:case="'TWO_PLAYERS'">2 players — 3 cards</span>
-                            <span th:case="'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH'">2 players — 4 cards</span>
-                            <span th:case="'THREE_PLAYERS'">3 players — 3 cards</span>
-                            <span th:case="'FOUR_PLAYERS_NO_TEAMS'">4 players — no teams</span>
-                            <span th:case="'FOUR_PLAYERS_WITH_TEAMS'">4 players — teams</span>
-                            <span th:case="*">Standard</span>
-                        </b>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div th:if="${game != null}" id="game-container"
-         th:attr="data-game-id=${game.id},data-current-user=${currentUserId},data-is-briskula=${isBriskula}">
-        <h1 th:text="${game.gameName}"></h1>
-        <div class="card" style="padding:0.85rem; margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:1rem; align-items:center;">
-            <div>Type: <b th:text="${game.gameType}"></b></div>
-            <div>Status: <span th:text="${game.active ? 'Active' : 'Finished'}"></span></div>
-            <div>Updated: <span th:text="${#temporals.format(game.updatedAt, 'HH:mm:ss')}"></span></div>
-        </div>
-
-        <script type="application/json" id="initial-game-state" th:if="${game.stateJson != null}"
-                th:utext="${game.stateJson}"></script>
-
-        <div th:if="${isBriskula}" class="briskula-layout">
-            <div class="briskula-summary">
-                <div>Trump: <span id="briskula-trump" class="value">-</span></div>
-                <div>Deck left: <span id="briskula-deck" class="value">0</span></div>
-                <div>Turn: <span id="briskula-turn" class="value">-</span></div>
+         th:attr="data-game-id=${game.id},data-current-user=${currentUserId},data-server-url=${serverApiUrl},data-ws-url=${serverWsUrl}">
+        <div class="briskula-shell">
+            <div class="briskula-head">
+                <div class="briskula-title" th:text="|Game name: ${game.name}|">Game name: Briskula</div>
+                <div class="meta-row">
+                    <span class="meta-pill">Deck: <b id="deck-left" th:text="${game.cardsLeftInDeck}"></b></span>
+                    <span class="meta-pill" id="turn-pill">Waiting for turn</span>
+                </div>
             </div>
-            <div class="briskula-trump-card">
-                <img id="briskula-trump-image" alt="Trump card" src="" style="display:none;"/>
-            </div>
-            <div id="briskula-opponents" class="briskula-opponents"></div>
-            <div id="briskula-table" class="briskula-table"></div>
-            <div class="briskula-hand">
-                <h3>Your Hand</h3>
-                <div id="briskula-hand" class="briskula-hand-cards"></div>
-            </div>
-            <div id="briskula-status" class="briskula-status"></div>
-        </div>
 
-        <div th:unless="${isBriskula}" class="card" style="margin-top:1rem; padding:1rem;">
-            <p style="margin:0;">Real-time gameplay for this title is not yet available.</p>
+            <div class="table-wrap">
+                <div class="table-surface">
+                    <div id="player-ring" class="player-ring"></div>
+                    <div class="drop-zone" id="drop-zone">Drag a card to play</div>
+                    <div class="table-center">
+                        <div id="trick-area" class="trick-area"></div>
+                    </div>
+                    <div class="deck-stack" id="deck-stack">
+                        <div class="deck-count">Trump</div>
+                        <div class="deck-tower" id="deck-tower"></div>
+                        <div class="trump-slot">
+                            <img id="trump-card" class="trump-card" alt="Trump card" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hand-row">
+                <div class="info-panel">
+                    <div>Server</div>
+                    <div id="game-status">Connecting...</div>
+                    <small id="connection-status">WS: offline</small>
+                </div>
+                <div class="hand-zone">
+                    <div class="hand-header">
+                        <span>Your hand</span>
+                        <span id="hand-status">Waiting for cards</span>
+                    </div>
+                    <div id="hand-cards" class="hand-cards"></div>
+                </div>
+                <div class="info-panel">
+                    <div>Briskula info</div>
+                    <div class="info-row"><span class="info-label">Deck</span><span id="info-deck">0</span></div>
+                    <div class="info-row"><span class="info-label">Turn</span><span id="info-turn">-</span></div>
+                    <div class="info-row"><span class="info-label">Players</span><span id="info-players">-</span></div>
+                    <div class="info-row"><span class="info-label">Trick</span><span id="info-trick">0</span></div>
+                    <div class="info-row"><span class="info-label">Trump</span><span id="info-trump">-</span></div>
+                </div>
+            </div>
         </div>
     </div>
 </main>
@@ -205,484 +495,597 @@
 <script th:src="@{/js/ui.js}"></script>
 <script th:inline="javascript">
     (function(){
-        const lobbyEl = document.getElementById('lobby-container');
-        if (!lobbyEl || !window.Stomp) return;
-        const lobbyId = lobbyEl.dataset.lobbyId;
-        if (!lobbyId) return;
-        const wsUrl = /*[[${serverWsUrl}]]*/ 'ws://localhost:8080/ws';
-        const currentUser = lobbyEl.dataset.currentUser || null;
-        let currentPlayerCount = parseInt(lobbyEl.dataset.playerCount || '1', 10);
-        const settingsToggle = document.getElementById('toggle-lobby-settings');
-        const settingsForm = document.getElementById('lobby-settings-form');
-        const configSelect = document.getElementById('lobby-config');
-        const maxSelect = document.getElementById('lobby-max');
-
-        if (settingsToggle && settingsForm) {
-            settingsForm.style.display = 'none';
-            settingsToggle.addEventListener('click', () => {
-                const open = settingsForm.style.display !== 'none';
-                settingsForm.style.display = open ? 'none' : 'flex';
-                settingsToggle.textContent = open ? 'Lobby Settings' : 'Hide Lobby Settings';
-            });
-        }
-
-        if (configSelect && maxSelect) {
-            const presets = {
-                2: [
-                    { value: 'TWO_PLAYERS', label: '3 cards each' },
-                    { value: 'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH', label: '4 cards each' }
-                ],
-                3: [
-                    { value: 'THREE_PLAYERS', label: '3 cards each' }
-                ],
-                4: [
-                    { value: 'FOUR_PLAYERS_NO_TEAMS', label: 'No teams' },
-                    { value: 'FOUR_PLAYERS_WITH_TEAMS', label: 'Teams' }
-                ]
-            };
-
-            const rebuildOptions = () => {
-                const selected = parseInt(maxSelect.value, 10);
-                const options = presets[selected] || [];
-                const current = configSelect.value;
-                configSelect.innerHTML = '';
-                options.forEach(opt => {
-                    const option = document.createElement('option');
-                    option.value = opt.value;
-                    option.textContent = opt.label;
-                    if (opt.value === current) option.selected = true;
-                    configSelect.appendChild(option);
-                });
-                if (!options.some(opt => opt.value === current) && configSelect.firstElementChild) {
-                    configSelect.firstElementChild.selected = true;
-                }
-
-                const optionsEls = maxSelect.querySelectorAll('option');
-                optionsEls.forEach(opt => {
-                    const val = parseInt(opt.value, 10);
-                    opt.disabled = !Number.isNaN(val) && val < currentPlayerCount;
-                });
-                const currentVal = parseInt(maxSelect.value, 10);
-                if (Number.isNaN(currentVal) || currentPlayerCount > currentVal) {
-                    maxSelect.value = String(currentPlayerCount);
-                }
-            };
-
-            maxSelect.addEventListener('change', rebuildOptions);
-            rebuildOptions();
-        }
-
-        const client = Stomp.client(wsUrl);
-        let lobbyHasStarted = false;
-        let lobbyHeartbeatTimer = null;
-        const sendLobbyHeartbeat = () => {
-            if (!currentUser || !client.connected) return;
-            client.send(`/app/lobbies/${lobbyId}/heartbeat`, {}, JSON.stringify({
-                gameId: null,
-                sentAt: new Date().toISOString(),
-                userId: Number(currentUser)
-            }));
-        };
-        const clearHeartbeat = () => {
-            if (lobbyHeartbeatTimer) {
-                clearInterval(lobbyHeartbeatTimer);
-                lobbyHeartbeatTimer = null;
-            }
-        };
-        client.reconnect_delay = 3000;
-        client.connect({}, function(){
-            if (currentUser) {
-                sendLobbyHeartbeat();
-                lobbyHeartbeatTimer = setInterval(sendLobbyHeartbeat, 5000);
-            }
-            client.subscribe('/topic/lobbies', function(msg){
-                try {
-                    const ev = JSON.parse(msg.body);
-                    if (!ev || !ev.lobby || ev.lobby.id !== lobbyId) return;
-                    if (ev.eventType === 'STARTED') {
-                        clearHeartbeat();
-                        lobbyHasStarted = true;
-                        if (currentUser && isPlayer(ev.lobby.players, currentUser) && ev.gameId) {
-                            window.location.href = '/game?gameId=' + ev.gameId;
-                        }
-                        return;
-                    }
-                    if (ev.eventType === 'DELETED') {
-                        clearHeartbeat();
-                        if (lobbyHasStarted) return;
-                        window.location.href = '/games';
-                        return;
-                    }
-                    applyLobby(ev.lobby);
-                } catch(e) {/* ignore */}
-            });
-        }, function(){ /* auto reconnect */ });
-
-        window.addEventListener('beforeunload', () => {
-            clearHeartbeat();
-            if (client && client.connected) {
-                client.disconnect(() => {});
-            }
-        });
-
-        function isPlayer(players, userId) {
-            if (!players || !userId) return false;
-            const target = String(userId);
-            return players.some(p => p && String(p.id) === target);
-        }
-
-        function applyLobby(lobby){
-            if (!lobby.playerIds) lobby.playerIds = [];
-            if (!lobby.players) lobby.players = [];
-            if (currentUser && !isPlayer(lobby.players, currentUser)) {
-                clearHeartbeat();
-                window.location.href = '/games';
-                return;
-            }
-            const ownerId = lobby.ownerId != null ? String(lobby.ownerId) : '';
-            lobbyEl.dataset.ownerId = ownerId;
-            const ownerSpan = document.getElementById('lobby-owner');
-            if (ownerSpan) {
-                const ownerName = lobby.ownerUsername || resolveOwnerName(lobby.players, ownerId) || ownerId;
-                ownerSpan.textContent = ownerName;
-            }
-
-            const playerCount = lobby.players.length ? lobby.players.length : lobby.playerIds.length;
-            currentPlayerCount = playerCount;
-            lobbyEl.dataset.playerCount = String(playerCount);
-            const countEl = document.getElementById('player-count');
-            if (countEl) countEl.textContent = playerCount;
-
-            const max = lobby.maxPlayers != null ? lobby.maxPlayers : '';
-            lobbyEl.dataset.maxPlayers = max;
-            const maxEl = document.getElementById('player-max');
-            if (maxEl) maxEl.textContent = max;
-
-            const list = document.getElementById('lobby-players');
-            if (list) {
-                list.innerHTML = renderPlayers(lobby.players, ownerId, currentUser);
-            }
-
-            const waiting = document.getElementById('lobby-waiting');
-            const startBtn = document.getElementById('start-button');
-            const lobbyFull = !lobby.maxPlayers || playerCount >= lobby.maxPlayers;
-            if (startBtn) startBtn.disabled = !lobbyFull;
-            if (waiting) {
-                waiting.style.display = lobbyFull ? 'none' : '';
-            }
-
-            const maxSelect = document.getElementById('lobby-max');
-            const configSelect = document.getElementById('lobby-config');
-            if (maxSelect) {
-                const options = maxSelect.querySelectorAll('option');
-                options.forEach(opt => {
-                    const val = parseInt(opt.value, 10);
-                    opt.disabled = !Number.isNaN(val) && val < playerCount;
-                });
-                const currentVal = parseInt(maxSelect.value, 10);
-                if (Number.isNaN(currentVal) || playerCount > currentVal) {
-                    maxSelect.value = String(playerCount);
-                }
-                if (lobby.maxPlayers) {
-                    maxSelect.value = lobby.maxPlayers;
-                }
-                maxSelect.dispatchEvent(new Event('change'));
-                if (configSelect && lobby.configJson) {
-                    configSelect.value = lobby.configJson;
-                }
-            }
-        }
-
-        function renderPlayers(players, ownerId, currentUserId){
-            if (!players || players.length === 0) {
-                return '<li style="font-size:.9rem; opacity:.75;">Waiting for players…</li>';
-            }
-            const isOwnerUser = currentUserId && ownerId && String(ownerId) === String(currentUserId);
-            return players.map(p => {
-                const pid = p.id != null ? String(p.id) : '';
-                const initial = (p.username && p.username.length) ? escapeHtml(p.username.charAt(0).toUpperCase()) : 'U';
-                const nameLabel = escapeHtml(p.username || ('User ' + pid));
-                const ownerBadge = pid === ownerId
-                    ? ' <span style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-surface); border:1px solid var(--color-border);">Owner</span>'
-                    : '';
-                const selfBadge = currentUserId && pid === currentUserId
-                    ? ' <span style="font-size:.75rem; padding:0.15rem 0.45rem; border-radius:999px; background:var(--color-accent); color:var(--color-bg);">You</span>'
-                    : '';
-                const kickForm = isOwnerUser && pid !== ownerId
-                    ? `<form method="post" action="/game/kick" style="margin-left:auto;">
-                         <input type="hidden" name="lobbyId" value="${lobbyId}" />
-                         <input type="hidden" name="playerId" value="${pid}" />
-                         <button class="btn" type="submit" style="padding:0.25rem 0.75rem; font-size:.8rem;">Kick</button>
-                       </form>`
-                    : '';
-                return `<li style="display:flex; align-items:center; gap:0.5rem; font-size:.95rem;">`
-                    + `<span style=\"width:30px; height:30px; border-radius:50%; background:var(--color-surface); display:inline-flex; align-items:center; justify-content:center; font-weight:600;\">${initial}</span>`
-                    + `<span>${nameLabel}</span>`
-                    + ownerBadge
-                    + selfBadge
-                    + kickForm
-                    + `</li>`;
-            }).join('');
-        }
-
-        function resolveOwnerName(players, ownerId){
-            if (!players || !players.length) return null;
-            for (const p of players) {
-                if (String(p.id) === ownerId) {
-                    return p.username || ownerId;
-                }
-            }
-            return null;
-        }
-
-        function escapeHtml(str){
-            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-        }
-    })();
-
-    (function(){
         const gameEl = document.getElementById('game-container');
-        if (!gameEl || !window.Stomp) return;
-
+        if (!gameEl || !gameEl.dataset.gameId) return;
         const gameId = gameEl.dataset.gameId;
-        const isBriskula = String(gameEl.dataset.isBriskula).toLowerCase() === 'true';
+        const apiBase = gameEl.dataset.serverUrl || '';
+        const wsUrl = gameEl.dataset.wsUrl || '';
         const currentUserId = gameEl.dataset.currentUser ? String(gameEl.dataset.currentUser) : null;
-        if (!gameId || !isBriskula) return;
+        const initialGame = /*[[${game}]]*/ null;
+        const initialHand = /*[[${playerCards}]]*/ [];
 
-        const wsUrl = /*[[${serverWsUrl}]]*/ 'ws://localhost:8080/ws';
-        const client = Stomp.client(wsUrl);
-        client.reconnect_delay = 3000;
-        client.debug = null;
+        const dom = {
+            ring: document.getElementById('player-ring'),
+            trick: document.getElementById('trick-area'),
+            trump: document.getElementById('trump-card'),
+            deckLeft: document.getElementById('deck-left'),
+            deckTower: document.getElementById('deck-tower'),
+            deckStack: document.getElementById('deck-stack'),
+            dropZone: document.getElementById('drop-zone'),
+            hand: document.getElementById('hand-cards'),
+            handStatus: document.getElementById('hand-status'),
+            turnPill: document.getElementById('turn-pill'),
+            gameStatus: document.getElementById('game-status'),
+            connection: document.getElementById('connection-status'),
+            infoDeck: document.getElementById('info-deck'),
+            infoTurn: document.getElementById('info-turn'),
+            infoPlayers: document.getElementById('info-players'),
+            infoTrick: document.getElementById('info-trick'),
+            infoTrump: document.getElementById('info-trump')
+        };
 
-        const cardImageCache = new Map();
+        const state = {
+            game: null,
+            hand: [],
+            wsConnected: false,
+            playing: false,
+            deckLeft: null
+        };
 
-        const stateScript = document.getElementById('initial-game-state');
-        let gameState = null;
-        if (stateScript && stateScript.textContent) {
-            try {
-                gameState = JSON.parse(stateScript.textContent);
-            } catch (ignore) {
-                gameState = null;
-            }
+        if (dom.dropZone) setupDropZone(dom.dropZone);
+        window.addEventListener('resize', () => positionSeats(dom.ring));
+
+        if (initialGame) {
+            applyGame(initialGame, 'UPDATED', null);
         }
+        if (Array.isArray(initialHand)) {
+            state.hand = initialHand;
+            renderHand();
+        }
+        loadGame();
+        connectWs();
 
-        client.connect({}, function(){
-            client.subscribe(`/topic/games/${gameId}/events`, function(msg){
-                try {
-                    const event = JSON.parse(msg.body);
-                    if (!event || !event.payloadJson) return;
-                    const payload = JSON.parse(event.payloadJson);
-                    if (event.eventType === 'STATE' || event.eventType === 'STARTED') {
-                        updateState(payload);
+        function connectWs() {
+            if (!window.Stomp || !wsUrl) {
+                setConnectionStatus('WS: unavailable');
+                return;
+            }
+            const client = Stomp.client(wsUrl);
+            client.reconnect_delay = 3000;
+            client.debug = null;
+            client.connect({}, () => {
+                state.wsConnected = true;
+                setConnectionStatus('WS: connected');
+                client.subscribe(`/topic/game/${gameId}`, msg => {
+                    try {
+                        const payload = JSON.parse(msg.body);
+                        if (!payload || !payload.gameEntity) return;
+                        applyGame(payload.gameEntity, payload.gameEvent, payload.result);
+                    } catch (err) {
+                        console.error('Game event error', err);
                     }
-                    if (event.eventType === 'FINISHED') {
-                        updateState(payload);
-                    }
-                } catch (e) {
-                    console.error('Failed to process game event', e);
-                }
-            });
-        }, function(){ /* reconnect handled by client */ });
-
-        if (gameState) {
-            updateState(gameState);
-        }
-
-        let playPending = false;
-
-        function updateState(state) {
-            gameState = state;
-            renderBriskula(state);
-        }
-
-        function renderBriskula(state) {
-            playPending = false;
-            const trumpLabel = document.getElementById('briskula-trump');
-            if (trumpLabel) {
-                const trumpCard = state.trumpCard;
-                const text = trumpCard ? `${formatValue(trumpCard.value)} of ${formatSuit(trumpCard.suit)}` : formatSuit(state.trumpSuit);
-                trumpLabel.textContent = text;
-            }
-
-            const deckLabel = document.getElementById('briskula-deck');
-            if (deckLabel) deckLabel.textContent = state.deckRemaining ?? 0;
-
-            const turnLabel = document.getElementById('briskula-turn');
-            if (turnLabel) turnLabel.textContent = state.currentTurnUsername || '—';
-
-            const trumpImage = document.getElementById('briskula-trump-image');
-            if (trumpImage) {
-                if (state.trumpCard && state.trumpCard.code) {
-                    trumpImage.alt = `${formatValue(state.trumpCard.value)} of ${formatSuit(state.trumpCard.suit)}`;
-                    trumpImage.style.display = '';
-                    loadCardFace(state.trumpCard, trumpImage);
-                } else {
-                    trumpImage.style.display = 'none';
-                }
-            }
-
-            renderPlayers(state);
-            renderTrick(state);
-            renderHand(state);
-            renderStatus(state);
-        }
-
-        function renderPlayers(state) {
-            const container = document.getElementById('briskula-opponents');
-            if (!container) return;
-            const players = state.players || [];
-            if (!players.length) {
-                container.innerHTML = '<div style="opacity:0.6;">Waiting for players...</div>';
-                return;
-            }
-            container.innerHTML = players.map(p => {
-                const classes = ['briskula-player-card'];
-                if (currentUserId != null && sameUser(p.userId, currentUserId)) classes.push('self');
-                if (p.currentTurn) classes.push('turn');
-                const name = escapeHtml(p.username || (`Player ${p.userId}`));
-                return `<div class="${classes.join(' ')}">`
-                    + `<div class="name">${name}</div>`
-                    + `<div>Points: <b>${p.points ?? 0}</b></div>`
-                    + `<div>Cards in hand: ${p.handSize ?? 0}</div>`
-                    + `<div>Won cards: ${p.capturedCards ?? 0}</div>`
-                    + `</div>`;
-            }).join('');
-        }
-
-        function renderTrick(state) {
-            const table = document.getElementById('briskula-table');
-            if (!table) return;
-            const trick = state.trick || [];
-            if (!trick.length) {
-                table.innerHTML = '<div style="opacity:0.6;">Waiting for cards...</div>';
-                return;
-            }
-            table.innerHTML = '';
-            trick.forEach(entry => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'played-card';
-                const img = document.createElement('img');
-                img.alt = entry.card ? `${formatValue(entry.card.value)} of ${formatSuit(entry.card.suit)}` : 'Card';
-                wrapper.appendChild(img);
-                const name = document.createElement('div');
-                name.textContent = entry.username || (`Player ${entry.userId}`);
-                wrapper.appendChild(name);
-                table.appendChild(wrapper);
-                if (entry.card) {
-                    loadCardFace(entry.card, img);
-                }
+                });
+            }, () => {
+                state.wsConnected = false;
+                setConnectionStatus('WS: reconnecting');
             });
         }
 
-        function renderHand(state) {
-            const handEl = document.getElementById('briskula-hand');
-            if (!handEl) return;
-            handEl.innerHTML = '';
-            const me = (state.players || []).find(p => currentUserId != null && sameUser(p.userId, currentUserId));
-            if (!me) {
-                handEl.innerHTML = '<div style="opacity:0.6;">Spectating...</div>';
-                return;
-            }
-            const canPlay = !state.finished && currentUserId != null && sameUser(state.currentTurnUserId, currentUserId);
-            const cards = me.hand || [];
-            if (!cards.length) {
-                handEl.innerHTML = '<div style="opacity:0.6;">No cards in hand.</div>';
-                return;
-            }
-            cards.forEach(card => {
-                const img = document.createElement('img');
-                img.alt = `${formatValue(card.value)} of ${formatSuit(card.suit)}`;
-                img.className = 'briskula-card-img' + (canPlay ? ' playable' : ' disabled');
-                if (canPlay) {
-                    img.addEventListener('click', () => attemptPlay(card));
-                }
-                if (!canPlay) {
-                    img.classList.add('disabled');
-                }
-                handEl.appendChild(img);
-                loadCardFace(card, img);
-            });
+        function setConnectionStatus(text) {
+            if (dom.connection) dom.connection.textContent = text;
         }
 
-        function renderStatus(state) {
-            const status = document.getElementById('briskula-status');
-            if (!status) return;
-            if (state.finished) {
-                const winners = (state.winners || []).map(id => {
-                    const player = (state.players || []).find(p => sameUser(p.userId, id));
-                    return player ? player.username : `Player ${id}`;
-                }).filter(Boolean);
-                status.textContent = winners.length ? `Game over. Winner${winners.length > 1 ? 's' : ''}: ${winners.join(', ')}.` : 'Game over.';
-                return;
-            }
-            if (!state.currentTurnUserId) {
-                status.textContent = 'Waiting for the next turn...';
-                return;
-            }
-            if (currentUserId != null && sameUser(state.currentTurnUserId, currentUserId)) {
-                status.textContent = 'Your turn. Pick a card to play.';
-            } else {
-                const player = (state.players || []).find(p => sameUser(p.userId, state.currentTurnUserId));
-                status.textContent = player ? `Waiting for ${player.username}...` : 'Waiting for opponent...';
-            }
-        }
-
-        function attemptPlay(card) {
-            if (playPending || !client.connected) return;
-            playPending = true;
-            try {
-                const payload = { suit: card.suit, value: card.value };
-                client.send(`/app/games/${gameId}/action`, {}, JSON.stringify({
-                    gameId: gameId,
-                    actionType: 'PLAY_CARD',
-                    payloadJson: JSON.stringify(payload)
-                }));
-                setTimeout(() => { playPending = false; }, 600);
-            } catch (e) {
-                console.error('Failed to play card', e);
-                playPending = false;
-            }
-        }
-
-        function loadCardFace(card, img) {
-            if (!card || !card.suit || !card.value) {
-                return;
-            }
-            const key = `${card.suit}:${card.value}`;
-            img.src = '/images/italian-cards/back/modiano.png';
-            const cached = cardImageCache.get(key);
-            if (cached) {
-                img.src = cached.face;
-                return;
-            }
-            fetch(`/api/cards/italian/${card.suit}/${card.value}`)
-                .then(res => res.ok ? res.json() : Promise.reject(res.status))
-                .then(data => {
-                    cardImageCache.set(key, data);
-                    img.src = data.face;
+        function loadGame() {
+            fetch(`/game/state?gameId=${gameId}`, { credentials: 'include' })
+                .then(res => res.ok ? res.text() : Promise.reject(res.status))
+                .then(text => {
+                    if (!text) return;
+                    const game = JSON.parse(text);
+                    applyGame(game, 'UPDATED', null);
                 })
                 .catch(() => {
-                    img.src = '/images/italian-cards/back/modiano.png';
+                    if (dom.gameStatus) dom.gameStatus.textContent = 'Unable to load game.';
                 });
         }
 
-        function formatSuit(suit) {
-            if (!suit) return '';
-            return suit.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        function refreshHand() {
+            if (!dom.hand) return;
+            fetch('/game/cards', { credentials: 'include' })
+                .then(res => res.ok ? res.json() : Promise.reject(res.status))
+                .then(cards => {
+                    const list = Array.isArray(cards) ? cards : [];
+                    const serverKeys = new Set(list.map(cardKey));
+                    state.pending.forEach((key) => {
+                        if (!serverKeys.has(key)) {
+                            state.pending.delete(key);
+                        }
+                    });
+                    state.hand = list.filter(card => !state.pending.has(cardKey(card)));
+                    renderHand();
+                })
+                .catch(() => {
+                    if (dom.handStatus) dom.handStatus.textContent = 'Cards unavailable';
+                });
         }
 
-        function formatValue(value) {
-            if (!value) return '';
-            return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        function applyGame(game, gameEvent, result) {
+            game.playersTurn = normalizePlayer(game.playersTurn);
+            state.game = game;
+            const prevDeckLeft = state.deckLeft;
+            const nextDeckLeft = game.cardsLeftInDeck ?? 0;
+            state.deckLeft = nextDeckLeft;
+            if (dom.deckLeft) dom.deckLeft.textContent = nextDeckLeft;
+            if (dom.infoDeck) dom.infoDeck.textContent = String(nextDeckLeft);
+            renderDeckTower(nextDeckLeft);
+            renderTrump(game.trumpCard);
+            renderTrick(game.playedCards);
+            renderPlayers(game);
+            if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
+                animateDeckDraw(prevDeckLeft - nextDeckLeft);
+            }
+            updateTurn(game.playersTurn);
+            if (dom.infoPlayers) {
+                const players = buildPlayers(game);
+                dom.infoPlayers.textContent = String(players.length);
+            }
+            if (dom.infoTrick) {
+                const trickCount = Array.isArray(game.playedCards) ? game.playedCards.length : 0;
+                dom.infoTrick.textContent = String(trickCount);
+            }
+            if (dom.infoTrump) {
+                dom.infoTrump.textContent = formatItalianCard(game.trumpCard?.card);
+            }
+            if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
+                const winners = result.gameWinners.map(w => w.name).join(', ');
+                if (dom.gameStatus) dom.gameStatus.textContent = `Game ended. Winners: ${winners}.`;
+            } else if (gameEvent === 'CLOSED') {
+                if (dom.gameStatus) dom.gameStatus.textContent = 'Game closed.';
+            } else if (dom.gameStatus) {
+                dom.gameStatus.textContent = 'Briskula in progress.';
+            }
         }
 
-        function sameUser(a, b) {
-            if (a == null || b == null) return false;
-            return String(a) === String(b);
+        function renderTrump(card) {
+            if (!dom.trump) return;
+            if (!card) {
+                dom.trump.removeAttribute('src');
+                dom.trump.style.display = 'none';
+                return;
+            }
+            dom.trump.src = italianCardUrl(card.card);
+            dom.trump.style.display = '';
+            setupTrumpZoom(dom.trump);
         }
 
-        function escapeHtml(str){
-            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+        function renderTrick(cards) {
+            if (!dom.trick) return;
+            dom.trick.innerHTML = '';
+            if (!cards || !cards.length) return;
+            cards.forEach((card, idx) => {
+                const img = document.createElement('img');
+                img.className = 'trick-card';
+                img.style.setProperty('--spin', `${(idx * 4) - 6}deg`);
+                img.alt = 'Played card';
+                img.src = italianCardUrl(card.card);
+                dom.trick.appendChild(img);
+            });
+        }
+
+        function renderPlayers(game) {
+            if (!dom.ring) return;
+            dom.ring.innerHTML = '';
+            const players = buildPlayers(game);
+            players.forEach(player => {
+                const seat = document.createElement('div');
+                seat.className = 'player-seat';
+                if (player.id && game.playersTurn && String(game.playersTurn.id) === String(player.id)) {
+                    seat.classList.add('is-turn');
+                }
+                const isSelf = currentUserId && String(player.id) === currentUserId;
+                if (player.id) seat.dataset.playerId = String(player.id);
+                if (isSelf) seat.dataset.isSelf = '1';
+                const avatar = document.createElement('div');
+                avatar.className = 'seat-avatar';
+                avatar.textContent = (player.name || 'P').charAt(0).toUpperCase();
+                const name = document.createElement('div');
+                name.className = 'seat-name';
+                name.textContent = isSelf ? `${player.name || 'Player'} (You)` : (player.name || 'Player');
+                const cards = document.createElement('div');
+                cards.className = 'seat-cards';
+                const cardsCount = player.cards != null ? player.cards : (player.points ?? 0);
+                if (isSelf) {
+                    cards.textContent = `Cards: ${cardsCount}`;
+                } else {
+                    for (let i = 0; i < cardsCount; i++) {
+                        const img = document.createElement('img');
+                        img.className = 'seat-card';
+                        img.alt = 'Card back';
+                        img.src = italianBackUrl();
+                        cards.appendChild(img);
+                    }
+                }
+                const points = document.createElement('div');
+                points.className = 'seat-points';
+                points.textContent = `Points: ${player.points ?? 0}`;
+                seat.appendChild(avatar);
+                seat.appendChild(name);
+                seat.appendChild(cards);
+                seat.appendChild(points);
+                dom.ring.appendChild(seat);
+            });
+            positionSeats(dom.ring);
+        }
+
+        function updateTurn(playersTurn) {
+            const isTurn = !playersTurn || (currentUserId && String(playersTurn.id) === currentUserId);
+            if (dom.turnPill) {
+                dom.turnPill.textContent = isTurn
+                    ? 'Your turn'
+                    : `Waiting for ${playersTurn && playersTurn.name ? playersTurn.name : 'player'}`;
+            }
+            if (dom.infoTurn) {
+                dom.infoTurn.textContent = isTurn
+                    ? 'You'
+                    : (playersTurn && playersTurn.name ? playersTurn.name : 'Player');
+            }
+            if (dom.handStatus) {
+                dom.handStatus.textContent = isTurn ? 'Drag a card to play' : 'Hold for your turn';
+            }
+            if (dom.dropZone) {
+                dom.dropZone.textContent = isTurn
+                    ? 'Drop a card here to play'
+                    : `Waiting for ${playersTurn && playersTurn.name ? playersTurn.name : 'player'}`;
+            }
+            renderHand();
+        }
+
+        function renderHand() {
+            if (!dom.hand) return;
+            dom.hand.innerHTML = '';
+            if (!state.hand.length) {
+                dom.hand.innerHTML = '<div>No cards in hand.</div>';
+                return;
+            }
+            const isTurn = state.game && state.game.playersTurn
+                && currentUserId
+                && String(state.game.playersTurn.id) === currentUserId;
+            state.hand.forEach(card => {
+                const img = document.createElement('img');
+                img.className = 'hand-card';
+                img.dataset.cardKey = cardKey(card);
+                img.alt = 'Card';
+                img.src = italianCardUrl(card.card);
+                if (!isTurn || state.playing) {
+                    img.classList.add('is-disabled');
+                    img.draggable = false;
+                } else {
+                    img.draggable = false;
+                    img.addEventListener('pointerdown', (evt) => {
+                        evt.preventDefault();
+                        startDrag(card, img, evt);
+                    });
+                    img.addEventListener('dblclick', () => {
+                        playCard(card);
+                    });
+                }
+                dom.hand.appendChild(img);
+            });
+        }
+
+        function playCard(card) {
+            if (state.playing) return;
+            const isTurn = state.game && state.game.playersTurn
+                && currentUserId
+                && String(state.game.playersTurn.id) === currentUserId;
+            if (state.game && state.game.playersTurn && !isTurn) {
+                if (dom.gameStatus) dom.gameStatus.textContent = 'Wait for your turn.';
+                return;
+            }
+            state.playing = true;
+            if (dom.gameStatus) dom.gameStatus.textContent = 'Playing card...';
+            const payload = new URLSearchParams();
+            payload.append('gameId', gameId);
+            payload.append('cardType', card.cardType);
+            payload.append('card', card.card);
+            fetch('/game/play', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: payload.toString()
+            })
+                .then(async res => {
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(text || `play failed: ${res.status}`);
+                    }
+                })
+                .then(() => {
+                    state.playing = false;
+                    animateHandRemoval(cardKey(card));
+                    setTimeout(() => {
+                        state.hand = state.hand.filter(c => cardKey(c) !== cardKey(card));
+                        renderHand();
+                    }, 230);
+                })
+                .catch((err) => {
+                    state.playing = false;
+                    if (dom.gameStatus) dom.gameStatus.textContent = err?.message || 'Could not play card.';
+                });
+        }
+
+        function setupDropZone(zone) {
+            zone.addEventListener('pointerdown', (evt) => evt.preventDefault());
+        }
+
+        function startDrag(card, originEl, evt) {
+            if (state.playing) return;
+            const isTurn = state.game && state.game.playersTurn
+                && currentUserId
+                && String(state.game.playersTurn.id) === currentUserId;
+            if (state.game && state.game.playersTurn && !isTurn) {
+                if (dom.gameStatus) dom.gameStatus.textContent = 'Wait for your turn.';
+                return;
+            }
+            const ghost = document.createElement('img');
+            ghost.src = originEl.src;
+            ghost.className = 'drag-ghost';
+            const rect = originEl.getBoundingClientRect();
+            ghost.style.width = `${rect.width}px`;
+            document.body.appendChild(ghost);
+            const start = { x: evt.clientX, y: evt.clientY };
+            moveGhost(ghost, start.x, start.y);
+            dom.dropZone?.classList.add('ready');
+
+            const onMove = (moveEvt) => {
+                moveGhost(ghost, moveEvt.clientX, moveEvt.clientY);
+            };
+            const onUp = (upEvt) => {
+                dom.dropZone?.classList.remove('ready');
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                const targetRect = dom.dropZone ? dom.dropZone.getBoundingClientRect() : null;
+                const inside = targetRect
+                    && upEvt.clientX >= targetRect.left
+                    && upEvt.clientX <= targetRect.right
+                    && upEvt.clientY >= targetRect.top
+                    && upEvt.clientY <= targetRect.bottom;
+                if (inside && dom.dropZone) {
+                    const centerX = targetRect.left + targetRect.width / 2;
+                    const centerY = targetRect.top + targetRect.height / 2;
+                    ghost.classList.add('snap');
+                    ghost.style.transition = 'transform 160ms ease, left 160ms ease, top 160ms ease';
+                    ghost.style.left = `${centerX}px`;
+                    ghost.style.top = `${centerY}px`;
+                    setTimeout(() => {
+                        ghost.remove();
+                        playCard(card);
+                    }, 170);
+                } else {
+                    ghost.style.transition = 'transform 160ms ease, left 160ms ease, top 160ms ease';
+                    ghost.style.left = `${start.x}px`;
+                    ghost.style.top = `${start.y}px`;
+                    setTimeout(() => ghost.remove(), 170);
+                }
+            };
+
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        }
+
+        function moveGhost(ghost, x, y) {
+            ghost.style.left = `${x}px`;
+            ghost.style.top = `${y}px`;
+        }
+
+        function buildPlayers(game) {
+            const players = new Map();
+            const cardsMap = game.playersCardsMap || {};
+            Object.keys(cardsMap).forEach(key => {
+                const parsed = parsePlayerKey(key);
+                const idKey = parsed.id || parsed.name || key;
+                players.set(idKey, { ...parsed, cards: cardsMap[key] });
+            });
+            const pointsMap = game.pointsPerPerson || {};
+            Object.keys(pointsMap).forEach(key => {
+                const parsed = parsePlayerKey(key);
+                const idKey = parsed.id || parsed.name || key;
+                const existing = players.get(idKey) || parsed;
+                players.set(idKey, { ...existing, points: pointsMap[key] });
+            });
+            const list = Array.from(players.values());
+            list.sort((a, b) => {
+                const aNum = Number(a.id);
+                const bNum = Number(b.id);
+                if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
+                return String(a.name).localeCompare(String(b.name));
+            });
+            if (currentUserId) {
+                const idx = list.findIndex(p => String(p.id) === currentUserId);
+                if (idx > 0) {
+                    return list.slice(idx).concat(list.slice(0, idx));
+                }
+            }
+            return list;
+        }
+
+        function positionSeats(ring) {
+            if (!ring) return;
+            const seats = Array.from(ring.children);
+            const count = seats.length || 1;
+            const base = Math.min(ring.clientWidth, ring.clientHeight) / 2;
+            const radius = base - 2;
+            seats.forEach((seat, index) => {
+                const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                seat.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+                seat.style.left = '50%';
+                seat.style.top = '50%';
+            });
+        }
+
+        function setupTrumpZoom(img) {
+            if (!img || img.dataset.zoomReady) return;
+            img.dataset.zoomReady = '1';
+            let timer = null;
+            let overlay = null;
+
+            const clear = () => {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+                if (overlay) {
+                    overlay.remove();
+                    overlay = null;
+                }
+            };
+
+            img.addEventListener('mouseenter', () => {
+                clear();
+                timer = setTimeout(() => {
+                    overlay = document.createElement('div');
+                    overlay.className = 'trump-zoom';
+                    const big = document.createElement('img');
+                    big.src = img.src;
+                    big.alt = 'Trump card';
+                    overlay.appendChild(big);
+                    overlay.addEventListener('click', clear);
+                    document.body.appendChild(overlay);
+                }, 1000);
+            });
+            img.addEventListener('mouseleave', clear);
+        }
+
+        function normalizePlayer(player) {
+            if (!player) return null;
+            if (typeof player === 'object' && player.name) {
+                return { name: player.name, id: player.id != null ? String(player.id) : null };
+            }
+            return parsePlayerKey(player);
+        }
+
+        function cardKey(card) {
+            if (!card) return '';
+            return `${card.cardType || ''}:${card.card || ''}`;
+        }
+
+        function animateHandRemoval(key) {
+            if (!dom.hand) return;
+            const el = dom.hand.querySelector(`[data-card-key="${key}"]`);
+            if (el) el.classList.add('played');
+        }
+
+        function italianCardUrl(code) {
+            if (!code) return '';
+            const suitLetter = code.charAt(0).toUpperCase();
+            const valueNum = code.slice(1);
+            const suitMap = { C: 'COPPE', D: 'DENARI', S: 'SPADE', B: 'BASTONI' };
+            const valueMap = {
+                '1': 'ACE', '2': 'TWO', '3': 'THREE', '4': 'FOUR', '5': 'FIVE', '6': 'SIX',
+                '7': 'SEVEN', '11': 'JACK', '12': 'KNIGHT', '13': 'KING'
+            };
+            const suit = suitMap[suitLetter];
+            const value = valueMap[valueNum];
+            if (!suit || !value) return '';
+            return buildUrl(apiBase, `/api/cards/italian/${suit}/${value}`);
+        }
+
+        function italianBackUrl() {
+            return buildUrl(apiBase, '/api/cards/italian/back');
+        }
+
+        function formatItalianCard(code) {
+            if (!code) return '-';
+            const suitLetter = code.charAt(0).toUpperCase();
+            const valueNum = code.slice(1);
+            const suitMap = { C: 'Coppe', D: 'Denari', S: 'Spade', B: 'Bastoni' };
+            const valueMap = {
+                '1': 'Ace', '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five', '6': 'Six',
+                '7': 'Seven', '11': 'Jack', '12': 'Knight', '13': 'King'
+            };
+            const suit = suitMap[suitLetter];
+            const value = valueMap[valueNum];
+            if (!suit || !value) return code;
+            return `${value} of ${suit}`;
+        }
+
+        function renderDeckTower(cardsLeft) {
+            if (!dom.deckTower) return;
+            dom.deckTower.innerHTML = '';
+            if (dom.deckStack) {
+                dom.deckStack.classList.toggle('is-empty', !cardsLeft || cardsLeft <= 0);
+            }
+            if (!cardsLeft || cardsLeft <= 0) return;
+            const count = Math.min(3, Math.ceil(cardsLeft / 5));
+            for (let i = 0; i < count; i++) {
+                const img = document.createElement('img');
+                img.alt = 'Deck';
+                img.src = italianBackUrl();
+                dom.deckTower.appendChild(img);
+            }
+        }
+
+        function animateDeckDraw(draws) {
+            if (!dom.deckTower || !dom.ring || draws <= 0) return;
+            const towerRect = dom.deckTower.getBoundingClientRect();
+            if (!towerRect.width || !towerRect.height) return;
+            const seats = Array.from(dom.ring.children);
+            if (!seats.length) return;
+            const fromX = towerRect.left + towerRect.width / 2;
+            const fromY = towerRect.top + towerRect.height / 2;
+            const targets = seats.map((seat) => {
+                if (seat.dataset.isSelf === '1' && dom.hand) {
+                    return dom.hand.getBoundingClientRect();
+                }
+                return seat.getBoundingClientRect();
+            });
+            for (let i = 0; i < draws; i++) {
+                const target = targets[i % targets.length];
+                if (!target) continue;
+                const toX = target.left + target.width / 2;
+                const toY = target.top + target.height / 2;
+                const card = document.createElement('img');
+                card.className = 'deal-card';
+                card.src = italianBackUrl();
+                card.style.setProperty('--from-x', `${fromX}px`);
+                card.style.setProperty('--from-y', `${fromY}px`);
+                card.style.setProperty('--to-x', `${toX}px`);
+                card.style.setProperty('--to-y', `${toY}px`);
+                document.body.appendChild(card);
+                const delay = i * 80;
+                card.style.animationDelay = `${delay}ms`;
+                setTimeout(() => card.remove(), 520 + delay);
+            }
+        }
+
+        function buildUrl(base, path) {
+            if (!base) return path;
+            if (base.endsWith('/') && path.startsWith('/')) return base.slice(0, -1) + path;
+            if (!base.endsWith('/') && !path.startsWith('/')) return base + '/' + path;
+            return base + path;
+        }
+
+        function parsePlayerKey(key) {
+            if (!key) return { name: '' };
+            if (typeof key === 'object' && key.name) {
+                return { name: key.name, id: key.id != null ? String(key.id) : null };
+            }
+            const raw = String(key);
+            if (raw.startsWith('{') && raw.endsWith('}')) {
+                try {
+                    const obj = JSON.parse(raw);
+                    if (obj && obj.name) {
+                        return { name: obj.name, id: obj.id != null ? String(obj.id) : null };
+                    }
+                } catch {}
+            }
+            const nameMatch = raw.match(/name=([^,\\)]*)/i);
+            const idMatch = raw.match(/id=([^,\\)]*)/i);
+            return {
+                name: nameMatch ? nameMatch[1].trim() : raw,
+                id: idMatch ? idMatch[1].trim() : null
+            };
         }
     })();
 </script>

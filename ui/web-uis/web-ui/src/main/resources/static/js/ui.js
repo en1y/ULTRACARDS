@@ -1,3 +1,50 @@
+// App config helpers
+(function () {
+  const apiStorageKey = 'uc-api-base';
+  const wsStorageKey = 'uc-ws-base';
+  function sanitizeBase(raw, fallback) {
+    if (!raw || typeof raw !== 'string') return fallback;
+    return raw.endsWith('/') ? raw.slice(0, -1) : raw;
+  }
+  function getApiBase() {
+    return sanitizeBase(localStorage.getItem(apiStorageKey), '/api');
+  }
+  function getWsBase() {
+    const stored = localStorage.getItem(wsStorageKey);
+    if (stored) return sanitizeBase(stored, '');
+    const apiBase = getApiBase();
+    if (apiBase.startsWith('http://') || apiBase.startsWith('https://')) {
+      const wsProto = apiBase.startsWith('https://') ? 'wss://' : 'ws://';
+      const noProto = apiBase.replace(/^https?:\/\//, '');
+      const host = noProto.split('/')[0];
+      return `${wsProto}${host}`;
+    }
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}`;
+  }
+
+  window.UC = {
+    apiBase: getApiBase(),
+    wsBase: getWsBase(),
+    fetchJson: async (path, options = {}) => {
+      const res = await fetch(`${getApiBase()}${path}`, {
+        credentials: 'include',
+        ...options
+      });
+      return res;
+    },
+    getProfile: async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/auth/profile`, { credentials: 'include' });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      }
+    }
+  };
+})();
+
 // Theme toggle and persistence
 (function () {
   const storageKey = 'uc-theme';
@@ -52,6 +99,26 @@
   }, { passive: true });
 })();
 
+// Auth-aware header rendering
+(function () {
+  async function initAuthHeader() {
+    const profileWrap = document.querySelector('[data-auth="profile"]');
+    const guestWrap = document.querySelector('[data-auth="guest"]');
+    const nameEl = document.querySelector('[data-auth-name]');
+    const profile = await (window.UC?.getProfile?.() || Promise.resolve(null));
+    if (profile && profile.username) {
+      if (nameEl) nameEl.textContent = profile.username;
+      if (profileWrap) profileWrap.style.display = '';
+      if (guestWrap) guestWrap.style.display = 'none';
+    } else {
+      if (profileWrap) profileWrap.style.display = 'none';
+      if (guestWrap) guestWrap.style.display = '';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initAuthHeader);
+})();
+
 // Profile dropdown + logout
 (function () {
   function initProfileMenu() {
@@ -89,7 +156,8 @@
       const ok = window.confirm('This will log you out and clear your session. Are you sure?');
       if (!ok) return;
       try {
-        await fetch('/api/auth/logout', { method: 'GET', credentials: 'include' });
+        const base = window.UC?.apiBase || '/api';
+        await fetch(`${base}/auth/logout`, { method: 'POST', credentials: 'include' });
       } catch {}
       // Hard redirect to home so any stale state is gone
       window.location.href = '/';
@@ -195,7 +263,8 @@ function guardXSS(value) {
       const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!re.test(email)) { emailError.textContent = 'Please enter a valid email'; return; }
       try {
-        const res = await fetch('/api/auth/email/send', {
+        const base = window.UC?.apiBase || '/api';
+        const res = await fetch(`${base}/auth/email/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -301,7 +370,8 @@ function guardXSS(value) {
       if (code.length !== 6 || /\D/.test(code)) { codeError.textContent = 'Enter the 6 digit code'; return; }
       if (!pendingEmail) { codeError.textContent = 'Missing email. Go back and enter your email.'; return; }
       try {
-        const res = await fetch('/api/auth/email/verify', {
+        const base = window.UC?.apiBase || '/api';
+        const res = await fetch(`${base}/auth/email/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -347,7 +417,8 @@ function guardXSS(value) {
       if (!x.ok) { userError.textContent = x.message; return; }
       if (username.length < 3) { userError.textContent = 'Username must be at least 3 characters'; return; }
       try {
-        const res = await fetch('/api/auth/username', {
+        const base = window.UC?.apiBase || '/api';
+        const res = await fetch(`${base}/auth/username`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -373,7 +444,8 @@ function guardXSS(value) {
           if (emailInput) emailInput.value = email || '';
           if (emailError) emailError.textContent = '';
           // Send code right away using the same API as the login flow
-          const res = await fetch('/api/auth/email/send', {
+          const base = window.UC?.apiBase || '/api';
+          const res = await fetch(`${base}/auth/email/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

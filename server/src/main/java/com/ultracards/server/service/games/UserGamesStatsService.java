@@ -18,11 +18,11 @@ public class UserGamesStatsService {
 
     public void addGameWon(UserGamesStats ugs, GameType gameType) {
         ugs.addGameWon(gameType);
-        userGamesStatsRepository.save(ugs);
+        save(ugs);
     }
     public void addGamePlayed(UserGamesStats ugs, GameType gameType) {
         ugs.addGamePlayed(gameType);
-        userGamesStatsRepository.save(ugs);
+        save(ugs);
     }
 
     public void save(UserGamesStats ugs) {

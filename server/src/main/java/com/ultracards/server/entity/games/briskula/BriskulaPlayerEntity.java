@@ -2,60 +2,22 @@ package com.ultracards.server.entity.games.briskula;
 
 import com.ultracards.games.briskula.BriskulaCard;
 import com.ultracards.games.briskula.BriskulaPlayer;
+import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.games.briskula.converters.BriskulaCardConverter;
+import com.ultracards.server.entity.games.PlayerEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 
-import java.util.List;
+public class BriskulaPlayerEntity extends BriskulaPlayer implements PlayerEntity {
+    @Getter
+    private final UserEntity user;
 
-@Entity
-@Table(name = "briskula_players")
-public class BriskulaPlayerEntity extends BriskulaPlayer {
-
-    public BriskulaPlayerEntity() {
-        super(null);
+    public BriskulaPlayerEntity(String name, UserEntity user) {
+        super(name);
+        this.user = user;
     }
 
-    public BriskulaPlayerEntity(UserEntity user) {
-        super(user.getUsername());
+    public GamePlayerDTO getGamePlayerDTO() {
+        return new GamePlayerDTO(user.getUsername(), user.getId());
     }
-
-    @Setter
-    private Long id;
-
-    @Setter
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Long getId() {
-        return id;
-    }
-
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    public UserEntity getUser() {
-        return user;
-    }
-
-    @Override
-    @Column(name = "points")
-    public int getPoints() {
-        return super.getPoints();
-    }
-
-    @Override
-    @Convert(converter = BriskulaCardConverter.class)
-    @Column(name = "won_cards", columnDefinition = "jsonb") // replace with text for non PostgreSQL databases
-    public List<BriskulaCard> getWonCards() {
-        return super.getWonCards();
-    }
-
-    @Column
-    @Getter @Setter
-    private boolean isWinner;
 }

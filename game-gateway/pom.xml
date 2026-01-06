@@ -90,6 +90,27 @@
             <artifactId>commons-lang3</artifactId>
             <version>3.19.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>en1y.ultracards.templates</groupId>
+            <artifactId>cards-template</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.templates</groupId>
+            <artifactId>game-template</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.cards</groupId>
+            <artifactId>italian-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>en1y.ultracards.cards</groupId>
+            <artifactId>poker-cards</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

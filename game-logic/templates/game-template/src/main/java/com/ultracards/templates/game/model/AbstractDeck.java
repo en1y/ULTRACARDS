@@ -1,7 +1,7 @@
 package com.ultracards.templates.game.model;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.DeckInterface;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.StringJoiner;
 
 public abstract class AbstractDeck
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>>

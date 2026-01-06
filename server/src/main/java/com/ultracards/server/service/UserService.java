@@ -5,6 +5,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.repositories.UserRepository;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -42,4 +43,7 @@ public class UserService {
         userRepository.save(user);
     }
 
+    public UserEntity getUserById(@NotNull Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
 }

@@ -5,7 +5,7 @@ import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.auth.TokenEntity;
-import com.ultracards.server.service.AuthService;
+import com.ultracards.server.service.auth.AuthService;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.http.HttpServletRequest;

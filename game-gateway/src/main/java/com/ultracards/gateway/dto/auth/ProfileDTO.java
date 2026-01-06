@@ -18,15 +18,15 @@ public class ProfileDTO {
     private String username;
     @NotBlank
     private String roles;
-    private long id;
-    private int gamesPlayed;
-    private int gamesWon;
-    private int briskulaGamesPlayed;
-    private int briskulaGamesWon;
-    private int pokerGamesPlayed;
-    private int pokerGamesWon;
-    private int tresetaGamesPlayed;
-    private int tresetaGamesWon;
-    private int durakGamesPlayed;
-    private int durakGamesWon;
+    private Long id;
+    private Integer gamesPlayed;
+    private Integer gamesWon;
+    private Integer briskulaGamesPlayed;
+    private Integer briskulaGamesWon;
+    private Integer pokerGamesPlayed;
+    private Integer pokerGamesWon;
+    private Integer tresetaGamesPlayed;
+    private Integer tresetaGamesWon;
+    private Integer durakGamesPlayed;
+    private Integer durakGamesWon;
 }

@@ -4,19 +4,27 @@ import com.ultracards.templates.cards.AbstractCard;
 
 import java.util.Locale;
 
-public class ItalianCard<Card extends ItalianCard<Card>> extends AbstractCard<ItalianCardType, ItalianCardValue, Card> {
+public class ItalianCard<Card extends ItalianCard<Card>> extends AbstractCard<ItalianCardSuit, ItalianCardValue, Card> {
 
-    public ItalianCard(ItalianCardType italianCardType, ItalianCardValue italianCardValue) {
-        super(italianCardType, italianCardValue);
+    public ItalianCard(ItalianCardSuit italianCardSuit, ItalianCardValue italianCardValue) {
+        super(italianCardSuit, italianCardValue);
     }
 
     public static void setLocale (Locale locale) {
-        ItalianCardType.setLocale(locale);
+        ItalianCardSuit.setLocale(locale);
         ItalianCardValue.setLocale(locale);
     }
 
     @Override
     public String toString() {
-        return getValue().getName() + " " + getType().getName();
+        return getValue().getName() + " " + getSuit().getSuitName();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ItalianCard<?> card) {
+            return getSuit().equals(card.getSuit()) && getValue().equals(card.getValue());
+        }
+        return false;
     }
 }

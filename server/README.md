@@ -35,3 +35,9 @@ public class JwtSecretGenerator {
   }
 }
 ```
+
+## Postgres with Docker
+
+- A Dockerfile to spin up the Postgres instance with the expected database/user/password lives at `docker/postgres/Dockerfile`.
+- Build the image: `docker build -t ultracards-db -f docker/postgres/Dockerfile docker/postgres`.
+- Run the container: `docker run --name ultracards-db -p 5432:5432 -d ultracards-db`. Add `-v ultracards-db-data:/var/lib/postgresql/data` if you want the data to persist across runs.

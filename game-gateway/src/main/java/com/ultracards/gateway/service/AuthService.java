@@ -21,20 +21,37 @@ public class AuthService {
 
     private final RestTemplate restTemplate;
     private final String serverUrl;
+    private final ClientTokenHolder clientTokenHolder;
+    private final TokenManager tokenManager;
 
     @Autowired
-    // You still have to initiate it if you are not using Spring
-    // If you are using Spring you can initiate the serverUrl bean
     public AuthService(RestTemplate restTemplate,
-                             @Qualifier("serverUrl") String serverUrl) {
+                       @Qualifier("serverUrl") String serverUrl,
+                       ClientTokenHolder clientTokenHolder,
+                       TokenManager tokenManager) {
         this.restTemplate = restTemplate;
         this.serverUrl = serverUrl;
+        this.clientTokenHolder = clientTokenHolder;
+        this.tokenManager = tokenManager;
+    }
+
+    public AuthService(RestTemplate restTemplate,
+                       @Qualifier("serverUrl") String serverUrl,
+                       ClientTokenHolder clientTokenHolder) {
+        this(restTemplate, serverUrl, clientTokenHolder, new TokenManager(clientTokenHolder));
+    }
+
+    // You still have to initiate it if you are not using Spring
+    // If you are using Spring you can initiate the serverUrl bean
+    public UsernameDTO updateUsername (
+            @NotBlank String username) {
+        return updateUsername(clientTokenHolder, username);
     }
 
     public UsernameDTO updateUsername (
             @NotNull ClientTokenHolder tokenHolder,
             @NotBlank String username) {
-        var entity = new HttpEntity<>(new UsernameDTO(username), createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(new UsernameDTO(username), tokenManager.authHeaders(tokenHolder));
         var response = restTemplate.exchange(
                 serverUrl + "api/auth/username",
                 HttpMethod.PUT,
@@ -42,12 +59,12 @@ public class AuthService {
                 UsernameDTO.class
         );
 
-        updateTokenHolder(tokenHolder, response.getHeaders());
+        tokenManager.updateToken(tokenHolder, response);
         return response.getBody();
     }
 
     public UsernameDTO getUsername (@NotNull ClientTokenHolder tokenHolder) {
-        var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(tokenManager.authHeaders(tokenHolder));
         var response = restTemplate.exchange(
                 serverUrl + "api/auth/username",
                 HttpMethod.GET,
@@ -55,19 +72,23 @@ public class AuthService {
                 UsernameDTO.class
         );
 
-        updateTokenHolder(tokenHolder, response.getHeaders());
+        tokenManager.updateToken(tokenHolder, response);
         return response.getBody();
     }
 
+    public UsernameDTO getUsername() {
+        return getUsername(clientTokenHolder);
+    }
+
     public void logout (@NotNull ClientTokenHolder tokenHolder) {
-        var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(tokenManager.authHeaders(tokenHolder));
         var response = restTemplate.exchange(
                 serverUrl + "api/auth/logout",
                 HttpMethod.POST,
                 entity,
                 Void.class
         );
-        updateTokenHolder(tokenHolder, response.getHeaders());
+        tokenManager.updateToken(tokenHolder, response);
     }
 
 
@@ -77,7 +98,7 @@ public class AuthService {
     public void sendVerificationEmail(
             @NotBlank @Email String email,
             @NotNull ClientTokenHolder tokenHolder) throws AccountLockedException {
-        var entity = new HttpEntity<>(new EmailDTO(email), createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(new EmailDTO(email), tokenManager.jsonHeaders(tokenHolder));
 
         var res = restTemplate.postForEntity(
                 serverUrl + "api/auth/email/send",
@@ -102,9 +123,7 @@ public class AuthService {
             @Valid VerificationCodeDTO verificationCode,
             ClientTokenHolder tokenHolder
     ) {
-        var headers = tokenHolder.getToken() != null ? createHeaders(tokenHolder.getToken()) : new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(verificationCode, headers);
+        var entity = new HttpEntity<>(verificationCode, tokenManager.jsonHeaders(tokenHolder));
 
         var response = restTemplate.postForEntity(
                 serverUrl + "api/auth/email/verify",
@@ -112,13 +131,13 @@ public class AuthService {
                 Void.class
         );
 
-        updateTokenHolder(tokenHolder, response.getHeaders());
+        tokenManager.updateToken(tokenHolder, response);
 
         return response.getStatusCode().is2xxSuccessful();
     }
 
     public ProfileDTO getProfile(@NotNull ClientTokenHolder tokenHolder) {
-        var entity = new HttpEntity<>(createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(tokenManager.authHeaders(tokenHolder));
 
         var response = restTemplate.exchange(
                 serverUrl + "api/auth/profile",
@@ -127,45 +146,33 @@ public class AuthService {
                 ProfileDTO.class
         );
 
-        updateTokenHolder(tokenHolder, response.getHeaders());
+        tokenManager.updateToken(tokenHolder, response);
 
         return response.getBody();
+    }
+
+    public ProfileDTO getProfile() {
+        return getProfile(clientTokenHolder);
     }
 
     public ProfileDTO updateProfile(
             @NotNull ClientTokenHolder tokenHolder,
             @Valid ProfileDTO profileDTO
     ) {
-        var entity = new HttpEntity<>(profileDTO, createHeaders(tokenHolder.getToken()));
+        var entity = new HttpEntity<>(profileDTO, tokenManager.jsonHeaders(tokenHolder));
         var response = restTemplate.postForEntity(
                 serverUrl + "api/auth/profile",
                 entity,
                 ProfileDTO.class
         );
 
-        updateTokenHolder(tokenHolder, response.getHeaders());
+        tokenManager.updateToken(tokenHolder, response);
 
         return response.getBody();
     }
 
-    private HttpHeaders createHeaders(String token) {
-        var headers = new HttpHeaders();
-        headers.add(HttpHeaders.COOKIE, "refreshToken=" + token);
-        return headers;
+    public ProfileDTO updateProfile(@Valid ProfileDTO profileDTO) {
+        return updateProfile(clientTokenHolder, profileDTO);
     }
 
-    private void updateTokenHolder(@NotNull ClientTokenHolder tokenHolder, HttpHeaders headers) {
-        var cookies = headers.get(HttpHeaders.SET_COOKIE);
-
-        if (cookies != null && !cookies.isEmpty()) {
-            for (var cookie : cookies) {
-                if (cookie.startsWith("refreshToken=")) {
-                    var refreshToken = cookie.split(";", 2)[0] // "refreshToken=abc123"
-                            .split("=", 2)[1]; // "abc123"
-                    tokenHolder.setToken(refreshToken);
-                    return;
-                }
-            }
-        }
-    }
 }
