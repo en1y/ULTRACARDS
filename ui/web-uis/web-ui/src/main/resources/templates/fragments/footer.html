@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Footer Fragment: include with th:replace="fragments/footer :: footer" -->
+<footer class="footer" th:fragment="footer">
+  <div class="container">
+    <small>
+      © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> ULTRACARDS — Shuffle ideas. Deal fun. Play fair.
+    </small>
+  </div>
+  <!-- Intentionally standard footer (only visible when scrolled to) -->
+  <!-- Not sticky or fixed; it appears at the page bottom. -->
+</footer>
+</body>
+</html>
+

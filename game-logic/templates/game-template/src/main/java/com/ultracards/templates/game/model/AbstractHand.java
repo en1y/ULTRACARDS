@@ -1,7 +1,7 @@
 package com.ultracards.templates.game.model;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.HandInterface;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.StringJoiner;
 
 public abstract class AbstractHand
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>>
         implements HandInterface<CardType, CardValue, Card> {

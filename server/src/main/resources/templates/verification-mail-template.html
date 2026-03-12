@@ -63,7 +63,7 @@
             <div class="highlight-box" style="margin: 20px 0; padding: 15px; background-color: #e0f3ff; border-radius: 6px; text-align: center;">
               <span style="font-size: 28px; font-weight: bold; color: #007BFF;" th:text="${code}">code</span>
             </div>
-            <p>Please enter this code in the app. It will expire in <strong>10 minutes</strong>.</p>
+            <p>Please enter this code in the app. It will expire in <strong th:text="${verificationCodeValidityMinutes + ' minutes'}"></strong>.</p>
           </td>
         </tr>
         <tr>

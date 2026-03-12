@@ -1,15 +1,17 @@
 package com.ultracards.games.briskula;
 
-import com.ultracards.cards.ItalianCardType;
+import com.ultracards.cards.ItalianCardSuit;
 import com.ultracards.cards.ItalianCardValue;
 import com.ultracards.templates.game.model.AbstractPlayingField;
 
-public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardType, ItalianCardValue, BriskulaCard, BriskulaHand, BriskulaDeck, BriskulaPlayer> {
+import java.util.List;
 
-    private final ItalianCardType gameTrumpCardType;
+public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardSuit, ItalianCardValue, BriskulaCard, BriskulaHand, BriskulaDeck, BriskulaPlayer> {
 
-    public BriskulaPlayingField(ItalianCardType gameTrumpCardType) {
-        super();
+    private final ItalianCardSuit gameTrumpCardType;
+
+    public BriskulaPlayingField(List<BriskulaPlayer> players, BriskulaGame game, ItalianCardSuit gameTrumpCardType) {
+        super(players, game);
         this.gameTrumpCardType = gameTrumpCardType;
     }
 
@@ -17,7 +19,7 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardType, 
     public BriskulaPlayer determineRoundWinner() {
         var playedCards = getPlayedCards();
         var winningCard = playedCards.stream().max(
-                (bc1, bc2) -> bc1.compareTo(gameTrumpCardType, playedCards.get(0).getType(), bc2)
+                (bc1, bc2) -> bc1.compareTo(gameTrumpCardType, playedCards.getFirst().getSuit(), bc2)
         ).orElseThrow(
             () -> new IllegalStateException("Could not determine round winner, there were probably no cards played")
         );
@@ -30,5 +32,10 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardType, 
             res += card.getPoints();
         }
         return res;
+    }
+
+    @Override
+    public void play(BriskulaCard card, BriskulaPlayer player) {
+        super.play(card, player);
     }
 }

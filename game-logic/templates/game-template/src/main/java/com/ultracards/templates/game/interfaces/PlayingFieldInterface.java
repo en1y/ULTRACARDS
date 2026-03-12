@@ -1,18 +1,16 @@
 package com.ultracards.templates.game.interfaces;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.model.AbstractDeck;
 import com.ultracards.templates.game.model.AbstractHand;
 import com.ultracards.templates.game.model.AbstractPlayer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public interface PlayingFieldInterface
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
@@ -21,17 +19,46 @@ public interface PlayingFieldInterface
 
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 
-    default void init() {
+    default void init(List<Player> players, GameInterface<CardType, CardValue, Card, Hand, Deck, Player, ?> game) {
         setPlayedCards(new ArrayList<>());
-        setPlayers(new ArrayList<>());
+        setPlayers(players);
+        var hasPlayerPlayed = new HashMap<Player, Boolean>();
+        for (Player player : players) {
+            hasPlayerPlayed.put(player, false);
+        }
+        setHasPlayerPlayed(hasPlayerPlayed);
+        setGame(game);
+    }
+
+    default Player getCurrentPlayer() {
+        var map = getHasPlayerPlayed();
+        for (var player : getPlayers()) {
+            if (!map.get(player)) {
+                return player;
+            }
+        }
+        return null;
+    }
+
+    default boolean isTurnPlayed() {
+        var map = getHasPlayerPlayed();
+        for (var player : getPlayers()) {
+            if (!map.get(player)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     default void play(Card card, Player player) {
         Objects.requireNonNull(card, "card");
         Objects.requireNonNull(player, "player");
         addCard(card);
-        player.playCard();
-        addPlayer(player);
+        getHasPlayerPlayed().put(player, true);
+        player.playCard(card);
+        if (isTurnPlayed()) {
+            getGame().roundCycle();
+        }
     }
 
     default Player getPlayerByPlayedCard(Card card) {
@@ -72,10 +99,14 @@ public interface PlayingFieldInterface
     // getters
     List<Card> getPlayedCards();
     List<Player> getPlayers();
+    Map<Player, Boolean> getHasPlayerPlayed();
+    GameInterface<CardType, CardValue, Card, Hand, Deck, Player, ?> getGame();
 
     // setters
     void setPlayedCards(List<Card> cards);
     void setPlayers(List<Player> players);
+    void setHasPlayerPlayed(Map<Player, Boolean> hasPlayerPlayed);
+    void setGame(GameInterface<CardType, CardValue, Card, Hand, Deck, Player, ?> game);
 
     /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
 

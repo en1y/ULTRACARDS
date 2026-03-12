@@ -1,127 +1,184 @@
 package com.ultracards.server.controllers;
 
-import com.ultracards.gateway.dto.AuthResponseDTO;
-import com.ultracards.gateway.dto.BasicUserDTO;
-import com.ultracards.gateway.dto.EmailRequestDTO;
-import com.ultracards.gateway.dto.VerifyCodeRequestDTO;
-import com.ultracards.server.converter.AuthResponseCreator;
-import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.auth.RefreshTokenEntity;
-import com.ultracards.server.repositories.UserRepository;
-import com.ultracards.server.service.AuthService;
-import com.ultracards.server.service.RefreshTokenService;
-import jakarta.servlet.http.Cookie;
+import com.ultracards.gateway.dto.EmailDTO;
+import com.ultracards.gateway.dto.auth.ProfileDTO;
+import com.ultracards.gateway.dto.auth.UsernameDTO;
+import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
+import com.ultracards.server.entity.auth.TokenEntity;
+import com.ultracards.server.service.auth.AuthService;
+import com.ultracards.server.service.UserService;
+import com.ultracards.server.service.auth.TokenService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
+import java.nio.file.AccessDeniedException;
 
+@Slf4j
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
-    private final RefreshTokenService refreshTokenService;
-    private final UserRepository userRepository;
+    private final TokenService tokenService;
+    private final UserService userService;
 
-    @Value("${app.jwt.token.valid.time.minutes}")
-    private int jwtExpirationMinutes;
+    @Value("${app.max-length.username}")
+    private Integer MAX_USERNAME_LENGTH;
 
-    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
-        this.authService = authService;
-        this.refreshTokenService = refreshTokenService;
-        this.userRepository = userRepository;
-    }
+    @PutMapping(
+            value = "/username",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @ResponseBody
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<UsernameDTO> updateUsername(
+            @NotNull @RequestAttribute("refreshToken") String token,
+            @Valid @RequestBody UsernameDTO username,
+            BindingResult errors) {
 
-    @PostMapping("user-active")
-    public ResponseEntity<Void> isUserActive(@RequestBody BasicUserDTO user) {
-        return authService.isUserActive(user);
-    }
-
-    @PostMapping("/set-username")
-    public ResponseEntity<Void> setUsername(@RequestBody EmailRequestDTO request) {
-        try {
-            var user = userRepository.findByEmail(request.getEmail()).orElseThrow();
-            user.setUsername(request.getUsername());
-            userRepository.save(user);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
-
-    @PostMapping("/authorize")
-    public ResponseEntity<Void> authorize(@RequestBody EmailRequestDTO request) {
-        try {
-            authService.authorizeUser(request.getEmail());
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
-
-    @PostMapping("/verify") // After email verification
-    public ResponseEntity<AuthResponseDTO> verifyCode(@RequestBody VerifyCodeRequestDTO request, HttpServletResponse response) {
-        var jwt = authService.verifyCode(request.getEmail(), request.getCode());
-        var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + request.getEmail()));
-
-        var refreshToken = refreshTokenService.createRefreshToken(user);
-        setRefreshTokenCookie(refreshToken.getToken(), response);
-
-        return ResponseEntity.ok(AuthResponseCreator.create(refreshToken.getToken(), user));
-    }
-
-    @PostMapping("/refresh")
-    public ResponseEntity<AuthResponseDTO> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshTokenCookie, HttpServletResponse response) {
-        if (refreshTokenCookie == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (errors.hasErrors() || username.getUsername().length() > MAX_USERNAME_LENGTH) {
+            return ResponseEntity.badRequest().build();
         }
 
-        var refreshTokenOpt = refreshTokenService.findByToken(refreshTokenCookie);
-        if (refreshTokenOpt.isEmpty() || refreshTokenService.isExpired(refreshTokenOpt.get())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        var tokenEntity = tokenService.getToken(token);
 
-        UserEntity user = refreshTokenOpt.get().getUser();
-        String jwt = authService.generateJwtToken(user);
+        username = new UsernameDTO(authService.updateUsername(username, tokenEntity));
 
+        if (username.getUsername() == null)
+            return redirectToLogout();
+        return ResponseEntity.ok(username);
+    }
 
-         refreshTokenService.deleteRefreshToken(refreshTokenOpt.get());
-         RefreshTokenEntity newRefreshToken = refreshTokenService.createRefreshToken(user);
-         setRefreshTokenCookie(newRefreshToken.getToken(), response);
+    @GetMapping("/username")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<UsernameDTO> getUsername(
+            @NotNull @RequestAttribute("refreshToken") String token
+            ) {
+        var tokenEntity = tokenService.getToken(token);
+        var username = authService.getUsername(tokenEntity);
 
-        return ResponseEntity.ok(AuthResponseCreator.create(jwt, user));
+        if (username == null)
+            return redirectToLogout();
+
+        return ResponseEntity
+                .ok(new UsernameDTO(username));
+
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@CookieValue(name = "refreshToken", required = false) String refreshTokenCookie,
-                                       HttpServletResponse response) {
-        if (refreshTokenCookie != null) {
-            refreshTokenService.findByToken(refreshTokenCookie)
-                    .ifPresent(refreshTokenService::deleteRefreshToken);
-            clearRefreshTokenCookie(response);
-        }
+    public ResponseEntity<Void> logout(
+            @RequestAttribute(name = "refreshToken", required = false) String token,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        authService.logout(token, request, response);
         return ResponseEntity.noContent().build();
     }
 
-    private void setRefreshTokenCookie(String token, HttpServletResponse response) {
-        Cookie cookie = new Cookie("refreshToken", token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // set to true for HTTPS environments
-        cookie.setPath("/auth/refresh");
-        cookie.setMaxAge((int) Duration.ofDays(30).getSeconds());
-        response.addCookie(cookie);
+    @PostMapping("/email/send")
+    public ResponseEntity<Void> sendVerificationEmail(
+            @RequestAttribute(name = "refreshToken", required = false) String token,
+            @Valid @RequestBody EmailDTO emailDTO,
+            BindingResult errors
+    ) {
+        if (errors.hasErrors()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            var userByEmail = userService.userExistsByEmail(emailDTO);
+            var tokenEntity = getNullifiableToken(token, emailDTO);
+
+            if (userByEmail && !tokenEntity.getUser().getEmail().equals(emailDTO.getEmail()))
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+
+            authService.sendVerificationEmail(emailDTO, tokenEntity);
+            return ResponseEntity.ok().build();
+
+        } catch (AccessDeniedException e) {
+            return redirectToLogout();
+        }
     }
 
-    private void clearRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie("refreshToken", "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // HTTPS recommended
-        cookie.setPath("/auth/refresh");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+    @PostMapping("/email/verify")
+    public ResponseEntity<Void> verifyCode(
+            @RequestAttribute(name = "refreshToken", required = false) String token,
+            @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
+            BindingResult errors
+    ) {
+        TokenEntity tokenEntity = null;
+        if (token != null) {
+            tokenEntity = tokenService.getToken(token);
+            verificationCodeDTO.setEmail(tokenEntity.getUser().getEmail());
+        }
+        if (errors.hasErrors())
+            return ResponseEntity.badRequest().build();
+
+        var isVerificationCodeCorrect = authService.verifyCode(verificationCodeDTO);
+
+        if (!isVerificationCodeCorrect)
+            return ResponseEntity.badRequest().build();
+
+        if (tokenEntity == null)
+            tokenEntity =
+                tokenService.getTokenByUser(
+                        userService.getUserByEmail(
+                                new EmailDTO(verificationCodeDTO.getEmail())));
+        var cookie = ResponseCookie.from("refreshToken", tokenEntity.getToken()).build();
+        return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).build();
+    }
+
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<ProfileDTO> getProfile(
+            @RequestAttribute("refreshToken") String token
+            ) {
+        var tokenEntity = tokenService.getToken(token);
+        var res = authService.getProfile(tokenEntity);
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PostMapping("/profile")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<ProfileDTO> updateProfile(
+            @RequestAttribute("refreshToken") String token,
+            @RequestBody @Valid ProfileDTO profileDTO,
+            BindingResult errors
+    ) {
+        if (errors.hasErrors()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        var tokenEntity = tokenService.getToken(token);
+        var res = authService.updateProfile(profileDTO, tokenEntity);
+
+        return ResponseEntity.ok(res);
+    }
+
+    private TokenEntity getNullifiableToken(String token, EmailDTO emailDTO) throws AccessDeniedException {
+        if (token == null) {
+            var user = userService.getUserByEmail(emailDTO);
+            return tokenService.getTokenByUser(user);
+        } else {
+            return tokenService.getToken(token);
+        }
+    }
+
+    private <T> ResponseEntity<T> redirectToLogout() {
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, "/api/auth/logout")
+                .build();
     }
 }

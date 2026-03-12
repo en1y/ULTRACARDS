@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ULTRACARDS</title>
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('uc-theme');
+        var theme = (t === 'dark' || t === 'light') ? t : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { /* no-op */ }
+    })();
+  </script>
+  <link rel="stylesheet" th:href="@{/css/theme.css}" />
+</head>
+<body>
+
+  <div th:replace="~{fragments/header :: header}"></div>
+
+  <main>
+    <section class="hero container">
+      <h1>ULTRACARDS</h1>
+      <p>
+        <span th:if="${!isAuthenticated}">
+          ULTRACARDS is an open-source card gaming UI that aims to provide a clean, fast, and modern interface for playing, building, and exploring card-based games online. It focuses on responsive design, smooth interactions, and a consistent dark/light visual theme.
+        </span>
+        <span th:if="${isAuthenticated}">
+          Welcome back, <strong th:text="${username} ?: 'Bob.'">Bob.</strong> Choose where to go next.
+        </span>
+      </p>
+    </section>
+
+    <div class="container center-full" th:if="${isAuthenticated}">
+      <a class="btn btn-accent" th:href="@{/games}">Go To Games</a>
+    </div>
+  </main>
+
+  <div th:replace="~{fragments/footer :: footer}"></div>
+
+  <script th:src="@{/js/ui.js}"></script>
+</body>
+</html>

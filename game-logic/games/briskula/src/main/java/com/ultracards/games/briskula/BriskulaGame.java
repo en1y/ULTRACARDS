@@ -1,6 +1,6 @@
 package com.ultracards.games.briskula;
 
-import com.ultracards.cards.ItalianCardType;
+import com.ultracards.cards.ItalianCardSuit;
 import com.ultracards.cards.ItalianCardValue;
 import com.ultracards.templates.game.model.AbstractGame;
 
@@ -9,13 +9,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class BriskulaGame extends AbstractGame<ItalianCardType, ItalianCardValue, BriskulaCard, BriskulaHand, BriskulaDeck, BriskulaPlayer, BriskulaPlayingField> {
+public class BriskulaGame extends AbstractGame<ItalianCardSuit, ItalianCardValue, BriskulaCard, BriskulaHand, BriskulaDeck, BriskulaPlayer, BriskulaPlayingField> {
 
-    private ItalianCardType gameTrumpCardType;
+    private BriskulaCard gameTrumpCard;
     private final boolean areTeamsEnabled;
 
-    public BriskulaGame(BriskulaGameConfig gameConfig) {
-        super(gameConfig.getNumberOfPlayers(), 40, gameConfig.getCardsInHandNum());
+    public BriskulaGame(BriskulaGameConfig gameConfig, List<BriskulaPlayer> players) {
+        super(players, 40, gameConfig.getCardsInHandNum());
         areTeamsEnabled = gameConfig.areTeamsEnabled();
     }
 
@@ -41,21 +41,14 @@ public class BriskulaGame extends AbstractGame<ItalianCardType, ItalianCardValue
     public BriskulaDeck createDeck(int cardsNum) {
         var deck = new BriskulaDeck(cardsNum);
         var card = deck.drawCard();
-        gameTrumpCardType = card.getType();
+        gameTrumpCard = card;
         deck.appendCard(card);
         return deck;
     }
 
     @Override
     public BriskulaPlayingField createPlayingField() {
-        return new BriskulaPlayingField(getGameTrumpCardType());
-    }
-
-    @Override
-    public void playTurn(BriskulaPlayingField briskulaPlayingField, List<BriskulaPlayer> briskulaPlayers) {
-        for (var player : briskulaPlayers) {
-            briskulaPlayingField.play(player.playCard(), player);
-        }
+        return new BriskulaPlayingField(getPlayers(), this, getGameTrumpCard().getSuit());
     }
 
     @Override
@@ -77,18 +70,22 @@ public class BriskulaGame extends AbstractGame<ItalianCardType, ItalianCardValue
 
     @Override
     public List<BriskulaPlayer> createPlayers() {
-        var res = new ArrayList<BriskulaPlayer>();
+        var players = getPlayers();
+        if (players == null || players.isEmpty()) {
+            var res = new ArrayList<BriskulaPlayer>();
 
-        for (int i = 0; i < getNumberOfPlayers(); i++) {
-            res.add(new BriskulaPlayer("Player #" + (i+1)));
+            for (int i = 0; i < getNumberOfPlayers(); i++) {
+                res.add(new BriskulaPlayer("Player #" + (i + 1)));
+            }
+
+            return res;
         }
-
-        return res;
+        return players;
     }
 
     @Override
-    public boolean isGameActive(BriskulaDeck deck, List<BriskulaPlayer> briskulaPlayers) {
-        for (var player : briskulaPlayers) {
+    public boolean isGameActive() {
+        for (var player : getPlayers()) {
             if (!player.getHand().isEmpty()) {
                 return true;
             }
@@ -97,7 +94,15 @@ public class BriskulaGame extends AbstractGame<ItalianCardType, ItalianCardValue
     }
 
     @Override
-    public List<BriskulaPlayer> determineGameWinners(List<BriskulaPlayer> briskulaPlayers) {
+    public void drawCards(List<BriskulaPlayer> players, BriskulaDeck deck) {
+        players.forEach(player -> {
+            if (!deck.isEmpty()) player.getHand().addCard(deck.drawCard());
+        });
+    }
+
+    @Override
+    public List<BriskulaPlayer> determineGameWinners() {
+        var briskulaPlayers = getPlayers();
         if (areTeamsEnabled()) {
             var team1Points = briskulaPlayers.get(0).getPoints();
             var team2Points = briskulaPlayers.get(1).getPoints();
@@ -119,8 +124,8 @@ public class BriskulaGame extends AbstractGame<ItalianCardType, ItalianCardValue
     }
 
 
-    public ItalianCardType getGameTrumpCardType() {
-        return gameTrumpCardType;
+    public BriskulaCard getGameTrumpCard() {
+        return gameTrumpCard;
     }
 
     public boolean areTeamsEnabled() {

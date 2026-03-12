@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ultracards - Game</title>
+    <script>
+      (function(){try{var t=localStorage.getItem('uc-theme');var th=(t==='dark'||t==='light')?t:'light';document.documentElement.setAttribute('data-theme',th);}catch(e){}})();
+    </script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}" />
+    <script th:src="@{/webjars/stomp-websocket/stomp.min.js}"></script>
+    <style>
+        :root {
+            --bg-1: #0e1b1f;
+            --bg-2: #1b2b30;
+            --bg-3: #13262d;
+            --felt: #2e8b57;
+            --felt-dark: #216645;
+            --felt-glow: #47b072;
+            --rim: #3a2a1d;
+            --rim-light: #5a3d2b;
+            --card: #f5efe6;
+            --card-edge: #d2c6b8;
+            --card-back: #c04a3a;
+            --card-back-dark: #8e2f26;
+            --card-back-edge: #7d241d;
+            --ink: #0c0f12;
+            --accent: #e0a23a;
+        }
+        .lobby-grid { display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start; }
+        .lobby-card { flex:1 1 320px; padding:1rem; }
+        .rules-list { list-style:disc; padding-left:1.2rem; margin:0.5rem 0 0; }
+        .briskula-shell {
+            --gold: var(--accent);
+            display:flex;
+            flex-direction:column;
+            gap:0.75rem;
+            margin-top:0.5rem;
+            font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+            font-size:0.95rem;
+        }
+        .game-layout {
+            --header-height: 72px;
+            --table-size: min(60vmin, 54vh, 560px);
+            --avatar-size: clamp(44px, 8vmin, 66px);
+            --player-ring-pad: clamp(64px, 10vmin, 110px);
+            padding-top: calc(var(--header-height) + var(--player-ring-pad));
+            min-height: calc(100vh - var(--header-height));
+            padding-bottom: 0.5rem;
+        }
+        .briskula-head {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            flex-wrap:wrap;
+            gap:0.75rem;
+        }
+        .briskula-title {
+            font-size:1.55rem;
+            letter-spacing:0.04em;
+            text-transform:uppercase;
+        }
+        .briskula-subtitle {
+            font-size:0.9rem;
+            opacity:0.85;
+        }
+        .meta-row { display:flex; gap:0.75rem; flex-wrap:wrap; }
+        .meta-pill {
+            padding:0.3rem 0.6rem;
+            border-radius:999px;
+            border:1px solid rgba(0,0,0,0.15);
+            background:linear-gradient(120deg, rgba(255,255,255,0.95), rgba(244,236,220,0.95));
+            font-weight:600;
+            font-size:0.85rem;
+            color:var(--ink);
+        }
+        .meta-pill strong { font-weight:700; }
+        .table-wrap {
+            position:relative;
+            display:grid;
+            place-items:center;
+            padding:0.5rem 0.75rem 0.35rem;
+            animation: table-rise 520ms ease-out both;
+        }
+        .table-surface {
+            position:relative;
+            width:var(--table-size);
+            height:var(--table-size);
+            border-radius:50%;
+            display:grid;
+            place-items:center;
+            box-shadow:0 30px 60px rgba(0, 0, 0, 0.45);
+            overflow:visible;
+        }
+        .table-rim {
+            position:absolute;
+            inset:0;
+            border-radius:50%;
+            background:radial-gradient(circle at 30% 25%, var(--rim-light), var(--rim));
+            box-shadow:
+                inset 0 8px 15px rgba(255, 255, 255, 0.08),
+                inset 0 -10px 18px rgba(0, 0, 0, 0.4);
+        }
+        .table-felt {
+            position:absolute;
+            inset:3%;
+            border-radius:50%;
+            background:
+                radial-gradient(circle at 35% 35%, var(--felt-glow), transparent 55%),
+                radial-gradient(circle at 65% 65%, rgba(0, 0, 0, 0.2), transparent 55%),
+                linear-gradient(160deg, var(--felt), var(--felt-dark));
+            box-shadow:
+                inset 0 0 30px rgba(0, 0, 0, 0.45),
+                inset 0 0 60px rgba(0, 0, 0, 0.25);
+        }
+        .player-ring {
+            position:absolute;
+            inset:calc(-1 * var(--player-ring-pad));
+            pointer-events:none;
+        }
+        .player-seat {
+            position:absolute;
+            width:120px;
+            text-align:center;
+            color:#f7f2e7;
+            text-shadow:0 2px 10px rgba(0,0,0,0.35);
+            transition:transform 280ms ease, filter 280ms ease;
+            animation: seat-fade 420ms ease both;
+            pointer-events:auto;
+            font-family: "Trebuchet MS", "Lucida Grande", "Segoe UI", sans-serif;
+            letter-spacing:0.03em;
+            --hand-rotate: 0deg;
+        }
+        .player-seat.is-self {
+            display:none;
+        }
+        .player-seat.is-turn { filter:drop-shadow(0 0 14px rgba(224,180,91,0.8)); }
+        .seat-name {
+            font-size:0.8rem;
+            font-weight:700;
+            margin-top:0.35rem;
+            text-transform:uppercase;
+            letter-spacing:0.08em;
+        }
+        .seat-points {
+            font-size:0.7rem;
+            opacity:0.75;
+            margin-top:0.25rem;
+        }
+        .seat-cards {
+            display:flex;
+            justify-content:center;
+            flex-wrap:nowrap;
+            gap:0;
+            margin:0.4rem 0 0.2rem;
+            transform:rotate(var(--hand-rotate));
+            transform-origin:50% 50%;
+        }
+        .seat-card {
+            width:32px;
+            border-radius:6px;
+            box-shadow:0 8px 14px rgba(0,0,0,0.35);
+            background:var(--card);
+            margin-left:-14px;
+            transform-origin:50% 85%;
+        }
+        .seat-card:first-child { margin-left:0; }
+        .seat-card:nth-child(1) { transform:rotate(-12deg) translateX(-4px); }
+        .seat-card:nth-child(2) { transform:rotate(-4deg); }
+        .seat-card:nth-child(3) { transform:rotate(6deg); }
+        .seat-card:nth-child(4) { transform:rotate(14deg) translateX(4px); }
+        .table-center {
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            display:flex;
+            align-items:center;
+            gap:1.2rem;
+            z-index:2;
+        }
+        .trick-area {
+            min-width:140px;
+            min-height:140px;
+            display:flex;
+            flex-wrap:wrap;
+            gap:0;
+            align-items:center;
+            justify-content:center;
+            position:relative;
+            overflow:visible;
+        }
+        .trick-card {
+            width:64px;
+            border-radius:8px;
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+            transform:rotate(var(--spin, 0deg));
+            transition:transform 180ms ease, box-shadow 180ms ease;
+            margin-left:-20px;
+            cursor:pointer;
+            position:relative;
+            z-index:1;
+        }
+        .trick-card:first-child { margin-left:0; }
+        .trick-card:hover {
+            transform:rotate(var(--spin, 0deg)) scale(1.18);
+            box-shadow:0 20px 26px rgba(0,0,0,0.4);
+            z-index:4;
+        }
+        .deck-stack {
+            position:absolute;
+            right:4%;
+            top:54%;
+            transform:translate(50%, -50%);
+            display:flex;
+            flex-direction:column;
+            align-items:flex-start;
+            gap:0.25rem;
+            z-index:2;
+        }
+        .trump-slot {
+            position:relative;
+            width:120px;
+            height:70px;
+            overflow:visible;
+            z-index:1;
+            margin-top:-22px;
+        }
+        .trump-slot:hover { overflow:visible; z-index:4; }
+        .deck-count {
+            font-size:0.9rem;
+            color:#f7f2e7;
+        }
+        .deck-tower {
+            position:relative;
+            width:86px;
+            height:118px;
+            z-index:3;
+        }
+        .deck-tower img {
+            position:absolute;
+            width:82px;
+            border-radius:8px;
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+        }
+        .deck-tower img:nth-child(1) { left:0; top:0; transform:rotate(-2deg); }
+        .deck-tower img:nth-child(2) { left:4px; top:-3px; transform:rotate(2deg); }
+        .deck-tower img:nth-child(3) { left:8px; top:-6px; transform:rotate(-1deg); }
+        .trump-card {
+            width:96px;
+            border-radius:8px;
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+            transform:rotate(90deg) translateX(10px);
+            transform-origin:center;
+            position:absolute;
+            left:-50px;
+            bottom:20px;
+            z-index:1;
+            cursor:pointer;
+            transition:transform 180ms ease, box-shadow 180ms ease;
+        }
+        .deck-stack.is-empty .deck-tower {
+            display:none;
+        }
+        .trump-card:hover {
+            transform:rotate(90deg) translateX(10px) scale(1.12);
+            box-shadow:0 18px 24px rgba(0,0,0,0.4);
+            z-index:4;
+        }
+        .drop-zone {
+            position:absolute;
+            top:50%;
+            left:50%;
+            width:150px;
+            height:150px;
+            transform:translate(-50%, -50%);
+            border-radius:50%;
+            border:2px dashed rgba(255,255,255,0.4);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#f5eddc;
+            font-weight:600;
+            text-align:center;
+            padding:0.6rem;
+            z-index:1;
+            pointer-events:auto;
+            transition:border-color 180ms ease, background 180ms ease;
+        }
+        .table-hint {
+            position:absolute;
+            left:50%;
+            top:calc(50% + 115px);
+            transform:translateX(-50%);
+            font-size:0.8rem;
+            opacity:0.8;
+            text-align:center;
+            max-width:220px;
+            pointer-events:none;
+        }
+        .drop-zone.active {
+            border-color:var(--gold);
+            background:rgba(255,255,255,0.08);
+        }
+        .hand-zone {
+            display:flex;
+            flex-direction:column;
+            gap:0.6rem;
+            background:transparent;
+            border-radius:0;
+            padding:0;
+            border:none;
+            box-shadow:none;
+            width:fit-content;
+            max-width:100%;
+            align-self:center;
+        }
+        .hand-help {
+            font-size:0.8rem;
+            opacity:0.75;
+            text-align:center;
+        }
+        .hand-row {
+            display:flex;
+            align-items:flex-start;
+            justify-content:center;
+            gap:0.75rem;
+            flex-wrap:wrap;
+            margin-top:-3.5rem;
+            position:relative;
+            z-index:4;
+        }
+        .info-panel {
+            min-width:160px;
+            max-width:220px;
+            padding:0.6rem 0.75rem;
+            border-radius:14px;
+            background:rgba(255,255,255,0.9);
+            border:1px solid rgba(0,0,0,0.1);
+            color:var(--ink);
+            font-weight:600;
+            display:flex;
+            flex-direction:column;
+            gap:0.35rem;
+            font-size:0.85rem;
+        }
+        .info-panel small { font-weight:500; opacity:0.7; }
+        .info-title { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.08em; }
+        .info-row { display:flex; justify-content:space-between; gap:0.5rem; }
+        .info-label { opacity:0.7; }
+        .info-value { font-weight:700; }
+        .hand-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            font-size:0.95rem;
+            font-weight:700;
+            text-transform:uppercase;
+            letter-spacing:0.08em;
+            color:var(--ink);
+        }
+        .hand-cards {
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            gap:0;
+            overflow:visible;
+        }
+        .hand-card {
+            width:clamp(56px, 8.5vw, 84px);
+            border-radius:10px;
+            box-shadow:0 10px 20px rgba(0,0,0,0.2);
+            cursor:grab;
+            transition:transform 160ms ease, box-shadow 160ms ease;
+            background:#f7f1e3;
+            animation: deal-in 340ms ease both;
+            margin-left:-22px;
+            position:relative;
+            z-index:1;
+            --tilt: 0deg;
+            transform: rotate(var(--tilt));
+        }
+        .hand-card:first-child { margin-left:0; }
+        .hand-card:nth-child(odd) { --tilt: -4deg; }
+        .hand-card:nth-child(even) { --tilt: 3deg; }
+        .hand-card:nth-child(3n) { --tilt: 6deg; }
+        .hand-card:nth-child(4n) { --tilt: -6deg; }
+        .hand-card.played {
+            opacity:0;
+            transform:translateY(-16px) scale(0.9) rotate(var(--tilt));
+            transition:transform 220ms ease, opacity 220ms ease;
+        }
+        .drag-ghost {
+            position:fixed;
+            width:96px;
+            border-radius:10px;
+            pointer-events:none;
+            z-index:999;
+            box-shadow:0 20px 40px rgba(0,0,0,0.35);
+            transform:translate(-50%, -50%) scale(1.05);
+            transition:transform 120ms ease;
+        }
+        .drag-ghost.snap {
+            transform:translate(-50%, -50%) scale(0.9);
+        }
+        .drop-zone.ready {
+            border-color:var(--gold);
+            background:rgba(255,255,255,0.08);
+        }
+        .trump-zoom {
+            position:fixed;
+            inset:0;
+            z-index:1000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:rgba(0,0,0,0.65);
+            backdrop-filter:blur(4px);
+        }
+        .trump-zoom img {
+            max-width:92vw;
+            max-height:92vh;
+            border-radius:12px;
+            box-shadow:0 30px 60px rgba(0,0,0,0.5);
+        }
+        .game-end-overlay {
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.65);
+            backdrop-filter:blur(4px);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            z-index:1200;
+        }
+        .game-end-modal {
+            background:linear-gradient(150deg, rgba(255,255,255,0.98), rgba(244,236,220,0.98));
+            color:var(--ink);
+            border-radius:16px;
+            padding:1.2rem 1.4rem;
+            min-width:260px;
+            max-width:420px;
+            box-shadow:0 24px 50px rgba(0,0,0,0.35);
+            border:1px solid rgba(0,0,0,0.12);
+            text-align:center;
+        }
+        .game-end-modal h2 {
+            margin:0 0 0.5rem;
+            font-size:1.2rem;
+            text-transform:uppercase;
+            letter-spacing:0.08em;
+        }
+        .game-end-modal p {
+            margin:0.35rem 0;
+            font-weight:600;
+        }
+        .game-end-modal .meta {
+            font-size:0.9rem;
+            opacity:0.75;
+        }
+        .game-end-modal .actions {
+            margin-top:0.8rem;
+            display:flex;
+            justify-content:center;
+            gap:0.6rem;
+        }
+        .hand-card.is-disabled {
+            opacity:0.5;
+            cursor:not-allowed;
+            transform:none;
+            box-shadow:none;
+        }
+        .hand-card:hover:not(.is-disabled) {
+            transform:translateY(-10px) scale(1.12) rotate(var(--tilt));
+            box-shadow:0 20px 32px rgba(0,0,0,0.32);
+            z-index:6;
+        }
+        .seat-avatar {
+            width:var(--avatar-size);
+            height:var(--avatar-size);
+            border-radius:14px;
+            background:linear-gradient(155deg, #d2564c, #b2342c);
+            color:#fff;
+            font-weight:700;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin:0 auto;
+            border:2px solid rgba(12, 15, 18, 0.2);
+            box-shadow:0 10px 18px rgba(0,0,0,0.35);
+            font-size:1.1rem;
+        }
+        .player-seat.is-self .seat-avatar {
+            background:#c0392b;
+            color:#fff;
+        }
+        body {
+            background:
+                radial-gradient(1200px 800px at 15% 10%, #21363d 0%, transparent 55%),
+                radial-gradient(900px 700px at 85% 90%, #1f2f35 0%, transparent 60%),
+                repeating-linear-gradient(
+                    35deg,
+                    rgba(255, 255, 255, 0.04) 0,
+                    rgba(255, 255, 255, 0.04) 2px,
+                    transparent 2px,
+                    transparent 10px
+                ),
+                linear-gradient(135deg, var(--bg-1), var(--bg-2) 45%, var(--bg-3));
+            color:#f8f5ef;
+        }
+        [data-theme="dark"] .info-panel {
+            background:rgba(20,20,22,0.9);
+            border-color:var(--color-border);
+            color:var(--color-text);
+        }
+        [data-theme="dark"] .meta-pill {
+            background:rgba(28,28,30,0.9);
+            border-color:var(--color-border);
+            color:var(--color-text);
+        }
+        @keyframes table-rise {
+            from { transform:scale(0.98); opacity:0; }
+            to { transform:scale(1); opacity:1; }
+        }
+        @keyframes seat-fade {
+            from { opacity:0; filter:blur(2px); }
+            to { opacity:1; filter:blur(0); }
+        }
+        @keyframes deal-in {
+            from { opacity:0; transform:translateY(8px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+        @keyframes fly-card {
+            from { transform:translate(var(--from-x), var(--from-y)) scale(0.9); opacity:0.95; }
+            to { transform:translate(var(--to-x), var(--to-y)) scale(1); opacity:0.2; }
+        }
+        .deal-card {
+            position:fixed;
+            left:0;
+            top:0;
+            width:90px;
+            border-radius:10px;
+            box-shadow:0 18px 28px rgba(0,0,0,0.35);
+            pointer-events:none;
+            z-index:500;
+            animation:fly-card 480ms ease-out forwards;
+        }
+        @media (max-width: 900px) {
+            .game-layout {
+                --header-height: 68px;
+                --table-size: min(54vmin, 50vh, 520px);
+            }
+            .player-seat { width:110px; }
+            .hand-card { width:clamp(52px, 10vw, 78px); }
+            .deck-stack { right:3%; }
+        }
+        @media (max-width: 640px) {
+            .game-layout {
+                --header-height: 64px;
+                --table-size: min(48vmin, 46vh, 460px);
+            }
+            .player-seat { width:100px; }
+            .seat-card { width:26px; }
+            .hand-card { width:clamp(50px, 12vw, 70px); }
+            .drop-zone { width:130px; height:130px; font-size:0.8rem; }
+            .deck-stack { right:2%; }
+        }
+        @media (max-height: 740px) {
+            .game-layout {
+                --table-size: min(50vmin, 44vh, 460px);
+                --player-ring-pad: clamp(56px, 9vmin, 90px);
+                padding-top: calc(var(--header-height) + var(--player-ring-pad));
+            }
+            .table-wrap { padding-top:0.25rem; }
+            .hand-row { gap:0.6rem; margin-top:-0.5rem; }
+            .info-panel { min-width:150px; max-width:200px; }
+            .hand-zone { padding:0; }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="fragments/header :: header"></div>
+
+<main class="container game-layout">
+    <div th:if="${game != null}" id="game-container"
+         th:attr="data-game-id=${game.id},data-current-user=${currentUserId},data-server-url=${serverApiUrl},data-ws-url=${serverWsUrl}">
+        <div class="briskula-shell">
+            <div class="briskula-head">
+                <div>
+                    <div class="briskula-title" th:text="|Game name: ${game.name}|">Game name: Briskula</div>
+                    <div class="briskula-subtitle">Play a card when it is your turn.</div>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-pill">Deck left: <strong id="deck-left" th:text="${game.cardsLeftInDeck}"></strong></span>
+                    <span class="meta-pill" id="turn-pill">Waiting for turn</span>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <div class="table-surface">
+                    <div class="table-rim"></div>
+                    <div class="table-felt"></div>
+                    <div id="player-ring" class="player-ring"></div>
+                    <div class="drop-zone" id="drop-zone">Drag a card to play</div>
+                    <div class="table-hint">Drop a card here to play it.</div>
+                    <div class="table-center">
+                        <div id="trick-area" class="trick-area"></div>
+                    </div>
+                    <div class="deck-stack" id="deck-stack">
+                        <div class="deck-tower" id="deck-tower"></div>
+                        <div class="trump-slot">
+                            <img id="trump-card" class="trump-card" alt="Trump card" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hand-row">
+                <div class="info-panel">
+                    <div class="info-title">Game Status</div>
+                    <div id="game-status">Connecting...</div>
+                    <small id="connection-status">Live updates: offline</small>
+                </div>
+                <div class="hand-zone">
+                    <div id="hand-cards" class="hand-cards"></div>
+                    <div class="hand-help">Tip: drag a card to the center or double-click to play.</div>
+                </div>
+                <div class="info-panel">
+                    <div class="info-title">Round Info</div>
+                    <div class="info-row"><span class="info-label">Cards in deck</span><span class="info-value" id="info-deck">0</span></div>
+                    <div class="info-row"><span class="info-label">Turn</span><span class="info-value" id="info-turn">-</span></div>
+                    <div class="info-row"><span class="info-label">Players</span><span class="info-value" id="info-players">-</span></div>
+                    <div class="info-row"><span class="info-label">Trump card</span><span class="info-value" id="info-trump">-</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:replace="fragments/footer :: footer"></div>
+<div id="game-end-overlay" class="game-end-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="game-end-title">
+    <div class="game-end-modal">
+        <h2 id="game-end-title">Game complete</h2>
+        <p id="game-end-status">The game has ended.</p>
+        <p id="game-end-winners" class="meta"></p>
+        <div class="actions">
+            <button id="game-end-close" class="btn btn-accent" type="button">Close</button>
+        </div>
+    </div>
+</div>
+<script th:src="@{/js/ui.js}"></script>
+<script th:inline="javascript">
+    (function(){
+        const gameEl = document.getElementById('game-container');
+        if (!gameEl || !gameEl.dataset.gameId) return;
+        const gameId = gameEl.dataset.gameId;
+        const apiBase = gameEl.dataset.serverUrl || '';
+        const wsUrl = gameEl.dataset.wsUrl || '';
+        const currentUserId = gameEl.dataset.currentUser ? String(gameEl.dataset.currentUser) : null;
+        const initialGame = /*[[${game}]]*/ null;
+        const initialHand = /*[[${playerCards}]]*/ [];
+
+        const dom = {
+            ring: document.getElementById('player-ring'),
+            trick: document.getElementById('trick-area'),
+            trump: document.getElementById('trump-card'),
+            deckLeft: document.getElementById('deck-left'),
+            deckTower: document.getElementById('deck-tower'),
+            deckStack: document.getElementById('deck-stack'),
+            dropZone: document.getElementById('drop-zone'),
+            hand: document.getElementById('hand-cards'),
+            turnPill: document.getElementById('turn-pill'),
+            gameStatus: document.getElementById('game-status'),
+            connection: document.getElementById('connection-status'),
+            infoDeck: document.getElementById('info-deck'),
+            infoTurn: document.getElementById('info-turn'),
+            infoPlayers: document.getElementById('info-players'),
+            infoTrump: document.getElementById('info-trump'),
+            gameEndOverlay: document.getElementById('game-end-overlay'),
+            gameEndStatus: document.getElementById('game-end-status'),
+            gameEndWinners: document.getElementById('game-end-winners'),
+            gameEndClose: document.getElementById('game-end-close')
+        };
+
+        const state = {
+            game: null,
+            hand: [],
+            wsConnected: false,
+            playing: false,
+            deckLeft: null,
+            pending: new Set()
+        };
+        let refreshTimer = null;
+        let refreshAttempts = 0;
+
+        if (dom.dropZone) setupDropZone(dom.dropZone);
+        window.addEventListener('resize', () => positionSeats(dom.ring));
+        if (dom.gameEndClose && dom.gameEndOverlay) {
+            dom.gameEndClose.addEventListener('click', () => {
+                dom.gameEndOverlay.style.display = 'none';
+            });
+        }
+
+        if (initialGame) {
+            applyGame(initialGame, 'UPDATED', null);
+        }
+        if (Array.isArray(initialHand)) {
+            state.hand = initialHand;
+            renderHand();
+        }
+        loadGame();
+        connectWs();
+
+        function connectWs() {
+            if (!window.Stomp || !wsUrl) {
+                setConnectionStatus('WS: unavailable');
+                return;
+            }
+            const client = Stomp.client(wsUrl);
+            client.reconnect_delay = 3000;
+            client.debug = null;
+            client.connect({}, () => {
+                state.wsConnected = true;
+                setConnectionStatus('WS: connected');
+                client.subscribe(`/topic/game/${gameId}`, msg => {
+                    try {
+                        const payload = JSON.parse(msg.body);
+                        if (!payload || !payload.gameEntity) return;
+                        applyGame(payload.gameEntity, payload.gameEvent, payload.result);
+                    } catch (err) {
+                        console.error('Game event error', err);
+                    }
+                });
+            }, () => {
+                state.wsConnected = false;
+                setConnectionStatus('WS: reconnecting');
+            });
+        }
+
+        function setConnectionStatus(text) {
+            if (dom.connection) dom.connection.textContent = text;
+        }
+
+        function loadGame() {
+            fetch(`/game/state?gameId=${gameId}`, { credentials: 'include' })
+                .then(res => res.ok ? res.text() : Promise.reject(res.status))
+                .then(text => {
+                    if (!text) return;
+                    const game = JSON.parse(text);
+                    applyGame(game, 'UPDATED', null);
+                })
+                .catch(() => {
+                    if (dom.gameStatus) dom.gameStatus.textContent = 'Unable to load game.';
+                });
+        }
+
+        function refreshHand() {
+            if (!dom.hand) return;
+            fetch('/game/cards', { credentials: 'include' })
+                .then(res => res.ok ? res.json() : Promise.reject(res.status))
+                .then(cards => {
+                    const list = Array.isArray(cards) ? cards : [];
+                    const serverKeys = new Set(list.map(cardKey));
+                    state.pending.forEach((key) => {
+                        if (!serverKeys.has(key)) {
+                            state.pending.delete(key);
+                        }
+                    });
+                    state.hand = list.filter(card => !state.pending.has(cardKey(card)));
+                    renderHand();
+                    if (!state.pending.size && refreshTimer) {
+                        clearTimeout(refreshTimer);
+                        refreshTimer = null;
+                        refreshAttempts = 0;
+                    }
+                })
+                .catch(() => {
+                    if (refreshTimer) {
+                        clearTimeout(refreshTimer);
+                        refreshTimer = null;
+                        refreshAttempts = 0;
+                    }
+                });
+        }
+
+        function scheduleHandRefresh(attempts) {
+            if (attempts && attempts > refreshAttempts) refreshAttempts = attempts;
+            if (refreshTimer) return;
+            const run = () => {
+                if (refreshAttempts <= 0) {
+                    refreshTimer = null;
+                    return;
+                }
+                refreshAttempts -= 1;
+                refreshHand();
+                refreshTimer = setTimeout(run, 900);
+            };
+            refreshTimer = setTimeout(run, 350);
+        }
+
+        function applyGame(game, gameEvent, result) {
+            game.playersTurn = normalizePlayer(game.playersTurn);
+            state.game = game;
+            const prevDeckLeft = state.deckLeft;
+            const nextDeckLeft = game.cardsLeftInDeck ?? 0;
+            state.deckLeft = nextDeckLeft;
+            if (dom.deckLeft) dom.deckLeft.textContent = nextDeckLeft;
+            if (dom.infoDeck) dom.infoDeck.textContent = String(nextDeckLeft);
+            renderDeckTower(nextDeckLeft);
+            renderTrump(game.trumpCard, nextDeckLeft);
+            renderTrick(game.playedCards);
+            renderPlayers(game);
+            if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
+                animateDeckDraw(prevDeckLeft - nextDeckLeft);
+                if (currentUserId) scheduleHandRefresh(4);
+            }
+            updateTurn(game.playersTurn);
+            if (state.pending.size) scheduleHandRefresh(4);
+            if (dom.infoPlayers) {
+                const players = buildPlayers(game);
+                dom.infoPlayers.textContent = String(players.length);
+            }
+            if (dom.infoTrump) {
+                dom.infoTrump.textContent = formatItalianCard(game.trumpCard?.card);
+            }
+            if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
+                const winners = result.gameWinners.map(w => w.name).join(', ');
+                if (dom.gameStatus) dom.gameStatus.textContent = `Game ended. Winners: ${winners}.`;
+                showGameEnd(`Game ended.`, winners);
+            } else if (gameEvent === 'CLOSED') {
+                if (dom.gameStatus) dom.gameStatus.textContent = 'Game closed.';
+                showGameEnd('Game closed.', '');
+            } else if (dom.gameStatus) {
+                dom.gameStatus.textContent = 'Briskula in progress.';
+            }
+        }
+
+        function renderTrump(card, deckLeft) {
+            if (!dom.trump) return;
+            if (!card || (deckLeft != null && deckLeft <= 0)) {
+                dom.trump.removeAttribute('src');
+                dom.trump.style.display = 'none';
+                return;
+            }
+            dom.trump.src = italianCardUrl(card.card);
+            dom.trump.style.display = '';
+            setupTrumpZoom(dom.trump);
+        }
+
+        function showGameEnd(statusText, winnersText) {
+            if (!dom.gameEndOverlay) return;
+            if (dom.gameEndStatus) dom.gameEndStatus.textContent = statusText || 'Game complete.';
+            if (dom.gameEndWinners) {
+                dom.gameEndWinners.textContent = winnersText ? `Winners: ${winnersText}` : '';
+            }
+            dom.gameEndOverlay.style.display = 'flex';
+        }
+
+        function renderTrick(cards) {
+            if (!dom.trick) return;
+            dom.trick.innerHTML = '';
+            if (!cards || !cards.length) return;
+            cards.forEach((card, idx) => {
+                const img = document.createElement('img');
+                img.className = 'trick-card';
+                img.style.setProperty('--spin', `${(idx * 4) - 6}deg`);
+                img.alt = 'Played card';
+                img.src = italianCardUrl(card.card);
+                dom.trick.appendChild(img);
+            });
+        }
+
+        function renderPlayers(game) {
+            if (!dom.ring) return;
+            dom.ring.innerHTML = '';
+            const players = buildPlayers(game);
+            players.forEach((player, index) => {
+                const seat = document.createElement('div');
+                seat.className = 'player-seat';
+                if (player.id && game.playersTurn && String(game.playersTurn.id) === String(player.id)) {
+                    seat.classList.add('is-turn');
+                }
+                const isSelf = currentUserId && String(player.id) === currentUserId;
+                if (player.id) seat.dataset.playerId = String(player.id);
+                if (isSelf) {
+                    seat.dataset.isSelf = '1';
+                    seat.classList.add('is-self');
+                }
+                seat.dataset.seatIndex = String(index);
+                seat.dataset.seatTotal = String(players.length || 1);
+                const avatar = document.createElement('div');
+                avatar.className = 'seat-avatar';
+                avatar.textContent = (player.name || 'P').charAt(0).toUpperCase();
+                const name = document.createElement('div');
+                name.className = 'seat-name';
+                name.textContent = player.name || 'Player';
+                const cards = document.createElement('div');
+                cards.className = 'seat-cards';
+                const cardsCount = player.cards != null ? player.cards : (player.points ?? 0);
+                for (let i = 0; i < cardsCount; i++) {
+                    const img = document.createElement('img');
+                    img.className = 'seat-card';
+                    img.alt = 'Card back';
+                    img.src = italianBackUrl();
+                    cards.appendChild(img);
+                }
+                const points = document.createElement('div');
+                points.className = 'seat-points';
+                points.textContent = `Points: ${player.points ?? 0}`;
+                seat.appendChild(avatar);
+                seat.appendChild(name);
+                seat.appendChild(cards);
+                seat.appendChild(points);
+                dom.ring.appendChild(seat);
+            });
+            positionSeats(dom.ring);
+        }
+
+        function updateTurn(playersTurn) {
+            const isTurn = !playersTurn || (currentUserId && String(playersTurn.id) === currentUserId);
+            if (dom.turnPill) {
+                dom.turnPill.textContent = isTurn
+                    ? 'Your turn'
+                    : `Waiting for ${playersTurn && playersTurn.name ? playersTurn.name : 'player'}`;
+            }
+            if (dom.infoTurn) {
+                dom.infoTurn.textContent = isTurn
+                    ? 'You'
+                    : (playersTurn && playersTurn.name ? playersTurn.name : 'Player');
+            }
+            if (dom.dropZone) {
+                dom.dropZone.textContent = isTurn
+                    ? 'Drop a card here to play'
+                    : `Waiting for ${playersTurn && playersTurn.name ? playersTurn.name : 'player'}`;
+            }
+            renderHand();
+        }
+
+        function renderHand() {
+            if (!dom.hand) return;
+            dom.hand.innerHTML = '';
+            if (!state.hand.length) {
+                return;
+            }
+            const isTurn = state.game && state.game.playersTurn
+                && currentUserId
+                && String(state.game.playersTurn.id) === currentUserId;
+            state.hand.forEach(card => {
+                const img = document.createElement('img');
+                img.className = 'hand-card';
+                img.dataset.cardKey = cardKey(card);
+                img.alt = 'Card';
+                img.src = italianCardUrl(card.card);
+                if (!isTurn || state.playing) {
+                    img.classList.add('is-disabled');
+                    img.draggable = false;
+                } else {
+                    img.draggable = false;
+                    img.addEventListener('pointerdown', (evt) => {
+                        evt.preventDefault();
+                        startDrag(card, img, evt);
+                    });
+                    img.addEventListener('dblclick', () => {
+                        playCard(card);
+                    });
+                }
+                dom.hand.appendChild(img);
+            });
+        }
+
+        function playCard(card) {
+            if (state.playing) return;
+            const isTurn = state.game && state.game.playersTurn
+                && currentUserId
+                && String(state.game.playersTurn.id) === currentUserId;
+            if (state.game && state.game.playersTurn && !isTurn) {
+                if (dom.gameStatus) dom.gameStatus.textContent = 'Wait for your turn.';
+                return;
+            }
+            state.playing = true;
+            state.pending.add(cardKey(card));
+            if (dom.gameStatus) dom.gameStatus.textContent = 'Playing card...';
+            const payload = new URLSearchParams();
+            payload.append('gameId', gameId);
+            payload.append('cardType', card.cardType);
+            payload.append('card', card.card);
+            fetch('/game/play', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: payload.toString()
+            })
+                .then(async res => {
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(text || `play failed: ${res.status}`);
+                    }
+                })
+                .then(() => {
+                    state.playing = false;
+                    animateHandRemoval(cardKey(card));
+                    setTimeout(() => {
+                        state.hand = state.hand.filter(c => cardKey(c) !== cardKey(card));
+                        renderHand();
+                    }, 230);
+                    scheduleHandRefresh(6);
+                })
+                .catch((err) => {
+                    state.playing = false;
+                    state.pending.delete(cardKey(card));
+                    if (dom.gameStatus) dom.gameStatus.textContent = err?.message || 'Could not play card.';
+                });
+        }
+
+        function setupDropZone(zone) {
+            zone.addEventListener('pointerdown', (evt) => evt.preventDefault());
+        }
+
+        function startDrag(card, originEl, evt) {
+            if (state.playing) return;
+            const isTurn = state.game && state.game.playersTurn
+                && currentUserId
+                && String(state.game.playersTurn.id) === currentUserId;
+            if (state.game && state.game.playersTurn && !isTurn) {
+                if (dom.gameStatus) dom.gameStatus.textContent = 'Wait for your turn.';
+                return;
+            }
+            const ghost = document.createElement('img');
+            ghost.src = originEl.src;
+            ghost.className = 'drag-ghost';
+            const rect = originEl.getBoundingClientRect();
+            ghost.style.width = `${rect.width}px`;
+            document.body.appendChild(ghost);
+            const start = { x: evt.clientX, y: evt.clientY };
+            moveGhost(ghost, start.x, start.y);
+            dom.dropZone?.classList.add('ready');
+
+            const onMove = (moveEvt) => {
+                moveGhost(ghost, moveEvt.clientX, moveEvt.clientY);
+            };
+            const onUp = (upEvt) => {
+                dom.dropZone?.classList.remove('ready');
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                const targetRect = dom.dropZone ? dom.dropZone.getBoundingClientRect() : null;
+                const inside = targetRect
+                    && upEvt.clientX >= targetRect.left
+                    && upEvt.clientX <= targetRect.right
+                    && upEvt.clientY >= targetRect.top
+                    && upEvt.clientY <= targetRect.bottom;
+                if (inside && dom.dropZone) {
+                    const centerX = targetRect.left + targetRect.width / 2;
+                    const centerY = targetRect.top + targetRect.height / 2;
+                    ghost.classList.add('snap');
+                    ghost.style.transition = 'transform 160ms ease, left 160ms ease, top 160ms ease';
+                    ghost.style.left = `${centerX}px`;
+                    ghost.style.top = `${centerY}px`;
+                    setTimeout(() => {
+                        ghost.remove();
+                        playCard(card);
+                    }, 170);
+                } else {
+                    ghost.style.transition = 'transform 160ms ease, left 160ms ease, top 160ms ease';
+                    ghost.style.left = `${start.x}px`;
+                    ghost.style.top = `${start.y}px`;
+                    setTimeout(() => ghost.remove(), 170);
+                }
+            };
+
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        }
+
+        function moveGhost(ghost, x, y) {
+            ghost.style.left = `${x}px`;
+            ghost.style.top = `${y}px`;
+        }
+
+        function buildPlayers(game) {
+            const players = new Map();
+            const cardsMap = game.playersCardsMap || {};
+            Object.keys(cardsMap).forEach(key => {
+                const parsed = parsePlayerKey(key);
+                const idKey = parsed.id || parsed.name || key;
+                players.set(idKey, { ...parsed, cards: cardsMap[key] });
+            });
+            const pointsMap = game.pointsPerPerson || {};
+            Object.keys(pointsMap).forEach(key => {
+                const parsed = parsePlayerKey(key);
+                const idKey = parsed.id || parsed.name || key;
+                const existing = players.get(idKey) || parsed;
+                players.set(idKey, { ...existing, points: pointsMap[key] });
+            });
+            const list = Array.from(players.values());
+            list.sort((a, b) => {
+                const aNum = Number(a.id);
+                const bNum = Number(b.id);
+                if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
+                return String(a.name).localeCompare(String(b.name));
+            });
+            if (currentUserId) {
+                const idx = list.findIndex(p => String(p.id) === currentUserId);
+                if (idx > 0) {
+                    return list.slice(idx).concat(list.slice(0, idx));
+                }
+            }
+            return list;
+        }
+
+        function positionSeats(ring) {
+            if (!ring) return;
+            const seats = Array.from(ring.children);
+            const base = Math.min(ring.clientWidth, ring.clientHeight) / 2;
+            const radius = base - 2;
+            seats.forEach((seat, index) => {
+                const count = Number(seat.dataset.seatTotal) || seats.length || 1;
+                const seatIndex = Number(seat.dataset.seatIndex);
+                const resolvedIndex = Number.isFinite(seatIndex) ? seatIndex : index;
+                const angle = (Math.PI * 2 * resolvedIndex) / count + Math.PI / 2;
+                const angleDeg = (angle * 180) / Math.PI;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                seat.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+                seat.style.left = '50%';
+                seat.style.top = '50%';
+                seat.style.setProperty('--hand-rotate', `${90 - angleDeg}deg`);
+            });
+        }
+
+        function setupTrumpZoom(img) {
+            if (!img || img.dataset.zoomReady) return;
+            img.dataset.zoomReady = '1';
+            let timer = null;
+            let overlay = null;
+
+            const clear = () => {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+                if (overlay) {
+                    overlay.remove();
+                    overlay = null;
+                }
+            };
+
+            img.addEventListener('mouseenter', () => {
+                clear();
+                timer = setTimeout(() => {
+                    overlay = document.createElement('div');
+                    overlay.className = 'trump-zoom';
+                    const big = document.createElement('img');
+                    big.src = img.src;
+                    big.alt = 'Trump card';
+                    overlay.appendChild(big);
+                    overlay.addEventListener('click', clear);
+                    document.body.appendChild(overlay);
+                }, 1000);
+            });
+            img.addEventListener('mouseleave', clear);
+        }
+
+        function normalizePlayer(player) {
+            if (!player) return null;
+            if (typeof player === 'object' && player.name) {
+                return { name: player.name, id: player.id != null ? String(player.id) : null };
+            }
+            return parsePlayerKey(player);
+        }
+
+        function cardKey(card) {
+            if (!card) return '';
+            return `${card.cardType || ''}:${card.card || ''}`;
+        }
+
+        function animateHandRemoval(key) {
+            if (!dom.hand) return;
+            const el = dom.hand.querySelector(`[data-card-key="${key}"]`);
+            if (el) el.classList.add('played');
+        }
+
+        function italianCardUrl(code) {
+            if (!code) return '';
+            const suitLetter = code.charAt(0).toUpperCase();
+            const valueNum = code.slice(1);
+            const suitMap = { C: 'COPPE', D: 'DENARI', S: 'SPADE', B: 'BASTONI' };
+            const valueMap = {
+                '1': 'ACE', '2': 'TWO', '3': 'THREE', '4': 'FOUR', '5': 'FIVE', '6': 'SIX',
+                '7': 'SEVEN', '11': 'JACK', '12': 'KNIGHT', '13': 'KING'
+            };
+            const suit = suitMap[suitLetter];
+            const value = valueMap[valueNum];
+            if (!suit || !value) return '';
+            return buildUrl(apiBase, `/api/cards/italian/${suit}/${value}`);
+        }
+
+        function italianBackUrl() {
+            return buildUrl(apiBase, '/api/cards/italian/back');
+        }
+
+        function formatItalianCard(code) {
+            if (!code) return '-';
+            const suitLetter = code.charAt(0).toUpperCase();
+            const valueNum = code.slice(1);
+            const suitMap = { C: 'Coppe', D: 'Denari', S: 'Spade', B: 'Bastoni' };
+            const valueMap = {
+                '1': 'Ace', '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five', '6': 'Six',
+                '7': 'Seven', '11': 'Jack', '12': 'Knight', '13': 'King'
+            };
+            const suit = suitMap[suitLetter];
+            const value = valueMap[valueNum];
+            if (!suit || !value) return code;
+            return `${value} of ${suit}`;
+        }
+
+        function renderDeckTower(cardsLeft) {
+            if (!dom.deckTower) return;
+            dom.deckTower.innerHTML = '';
+            if (dom.deckStack) {
+                dom.deckStack.classList.toggle('is-empty', !cardsLeft || cardsLeft <= 0);
+            }
+            if (!cardsLeft || cardsLeft <= 0) return;
+            const count = Math.min(3, Math.ceil(cardsLeft / 5));
+            for (let i = 0; i < count; i++) {
+                const img = document.createElement('img');
+                img.alt = 'Deck';
+                img.src = italianBackUrl();
+                dom.deckTower.appendChild(img);
+            }
+        }
+
+        function animateDeckDraw(draws) {
+            if (!dom.deckTower || !dom.ring || draws <= 0) return;
+            const towerRect = dom.deckTower.getBoundingClientRect();
+            if (!towerRect.width || !towerRect.height) return;
+            const seats = Array.from(dom.ring.children);
+            if (!seats.length) return;
+            const fromX = towerRect.left + towerRect.width / 2;
+            const fromY = towerRect.top + towerRect.height / 2;
+            const targets = seats.map((seat) => {
+                if (seat.dataset.isSelf === '1' && dom.hand) {
+                    return dom.hand.getBoundingClientRect();
+                }
+                return seat.getBoundingClientRect();
+            });
+            for (let i = 0; i < draws; i++) {
+                const target = targets[i % targets.length];
+                if (!target) continue;
+                const toX = target.left + target.width / 2;
+                const toY = target.top + target.height / 2;
+                const card = document.createElement('img');
+                card.className = 'deal-card';
+                card.src = italianBackUrl();
+                card.style.setProperty('--from-x', `${fromX}px`);
+                card.style.setProperty('--from-y', `${fromY}px`);
+                card.style.setProperty('--to-x', `${toX}px`);
+                card.style.setProperty('--to-y', `${toY}px`);
+                document.body.appendChild(card);
+                const delay = i * 80;
+                card.style.animationDelay = `${delay}ms`;
+                setTimeout(() => card.remove(), 520 + delay);
+            }
+        }
+
+        function buildUrl(base, path) {
+            if (!base) return path;
+            if (base.endsWith('/') && path.startsWith('/')) return base.slice(0, -1) + path;
+            if (!base.endsWith('/') && !path.startsWith('/')) return base + '/' + path;
+            return base + path;
+        }
+
+        function parsePlayerKey(key) {
+            if (!key) return { name: '' };
+            if (typeof key === 'object' && key.name) {
+                return { name: key.name, id: key.id != null ? String(key.id) : null };
+            }
+            const raw = String(key);
+            if (raw.startsWith('{') && raw.endsWith('}')) {
+                try {
+                    const obj = JSON.parse(raw);
+                    if (obj && obj.name) {
+                        return { name: obj.name, id: obj.id != null ? String(obj.id) : null };
+                    }
+                } catch {}
+            }
+            const nameMatch = raw.match(/name=([^,\\)]*)/i);
+            const idMatch = raw.match(/id=([^,\\)]*)/i);
+            return {
+                name: nameMatch ? nameMatch[1].trim() : raw,
+                id: idMatch ? idMatch[1].trim() : null
+            };
+        }
+    })();
+</script>
+</body>
+</html>

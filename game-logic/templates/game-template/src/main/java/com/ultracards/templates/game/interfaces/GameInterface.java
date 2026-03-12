@@ -1,7 +1,7 @@
 package com.ultracards.templates.game.interfaces;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.model.AbstractDeck;
 import com.ultracards.templates.game.model.AbstractHand;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 public interface GameInterface
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
@@ -22,13 +22,13 @@ public interface GameInterface
 
     /* **** DEFAULT METHODS THAT ARE IMPLEMENTED **** */
 
-    default void init(int numberOfPlayers, int cardsNum, int cardsInHandNum) {
-        setNumberOfPlayers(numberOfPlayers);
-        setPlayers(new ArrayList<>(getNumberOfPlayers()));
+    default void init(List<Player> players, int cardsNum, int cardsInHandNum) {
+        setNumberOfPlayers(players.size());
+        setPlayers(players);
         setCardsNum(cardsNum);
         setCardsInHandNum(cardsInHandNum);
         setPlayingField(null);
-        preGameCreateCheck(numberOfPlayers, cardsNum);
+        preGameCreateCheck(getNumberOfPlayers(), cardsNum);
     }
 
     default void start() {
@@ -41,11 +41,11 @@ public interface GameInterface
         setPlayers(players);
         createPlayersHands(getDeck(), getPlayers());
         setNumberOfPlayers(getPlayers().size());
-        while (isGameActive(getDeck(), getPlayers())) {
-            roundCycle();
+        if (isGameActive()) {
+            setPlayingField(
+                    createPlayingField()
+            );
         }
-        setPlayingField(null);
-        gameEnd();
     }
 
     default void restart() {
@@ -53,18 +53,23 @@ public interface GameInterface
     }
 
     default void roundCycle(){
-        setPlayingField(
-                createPlayingField()
-        );
-        playTurn(getPlayingField(), getPlayers());
-        var roundWinner = determineRoundWinner(getPlayingField());
-        postRoundWinnerDeterminedActions(roundWinner, getPlayingField());
-        drawCards(getPlayers(), getDeck());
-        roundEnd(getPlayingField(), roundWinner);
+        if (getPlayingField().isTurnPlayed()) {
+            var roundWinner = determineRoundWinner(getPlayingField());
+            postRoundWinnerDeterminedActions(roundWinner, getPlayingField());
+            drawCards(getPlayers(), getDeck());
+            roundEnd(getPlayingField(), roundWinner);
+            setPlayingField(
+                    createPlayingField()
+            );
+            if (!isGameActive()) {
+                setPlayingField(null);
+                gameEnd();
+            }
+        }
     }
 
     default void gameEnd() {
-        var winners = determineGameWinners(getPlayers());
+        var winners = determineGameWinners();
         postGameWinnersDeterminedActions(winners);
     }
 
@@ -79,7 +84,6 @@ public interface GameInterface
 
     //roundCycle methods
     PlayingField createPlayingField();
-    void playTurn(PlayingField playingField, List<Player> players);
 
     // getters
     int getNumberOfPlayers();
@@ -106,7 +110,7 @@ public interface GameInterface
     default List<Card> removeNotNeededCards(Deck deck, int cardsInHandNum) {return new ArrayList<>();}
     void createPlayersHands(Deck deck, List<Player> players);
     List<Player> createPlayers();
-    boolean isGameActive(Deck deck, List<Player> players);
+    boolean isGameActive();
 
     // roundCycle methods
     default void drawCards(List<Player> players, Deck deck) {}
@@ -114,7 +118,7 @@ public interface GameInterface
     default void postRoundWinnerDeterminedActions(Player roundWinner, PlayingField playingField) {}
 
     // gameEnd methods
-    default List<Player> determineGameWinners(List<Player> players) {return new ArrayList<>();}
+    default List<Player> determineGameWinners() {return new ArrayList<>();}
     default void postGameWinnersDeterminedActions(List<Player> winners) {}
 
     // player management methods

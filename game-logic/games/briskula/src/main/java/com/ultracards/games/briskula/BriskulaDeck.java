@@ -1,13 +1,12 @@
 package com.ultracards.games.briskula;
 
-import com.ultracards.cards.ItalianCardType;
+import com.ultracards.cards.ItalianCardSuit;
 import com.ultracards.cards.ItalianCardValue;
 import com.ultracards.templates.game.model.AbstractDeck;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class BriskulaDeck extends AbstractDeck<ItalianCardType, ItalianCardValue, BriskulaCard, BriskulaHand> {
+public class BriskulaDeck extends AbstractDeck<ItalianCardSuit, ItalianCardValue, BriskulaCard, BriskulaHand> {
 
     private final int handCapacity;
 

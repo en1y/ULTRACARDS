@@ -1,7 +1,7 @@
 package com.ultracards.templates.game.interfaces;
 
 import com.ultracards.templates.cards.AbstractCard;
-import com.ultracards.templates.cards.CardTypeInterface;
+import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.model.AbstractDeck;
 import com.ultracards.templates.game.model.AbstractHand;
@@ -9,7 +9,7 @@ import com.ultracards.templates.game.model.AbstractHand;
 import java.util.Objects;
 
 public interface PlayerInterface
-        <CardType extends CardTypeInterface,
+        <CardType extends CardSuitInterface,
                 CardValue extends CardValueInterface,
                 Card extends AbstractCard<CardType, CardValue, Card>,
                 Hand extends AbstractHand<CardType, CardValue, Card>,
@@ -28,8 +28,11 @@ public interface PlayerInterface
         );
     }
 
-    default Card playCard() {
-        return getHand().drawCard(getHand().getCards().get(0));
+    default Card playCard(Card card) {
+        if (getHand().getCards().contains(card)){
+            return getHand().drawCard(card);
+        }
+        throw new IllegalStateException("There is no such card in the hand");
     }
 
     /* **** METHODS THAT ARE NECESSARY **** */

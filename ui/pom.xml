@@ -3,26 +3,28 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>en1y.ultracards</groupId>
         <artifactId>ULTRACARDS</artifactId>
-        <version>0.1-PREALPHA</version>
+        <version>0.1.0</version>
     </parent>
 
     <artifactId>ui</artifactId>
     <groupId>en1y.ultracards.ui</groupId>
-
     <packaging>pom</packaging>
+    <name>UI Parent</name>
+    <description>A module that contains all the implemented UIs and helper modules</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <modules>
         <module>console-ui</module>
-        <module>web-ui</module>
+        <module>web-uis</module>
         <module>gui</module>
         <module>card-to-png</module>
     </modules>

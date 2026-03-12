@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ultracards - Games</title>
+    <script>
+      (function(){try{var t=localStorage.getItem('uc-theme');var th=(t==='dark'||t==='light')?t:'light';document.documentElement.setAttribute('data-theme',th);}catch(e){}})();
+    </script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}" />
+    <script th:src="@{/webjars/stomp-websocket/stomp.min.js}"></script>
+</head>
+<body>
+<div th:replace="fragments/header :: header"></div>
+
+<main class="container" th:attr="data-current-user=${currentUserId}">
+    <h1>Available Lobbies</h1>
+
+    <section>
+        <form method="get" action="/games" style="display:flex; gap:1rem; align-items: end;">
+            <div class="field" style="min-width:200px;">
+                <label>Game Type</label>
+                <div class="uc-select">
+                <select name="type">
+                    <option value="" th:selected="${selectedType == ''}">All</option>
+                    <option value="Briskula" th:selected="${selectedType == 'Briskula'}">Briskula</option>
+                    <option value="Poker" th:selected="${selectedType == 'Poker'}">Poker</option>
+                    <option value="Treseta" th:selected="${selectedType == 'Treseta'}">Trešeta</option>
+                    <option value="Durak" th:selected="${selectedType == 'Durak'}">Durak</option>
+                </select>
+                </div>
+            </div>
+            <div class="field" style="min-width:160px;">
+                <label>Max Players</label>
+                <div class="uc-select">
+                <select name="max">
+                    <option value="" th:selected="${selectedMax == null}">Any</option>
+                    <option th:value="2" th:selected="${selectedMax == 2}">2</option>
+                    <option th:value="3" th:selected="${selectedMax == 3}">3</option>
+                    <option th:value="4" th:selected="${selectedMax == 4}">4</option>
+                </select>
+                </div>
+            </div>
+            <button type="submit">Filter</button>
+        </form>
+    </section>
+
+    <section style="margin-top:1rem;" th:if="${isAuthenticated}">
+        <button type="button" id="toggle-create-lobby" class="btn" style="margin-bottom:0.75rem;">
+            + Create Lobby
+        </button>
+        <form id="create-lobby-form" method="post" th:action="@{/games/create}"
+              style="display:none; gap:1rem; align-items:end; flex-wrap:wrap;">
+            <div>
+                <label>Lobby Name</label>
+                <input type="text" name="lobbyName" placeholder="My Lobby" required />
+            </div>
+            <div class="field" style="min-width:200px;">
+                <label>Game Type</label>
+                <div class="uc-select">
+                <select name="gameType" id="create-game-type">
+                    <option value="Briskula">Briskula</option>
+                </select>
+                </div>
+            </div>
+            <div class="field" style="min-width:160px;">
+                <label>Players</label>
+                <div class="uc-select">
+                <select name="maxPlayers" id="create-max-players" required>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+                </div>
+            </div>
+            <div class="field" style="min-width:220px;">
+                <label>Rules</label>
+                <div class="uc-select">
+                <select name="configJson" id="create-config" required>
+                    <option value="TWO_PLAYERS" selected>2 players — 3 cards</option>
+                    <option value="TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH">2 players — 4 cards</option>
+                    <option value="THREE_PLAYERS">3 players — 3 cards</option>
+                    <option value="FOUR_PLAYERS_NO_TEAMS">4 players — no teams</option>
+                    <option value="FOUR_PLAYERS_WITH_TEAMS">4 players — teams</option>
+                </select>
+                </div>
+            </div>
+            <button type="submit">Create</button>
+        </form>
+    </section>
+    <section style="margin-top:1rem;" th:unless="${isAuthenticated}">
+        <div class="card" style="padding:1rem;">
+            <p><b>Sign in to create or join lobbies.</b></p>
+            <p>Use the header button to log in with your email.</p>
+        </div>
+    </section>
+
+    <section style="margin-top:1rem;">
+        <div id="lobbies-empty" th:if="${#lists.isEmpty(lobbies)}" style="opacity:0.75;">No lobbies yet.</div>
+        <div id="lobbies-grid" th:attr="data-selected-type=${selectedType},data-selected-max=${selectedMax}" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem;">
+            <div th:each="lobby : ${lobbies}" class="card lobby-card" th:attr="data-id=${lobby.id}" style="padding:1rem; border:1px solid var(--color-border); background: var(--color-bg); border-radius: 12px; box-shadow: 0 10px 20px var(--color-shadow);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+                    <div>
+                        <div style="font-weight:800; margin-bottom: .25rem;" th:text="${lobby.name != null ? lobby.name : 'Lobby ' + lobby.id}"></div>
+                        <div>
+                            <span style="font-size:.9rem; opacity:.8;">Owner:</span>
+                            <span style="font-size:.95rem;" th:text="${lobby.host != null ? lobby.host.name : 'Host'}"></span>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="display:inline-block; font-size:.85rem; padding:.15rem .45rem; border:1px solid var(--color-border); border-radius: 999px; background: var(--color-surface);">
+                            <span th:text="${lobby.gameType}"></span>
+                        </span>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:.6rem;">
+                    <div>
+                        <span>Players:</span>
+                        <b th:text="${lobby.players != null ? #lists.size(lobby.players) : 0}"></b>/<span th:text="${lobby.maxPlayers}"></span>
+                    </div>
+                    <form method="post" th:action="@{/games/join}">
+                        <input type="hidden" name="lobbyId" th:value="${lobby.id}"/>
+                        <button class="btn btn-accent" type="submit">Join</button>
+                    </form>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    <div style="font-weight:600; font-size:.9rem; margin-bottom:.25rem;">Players</div>
+                    <ul style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.25rem;">
+                        <li th:each="player : ${lobby.players}" style="display:flex; align-items:center; gap:0.45rem; font-size:.9rem;">
+                            <span style="width:26px; height:26px; border-radius:50%; background:var(--color-surface); display:inline-flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:600;">
+                                <span th:text="${player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'U'}"></span>
+                            </span>
+                            <span th:text="${player.name != null ? player.name : 'User ' + player.id}"></span>
+                            <span th:if="${lobby.host != null and player.id == lobby.host.id}" style="font-size:.7rem; padding:0.1rem 0.4rem; border-radius:999px; background:var(--color-surface); border:1px solid var(--color-border);">Owner</span>
+                        </li>
+                        <li th:if="${lobby.players == null or #lists.isEmpty(lobby.players)}" style="font-size:.85rem; opacity:.75;">Waiting for players…</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div th:replace="fragments/footer :: footer"></div>
+<script th:src="@{/js/ui.js}"></script>
+<script th:inline="javascript">
+    (function(){
+      const wsUrl = /*[[${serverWsUrl}]]*/ 'ws://localhost:8080/ws';
+      const mainEl = document.querySelector('main.container');
+      const currentUserId = mainEl ? mainEl.dataset.currentUser : null;
+      const createToggle = document.getElementById('toggle-create-lobby');
+      const createForm = document.getElementById('create-lobby-form');
+      const maxSelect = document.getElementById('create-max-players');
+      const configSelect = document.getElementById('create-config');
+
+      if (createToggle && createForm) {
+        createToggle.addEventListener('click', () => {
+          const isOpen = createForm.style.display !== 'none';
+          if (isOpen) {
+            createForm.style.display = 'none';
+            createToggle.textContent = '+ Create Lobby';
+          } else {
+            createForm.style.display = 'flex';
+            createToggle.textContent = '− Hide Lobby Creator';
+          }
+        });
+        createForm.style.display = 'none';
+      }
+
+      if (maxSelect && configSelect) {
+        const presets = {
+          2: [
+            { value: 'TWO_PLAYERS', label: '3 cards each' },
+            { value: 'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH', label: '4 cards each' }
+          ],
+          3: [
+            { value: 'THREE_PLAYERS', label: '3 cards each' }
+          ],
+          4: [
+            { value: 'FOUR_PLAYERS_NO_TEAMS', label: 'No teams' },
+            { value: 'FOUR_PLAYERS_WITH_TEAMS', label: 'Teams' }
+          ]
+        };
+
+        const rebuildOptions = () => {
+          const selected = parseInt(maxSelect.value, 10);
+          const options = presets[selected] || [];
+          configSelect.innerHTML = '';
+          options.forEach((opt, idx) => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            if (idx === 0) option.selected = true;
+            configSelect.appendChild(option);
+          });
+        };
+
+        maxSelect.addEventListener('change', rebuildOptions);
+        rebuildOptions();
+      }
+
+      function ensureEmptyIndicator() {
+        const grid = document.getElementById('lobbies-grid');
+        if (!grid) return;
+        const hasCards = grid.querySelector('.lobby-card') !== null;
+        const message = document.getElementById('lobbies-empty');
+        if (hasCards) {
+          if (message) message.remove();
+        } else if (!message) {
+          const placeholder = document.createElement('div');
+          placeholder.id = 'lobbies-empty';
+          placeholder.style.opacity = '0.75';
+          placeholder.textContent = 'No lobbies yet.';
+          grid.insertAdjacentElement('beforebegin', placeholder);
+        }
+      }
+
+      ensureEmptyIndicator();
+
+      if (!window.Stomp) return;
+      const client = Stomp.client(wsUrl);
+      client.reconnect_delay = 3000;
+      client.connect({}, function(){
+        client.subscribe('/topic/lobbies', function(msg){
+          try {
+            const ev = JSON.parse(msg.body);
+            if (!ev || !ev.lobbyDto) return;
+            upsertLobby(ev.type, ev.lobbyDto);
+          } catch(e) { /* ignore */ }
+        });
+      }, function(){ /* on error: auto reconnect by reconnect_delay */ });
+
+      function upsertLobby(type, lobby){
+        if (!lobby.players) lobby.players = [];
+        const grid = document.getElementById('lobbies-grid');
+        if (!grid) return;
+        const selType = (grid.dataset.selectedType||'').toUpperCase();
+        const selMax = grid.dataset.selectedMax ? parseInt(grid.dataset.selectedMax,10) : null;
+        const matches = (!selType || String(lobby.gameType).toUpperCase() === selType) && (!selMax || lobby.maxPlayers === selMax);
+        const card = grid.querySelector('[data-id="'+lobby.id+'"]');
+        if (type === 'STARTED') {
+          if (card) card.remove();
+          ensureEmptyIndicator();
+          return;
+        }
+        if (type === 'DELETED') {
+          if (card) card.remove();
+          ensureEmptyIndicator();
+          return;
+        }
+        if (!matches) {
+          if (card) card.remove();
+          ensureEmptyIndicator();
+          return;
+        }
+        const html = renderCard(lobby);
+        if (card) {
+          card.outerHTML = html;
+        } else {
+          grid.insertAdjacentHTML('beforeend', html);
+        }
+        ensureEmptyIndicator();
+      }
+
+      function renderCard(l){
+        const name = l.name ? l.name : ('Lobby ' + l.id);
+        if (!l.players) l.players = [];
+        const playerCount = l.players.length;
+        const players = playerCount + '/' + (l.maxPlayers || '');
+        const ownerKey = l.host && l.host.id != null ? String(l.host.id) : null;
+        const ownerName = (l.host && l.host.name) || resolveOwnerName(l.players, ownerKey) || (ownerKey ?? '');
+        const playersList = l.players.length
+          ? l.players.map(p => {
+              const initial = (p.name && p.name.length) ? escapeHtml(p.name.charAt(0).toUpperCase()) : 'U';
+              const nameLabel = escapeHtml(p.name || ('User ' + p.id));
+              const ownerBadge = (ownerKey && String(p.id) === ownerKey)
+                ? '<span style="font-size:.7rem; padding:0.1rem 0.4rem; border-radius:999px; background:var(--color-surface); border:1px solid var(--color-border);">Owner</span>'
+                : '';
+              return `<li style="display:flex; align-items:center; gap:0.45rem; font-size:.9rem;">`
+                + `<span style=\"width:26px; height:26px; border-radius:50%; background:var(--color-surface); display:inline-flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:600;\">${initial}</span>`
+                + `<span>${nameLabel}</span>`
+                + ownerBadge
+                + `</li>`;
+            }).join('')
+          : '<li style="font-size:.85rem; opacity:.75;">Waiting for players…</li>';
+        return `
+          <div class="card lobby-card" data-id="${l.id}" style="padding:1rem; border:1px solid var(--color-border); background: var(--color-bg); border-radius: 12px; box-shadow: 0 10px 20px var(--color-shadow);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+              <div>
+                <div style="font-weight:800; margin-bottom:.25rem;">${escapeHtml(name)}</div>
+                <div><span style="font-size:.9rem; opacity:.8;">Owner:</span> <span style="font-size:.95rem;">${escapeHtml(ownerName)}</span></div>
+              </div>
+              <div style="text-align:right;">
+                <span class="chip">${l.gameType||''}</span>
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:.6rem;">
+              <div><span>Players:</span> <b>${players}</b></div>
+              <form method="post" action="/games/join">
+                <input type="hidden" name="lobbyId" value="${l.id}"/>
+                <button class="btn btn-accent" type="submit" ${l.maxPlayers && playerCount >= l.maxPlayers ? 'disabled' : ''}>Join</button>
+              </form>
+            </div>
+            <div style="margin-top:0.75rem;">
+              <div style="font-weight:600; font-size:.9rem; margin-bottom:.25rem;">Players</div>
+              <ul style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.25rem;">${playersList}</ul>
+            </div>
+          </div>`;
+      }
+      function isPlayer(players, userId){
+        if (!players || !userId) return false;
+        const target = String(userId);
+        return players.some(p => p && String(p.id) === target);
+      }
+      function resolveOwnerName(players, ownerId){
+        if (!players || !players.length) return null;
+        const ownerKey = ownerId != null ? String(ownerId) : null;
+        for (const p of players) {
+          if (ownerKey && String(p.id) === ownerKey) return p.name || ownerId;
+        }
+        return null;
+      }
+      function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+    })();
+  </script>
+</body>
+</html>

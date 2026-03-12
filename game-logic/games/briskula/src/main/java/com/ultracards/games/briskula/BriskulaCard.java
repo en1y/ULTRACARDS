@@ -1,7 +1,7 @@
 package com.ultracards.games.briskula;
 
 import com.ultracards.cards.ItalianCard;
-import com.ultracards.cards.ItalianCardType;
+import com.ultracards.cards.ItalianCardSuit;
 import com.ultracards.cards.ItalianCardValue;
 
 
@@ -10,11 +10,11 @@ public class BriskulaCard extends ItalianCard<BriskulaCard> {
     private final int points;
 
     public BriskulaCard() {
-        this(ItalianCardType.BASTONI, ItalianCardValue.KING); // Default constructor for serialization/deserialization
+        this(ItalianCardSuit.BASTONI, ItalianCardValue.KING); // Default constructor for serialization/deserialization
     }
 
-    public BriskulaCard(ItalianCardType italianCardType, ItalianCardValue italianCardValue) {
-        super(italianCardType, italianCardValue);
+    public BriskulaCard(ItalianCardSuit italianCardSuit, ItalianCardValue italianCardValue) {
+        super(italianCardSuit, italianCardValue);
         this.points =
                 ItalianCardValueToBriskulaPointsConverter.convertToBriskulaPoints(italianCardValue);
     }
@@ -23,9 +23,9 @@ public class BriskulaCard extends ItalianCard<BriskulaCard> {
         return points;
     }
 
-    public int compareTo(ItalianCardType gameTrumpCardType, ItalianCardType roundTrumpCardType, BriskulaCard card) {
-        var isThisGameTrump = getType().equals(gameTrumpCardType);
-        var isOtherGameTrump = getType().equals(gameTrumpCardType);
+    public int compareTo(ItalianCardSuit gameTrumpCardType, ItalianCardSuit roundTrumpCardType, BriskulaCard card) {
+        var isThisGameTrump = getSuit().equals(gameTrumpCardType);
+        var isOtherGameTrump = card.getSuit().equals(gameTrumpCardType);
 
         if (isThisGameTrump && !isOtherGameTrump) {
             return 1; // this card is trump, other is not
@@ -33,8 +33,8 @@ public class BriskulaCard extends ItalianCard<BriskulaCard> {
             return -1; // other card is trump, this is not
         }
 
-        var isThisRoundTrump = getType().equals(roundTrumpCardType);
-        var isOtherRoundTrump = getType().equals(roundTrumpCardType);
+        var isThisRoundTrump = getSuit().equals(roundTrumpCardType);
+        var isOtherRoundTrump = card.getSuit().equals(roundTrumpCardType);
 
         if (isThisRoundTrump && !isOtherRoundTrump) {
             return 1; // this card is round trump, other is not
