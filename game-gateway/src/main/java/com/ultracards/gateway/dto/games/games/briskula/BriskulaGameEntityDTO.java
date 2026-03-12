@@ -1,12 +1,10 @@
-package com.ultracards.gateway.dto.updated.games.games.briskula;
+package com.ultracards.gateway.dto.games.games.briskula;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.GamePlayerKeyDeserializer;
-import com.ultracards.gateway.dto.updated.games.games.GameCardDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameEntityDTO;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import lombok.Getter;
 import lombok.Setter;
 

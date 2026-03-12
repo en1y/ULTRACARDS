@@ -1,11 +1,10 @@
 package com.ultracards.server.controllers.lobby;
 
-import com.ultracards.gateway.dto.updated.games.lobby.*;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.lobby.LobbyEventPublisher;
 import com.ultracards.server.service.lobby.LobbyManager;
 import com.ultracards.server.service.lobby.LobbyService;
-import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-import static com.ultracards.gateway.dto.updated.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
+import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
 
 @RestController
 @RequestMapping("/api/lobby")

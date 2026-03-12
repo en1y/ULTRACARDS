@@ -1,7 +1,7 @@
-package com.ultracards.gateway.dto.updated.games.games.briskula;
+package com.ultracards.gateway.dto.games.games.briskula;
 
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameResultDTO;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.games.GameResultDTO;
 import lombok.Data;
 
 import java.util.List;

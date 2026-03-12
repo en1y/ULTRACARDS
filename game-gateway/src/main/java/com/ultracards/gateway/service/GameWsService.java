@@ -1,6 +1,6 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.updated.games.games.GameEventDTO;
+import com.ultracards.gateway.dto.games.games.GameEventDTO;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -19,7 +19,10 @@ import java.util.function.Consumer;
 
 /**
  * WebSocket client for game-specific events. Clients can subscribe to `/topic/lobbies/{gameId}`.
+ *
+ * Incomplete implementation. Do not use in production.
  */
+@Deprecated
 public class GameWsService {
 
     private final WebSocketStompClient stompClient;

@@ -1,16 +1,17 @@
 package com.ultracards.server.entity.games.briskula;
 
+import com.ultracards.cards.ItalianCard;
+import com.ultracards.games.briskula.BriskulaCard;
 import com.ultracards.games.briskula.BriskulaGame;
 import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.games.briskula.BriskulaPlayer;
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.GameTypeDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameCardDTO;
-import com.ultracards.gateway.dto.updated.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
-import lombok.Getter;
-import lombok.Setter;
+import com.ultracards.templates.cards.AbstractCard;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,5 +49,15 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
         }
         return new BriskulaGameEntityDTO(
             getId(), getLobbyId(), getName(), playerCardsMap, playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, GameCardDTO.createCardDTO(getGame().getGameTrumpCard()));
+    }
+
+    public boolean playCard(UserEntity user, AbstractCard<?, ?, ? extends AbstractCard<?, ?, ?>> genericCard) {
+        var card = new BriskulaCard(((ItalianCard<?>) genericCard).getSuit(), ((ItalianCard<?>) genericCard).getValue());
+        var playerEntity = (BriskulaPlayerEntity) getGame().getPlayingField().getCurrentPlayer();
+        if (user.equals(playerEntity.getUser())) {
+            getGame().getPlayingField().play(card, playerEntity);
+            return true;
+        }
+        return false;
     }
 }

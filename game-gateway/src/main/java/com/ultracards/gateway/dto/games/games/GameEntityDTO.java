@@ -1,8 +1,8 @@
-package com.ultracards.gateway.dto.updated.games.games;
+package com.ultracards.gateway.dto.games.games;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.GamePlayerKeyDeserializer;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

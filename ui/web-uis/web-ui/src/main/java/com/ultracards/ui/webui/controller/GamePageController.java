@@ -1,8 +1,8 @@
 package com.ultracards.ui.webui.controller;
 
-import com.ultracards.gateway.dto.updated.games.games.GameCardDTO;
-import com.ultracards.gateway.dto.updated.games.games.briskula.BriskulaGameConfigDTO;
-import com.ultracards.gateway.dto.updated.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.service.AuthService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import com.ultracards.gateway.service.GameService;

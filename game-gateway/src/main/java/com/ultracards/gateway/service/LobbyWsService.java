@@ -1,6 +1,6 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.updated.games.lobby.GameLobbyEventDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -21,7 +21,9 @@ import java.util.function.Consumer;
 /**
  * STOMP client for lobby lifecycle updates (CREATED, UPDATED, DELETED, STARTED).
  * Connect once, then subscribe to lobby topics to receive {@link GameLobbyEventDTO} notifications.
+ * Incomplete implementation. Do not use in production.
  */
+@Deprecated
 public class LobbyWsService {
 
     private final WebSocketStompClient stompClient;

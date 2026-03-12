@@ -1,9 +1,11 @@
 package com.ultracards.server.service.lobby;
 
-import com.ultracards.gateway.dto.updated.games.games.briskula.BriskulaGameConfigDTO;
-import com.ultracards.gateway.dto.updated.games.lobby.*;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.games.GameService;
 import jakarta.validation.Valid;
@@ -15,8 +17,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import static com.ultracards.gateway.dto.updated.games.lobby.GameLobbyEventDTO.*;
 
 @Slf4j
 @Service
@@ -48,7 +48,7 @@ public class LobbyService {
         var lobby = lobbyManager.getLobby(user);
         if (lobby != null) {
             gameService.startGame(lobby);
-            lobbyEventPublisher.publish(lobby, GameLobbyEventType.STARTED);
+            lobbyEventPublisher.publish(lobby, GameLobbyEventDTO.GameLobbyEventType.STARTED);
             return true;
         }
         return false;
@@ -95,7 +95,8 @@ public class LobbyService {
         var lobbies = lobbyManager.getLobbies();
         var res =  new ArrayList<GameLobbyDTO>(lobbies.size());
         for (var l:  lobbies) {
-            res.add(l.createLobbyDTO());
+            if (l.getLobbyState().equals(LobbyState.OPEN))
+                res.add(l.createLobbyDTO());
         }
         return res;
     }

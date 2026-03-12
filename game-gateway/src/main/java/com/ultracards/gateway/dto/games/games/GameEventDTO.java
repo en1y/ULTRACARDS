@@ -1,6 +1,5 @@
-package com.ultracards.gateway.dto.updated.games.games;
+package com.ultracards.gateway.dto.games.games;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

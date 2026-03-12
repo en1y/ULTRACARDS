@@ -1,7 +1,7 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.updated.games.games.GameCardDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameEntityDTO;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;

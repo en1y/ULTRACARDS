@@ -1,19 +1,16 @@
 package com.ultracards.server.controllers.games;
 
-import com.ultracards.games.briskula.BriskulaPlayer;
-import com.ultracards.gateway.dto.updated.games.GameTypeDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameCardDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameEntityDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
-import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
-import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.GameService;
-import com.ultracards.templates.cards.AbstractCard;
 import com.ultracards.templates.game.model.AbstractPlayer;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -64,6 +61,18 @@ public class GameController {
             }
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/lobby/{lobbyId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<GameEntityDTO> getGameByLobby(
+            @PathVariable @NotBlank String lobbyId
+    ) {
+        var game = gameManager.getGameByLobbyId(UUID.fromString(lobbyId));
+        if (game == null) return ResponseEntity.notFound().build();
+        if (game.getGameType().equals(GameTypeDTO.Briskula))
+            return ResponseEntity.ok(((BriskulaGameEntity) game).createGameDTO());
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping

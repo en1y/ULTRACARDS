@@ -1,7 +1,7 @@
 package com.ultracards.server.service.lobby;
 
-import com.ultracards.gateway.dto.updated.games.lobby.GameLobbyDTO;
-import com.ultracards.gateway.dto.updated.games.lobby.GameLobbyEventDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.service.games.GameManager;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
-import static com.ultracards.gateway.dto.updated.games.lobby.GameLobbyEventDTO.GameLobbyEventType;
-import static com.ultracards.gateway.dto.updated.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
+import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType;
+import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
 
 @Service
 @RequiredArgsConstructor

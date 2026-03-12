@@ -1,7 +1,7 @@
-package com.ultracards.gateway.dto.updated.games.games.briskula;
+package com.ultracards.gateway.dto.games.games.briskula;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.ultracards.gateway.dto.updated.games.GameConfigDTO;
+import com.ultracards.gateway.dto.games.GameConfigDTO;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;

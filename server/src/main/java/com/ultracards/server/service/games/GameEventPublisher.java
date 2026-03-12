@@ -1,11 +1,9 @@
 package com.ultracards.server.service.games;
 
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.GameTypeDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameEntityDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameEventDTO;
-import com.ultracards.gateway.dto.updated.games.games.GameResultDTO;
-import com.ultracards.gateway.dto.updated.games.games.briskula.BriskulaGameResultDTO;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.GameEventDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameResultDTO;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
@@ -15,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 
-import static com.ultracards.gateway.dto.updated.games.games.GameEventDTO.GameEventTypeDTO;
+import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO;
 
 @Service
 @RequiredArgsConstructor

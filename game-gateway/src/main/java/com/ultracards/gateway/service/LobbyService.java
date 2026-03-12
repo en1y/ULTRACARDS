@@ -1,6 +1,6 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.updated.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;

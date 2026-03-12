@@ -1,11 +1,9 @@
 package com.ultracards.server.entity.games.briskula;
 
-import com.ultracards.games.briskula.BriskulaCard;
 import com.ultracards.games.briskula.BriskulaPlayer;
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.PlayerEntity;
-import jakarta.persistence.*;
 import lombok.Getter;
 
 public class BriskulaPlayerEntity extends BriskulaPlayer implements PlayerEntity {

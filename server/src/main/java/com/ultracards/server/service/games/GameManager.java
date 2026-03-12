@@ -1,8 +1,7 @@
 package com.ultracards.server.service.games;
 
-import com.ultracards.gateway.dto.updated.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.server.entity.games.GameEntity;
-import com.ultracards.server.entity.lobby.LobbyEntity;
 import lombok.Getter;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +13,12 @@ public class GameManager {
     private final Map<UUID, GameEntity<?>> gamesById = new ConcurrentHashMap<>();
     private final Map<Long, GameEntity<?>> gamesByUser = new ConcurrentHashMap<>();
     private final Map<UUID, GameEntity<?>> gamesByLobby = new ConcurrentHashMap<>();
+    private final Map<UUID, GameEntity<?>>  lobbyByGameId = new ConcurrentHashMap<>();
     private final Map<GameTypeDTO, List<GameEntity<?>>> gamesByGameType = new ConcurrentHashMap<>();
     @Getter
     private final List<GameEntity<?>> games = Collections.synchronizedList(new ArrayList<>());
-    private final GameEventPublisher gameEventPublisher;
 
-    public GameManager(GameEventPublisher gameEventPublisher) {
-        this.gameEventPublisher = gameEventPublisher;
+    public GameManager() {
         for (var gt: GameTypeDTO.values()) {
             gamesByGameType.put(gt, new ArrayList<>());
         }
@@ -39,8 +37,13 @@ public class GameManager {
         return gamesByGameType.get(gameTypeDTO);
     }
 
+    public GameEntity<?> getByLobby(UUID lobbyId) {
+        return lobbyByGameId.get(lobbyId);
+    }
+
     public GameEntity<?> createGame(GameEntity<?> gameEntity) {
         put(gameEntity);
+        lobbyByGameId.put(gameEntity.getLobbyId(), gameEntity);
         return gameEntity;
     }
     public Boolean deleteGame(GameEntity<?> game) {
@@ -54,7 +57,8 @@ public class GameManager {
             for (var p: g.getPlayers()) {
                 gamesByUser.remove(p.getId());
             }
-            gamesByLobby.put(game.getLobbyId(), game);
+            lobbyByGameId.remove(game.getId());
+            gamesByLobby.remove(game.getLobbyId());
             gamesByGameType.get(g.getGameType()).remove(g);
             games.remove(game);
         }

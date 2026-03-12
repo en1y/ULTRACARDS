@@ -1,11 +1,11 @@
 package com.ultracards.server.entity.lobby;
 
 import com.ultracards.games.briskula.BriskulaGameConfig;
-import com.ultracards.gateway.dto.updated.games.GameConfigDTO;
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.games.briskula.BriskulaGameConfigDTO;
-import com.ultracards.gateway.dto.updated.games.lobby.GameLobbyDTO;
-import com.ultracards.gateway.dto.updated.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.GameConfigDTO;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
@@ -25,6 +25,7 @@ public class LobbyEntity {
     private int minPlayers;
     private int maxPlayers;
     private GameConfigDTO gameConfig;
+    private LobbyState lobbyState;
 
     public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig) {
         id = UUID.randomUUID();
@@ -35,6 +36,7 @@ public class LobbyEntity {
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.gameConfig = gameConfig;
+        this.lobbyState = LobbyState.OPEN;
     }
 
     public boolean containsUser(UserEntity user) {
@@ -51,7 +53,9 @@ public class LobbyEntity {
 
     public GameEntity<?> createGame() {
         if (gameType.equals(GameTypeDTO.Briskula)) {
-            return new BriskulaGameEntity(getId(), getName(), getOwner(), BriskulaDTOtoConfig((BriskulaGameConfigDTO) gameConfig), new ArrayList<>(getUsers()));
+            var res = new BriskulaGameEntity(getId(), getName(), getOwner(), BriskulaDTOtoConfig((BriskulaGameConfigDTO) gameConfig), new ArrayList<>(getUsers()));
+            lobbyState = LobbyState.CLOSED;
+            return res;
         }
         throw new UnsupportedOperationException("Not supported yet.");
     }

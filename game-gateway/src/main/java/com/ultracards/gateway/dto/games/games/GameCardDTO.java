@@ -1,13 +1,10 @@
-package com.ultracards.gateway.dto.updated.games.games;
+package com.ultracards.gateway.dto.games.games;
 
 import com.ultracards.cards.*;
 import com.ultracards.templates.cards.AbstractCard;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
 @AllArgsConstructor

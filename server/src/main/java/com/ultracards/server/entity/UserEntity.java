@@ -1,9 +1,7 @@
 package com.ultracards.server.entity;
 
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.enums.UserStatus;
-import com.ultracards.server.enums.games.GameType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

@@ -1,8 +1,8 @@
-package com.ultracards.gateway.dto.updated.games.lobby;
+package com.ultracards.gateway.dto.games.lobby;
 
-import com.ultracards.gateway.dto.updated.games.GameConfigDTO;
-import com.ultracards.gateway.dto.updated.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.updated.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.GameConfigDTO;
+import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

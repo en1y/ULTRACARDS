@@ -1,4 +1,4 @@
-package com.ultracards.gateway.dto.updated.games;
+package com.ultracards.gateway.dto.games;
 
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.KeyDeserializer;
@@ -14,7 +14,7 @@ public class GamePlayerKeyDeserializer extends KeyDeserializer {
     private static final Pattern DIGIT_PATTERN = Pattern.compile("(\\d+)");
 
     @Override
-    public Object deserializeKey(String key, DeserializationContext ctxt) throws IOException {
+    public Object deserializeKey(String key, DeserializationContext ctxt) {
         if (key == null) return null;
         String trimmed = key.trim();
         if (trimmed.isEmpty()) return null;
@@ -33,7 +33,7 @@ public class GamePlayerKeyDeserializer extends KeyDeserializer {
                     id = node.get("id").asLong();
                 }
             } catch (IOException ignored) {
-                // Fall through to regex parsing.
+                // TODO: log this error or fix it
             }
         }
 

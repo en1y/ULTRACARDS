@@ -1,4 +1,4 @@
-package com.ultracards.gateway.dto.updated.games;
+package com.ultracards.gateway.dto.games;
 
 
 import jakarta.validation.constraints.NotBlank;

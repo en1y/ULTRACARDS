@@ -1,8 +1,8 @@
-package com.ultracards.gateway.dto.updated.games;
+package com.ultracards.gateway.dto.games;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.ultracards.gateway.dto.updated.games.games.briskula.BriskulaGameConfigDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
