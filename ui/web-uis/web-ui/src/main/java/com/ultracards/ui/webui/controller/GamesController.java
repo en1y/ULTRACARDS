@@ -39,7 +39,7 @@ public class GamesController {
     public String games(
             @CookieValue(name = "refreshToken", required = false) String token,
             @RequestParam(name = "type", required = false) String type,
-            @RequestParam(name = "max", required = false) Integer max,
+            @RequestParam(name = "max", required = false) Integer filterMax,
             HttpServletResponse response,
             Model model
     ) {
@@ -51,13 +51,12 @@ public class GamesController {
         }
 
         ProfileController.setBasicModelAttributes(model, profile != null ? profile.getUsername() : null);
-        String wsUrl = rawServerUrl.replaceFirst("^http", "ws");
+        var wsUrl = rawServerUrl.replaceFirst("^http", "ws");
         if (!wsUrl.endsWith("/")) wsUrl += "/";
         wsUrl += "ws";
         model.addAttribute("serverWsUrl", wsUrl);
 
-        final GameTypeDTO filterType = resolveGameType(type);
-        final Integer filterMax = max;
+        var filterType = resolveGameType(type);
 
         List<GameLobbyDTO> lobbies = List.of();
         if (tokenHolder != null) {
