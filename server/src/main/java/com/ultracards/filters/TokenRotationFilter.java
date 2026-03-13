@@ -1,4 +1,4 @@
-package com.ultracards.server.filters;
+package com.ultracards.filters;
 
 import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.service.auth.TokenService;
