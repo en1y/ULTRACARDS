@@ -1,4 +1,4 @@
-package com.ultracards.server.config;
+package com.ultracards.config;
 
 import com.ultracards.server.filters.TokenRotationFilter;
 import jakarta.servlet.http.HttpServletResponse;
