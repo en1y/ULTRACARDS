@@ -17,7 +17,7 @@ import org.springframework.web.client.RestTemplate;
 import javax.security.auth.login.AccountLockedException;
 
 @Service
-public class AuthService {
+public class AuthenticationService {
 
     private final RestTemplate restTemplate;
     private final String serverUrl;
@@ -25,19 +25,19 @@ public class AuthService {
     private final TokenManager tokenManager;
 
     @Autowired
-    public AuthService(RestTemplate restTemplate,
-                       @Qualifier("serverUrl") String serverUrl,
-                       ClientTokenHolder clientTokenHolder,
-                       TokenManager tokenManager) {
+    public AuthenticationService(RestTemplate restTemplate,
+                                 @Qualifier("serverUrl") String serverUrl,
+                                 ClientTokenHolder clientTokenHolder,
+                                 TokenManager tokenManager) {
         this.restTemplate = restTemplate;
         this.serverUrl = serverUrl;
         this.clientTokenHolder = clientTokenHolder;
         this.tokenManager = tokenManager;
     }
 
-    public AuthService(RestTemplate restTemplate,
-                       @Qualifier("serverUrl") String serverUrl,
-                       ClientTokenHolder clientTokenHolder) {
+    public AuthenticationService(RestTemplate restTemplate,
+                                 @Qualifier("serverUrl") String serverUrl,
+                                 ClientTokenHolder clientTokenHolder) {
         this(restTemplate, serverUrl, clientTokenHolder, new TokenManager(clientTokenHolder));
     }
 

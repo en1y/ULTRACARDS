@@ -1,7 +1,7 @@
 package com.ultracards.ui.webui.controller;
 
 import com.ultracards.gateway.dto.auth.ProfileDTO;
-import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ProfileController {
 
-    private final AuthService authService;
+    private final AuthenticationService authService;
 
     @GetMapping
     public String getProfile(

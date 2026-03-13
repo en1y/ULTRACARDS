@@ -1,6 +1,6 @@
 package com.ultracards.ui.webui.controller;
 
-import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,13 +9,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
 
 @Controller
 @RequiredArgsConstructor
 public class HomeController {
 
-    private final AuthService authService;
+    private final AuthenticationService authService;
 
     @GetMapping("/")
     public String index(

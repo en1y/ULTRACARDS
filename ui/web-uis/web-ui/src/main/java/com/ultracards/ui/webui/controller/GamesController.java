@@ -5,7 +5,7 @@ import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
-import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import com.ultracards.gateway.service.LobbyService;
 import jakarta.servlet.http.Cookie;
@@ -27,7 +27,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class GamesController {
 
-    private final AuthService authService;
+    private final AuthenticationService authService;
     private final RestTemplate restTemplate;
     @Qualifier("serverUrl")
     private final String serverUrl;

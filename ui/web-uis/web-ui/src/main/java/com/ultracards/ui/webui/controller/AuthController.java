@@ -3,7 +3,7 @@ package com.ultracards.ui.webui.controller;
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
-import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +28,7 @@ public class AuthController {
 
     @Value("${app.cookie-token.duration-days:15}")
     private int cookieTokenDurationDays;
-    private final AuthService authService;
+    private final AuthenticationService authService;
 
 
     @PostMapping("/email/send")

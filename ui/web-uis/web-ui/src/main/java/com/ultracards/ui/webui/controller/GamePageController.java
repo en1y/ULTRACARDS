@@ -3,7 +3,7 @@ package com.ultracards.ui.webui.controller;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
-import com.ultracards.gateway.service.AuthService;
+import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.ClientTokenHolder;
 import com.ultracards.gateway.service.GameService;
 import com.ultracards.gateway.service.LobbyService;
@@ -32,7 +32,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GamePageController {
 
-    private final AuthService authService;
+    private final AuthenticationService authService;
     private final RestTemplate restTemplate;
     @Qualifier("serverUrl")
     private final String serverUrl;
@@ -321,21 +321,17 @@ public class GamePageController {
         if (preset == null || preset.isBlank()) {
             return null;
         }
-        switch (preset.toUpperCase(Locale.ROOT)) {
-            case "TWO_PLAYERS":
-                return new BriskulaGameConfigDTO(2, 3, false);
-            case "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH":
-                return new BriskulaGameConfigDTO(2, 4, false);
-            case "THREE_PLAYERS":
-                return new BriskulaGameConfigDTO(3, 3, false);
-            case "FOUR_PLAYERS_NO_TEAMS":
-                return new BriskulaGameConfigDTO(4, 3, false);
-            case "FOUR_PLAYERS_WITH_TEAMS":
-                return new BriskulaGameConfigDTO(4, 3, true);
-            default:
+        return switch (preset.toUpperCase(Locale.ROOT)) {
+            case "TWO_PLAYERS" -> new BriskulaGameConfigDTO(2, 3, false);
+            case "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH" -> new BriskulaGameConfigDTO(2, 4, false);
+            case "THREE_PLAYERS" -> new BriskulaGameConfigDTO(3, 3, false);
+            case "FOUR_PLAYERS_NO_TEAMS" -> new BriskulaGameConfigDTO(4, 3, false);
+            case "FOUR_PLAYERS_WITH_TEAMS" -> new BriskulaGameConfigDTO(4, 3, true);
+            default -> {
                 var players = maxPlayers != null ? maxPlayers : 4;
-                return new BriskulaGameConfigDTO(players, 3, false);
-        }
+                yield new BriskulaGameConfigDTO(players, 3, false);
+            }
+        };
     }
 
     private String resolveBriskulaPreset(BriskulaGameConfigDTO config) {
