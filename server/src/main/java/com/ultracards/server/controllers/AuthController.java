@@ -35,6 +35,18 @@ public class AuthController {
     @Value("${app.max-length.username}")
     private Integer MAX_USERNAME_LENGTH;
 
+    @Value("${app.cookie-token.duration-days:15}")
+    private int tokenDurationDays;
+
+    @Value("${app.cookie-token.same-site:Lax}")
+    private String sameSite;
+
+    @Value("${app.cookie-token.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-token.domain:}")
+    private String cookieDomain;
+
     @PutMapping(
             value = "/username",
             consumes = MediaType.APPLICATION_JSON_VALUE,
@@ -77,13 +89,12 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(
-            @RequestAttribute(name = "refreshToken", required = false) String token,
+    public ResponseEntity<String> logout(
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        authService.logout(token, request, response);
-        return ResponseEntity.noContent().build();
+        authService.logout(request, response);
+        return ResponseEntity.ok("Logged out");
     }
 
     @PostMapping("/email/send")
@@ -135,7 +146,7 @@ public class AuthController {
                 tokenService.getTokenByUser(
                         userService.getUserByEmail(
                                 new EmailDTO(verificationCodeDTO.getEmail())));
-        var cookie = ResponseCookie.from("refreshToken", tokenEntity.getToken()).build();
+        var cookie = buildRefreshTokenCookie(tokenEntity.getToken(), 24L * 3600 * tokenDurationDays);
         return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).build();
     }
 
@@ -180,5 +191,20 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, "/api/auth/logout")
                 .build();
+    }
+
+    private ResponseCookie buildRefreshTokenCookie(String tokenValue, long maxAgeSeconds) {
+        var cookie = ResponseCookie.from("refreshToken", tokenValue)
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .maxAge(maxAgeSeconds);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            cookie.domain(cookieDomain);
+        }
+
+        return cookie.build();
     }
 }

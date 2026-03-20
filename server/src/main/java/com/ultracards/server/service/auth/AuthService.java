@@ -12,11 +12,14 @@ import com.ultracards.server.service.EmailService;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
@@ -33,6 +36,15 @@ public class AuthService {
     private final EmailService emailService;
     private final UserGamesStatsService userGamesStatsService;
 
+    @Value("${app.cookie-token.same-site:Lax}")
+    private String sameSite;
+
+    @Value("${app.cookie-token.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-token.domain:}")
+    private String cookieDomain;
+
     public String updateUsername (UsernameDTO username, TokenEntity token) {
         var userEntity = token.getUser();
         userEntity.setUsername(username.getUsername());
@@ -44,18 +56,14 @@ public class AuthService {
         return token.getUser().getUsername();
     }
 
-    public void logout(String token, HttpServletRequest request, HttpServletResponse response) {
-        if (token != null) {
-            tokenService.deleteTokenIfExists(token);
-        }
-
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
         var cookies = request.getCookies();
 
-        for (var c: cookies) {
-            c.setValue("");
-            c.setPath(c.getPath());
-            c.setMaxAge(0);
-            response.addCookie(c);
+        for (var cookie : cookies) {
+            var delCookie = new Cookie(cookie.getName(), null);
+            delCookie.setMaxAge(0);
+            delCookie.setPath("/");
+            response.addCookie(delCookie);
         }
     }
 
@@ -146,5 +154,20 @@ public class AuthService {
                 gamesWon.getGamesWon(GameType.POKER));
 
         return profile;
+    }
+
+    private void expireRefreshTokenCookie(HttpServletResponse response, String path) {
+        var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
+                .path(path)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .maxAge(0);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            expiredRefreshToken.domain(cookieDomain);
+        }
+
+        response.addHeader("Set-Cookie", expiredRefreshToken.build().toString());
     }
 }

@@ -14,7 +14,6 @@ public class JacksonConfig {
 
     /**
      * Creates an ObjectMapper bean with custom configuration.
-     *
      * @return the configured ObjectMapper
      */
     @Bean

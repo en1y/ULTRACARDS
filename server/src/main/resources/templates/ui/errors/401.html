@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ULTRACARDS - 403</title>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+</head>
+<body>
+<div th:replace="~{ui/fragments/header :: header}"></div>
+<section class="hero container">
+    <h3 th:if="${!isAuthenticated}">You have to log in to access this page bozo :O</h3>
+    <h3 th:if="${isAuthenticated}">You do have permission to access this page :O</h3>
+</section>
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+</body>
+</html>

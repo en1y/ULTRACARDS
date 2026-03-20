@@ -1,0 +1,545 @@
+<th:block th:fragment="header" xmlns:th="http://www.thymeleaf.org">
+  <!-- Header bar -->
+  <header class="uc-header">
+    <div class="uc-header-inner">
+      <a class="uc-brand" href="/">ULTRACARDS</a>
+      <div class="uc-actions">
+        <!-- Theme toggle (slider) on the left -->
+        <button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme">
+          <span class="thumb" aria-hidden="true">
+            <span class="ico sun">☀️</span>
+            <span class="ico moon">🌙</span>
+          </span>
+        </button>
+
+        <!-- Authenticated: show username + avatar with dropdown menu -->
+        <div th:if="${isAuthenticated}">
+          <div class="profile-menu" data-profile-menu>
+            <button class="profile-chip" type="button" data-profile-menu-trigger aria-haspopup="true" aria-expanded="false">
+              <span class="username" th:text="${username} ?: 'John ULTRACARD.'">John ULTRACARD</span>
+              <img class="avatar" data-avatar th:src="@{/pics/profile_icon_dark.svg}" alt="Profile" />
+            </button>
+            <div class="profile-dropdown" role="menu" aria-hidden="true">
+              <a class="menu-item" th:href="@{/profile}" role="menuitem">Profile</a>
+              <button class="menu-item danger" type="button" role="menuitem" data-action="logout">Log out</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Not authenticated: show Login/Signup trigger -->
+        <div th:unless="${isAuthenticated}">
+          <button class="btn btn-accent" type="button" data-action="open-login">Log In / Sign Up</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <!-- Login modal (outside header so it centers on screen) -->
+  <!-- Login/Verification modal is available for both auth and non-auth flows -->
+  <div id="login-modal" class="modal-overlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <header>
+        <strong id="login-title">Welcome to ULTRACARDS</strong>
+        <button class="btn" data-close type="button" aria-label="Close">✕</button>
+      </header>
+      <div class="content">
+        <!-- Step: Email -->
+        <section data-step="email">
+          <form id="email-step-form"
+                th:action="@{/api/auth/email/send}"
+                method="post">
+            <div class="field">
+              <label for="email-input">Email</label>
+              <input id="email-input" name="email" type="email" placeholder="you@example.com" required />
+              <small class="help">We’ll send a 6‑digit code to your email.</small>
+              <small id="email-error" class="error"></small>
+            </div>
+            <div class="actions">
+              <button class="btn btn-accent" type="submit">Send Code</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Step: Code -->
+        <section data-step="code" style="display:none">
+          <form id="code-step-form">
+            <div class="field">
+              <label>Enter 6‑digit code</label>
+              <div class="code-inputs">
+                <input class="code-box" inputmode="numeric" autocomplete="one-time-code" maxlength="1" />
+                <input class="code-box" inputmode="numeric" maxlength="1" />
+                <input class="code-box" inputmode="numeric" maxlength="1" />
+                <input class="code-box" inputmode="numeric" maxlength="1" />
+                <input class="code-box" inputmode="numeric" maxlength="1" />
+                <input class="code-box" inputmode="numeric" maxlength="1" />
+              </div>
+              <small id="code-error" class="error"></small>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" data-cancel>Cancel</button>
+              <button class="btn btn-accent" type="submit">Verify</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Step: Username -->
+        <section data-step="username" style="display:none">
+          <form id="username-step-form">
+            <div class="field">
+              <label for="username-input">Choose a username</label>
+              <input id="username-input" type="text" placeholder="Your cool name" required />
+              <small class="help">3+ characters, no special HTML characters.</small>
+              <small id="username-error" class="error"></small>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" data-cancel>Cancel</button>
+              <button class="btn btn-accent" type="submit">Save</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      if (window.__ucHeaderInitialized) {
+        return;
+      }
+      window.__ucHeaderInitialized = true;
+
+      const storageKey = 'uc-theme';
+      const root = document.documentElement;
+
+      const guardXss = (value) => {
+        if (typeof value !== 'string') {
+          return { ok: false, message: 'Invalid input' };
+        }
+        if (value.trim() === '') {
+          return { ok: false, message: 'Value must not be blank' };
+        }
+        if (/[<>"'`]/.test(value)) {
+          return { ok: false, message: 'Invalid characters detected' };
+        }
+        return { ok: true };
+      };
+
+      const getPreferredTheme = () => {
+        const saved = localStorage.getItem(storageKey);
+        return saved === 'dark' || saved === 'light' ? saved : 'light';
+      };
+
+      const applyTheme = (theme) => {
+        root.setAttribute('data-theme', theme);
+        localStorage.setItem(storageKey, theme);
+
+        const toggleButton = document.querySelector('[data-action="toggle-theme"]');
+        if (toggleButton) {
+          toggleButton.setAttribute('aria-pressed', String(theme === 'dark'));
+        }
+
+        const avatarSrc = theme === 'dark' ? '/pics/profile_icon_light.svg' : '/pics/profile_icon_dark.svg';
+        document.querySelectorAll('[data-avatar]').forEach((img) => {
+          if (img.getAttribute('src') !== avatarSrc) {
+            img.setAttribute('src', avatarSrc);
+          }
+        });
+      };
+
+      const initTheme = () => {
+        applyTheme(getPreferredTheme());
+        const toggleButton = document.querySelector('[data-action="toggle-theme"]');
+        toggleButton?.addEventListener('click', () => {
+          const nextTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          applyTheme(nextTheme);
+        });
+      };
+
+      const initHeaderAutoHide = () => {
+        let lastScrollY = window.scrollY;
+        window.addEventListener('scroll', () => {
+          const header = document.querySelector('.uc-header');
+          if (!header) {
+            return;
+          }
+
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > lastScrollY && currentScrollY > 40) {
+            header.classList.add('hidden');
+          } else {
+            header.classList.remove('hidden');
+          }
+          lastScrollY = currentScrollY;
+        }, { passive: true });
+      };
+
+      const initProfileMenu = () => {
+        const menu = document.querySelector('[data-profile-menu]');
+        if (!menu) {
+          return;
+        }
+
+        const trigger = menu.querySelector('[data-profile-menu-trigger]');
+        const panel = menu.querySelector('.profile-dropdown');
+        const logoutButton = menu.querySelector('[data-action="logout"]');
+
+        const openMenu = () => {
+          menu.classList.add('open');
+          trigger?.setAttribute('aria-expanded', 'true');
+          panel?.setAttribute('aria-hidden', 'false');
+        };
+
+        const closeMenu = () => {
+          menu.classList.remove('open');
+          trigger?.setAttribute('aria-expanded', 'false');
+          panel?.setAttribute('aria-hidden', 'true');
+        };
+
+        trigger?.addEventListener('click', (event) => {
+          event.stopPropagation();
+          if (menu.classList.contains('open')) {
+            closeMenu();
+          } else {
+            openMenu();
+          }
+        });
+
+        document.addEventListener('click', (event) => {
+          if (!menu.contains(event.target)) {
+            closeMenu();
+          }
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            closeMenu();
+          }
+        });
+
+        logoutButton?.addEventListener('click', async () => {
+          closeMenu();
+          if (!window.confirm('This will log you out and clear your session. Are you sure?')) {
+            return;
+          }
+
+          try {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+          } catch (error) {
+          }
+
+          window.location.href = '/';
+        });
+      };
+
+      const initAuthModal = () => {
+        const overlay = document.querySelector('#login-modal');
+        if (!overlay) {
+          return;
+        }
+
+        const stepElements = Array.from(overlay.querySelectorAll('[data-step]'));
+        const closeButtons = overlay.querySelectorAll('[data-close]');
+        const cancelButtons = overlay.querySelectorAll('[data-cancel]');
+        const openButton = document.querySelector('[data-action="open-login"]');
+        const emailInput = overlay.querySelector('#email-input');
+        const emailError = overlay.querySelector('#email-error');
+        const codeError = overlay.querySelector('#code-error');
+        const usernameInput = overlay.querySelector('#username-input');
+        const usernameError = overlay.querySelector('#username-error');
+        const emailForm = overlay.querySelector('#email-step-form');
+        const codeForm = overlay.querySelector('#code-step-form');
+        const usernameForm = overlay.querySelector('#username-step-form');
+        const codeBoxes = Array.from(overlay.querySelectorAll('.code-box'));
+        let pendingEmail = null;
+
+        const showStep = (id) => {
+          stepElements.forEach((stepElement) => {
+            stepElement.style.display = stepElement.getAttribute('data-step') === id ? 'block' : 'none';
+          });
+        };
+
+        const resetModalState = () => {
+          if (emailInput) {
+            emailInput.value = '';
+          }
+          if (usernameInput) {
+            usernameInput.value = '';
+          }
+          codeBoxes.forEach((box) => {
+            box.value = '';
+          });
+          if (emailError) {
+            emailError.textContent = '';
+          }
+          if (codeError) {
+            codeError.textContent = '';
+          }
+          if (usernameError) {
+            usernameError.textContent = '';
+          }
+          pendingEmail = null;
+        };
+
+        const openModal = () => {
+          resetModalState();
+          overlay.classList.add('active');
+          showStep('email');
+        };
+
+        const closeModal = () => {
+          overlay.classList.remove('active');
+          resetModalState();
+        };
+
+        openButton?.addEventListener('click', openModal);
+        closeButtons.forEach((button) => {
+          button.addEventListener('click', closeModal);
+        });
+        cancelButtons.forEach((button) => {
+          button.addEventListener('click', (event) => {
+            event.preventDefault();
+            closeModal();
+          });
+        });
+
+        emailForm?.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          if (emailError) {
+            emailError.textContent = '';
+          }
+
+          const email = (emailInput?.value || '').trim();
+          const guardedEmail = guardXss(email);
+          if (!guardedEmail.ok) {
+            if (emailError) {
+              emailError.textContent = guardedEmail.message;
+            }
+            return;
+          }
+
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            if (emailError) {
+              emailError.textContent = 'Please enter a valid email';
+            }
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/auth/email/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ email })
+            });
+
+            if (!response.ok) {
+              let message = 'Could not send code.';
+              try {
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                  const payload = await response.json();
+                  const messages = [];
+                  if (Array.isArray(payload?.globalErrors)) {
+                    messages.push(...payload.globalErrors);
+                  }
+                  if (payload?.errors) {
+                    messages.push(...Object.values(payload.errors).filter(Boolean));
+                  }
+                  if (Array.isArray(payload?.messages)) {
+                    messages.push(...payload.messages);
+                  }
+                  message = messages.filter((item, index, array) => array.indexOf(item) === index).join('\n') || payload?.message || message;
+                } else {
+                  message = await response.text() || message;
+                }
+              } catch (error) {
+              }
+
+              if (emailError) {
+                emailError.textContent = message;
+              }
+              pendingEmail = null;
+              showStep('email');
+              return;
+            }
+
+            pendingEmail = email;
+            showStep('code');
+            codeBoxes[0]?.focus();
+          } catch (error) {
+            if (emailError) {
+              emailError.textContent = 'Network error. Try again.';
+            }
+          }
+        });
+
+        const getCodeValue = () => codeBoxes.map((box) => box.value).join('');
+
+        codeBoxes.forEach((box, index) => {
+          box.addEventListener('input', () => {
+            box.value = box.value.replace(/\D/g, '').slice(0, 1);
+            if (box.value && index < codeBoxes.length - 1) {
+              codeBoxes[index + 1].focus();
+            }
+          });
+
+          box.addEventListener('keydown', (event) => {
+            const previous = codeBoxes[index - 1];
+            const next = codeBoxes[index + 1];
+
+            if (event.key === 'ArrowLeft' && previous) {
+              previous.focus();
+              return;
+            }
+
+            if (event.key === 'ArrowRight' && next) {
+              next.focus();
+              return;
+            }
+
+            if (event.key === 'Backspace') {
+              event.preventDefault();
+              if (box.value) {
+                box.value = '';
+              } else if (previous) {
+                previous.value = '';
+                previous.focus();
+              }
+            }
+
+            if (event.key === 'Delete') {
+              event.preventDefault();
+              if (box.value) {
+                box.value = '';
+              } else if (next) {
+                next.value = '';
+              }
+            }
+          });
+
+          box.addEventListener('paste', (event) => {
+            const pasted = (event.clipboardData || window.clipboardData).getData('text');
+            if (!pasted) {
+              return;
+            }
+
+            event.preventDefault();
+            const digits = pasted.replace(/\D/g, '').slice(0, codeBoxes.length);
+            digits.split('').forEach((digit, digitIndex) => {
+              codeBoxes[digitIndex].value = digit;
+            });
+            codeBoxes[Math.max(digits.length - 1, 0)]?.focus();
+          });
+        });
+
+        codeForm?.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          if (codeError) {
+            codeError.textContent = '';
+          }
+
+          const code = getCodeValue();
+          if (code.length !== 6 || /\D/.test(code)) {
+            if (codeError) {
+              codeError.textContent = 'Enter the 6 digit code';
+            }
+            return;
+          }
+
+          if (!pendingEmail) {
+            if (codeError) {
+              codeError.textContent = 'Missing email. Go back and enter your email.';
+            }
+            showStep('email');
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/auth/email/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ code, email: pendingEmail })
+            });
+
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload || payload.success !== true) {
+              if (codeError) {
+                codeError.textContent = payload?.message || 'Verification failed. Try again.';
+              }
+              return;
+            }
+
+            if (payload.needsUsername) {
+              showStep('username');
+              usernameInput?.focus();
+              return;
+            }
+
+            window.location.reload();
+          } catch (error) {
+            if (codeError) {
+              codeError.textContent = 'Verification failed. Try again.';
+            }
+          }
+        });
+
+        usernameForm?.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          if (usernameError) {
+            usernameError.textContent = '';
+          }
+
+          const username = (usernameInput?.value || '').trim();
+          const guardedUsername = guardXss(username);
+          if (!guardedUsername.ok) {
+            if (usernameError) {
+              usernameError.textContent = guardedUsername.message;
+            }
+            return;
+          }
+
+          if (username.length < 3) {
+            if (usernameError) {
+              usernameError.textContent = 'Username must be at least 3 characters';
+            }
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/auth/username', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ username })
+            });
+
+            if (!response.ok) {
+              if (usernameError) {
+                usernameError.textContent = 'Could not set username. Try again.';
+              }
+              return;
+            }
+
+            window.location.reload();
+          } catch (error) {
+            if (usernameError) {
+              usernameError.textContent = 'Could not set username. Try again.';
+            }
+          }
+        });
+      };
+
+      const initHeader = () => {
+        initTheme();
+        initHeaderAutoHide();
+        initProfileMenu();
+        initAuthModal();
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHeader, { once: true });
+      } else {
+        initHeader();
+      }
+    })();
+  </script>
+</th:block>
