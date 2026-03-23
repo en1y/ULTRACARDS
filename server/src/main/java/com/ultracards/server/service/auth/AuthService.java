@@ -23,6 +23,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -124,34 +126,30 @@ public class AuthService {
 
         profile.setUsername(user.getUsername());
         profile.setEmail(user.getEmail());
-        profile.setRoles(user.getRoles().toString());
+        profile.setRoles(user.getRoles().stream().map(Enum::toString).collect(Collectors.toList()));
         profile.setId(user.getId());
 
-        var gamesWon = userGamesStatsService.getByUser(user);
+        var gameStats = userGamesStatsService.getByUser(user);
 
-        if (gamesWon == null) {
+        if (gameStats == null) {
             return profile;
         }
+        var games = new HashMap<String, Integer[]>();
+        games.put(GameType.BRISKULA.name(), new Integer[]{gameStats.getGamesPlayed(GameType.BRISKULA), gameStats.getGamesWon(GameType.BRISKULA)});
+        games.put(GameType.DURAK.name(), new Integer[]{gameStats.getGamesPlayed(GameType.DURAK), gameStats.getGamesWon(GameType.DURAK)});
+        games.put(GameType.TRESETA.name(), new Integer[]{gameStats.getGamesPlayed(GameType.TRESETA), gameStats.getGamesWon(GameType.TRESETA)});
+        games.put(GameType.POKER.name(), new Integer[]{gameStats.getGamesPlayed(GameType.POKER), gameStats.getGamesWon(GameType.POKER)});
 
-        profile.setBriskulaGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.BRISKULA));
-        profile.setBriskulaGamesWon(
-                gamesWon.getGamesWon(GameType.BRISKULA));
+        profile.setPlayedAndWonGames(games);
 
-        profile.setDurakGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.DURAK));
-        profile.setDurakGamesWon(
-                gamesWon.getGamesWon(GameType.DURAK));
-
-        profile.setTresetaGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.TRESETA));
-        profile.setTresetaGamesWon(
-                gamesWon.getGamesWon(GameType.TRESETA));
-
-        profile.setPokerGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.POKER));
-        profile.setPokerGamesWon(
-                gamesWon.getGamesWon(GameType.POKER));
+        var gamesPlayed = 0;
+        var gamesWon = 0;
+        for (var arr: games.values()) {
+            gamesPlayed += arr[0];
+            gamesWon += arr[1];
+        }
+        profile.setGamesPlayed(gamesPlayed);
+        profile.setGamesWon(gamesWon);
 
         return profile;
     }
