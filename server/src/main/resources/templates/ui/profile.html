@@ -4,12 +4,120 @@
     <meta charset="UTF-8">
     <title>ULTRACARDS</title>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <style>
+        body > #refresh,
+        body > .profile-summary-card,
+        body > .profile-history {
+            width: min(100%, var(--page-width));
+            margin-inline: auto;
+        }
+
+        body > #refresh {
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-summary-card,
+        .profile-history {
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+            border-radius: 14px;
+            box-shadow: 0 6px 24px var(--color-shadow);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-summary-card > span,
+        .profile-history-stats > div > span,
+        .profile-game-card > span {
+            font-size: 1.05rem;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .profile-summary-card,
+        .profile-history-stats > div,
+        .profile-game-card {
+            line-height: 1.8;
+        }
+
+        .profile-history-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-game-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .profile-game-card {
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+            border-radius: 14px;
+            box-shadow: 0 6px 24px var(--color-shadow);
+            padding: 1rem;
+            line-height: 1.8;
+        }
+
+        .profile-game-card > br {
+            display: none;
+        }
+
+        .profile-game-card > span:first-child {
+            color: var(--color-accent);
+        }
+
+        .profile-game-card > span:nth-of-type(2),
+        .profile-game-card > span:nth-of-type(3) {
+            display: inline-block;
+            min-width: 2ch;
+            margin-left: 0.4rem;
+        }
+
+        @media (max-width: 640px) {
+            body > #refresh {
+                margin-top: 1rem;
+            }
+        }
+    </style>
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
 <!--TODO: Work with the style-->
 <button id="refresh">refresh</button>
-
+<div class="profile-summary-card">
+    Username: <span th:text="${profile.getUsername()}"></span>
+</div>
+<div class="profile-summary-card">
+    Email: <span th:text="${profile.getEmail()}"></span>
+</div>
+<div class="profile-summary-card">
+    Roles: <span th:text='${T(java.lang.String).join(", ", profile.roles)}'></span>
+</div>
+<div class="profile-summary-card">
+    Id: <span th:text="${profile.getId()}"></span>
+</div>
+<div id="games" class="profile-history">
+    <div class="profile-history-stats">
+    <div class="profile-summary-card">
+        Games played: <span th:text="${profile.getGamesPlayed()}"></span>
+    </div>
+    <div class="profile-summary-card">
+        Games won: <span th:text="${profile.getGamesWon()}"></span>
+    </div>
+    </div>
+    <div id="per-game-type" class="profile-game-grid">
+        <div class="profile-game-card" th:each="game: ${profile.getPlayedAndWonGames()}">
+            <span th:text="${game.getKey()}"></span> <br>
+            Games played <span th:text="${game.getValue()[0]}"></span> <br>
+            Games won <span th:text="${game.getValue()[1]}"></span>
+        </div>
+    </div>
+</div>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>
