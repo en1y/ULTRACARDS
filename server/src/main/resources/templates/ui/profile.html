@@ -24,7 +24,13 @@
             border-radius: 14px;
             box-shadow: 0 6px 24px var(--color-shadow);
             padding: 1rem;
-            margin-bottom: 1rem;
+            margin-top: 1rem;
+        }
+
+        .profile-summary-card {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
         }
 
         .profile-summary-card > span,
@@ -78,6 +84,10 @@
             margin-left: 0.4rem;
         }
 
+        .profile-summary-card > #refresh {
+            margin-left: auto;
+        }
+
         @media (max-width: 640px) {
             body > #refresh {
                 margin-top: 1rem;
@@ -87,38 +97,86 @@
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<!--TODO: Work with the style-->
-<button id="refresh">refresh</button>
 <div class="profile-summary-card">
-    Username: <span th:text="${profile.getUsername()}"></span>
+    Username: <span th:text="${profile.getUsername()}" id="username"></span>
+    <button id="refresh" onclick="refresh()">🔄</button>
 </div>
 <div class="profile-summary-card">
-    Email: <span th:text="${profile.getEmail()}"></span>
+    Email: <span th:text="${profile.getEmail()}" id="email"></span>
 </div>
 <div class="profile-summary-card">
-    Roles: <span th:text='${T(java.lang.String).join(", ", profile.roles)}'></span>
+    Roles: <span th:text='${T(java.lang.String).join(", ", profile.roles)}' id="roles"></span>
 </div>
 <div class="profile-summary-card">
-    Id: <span th:text="${profile.getId()}"></span>
+    Id: <span th:text="${profile.getId()}" id="id"></span>
 </div>
 <div id="games" class="profile-history">
     <div class="profile-history-stats">
-    <div class="profile-summary-card">
-        Games played: <span th:text="${profile.getGamesPlayed()}"></span>
-    </div>
-    <div class="profile-summary-card">
-        Games won: <span th:text="${profile.getGamesWon()}"></span>
-    </div>
+        <div class="profile-summary-card">
+            Games played: <span th:text="${profile.getGamesPlayed()}" id="games_played"></span>
+        </div>
+        <div class="profile-summary-card">
+            Games won: <span th:text="${profile.getGamesWon()}" id="games_won"></span>
+        </div>
     </div>
     <div id="per-game-type" class="profile-game-grid">
         <div class="profile-game-card" th:each="game: ${profile.getPlayedAndWonGames()}">
             <span th:text="${game.getKey()}"></span> <br>
-            Games played <span th:text="${game.getValue()[0]}"></span> <br>
-            Games won <span th:text="${game.getValue()[1]}"></span>
+            Games played: <span th:text="${game.getValue()[0]}"></span> <br>
+            Games won: <span th:text="${game.getValue()[1]}"></span>
         </div>
     </div>
 </div>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script>
+    async function refresh() {
+        try {
+            const response = await fetch('api/auth/profile');
+
+            if (!response.ok)
+                throw new Error(`Response status: ${response.status}`);
+            const result = await response.json();
+
+            document.getElementById('username').innerText = result.username;
+            document.getElementById('email').innerText = result.email;
+            document.getElementById('roles').innerText = result.roles.join(", ");
+            document.getElementById('id').innerText = result.id;
+            document.getElementById('games_played').innerText = result.gamesPlayed;
+            document.getElementById('games_won').innerText = result.gamesWon;
+            let per_game_type = document.getElementById('per-game-type').innerText;
+
+            result.playedAndWonGames.forEach(([gameType, arr]) => {
+                const game_card = document.createElement('div');
+                game_card.className = 'profile-game-card';
+
+                const title = document.createElement('span');
+                title.textContent = gameType;
+
+                const br1 = document.createElement('br');
+
+                const playedGames = document.createElement('span');
+                playedGames.textContent = `${arr[0]}`;
+
+                const br2 = document.createElement('br');
+
+                const wonGames = document.createElement('span');
+                wonGames.textContent = `${arr[1]}`;
+
+                game_card.appendChild(title);
+                game_card.appendChild(br1);
+                game_card.append("Games played: ");
+                game_card.appendChild(playedGames);
+                game_card.appendChild(br2);
+                game_card.append("Games won: ");
+                game_card.appendChild(wonGames);
+
+                per_game_type.appendChild(game_card);
+            })
+        } catch (error) {
+            console.error(error.message)
+        }
+    }
+</script>
 </body>
 </html>
