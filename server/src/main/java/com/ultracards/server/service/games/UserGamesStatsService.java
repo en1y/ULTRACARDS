@@ -12,6 +12,11 @@ import org.springframework.stereotype.Service;
 public class UserGamesStatsService {
     private final UserGamesStatsRepository userGamesStatsRepository;
 
+    public void createEmptyStats(UserEntity user) {
+        var ugs = new UserGamesStats(user);
+        userGamesStatsRepository.save(ugs);
+    }
+
     public UserGamesStats getByUser(UserEntity user) {
         return userGamesStatsRepository.findByUser(user).orElse(null);
     }

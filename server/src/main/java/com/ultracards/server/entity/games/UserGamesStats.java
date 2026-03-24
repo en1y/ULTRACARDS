@@ -2,7 +2,6 @@ package com.ultracards.server.entity.games;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
-import com.ultracards.server.repositories.games.UserGamesStatsRepository;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,9 +11,10 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "user_game_stats")
-@Getter @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
 public class UserGamesStats {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -25,12 +25,19 @@ public class UserGamesStats {
     private UserEntity user;
 
     @ElementCollection
+    @CollectionTable(
+            name = "user_game_stats_entries",
+            joinColumns = @JoinColumn(name = "user_game_stats_id")
+    )
+    @AttributeOverrides({
+            @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+    })
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "game_type")
     private Map<GameType, GameStats> gameStats = new EnumMap<>(GameType.class);
 
     public UserGamesStats(UserEntity user) {
-        this.id = UUID.randomUUID();
         this.user = user;
         for (var gameType : GameType.values()) {
             gameStats.put(gameType, new GameStats(0, 0));
