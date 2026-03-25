@@ -33,6 +33,98 @@
             gap: 0.6rem;
         }
 
+        .profile-summary-card.profile-edit-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .profile-identity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .profile-field-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            padding: 1rem 1.1rem;
+            border: 1px solid color-mix(in oklab, var(--color-accent) 18%, var(--color-border));
+            border-radius: 16px;
+            background: var(--color-surface);
+            box-shadow:
+                inset 0 1px 0 color-mix(in oklab, var(--color-bg) 88%, transparent),
+                0 8px 28px color-mix(in oklab, var(--color-accent) 8%, var(--color-shadow));
+        }
+
+        .profile-field-card label {
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--color-text-muted);
+        }
+
+        .profile-input-shell {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.2rem;
+            border-radius: 13px;
+            border: 1px solid color-mix(in oklab, var(--color-accent) 14%, var(--color-border));
+            background: color-mix(in oklab, var(--color-surface) 78%, var(--color-bg));
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .profile-input-shell:focus-within {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 16%, transparent);
+            transform: translateY(-1px);
+        }
+
+        .profile-input-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 10px;
+            background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
+            color: var(--color-accent);
+            font-size: 1rem;
+        }
+
+        .profile-input {
+            width: 100%;
+            border: 0;
+            outline: none;
+            background: transparent;
+            color: var(--color-text);
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0.7rem 0.85rem 0.7rem 0;
+        }
+
+        .profile-input::placeholder {
+            color: var(--color-text-muted);
+            font-weight: 500;
+        }
+
+        .profile-field-note {
+            font-size: 0.9rem;
+            color: var(--color-text-muted);
+        }
+
+        .profile-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.6rem;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
         .profile-summary-card > span,
         .profile-history-stats > div > span,
         .profile-game-card > span {
@@ -69,10 +161,6 @@
             line-height: 1.8;
         }
 
-        .profile-game-card > br {
-            display: none;
-        }
-
         .profile-game-card > span:first-child {
             color: var(--color-accent);
         }
@@ -97,12 +185,39 @@
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div class="profile-summary-card">
-    Username: <span th:text="${profile.getUsername()}" id="username"></span>
-    <button id="refresh" onclick="refresh()">🔄</button>
-</div>
-<div class="profile-summary-card">
-    Email: <span th:text="${profile.getEmail()}" id="email"></span>
+<div class="profile-summary-card profile-edit-row">
+    <div class="profile-identity-grid">
+        <div class="profile-field-card">
+            <label for="username">Username</label>
+            <div class="profile-input-shell">
+                <span class="profile-input-icon" aria-hidden="true">@</span>
+                <input
+                        class="profile-input"
+                        id="username"
+                        type="text"
+                        th:value="${profile.getUsername()}"
+                        placeholder="Enter your username"
+                        autocomplete="username">
+            </div>
+        </div>
+        <div class="profile-field-card">
+            <label for="email">Email</label>
+            <div class="profile-input-shell">
+                <span class="profile-input-icon" aria-hidden="true">✉</span>
+                <input
+                        class="profile-input"
+                        id="email"
+                        type="email"
+                        th:value="${profile.getEmail()}"
+                        placeholder="Enter your email"
+                        autocomplete="email">
+            </div>
+        </div>
+    </div>
+    <div class="profile-actions">
+        <button id="refresh" onclick="refresh()">🔄</button>
+        <button class="btn btn-accent" id="save-profile" type="button" onclick="save()">Save</button>
+    </div>
 </div>
 <div class="profile-summary-card">
     Roles: <span th:text='${T(java.lang.String).join(", ", profile.roles)}' id="roles"></span>
@@ -130,6 +245,26 @@
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <script>
+    async function save() {
+        try {
+            const response = await fetch('api/auth/profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value
+                })
+            });
+            if (!response.ok)
+                throw new Error(`Response status: ${response.status}`);
+            await update(await response.json());
+        } catch (error) {
+            console.log(error.message);
+        }
+    }
+
     async function refresh() {
         try {
             const response = await fetch('api/auth/profile');
@@ -137,45 +272,49 @@
             if (!response.ok)
                 throw new Error(`Response status: ${response.status}`);
             const result = await response.json();
-
-            document.getElementById('username').innerText = result.username;
-            document.getElementById('email').innerText = result.email;
-            document.getElementById('roles').innerText = result.roles.join(", ");
-            document.getElementById('id').innerText = result.id;
-            document.getElementById('games_played').innerText = result.gamesPlayed;
-            document.getElementById('games_won').innerText = result.gamesWon;
-            let per_game_type = document.getElementById('per-game-type').innerText;
-
-            result.playedAndWonGames.forEach(([gameType, arr]) => {
-                const game_card = document.createElement('div');
-                game_card.className = 'profile-game-card';
-
-                const title = document.createElement('span');
-                title.textContent = gameType;
-
-                const br1 = document.createElement('br');
-
-                const playedGames = document.createElement('span');
-                playedGames.textContent = `${arr[0]}`;
-
-                const br2 = document.createElement('br');
-
-                const wonGames = document.createElement('span');
-                wonGames.textContent = `${arr[1]}`;
-
-                game_card.appendChild(title);
-                game_card.appendChild(br1);
-                game_card.append("Games played: ");
-                game_card.appendChild(playedGames);
-                game_card.appendChild(br2);
-                game_card.append("Games won: ");
-                game_card.appendChild(wonGames);
-
-                per_game_type.appendChild(game_card);
-            })
+            await update(result);
         } catch (error) {
             console.error(error.message)
         }
+    }
+
+    async function update(data) {
+        document.getElementById('username').value = data.username ?? '';
+        document.getElementById('email').value = data.email ?? '';
+        document.getElementById('roles').innerText = data.roles.join(", ");
+        document.getElementById('id').innerText = data.id;
+        document.getElementById('games_played').innerText = data.gamesPlayed;
+        document.getElementById('games_won').innerText = data.gamesWon;
+        let per_game_type = document.getElementById('per-game-type');
+        per_game_type.innerText = '';
+
+        Object.entries(data.playedAndWonGames).forEach(([gameType, arr]) => {
+            const game_card = document.createElement('div');
+            game_card.className = 'profile-game-card';
+
+            const title = document.createElement('span');
+            title.textContent = gameType;
+
+            const br1 = document.createElement('br');
+
+            const playedGames = document.createElement('span');
+            playedGames.textContent = `${arr[0]}`;
+
+            const br2 = document.createElement('br');
+
+            const wonGames = document.createElement('span');
+            wonGames.textContent = `${arr[1]}`;
+
+            game_card.appendChild(title);
+            game_card.appendChild(br1);
+            game_card.append("Games played: ");
+            game_card.appendChild(playedGames);
+            game_card.appendChild(br2);
+            game_card.append("Games won: ");
+            game_card.appendChild(wonGames);
+
+            per_game_type.appendChild(game_card);
+        })
     }
 </script>
 </body>

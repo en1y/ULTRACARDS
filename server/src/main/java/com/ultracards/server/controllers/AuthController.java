@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
+import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.service.auth.AuthService;
 import com.ultracards.server.service.UserService;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -164,7 +166,7 @@ public class AuthController {
     @PostMapping("/profile")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<ProfileDTO> updateProfile(
-            @RequestAttribute("refreshToken") String token,
+            @AuthenticationPrincipal UserEntity user,
             @RequestBody @Valid ProfileDTO profileDTO,
             BindingResult errors
     ) {
@@ -172,8 +174,10 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
         }
 
-        var tokenEntity = tokenService.getToken(token);
-        var res = authService.updateProfile(profileDTO, tokenEntity);
+        if (user == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        var res = authService.updateProfile(profileDTO, tokenService.getTokenByUser(user));
 
         return ResponseEntity.ok(res);
     }

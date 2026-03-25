@@ -30,7 +30,7 @@ public class WebSecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(tokenRotationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/css/**", "/pics/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/", "/css/**", "/pics/**", "/favicon.ico", "/static/favicon.ico").permitAll()
                         .requestMatchers("/errors/**").permitAll()
                         .requestMatchers("/profile/**").permitAll()
                         .requestMatchers("/active").permitAll()

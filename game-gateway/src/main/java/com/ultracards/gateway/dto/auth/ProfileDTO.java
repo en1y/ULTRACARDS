@@ -20,7 +20,6 @@ public class ProfileDTO {
     @Pattern(regexp = "^[A-Za-z0-9_.-]{1,64}$",
             message = "Username may contain letters, digits, dot, underscore, and dash (1–64 chars).")
     private String username;
-    @NotBlank
     private List<String> roles;
     private Long id;
     private Integer gamesPlayed;
