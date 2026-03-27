@@ -286,12 +286,16 @@
     }
 
     async function update(data) {
-        document.getElementById('username').value = data.username ?? '';
-        document.getElementById('email').value = data.email ?? '';
+        console.log(data)
+
+        document.getElementById('username').value = data.username;
+        document.getElementById('username-header').value = data.username;
+        document.getElementById('email').value = data.email;
         document.getElementById('roles').innerText = data.roles.join(", ");
         document.getElementById('id').innerText = data.id;
         document.getElementById('games_played').innerText = data.gamesPlayed;
         document.getElementById('games_won').innerText = data.gamesWon;
+
         let per_game_type = document.getElementById('per-game-type');
         per_game_type.innerText = '';
 

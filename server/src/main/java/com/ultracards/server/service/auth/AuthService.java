@@ -118,7 +118,7 @@ public class AuthService {
         user.setUsername(profileDTO.getUsername());
         user.setEmail(profileDTO.getEmail());
         userRepository.save(user);
-        return profileDTO;
+        return createProfileByUser(user);
     }
 
     private ProfileDTO createProfileByUser(UserEntity user) {
