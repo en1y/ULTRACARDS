@@ -119,9 +119,10 @@
         return { ok: true };
       };
 
-      const initHeaderAutoHide = () => {
+      // Phase 1: header shell behavior
+      const createHeaderUiPhase = () => {
         let lastScrollY = window.scrollY;
-        window.addEventListener('scroll', () => {
+        const handleScroll = () => {
           const header = document.querySelector('.uc-header');
           if (!header) {
             return;
@@ -134,13 +135,20 @@
             header.classList.remove('hidden');
           }
           lastScrollY = currentScrollY;
-        }, { passive: true });
+        };
+
+        const init = () => {
+          window.addEventListener('scroll', handleScroll, { passive: true });
+        };
+
+        return { init };
       };
 
-      const initProfileMenu = () => {
+      // Phase 2: authenticated profile interactions
+      const createProfileMenuPhase = () => {
         const menu = document.querySelector('[data-profile-menu]');
         if (!menu) {
-          return;
+          return { init: () => {} };
         }
 
         const trigger = menu.querySelector('[data-profile-menu-trigger]');
@@ -159,46 +167,61 @@
           panel?.setAttribute('aria-hidden', 'true');
         };
 
-        trigger?.addEventListener('click', (event) => {
-          event.stopPropagation();
-          if (menu.classList.contains('open')) {
+        const bindToggle = () => {
+          trigger?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (menu.classList.contains('open')) {
+              closeMenu();
+            } else {
+              openMenu();
+            }
+          });
+        };
+
+        const bindDismiss = () => {
+          document.addEventListener('click', (event) => {
+            if (!menu.contains(event.target)) {
+              closeMenu();
+            }
+          });
+
+          document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+              closeMenu();
+            }
+          });
+        };
+
+        const bindLogout = () => {
+          logoutButton?.addEventListener('click', async () => {
             closeMenu();
-          } else {
-            openMenu();
-          }
-        });
+            if (!window.confirm('This will log you out and clear your session. Are you sure?')) {
+              return;
+            }
 
-        document.addEventListener('click', (event) => {
-          if (!menu.contains(event.target)) {
-            closeMenu();
-          }
-        });
+            try {
+              await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            } catch (error) {
+            }
 
-        document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') {
-            closeMenu();
-          }
-        });
+            window.location.href = '/';
+          });
+        };
 
-        logoutButton?.addEventListener('click', async () => {
-          closeMenu();
-          if (!window.confirm('This will log you out and clear your session. Are you sure?')) {
-            return;
-          }
+        const init = () => {
+          bindToggle();
+          bindDismiss();
+          bindLogout();
+        };
 
-          try {
-            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-          } catch (error) {
-          }
-
-          window.location.href = '/';
-        });
+        return { init };
       };
 
-      const initAuthModal = () => {
+      // Phase 3: login and sign-up modal flow
+      const createAuthModalPhase = () => {
         const overlay = document.querySelector('#login-modal');
         if (!overlay) {
-          return;
+          return { init: () => {} };
         }
 
         const stepElements = Array.from(overlay.querySelectorAll('[data-step]'));
@@ -222,6 +245,18 @@
           });
         };
 
+        const clearErrorMessages = () => {
+          if (emailError) {
+            emailError.textContent = '';
+          }
+          if (codeError) {
+            codeError.textContent = '';
+          }
+          if (usernameError) {
+            usernameError.textContent = '';
+          }
+        };
+
         const resetModalState = () => {
           if (emailInput) {
             emailInput.value = '';
@@ -232,15 +267,7 @@
           codeBoxes.forEach((box) => {
             box.value = '';
           });
-          if (emailError) {
-            emailError.textContent = '';
-          }
-          if (codeError) {
-            codeError.textContent = '';
-          }
-          if (usernameError) {
-            usernameError.textContent = '';
-          }
+          clearErrorMessages();
           pendingEmail = null;
         };
 
@@ -255,159 +282,61 @@
           resetModalState();
         };
 
-        openButton?.addEventListener('click', openModal);
-        closeButtons.forEach((button) => {
-          button.addEventListener('click', closeModal);
-        });
-        cancelButtons.forEach((button) => {
-          button.addEventListener('click', (event) => {
-            event.preventDefault();
-            closeModal();
-          });
-        });
-
-        emailForm?.addEventListener('submit', async (event) => {
-          event.preventDefault();
-          if (emailError) {
-            emailError.textContent = '';
+        const parseErrorResponse = async (response, fallbackMessage) => {
+          let message = fallbackMessage;
+          try {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+              const payload = await response.json();
+              const messages = [];
+              if (Array.isArray(payload?.globalErrors)) {
+                messages.push(...payload.globalErrors);
+              }
+              if (payload?.errors) {
+                messages.push(...Object.values(payload.errors).filter(Boolean));
+              }
+              if (Array.isArray(payload?.messages)) {
+                messages.push(...payload.messages);
+              }
+              message = messages.filter((item, index, array) => array.indexOf(item) === index).join('\n') || payload?.message || fallbackMessage;
+            } else {
+              message = await response.text() || fallbackMessage;
+            }
+          } catch (error) {
           }
 
+          return message;
+        };
+
+        const validateEmail = () => {
           const email = (emailInput?.value || '').trim();
           const guardedEmail = guardXss(email);
           if (!guardedEmail.ok) {
             if (emailError) {
               emailError.textContent = guardedEmail.message;
             }
-            return;
+            return null;
           }
 
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             if (emailError) {
               emailError.textContent = 'Please enter a valid email';
             }
-            return;
+            return null;
           }
 
-          try {
-            const response = await fetch('/api/auth/email/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ email })
-            });
-
-            if (!response.ok) {
-              let message = 'Could not send code.';
-              try {
-                const contentType = response.headers.get('content-type') || '';
-                if (contentType.includes('application/json')) {
-                  const payload = await response.json();
-                  const messages = [];
-                  if (Array.isArray(payload?.globalErrors)) {
-                    messages.push(...payload.globalErrors);
-                  }
-                  if (payload?.errors) {
-                    messages.push(...Object.values(payload.errors).filter(Boolean));
-                  }
-                  if (Array.isArray(payload?.messages)) {
-                    messages.push(...payload.messages);
-                  }
-                  message = messages.filter((item, index, array) => array.indexOf(item) === index).join('\n') || payload?.message || message;
-                } else {
-                  message = await response.text() || message;
-                }
-              } catch (error) {
-              }
-
-              if (emailError) {
-                emailError.textContent = message;
-              }
-              pendingEmail = null;
-              showStep('email');
-              return;
-            }
-
-            pendingEmail = email;
-            showStep('code');
-            codeBoxes[0]?.focus();
-          } catch (error) {
-            if (emailError) {
-              emailError.textContent = 'Network error. Try again.';
-            }
-          }
-        });
+          return email;
+        };
 
         const getCodeValue = () => codeBoxes.map((box) => box.value).join('');
 
-        codeBoxes.forEach((box, index) => {
-          box.addEventListener('input', () => {
-            box.value = box.value.replace(/\D/g, '').slice(0, 1);
-            if (box.value && index < codeBoxes.length - 1) {
-              codeBoxes[index + 1].focus();
-            }
-          });
-
-          box.addEventListener('keydown', (event) => {
-            const previous = codeBoxes[index - 1];
-            const next = codeBoxes[index + 1];
-
-            if (event.key === 'ArrowLeft' && previous) {
-              previous.focus();
-              return;
-            }
-
-            if (event.key === 'ArrowRight' && next) {
-              next.focus();
-              return;
-            }
-
-            if (event.key === 'Backspace') {
-              event.preventDefault();
-              if (box.value) {
-                box.value = '';
-              } else if (previous) {
-                previous.value = '';
-                previous.focus();
-              }
-            }
-
-            if (event.key === 'Delete') {
-              event.preventDefault();
-              if (box.value) {
-                box.value = '';
-              } else if (next) {
-                next.value = '';
-              }
-            }
-          });
-
-          box.addEventListener('paste', (event) => {
-            const pasted = (event.clipboardData || window.clipboardData).getData('text');
-            if (!pasted) {
-              return;
-            }
-
-            event.preventDefault();
-            const digits = pasted.replace(/\D/g, '').slice(0, codeBoxes.length);
-            digits.split('').forEach((digit, digitIndex) => {
-              codeBoxes[digitIndex].value = digit;
-            });
-            codeBoxes[Math.max(digits.length - 1, 0)]?.focus();
-          });
-        });
-
-        codeForm?.addEventListener('submit', async (event) => {
-          event.preventDefault();
-          if (codeError) {
-            codeError.textContent = '';
-          }
-
+        const validateCode = () => {
           const code = getCodeValue();
           if (code.length !== 6 || /\D/.test(code)) {
             if (codeError) {
               codeError.textContent = 'Enter the 6 digit code';
             }
-            return;
+            return null;
           }
 
           if (!pendingEmail) {
@@ -415,90 +344,265 @@
               codeError.textContent = 'Missing email. Go back and enter your email.';
             }
             showStep('email');
-            return;
+            return null;
           }
 
-          try {
-            const response = await fetch('/api/auth/email/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ code, email: pendingEmail })
-            });
+          return code;
+        };
 
-            const payload = await response.json().catch(() => null);
-            if (!response.ok || !payload || payload.success !== true) {
-              if (codeError) {
-                codeError.textContent = payload?.message || 'Verification failed. Try again.';
-              }
-              return;
-            }
-
-            if (payload.needsUsername) {
-              showStep('username');
-              usernameInput?.focus();
-              return;
-            }
-
-            window.location.reload();
-          } catch (error) {
-            if (codeError) {
-              codeError.textContent = 'Verification failed. Try again.';
-            }
-          }
-        });
-
-        usernameForm?.addEventListener('submit', async (event) => {
-          event.preventDefault();
-          if (usernameError) {
-            usernameError.textContent = '';
-          }
-
+        const validateUsername = () => {
           const username = (usernameInput?.value || '').trim();
           const guardedUsername = guardXss(username);
           if (!guardedUsername.ok) {
             if (usernameError) {
               usernameError.textContent = guardedUsername.message;
             }
-            return;
+            return null;
           }
 
           if (username.length < 3) {
             if (usernameError) {
               usernameError.textContent = 'Username must be at least 3 characters';
             }
-            return;
+            return null;
           }
 
-          try {
-            const response = await fetch('/api/auth/username', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ username })
-            });
+          return username;
+        };
 
-            if (!response.ok) {
-              if (usernameError) {
-                usernameError.textContent = 'Could not set username. Try again.';
-              }
+        const bindModalControls = () => {
+          openButton?.addEventListener('click', openModal);
+          closeButtons.forEach((button) => {
+            button.addEventListener('click', closeModal);
+          });
+          cancelButtons.forEach((button) => {
+            button.addEventListener('click', (event) => {
+              event.preventDefault();
+              closeModal();
+            });
+          });
+        };
+
+        const bindEmailSubmission = () => {
+          emailForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (emailError) {
+              emailError.textContent = '';
+            }
+
+            const email = validateEmail();
+            if (!email) {
               return;
             }
 
-            window.location.reload();
-          } catch (error) {
-            if (usernameError) {
-              usernameError.textContent = 'Could not set username. Try again.';
+            try {
+              const response = await fetch('/api/auth/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email })
+              });
+
+              if (!response.ok) {
+                if (emailError) {
+                  emailError.textContent = await parseErrorResponse(response, 'Could not send code.');
+                }
+                pendingEmail = null;
+                showStep('email');
+                return;
+              }
+
+              pendingEmail = email;
+              showStep('code');
+              codeBoxes[0]?.focus();
+            } catch (error) {
+              if (emailError) {
+                emailError.textContent = 'Network error. Try again.';
+              }
             }
-          }
-        });
+          });
+        };
+
+        const bindCodeInputs = () => {
+          codeBoxes.forEach((box, index) => {
+            box.addEventListener('input', () => {
+              box.value = box.value.replace(/\D/g, '').slice(0, 1);
+              if (box.value && index < codeBoxes.length - 1) {
+                codeBoxes[index + 1].focus();
+              }
+            });
+
+            box.addEventListener('keydown', (event) => {
+              const previous = codeBoxes[index - 1];
+              const next = codeBoxes[index + 1];
+
+              if (event.key === 'ArrowLeft' && previous) {
+                previous.focus();
+                return;
+              }
+
+              if (event.key === 'ArrowRight' && next) {
+                next.focus();
+                return;
+              }
+
+              if (event.key === 'Backspace') {
+                event.preventDefault();
+                if (box.value) {
+                  box.value = '';
+                } else if (previous) {
+                  previous.value = '';
+                  previous.focus();
+                }
+              }
+
+              if (event.key === 'Delete') {
+                event.preventDefault();
+                if (box.value) {
+                  box.value = '';
+                } else if (next) {
+                  next.value = '';
+                }
+              }
+            });
+
+            box.addEventListener('paste', (event) => {
+              const pasted = (event.clipboardData || window.clipboardData).getData('text');
+              if (!pasted) {
+                return;
+              }
+
+              event.preventDefault();
+              const digits = pasted.replace(/\D/g, '').slice(0, codeBoxes.length);
+              digits.split('').forEach((digit, digitIndex) => {
+                codeBoxes[digitIndex].value = digit;
+              });
+              codeBoxes[Math.max(digits.length - 1, 0)]?.focus();
+            });
+          });
+        };
+
+        const bindCodeSubmission = () => {
+          codeForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (codeError) {
+              codeError.textContent = '';
+            }
+
+            const code = validateCode();
+            if (!code) {
+              return;
+            }
+
+            try {
+              const response = await fetch('/api/auth/email/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ code, email: pendingEmail })
+              });
+
+              const payload = await response.json().catch(() => null);
+              if (!response.ok) {
+                if (codeError) {
+                  codeError.textContent = payload?.message || 'Verification failed. Try again.';
+                }
+                return;
+              }
+
+              const username_response = await fetch('/api/auth/username', {
+                method: 'GET',
+                credentials: 'include'
+              });
+
+              if (!username_response.ok){
+                if (codeError) {
+                  codeError.textContent = payload?.message || "Couldn't get the username. Try again.";
+                }
+                return;
+              }
+              const username = await username_response.json();
+
+              console.log(username)
+
+              if (username) {
+                showStep('username');
+                usernameInput?.focus();
+                return;
+              }
+
+              window.location.reload();
+            } catch (error) {
+              if (codeError) {
+                codeError.textContent = 'Verification failed. Try again.';
+              }
+            }
+          });
+        };
+
+        const bindUsernameSubmission = () => {
+          usernameForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (usernameError) {
+              usernameError.textContent = '';
+            }
+
+            const username = validateUsername();
+            if (!username) {
+              return;
+            }
+
+            try {
+              const response = await fetch('/api/auth/username', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ username })
+              });
+
+              if (!response.ok) {
+                if (usernameError) {
+                  usernameError.textContent = 'Could not set username. Try again.';
+                }
+                return;
+              }
+
+              window.location.reload();
+            } catch (error) {
+              if (usernameError) {
+                usernameError.textContent = 'Could not set username. Try again.';
+              }
+            }
+          });
+        };
+
+        const init = () => {
+          bindModalControls();
+          bindEmailSubmission();
+          bindCodeInputs();
+          bindCodeSubmission();
+          bindUsernameSubmission();
+        };
+
+        return { init };
       };
 
+      // Phase 0: theme state sync with shared theme.js helpers
+      const createThemePhase = () => ({
+        init: () => {
+          window.syncThemeUi?.();
+        }
+      });
+
       const initHeader = () => {
-        window.syncThemeUi?.();
-        initHeaderAutoHide();
-        initProfileMenu();
-        initAuthModal();
+        const phases = [
+          createThemePhase(),
+          createHeaderUiPhase(),
+          createProfileMenuPhase(),
+          createAuthModalPhase()
+        ];
+
+        phases.forEach((phase) => phase.init());
       };
 
       if (document.readyState === 'loading') {

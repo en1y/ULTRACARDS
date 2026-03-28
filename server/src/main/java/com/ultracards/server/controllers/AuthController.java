@@ -56,13 +56,14 @@ public class AuthController {
     )
     @ResponseBody
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<UsernameDTO> updateUsername(
+    public ResponseEntity<?> updateUsername(
             @NotNull @RequestAttribute("refreshToken") String token,
             @Valid @RequestBody UsernameDTO username,
             BindingResult errors) {
 
         if (errors.hasErrors() || username.getUsername().length() > MAX_USERNAME_LENGTH) {
-            return ResponseEntity.badRequest().build();
+            var errorsString = errors.getAllErrors().stream().map(e -> e.getDefaultMessage()).toList().toString();
+            return ResponseEntity.badRequest().body(errorsString);
         }
 
         var tokenEntity = tokenService.getToken(token);

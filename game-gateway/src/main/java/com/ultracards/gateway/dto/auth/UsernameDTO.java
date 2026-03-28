@@ -13,7 +13,7 @@ import lombok.Setter;
 @Setter
 public class UsernameDTO {
     @NotBlank
-    @Pattern(regexp = "^[A-Za-z0-9_.-]{1,64}$",
-            message = "Username may contain letters, digits, dot, underscore, and dash (1–64 chars).")
+    @Pattern(regexp = "^\\p{L}[\\p{L}0-9_.-]{0,63}$",
+            message = "Username may contain letters (including Cyrillic and Croatian), digits, dot, underscore, and dash (1–64 chars).")
     private String username;
 }
