@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ?: 'light'" th:attr="data-theme=${theme}">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

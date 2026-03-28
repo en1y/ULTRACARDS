@@ -4,6 +4,7 @@ import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -52,8 +53,20 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         }
 
         var token = readRefreshToken(req);
+
         if (token == null || token.isBlank()) {
             chain.doFilter(req, res);
+            return;
+        }
+
+        if (!tokenService.tokenExists(token)) {
+
+            var delete_refresh_token = new Cookie("refreshToken", "");
+            delete_refresh_token.setMaxAge(0);
+            delete_refresh_token.setPath("/");
+
+            res.addCookie(delete_refresh_token);
+            res.sendRedirect("/");
             return;
         }
 
