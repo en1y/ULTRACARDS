@@ -5,7 +5,7 @@
       <a class="uc-brand" href="/">ULTRACARDS</a>
       <div class="uc-actions">
         <!-- Theme toggle (slider) on the left -->
-        <button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme">
+        <button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme" onclick="toggleTheme()">
           <span class="thumb" aria-hidden="true">
             <span class="ico sun">☀️</span>
             <span class="ico moon">🌙</span>
@@ -106,9 +106,6 @@
       }
       window.__ucHeaderInitialized = true;
 
-      const storageKey = 'uc-theme';
-      const root = document.documentElement;
-
       const guardXss = (value) => {
         if (typeof value !== 'string') {
           return { ok: false, message: 'Invalid input' };
@@ -120,37 +117,6 @@
           return { ok: false, message: 'Invalid characters detected' };
         }
         return { ok: true };
-      };
-
-      const getPreferredTheme = () => {
-        const saved = localStorage.getItem(storageKey);
-        return saved === 'dark' || saved === 'light' ? saved : 'light';
-      };
-
-      const applyTheme = (theme) => {
-        root.setAttribute('data-theme', theme);
-        localStorage.setItem(storageKey, theme);
-
-        const toggleButton = document.querySelector('[data-action="toggle-theme"]');
-        if (toggleButton) {
-          toggleButton.setAttribute('aria-pressed', String(theme === 'dark'));
-        }
-
-        const avatarSrc = theme === 'dark' ? '/pics/profile_icon_light.svg' : '/pics/profile_icon_dark.svg';
-        document.querySelectorAll('[data-avatar]').forEach((img) => {
-          if (img.getAttribute('src') !== avatarSrc) {
-            img.setAttribute('src', avatarSrc);
-          }
-        });
-      };
-
-      const initTheme = () => {
-        applyTheme(getPreferredTheme());
-        const toggleButton = document.querySelector('[data-action="toggle-theme"]');
-        toggleButton?.addEventListener('click', () => {
-          const nextTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          applyTheme(nextTheme);
-        });
       };
 
       const initHeaderAutoHide = () => {
@@ -529,7 +495,7 @@
       };
 
       const initHeader = () => {
-        initTheme();
+        window.syncThemeUi?.();
         initHeaderAutoHide();
         initProfileMenu();
         initAuthModal();
