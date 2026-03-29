@@ -4,6 +4,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.auth.AuthService;
 import com.ultracards.server.service.auth.TokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,14 +20,13 @@ public class ProfileController {
     private final TokenService tokenService;
 
     @GetMapping
-    private String getProfile(
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public String getProfile(
             @AuthenticationPrincipal UserEntity user,
             Model model
     ) {
         var isAuthenticated = user != null;
         model.addAttribute("isAuthenticated", isAuthenticated);
-        if (!isAuthenticated)
-            return "redirect:/errors/403";
         var profile = authService.getProfile(tokenService.getTokenByUser(user));
         model.addAttribute("username", user.getUsername());
         model.addAttribute("profile", profile);

@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ULTRACARDS</title>
+    <title>ULTRACARDS - 404</title>
     <script>
         (() => {
             const storageKey = 'uc-theme';
@@ -18,22 +17,10 @@
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
-
-<main>
-    <section class="hero container">
-        <h1>ULTRACARDS</h1>
-        <p th:if="${isAuthenticated}">
-            Welcome back bludisife
-        </p>
-        <p th:unless="${isAuthenticated}">
-            Welcome to ULTRACARDS!
-        </p>
-    </section>
-    <section th:if="${isAuthenticated}" class="hero container">
-        <a th:href="@{/games}"><button><h2>Go to games</h2></button></a>
-    </section>
-</main>
-
+<section class="hero container">
+    <h2>Error 404</h2>
+    <h3>This page does not exist! :3</h3>
+</section>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>
 </html>

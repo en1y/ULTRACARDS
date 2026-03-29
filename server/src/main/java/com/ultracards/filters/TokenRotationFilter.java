@@ -21,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.util.HashSet;
 
 @Component
 @RequiredArgsConstructor
@@ -46,6 +47,10 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req,
                                     HttpServletResponse res,
                                     FilterChain chain) throws IOException, ServletException {
+
+        var auth = new UsernamePasswordAuthenticationToken(null, null, new HashSet<>());
+        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+        var context = SecurityContextHolder.createEmptyContext();
 
         if (shouldBypass(req)) {
             chain.doFilter(req, res);
@@ -83,11 +88,11 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             req.setAttribute("refreshToken", rotatedToken.getToken());
 
             // 4) authenticate the request so Spring Security stops throwing 401
+            // TODO: fix preauthorize
             var user = rotatedToken.getUser();
             var authorities = user.getAuthorities(); // e.g., Set<UserRole> with UserRole implements GrantedAuthority
-            var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
+            auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-            var context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(auth);
             SecurityContextHolder.setContext(context);
 
