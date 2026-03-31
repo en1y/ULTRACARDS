@@ -422,6 +422,224 @@ textarea {
   margin-bottom: 0;
 }
 
+.lobbies-page {
+  flex: 1 0 auto;
+  padding-bottom: 2.5rem;
+}
+
+.lobbies-hero {
+  padding-top: 2.5rem;
+  padding-bottom: 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.lobbies-hero-copy {
+  padding: 1rem 0;
+}
+
+.lobbies-hero-copy h1 {
+  margin: 0.65rem 0 0.75rem;
+  font-size: clamp(2rem, 3vw + 1rem, 3.4rem);
+  line-height: 1.05;
+}
+
+.lobbies-hero-copy p {
+  width: min(100%, 58ch);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+}
+
+.lobbies-hero-stats {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  background:
+    radial-gradient(circle at top right, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent 45%),
+    linear-gradient(180deg, color-mix(in oklab, var(--color-surface) 75%, var(--color-bg)), var(--color-bg));
+}
+
+.lobbies-hero-stats strong {
+  font-size: 1.05rem;
+}
+
+.lobbies-hero-stats p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.lobbies-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.lobbies-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.lobbies-sidebar,
+.lobby-empty-state {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-surface) 88%, var(--color-bg)), var(--color-bg));
+}
+
+.lobbies-sidebar {
+  position: sticky;
+  top: 5.5rem;
+  padding: 1.1rem;
+}
+
+.lobbies-panel-head,
+.lobbies-list-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lobbies-panel-head h2,
+.lobbies-list-head h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.35rem;
+}
+
+.lobbies-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+.lobbies-filter-group,
+.lobbies-dynamic-settings {
+  margin-top: 1rem;
+}
+
+.lobbies-dynamic-settings,
+.lobbies-dynamic-settings[hidden] {
+  display: grid;
+  overflow: hidden;
+  transition:
+    max-height 420ms ease,
+    opacity 320ms ease,
+    transform 420ms ease,
+    margin-top 420ms ease;
+}
+
+.lobbies-dynamic-settings[hidden] {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-0.4rem);
+  margin-top: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.lobbies-dynamic-settings:not([hidden]) {
+  max-height: 14rem;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.lobbies-dynamic-settings > * {
+  transition:
+    opacity 340ms ease,
+    transform 420ms ease;
+  animation: lobbies-settings-enter 320ms ease;
+}
+
+.lobbies-dynamic-settings[hidden] > * {
+  opacity: 0;
+  transform: translateY(-0.3rem);
+}
+
+.lobbies-dynamic-settings:not([hidden]) > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lobbies-settings-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.create-lobby-modal {
+  width: min(560px, calc(100% - 2rem));
+}
+
+.create-lobby-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+@keyframes lobbies-settings-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.2rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lobbies-sidebar-actions {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.lobbies-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.lobbies-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.lobby-empty-state {
+  min-height: 320px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.lobby-empty-state h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.lobby-empty-state p {
+  width: min(100%, 52ch);
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.lobby-empty-actions {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .footer {
   margin-top: auto;
   padding: 2rem 1rem;
@@ -450,5 +668,22 @@ textarea {
 
   .hero {
     padding-top: 3rem;
+  }
+
+  .lobbies-hero,
+  .lobbies-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lobbies-sidebar {
+    position: static;
+  }
+
+  .lobbies-hero {
+    padding-top: 1.5rem;
+  }
+
+  .lobby-empty-state {
+    min-height: 240px;
   }
 }

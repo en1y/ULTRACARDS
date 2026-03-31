@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <title>ULTRACARDS</title>
+    <script>
+        (() => {
+            const storageKey = 'uc-theme';
+            const savedTheme = localStorage.getItem(storageKey);
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body>
+    <div th:replace="~{ui/fragments/header :: header}"></div>
+
+    <main class="lobbies-page">
+        <section class="lobbies-hero container">
+            <div class="lobbies-hero-copy">
+                <span class="chip">Game browser</span>
+                <h1>Find an ULTRAlobby</h1>
+            </div>
+            <div class="lobbies-hero-stats card">
+                <strong>Create lobby</strong>
+                <p>Create a new lobby for a new ULTRAexperience</p>
+                <div class="lobbies-hero-actions">
+                    <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="container lobbies-layout">
+            <aside class="card lobbies-sidebar">
+                <div class="lobbies-panel-head">
+                    <div>
+                        <p class="lobbies-eyebrow">Filters</p>
+                        <h2>Filter the lobby list</h2>
+                    </div>
+                </div>
+
+                <div class="lobbies-filter-group">
+                    <label class="field" for="game-type">
+                        <span>Game type</span>
+                        <select id="game-type" onchange="handleGameTypeChange(this)">
+                            <option value="all">All games</option>
+                            <option value="briskula">Briskula</option>
+                            <option value="durak">Durak</option>
+                            <option value="poker">Poker</option>
+                            <option value="treseta">Treseta</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div id="game-settings" class="lobbies-dynamic-settings" hidden="hidden"></div>
+
+                <div class="lobbies-sidebar-actions">
+                    <button class="btn-accent" type="button">Apply Filters</button>
+                </div>
+            </aside>
+
+            <section class="lobbies-content">
+                <div class="lobbies-list-head">
+                    <div>
+                        <p class="lobbies-eyebrow">Open rooms</p>
+                        <h2>Available lobbies</h2>
+                    </div>
+                    <span class="chip">0 active</span>
+                </div>
+
+                <div class="lobbies-list">
+                    <article class="card lobby-empty-state" th:if="${#lists.isEmpty(lobbies)}">
+                        <h3>No active lobbies present</h3>
+                        <p>
+                            Create a room for yet another ULTRAgame
+                        </p>
+                        <div class="lobby-empty-actions">
+                            <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                        </div>
+                    </article>
+                    <div th:if="${!#lists.isEmpty(lobbies)}">
+                        <div th:each="lobby : ${lobbies}">
+                            <article class="card lobby-card">
+                                <h3 th:text="${lobby.name}">Lobby name</h3>
+                                <p>
+                                    <strong th:text="${lobby.gameType}">Game type</strong>
+                                    <span th:text="'(' + lobby.currentPlayers + '/' + lobby.maxPlayers + ' players)'">Player count</span>
+                                </p>
+                            </article>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </section>
+        <div id="create-div" class="modal-overlay">
+            <div class="modal create-lobby-modal" role="dialog" aria-modal="true" aria-labelledby="create-lobby-title">
+                <header>
+                    <strong id="create-lobby-title">Create lobby</strong>
+                    <button class="btn" data-close-create type="button" aria-label="Close">✕</button>
+                </header>
+                <div class="content">
+                    <form id="create-lobby-form" class="create-lobby-form">
+                        <div class="field">
+                            <label for="create-lobby-name">Lobby name</label>
+                            <input id="create-lobby-name" type="text" name="lobbyName" placeholder="ULTRA...?">
+                        </div>
+
+                        <div class="field">
+                            <label for="create-game-type">Game type</label>
+                            <select id="create-game-type" onchange="handleCreateGameTypeChange(this)">
+                                <option value="all">Choose a game</option>
+                                <option value="briskula">Briskula</option>
+                                <option value="durak">Durak</option>
+                                <option value="poker">Poker</option>
+                                <option value="treseta">Treseta</option>
+                            </select>
+                        </div>
+
+                        <div id="create-game-settings" class="lobbies-dynamic-settings" hidden="hidden"></div>
+                    </form>
+                </div>
+                <div class="actions">
+                    <button class="btn" type="button" data-close-create>Cancel</button>
+                    <button class="btn btn-accent" type="button" onclick="createLobby(document.getElementById('create-game-type').selectedOptions[0], document.getElementById('create-properties')?.selectedOptions[0], document.getElementById('create-lobby-name').value)">Create Lobby</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script th:src="@{/js/gameTypes.js}">
+        const profile_response = await fetch('api/auth/profile');
+
+        if (!profile_response.ok)
+            throw new Error(`Response status: ${profile_response.status}`);
+        const profile = await profile_response.json();
+
+
+        const gameSettingsAnimationDurationMs = 420;
+
+        function setGameSettingsContent(gameSettings, nodes) {
+            window.clearTimeout(gameSettings.hideTimeoutId);
+
+            if (!nodes.length) {
+                gameSettings.hidden = true;
+                gameSettings.hideTimeoutId = window.setTimeout(() => {
+                    gameSettings.innerHTML = '';
+                }, gameSettingsAnimationDurationMs);
+                return;
+            }
+
+            gameSettings.innerHTML = '';
+            gameSettings.append(...nodes);
+
+            if (gameSettings.hidden) {
+                window.requestAnimationFrame(() => {
+                    gameSettings.hidden = false;
+                });
+            }
+        }
+
+        function buildProperties(title, select, selectId) {
+            const nodes = [];
+
+            const h3Settings = document.createElement('h3');
+            h3Settings.className = 'lobbies-settings-title';
+            h3Settings.textContent = `${title} settings`;
+
+            const div = document.createElement('div');
+            div.className = 'field';
+
+            const label = document.createElement('label');
+            label.setAttribute('for', selectId);
+            label.textContent = 'Game configuration';
+
+            const properties_select = document.createElement('select');
+            properties_select.setAttribute('id', selectId);
+
+            for (let key in select) {
+                const option = document.createElement('option');
+                option.textContent = select[key].ui_text;
+                option.value = select[key].key;
+                properties_select.appendChild(option);
+            }
+
+            div.appendChild(label);
+            div.appendChild(properties_select);
+
+            nodes.push(h3Settings, div);
+            return nodes;
+        }
+
+        function applyGameTypeSettings(gameType, settingsElement) {
+            window.clearTimeout(settingsElement.hideTimeoutId);
+
+            if (gameType === 'all') {
+                setGameSettingsContent(settingsElement, []);
+                return;
+            }
+
+            const selectedGame = gameTypes[gameType];
+            if (!selectedGame) {
+                setGameSettingsContent(settingsElement, []);
+                return;
+            }
+
+            const title = gameType.charAt(0).toUpperCase() + gameType.slice(1);
+            const selectId = settingsElement.id === 'create-game-settings' ? 'create-properties' : 'properties';
+            setGameSettingsContent(settingsElement, buildProperties(title, selectedGame, selectId));
+        }
+
+        function handleGameTypeChange(select) {
+            applyGameTypeSettings(select.value, document.getElementById('game-settings'));
+        }
+
+        function handleCreateGameTypeChange(select) {
+            applyGameTypeSettings(select.value, document.getElementById('create-game-settings'));
+        }
+
+        async function createLobby(selectedGameType, selectedGameSetting, lobbyName) {
+            const gameType = selectedGameType.value;
+            const gameSetting = selectedGameSetting ? selectedGameSetting.value : null;
+
+            if (gameType === "briskula") {
+                const createLobbyReq = await fetch("/api/lobby/create", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: gameTypes.briskula[gameSetting].req(lobbyName)
+                })
+                if (!createLobbyReq.ok)
+                    throw new Error("Failed to create new lobby")
+
+                const createdLobby = createLobbyReq.json();
+
+                localStorage.setItem("lobbyId", createdLobby.id)
+
+
+            }
+        }
+
+        (() => {
+            const createOverlay = document.getElementById('create-div');
+            const createOpenButtons = document.querySelectorAll('[data-action="open-create-lobby"]');
+            const createCloseButtons = createOverlay.querySelectorAll('[data-close-create]');
+            const createGameType = document.getElementById('create-game-type');
+            const createGameSettings = document.getElementById('create-game-settings');
+
+            function resetCreateModal() {
+                createGameType.value = 'all';
+                setGameSettingsContent(createGameSettings, []);
+            }
+
+            function openCreateModal() {
+                resetCreateModal();
+                createOverlay.classList.add('active');
+            }
+
+            function closeCreateModal() {
+                createOverlay.classList.remove('active');
+                resetCreateModal();
+            }
+
+            createOpenButtons.forEach((button) => {
+                button.addEventListener('click', openCreateModal);
+            });
+
+            createCloseButtons.forEach((button) => {
+                button.addEventListener('click', closeCreateModal);
+            });
+
+            createOverlay.addEventListener('click', (event) => {
+                if (event.target === createOverlay) {
+                    closeCreateModal();
+                }
+            });
+        })();
+
+    </script>
+
+    <div th:replace="~{ui/fragments/footer :: footer}"></div>
+</body>
+</html>

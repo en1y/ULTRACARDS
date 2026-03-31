@@ -42,6 +42,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/", "/css/**", "/pics/**", "/js/**", "/error", "/errors/**", "/favicon.ico", "/static/favicon.ico").permitAll()
                         .requestMatchers("/errors/**").permitAll()
                         .requestMatchers("/profile/**").permitAll()
+                        .requestMatchers("/lobbies/**").permitAll()
                         .requestMatchers("/active").permitAll()
                         .requestMatchers("/ws", "/ws/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/email/send").permitAll()

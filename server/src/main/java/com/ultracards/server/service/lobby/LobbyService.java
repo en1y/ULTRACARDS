@@ -101,6 +101,11 @@ public class LobbyService {
         return res;
     }
 
+    public GameLobbyDTO getLobbyByUser(UserEntity user) {
+        var lobby = lobbyManager.getLobby(user);
+        return lobby == null ? null: lobby.createLobbyDTO();
+    }
+
     private LobbyEntity createLobbyEntity(GameLobbyDTO gameLobbyDTO, UserEntity owner) {
         return new LobbyEntity(
                 gameLobbyDTO.getName(),
