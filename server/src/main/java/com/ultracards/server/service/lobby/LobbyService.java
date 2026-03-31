@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,21 +27,25 @@ public class LobbyService {
     private final LobbyEventPublisher lobbyEventPublisher;
     private final UserService userService;
     private final GameService gameService;
+    private final HashMap<Long, LobbyEntity> lobbyCache = new HashMap<>();
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
         var lobby = lobbyManager.createLobby(
                 createLobbyEntity(gameLobbyDTO, owner)
         );
+        lobbyCache.put(owner.getId(), lobby);
         return lobby.createLobbyDTO();
     }
 
     public Boolean joinLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
+        if (lobby != null) lobbyCache.put(user.getId(), lobby);
         return lobby != null && lobby.addUser(user);
     }
 
     public Boolean leaveLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
+        if (lobby != null) lobbyCache.remove(user.getId());
         return lobby != null && lobby.removeUser(user);
     }
 
@@ -73,11 +78,12 @@ public class LobbyService {
         return null;
     }
 
-    public GameLobbyDTO kickPlayer(@NotNull Long playerToKickId, UserEntity user) {
-        var lobby = lobbyManager.getLobby(user);
+    public GameLobbyDTO kickPlayer(@NotNull Long playerToKickId, UserEntity owner) {
+        var lobby = lobbyManager.getLobby(owner);
         if (lobby != null) {
             lobby.removeUser(
                     userService.getUserById(playerToKickId));
+            lobbyCache.remove(playerToKickId);
             return lobby.createLobbyDTO();
         }
         return null;
@@ -86,6 +92,9 @@ public class LobbyService {
     public Boolean deleteLobby(UserEntity user) {
         var lobby = lobbyManager.getLobby(user);
         if (lobby != null) {
+            for (var players: lobby.getUsers()) {
+                lobbyCache.remove(players.getId());
+            }
             return lobbyManager.deleteLobby(lobby);
         }
         return false;
@@ -102,7 +111,7 @@ public class LobbyService {
     }
 
     public GameLobbyDTO getLobbyByUser(UserEntity user) {
-        var lobby = lobbyManager.getLobby(user);
+        var lobby = lobbyCache.get(user.getId());
         return lobby == null ? null: lobby.createLobbyDTO();
     }
 

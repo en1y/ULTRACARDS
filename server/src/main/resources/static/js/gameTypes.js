@@ -34,6 +34,12 @@ function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnable
     })
 }
 
+function normalizeLobbyName(lobbyName) {
+    return typeof lobbyName === 'string' && lobbyName.trim().length
+        ? lobbyName.trim()
+        : 'ULTRAlobby';
+}
+
 const gameTypes = {
     briskula: {
         p2: {
@@ -74,3 +80,28 @@ const gameTypes = {
     durak:{},
     poker:{}
 };
+
+function getGameTypeSettings(gameType) {
+    return gameTypes[gameType] || null;
+}
+
+function getGameTypeSetting(gameType, settingKey) {
+    const settings = getGameTypeSettings(gameType);
+    if (!settings) {
+        return null;
+    }
+    return settings[settingKey] || null;
+}
+
+function buildLobbyCreatePayload(gameType, settingKey, lobbyName) {
+    const setting = getGameTypeSetting(gameType, settingKey);
+    if (!setting || typeof setting.req !== 'function') {
+        throw new Error(`Unsupported game type setting: ${gameType}/${settingKey}`);
+    }
+    return setting.req(normalizeLobbyName(lobbyName));
+}
+
+function supportsLobbyCreation(gameType, settingKey) {
+    const setting = getGameTypeSetting(gameType, settingKey);
+    return !!setting && typeof setting.req === 'function';
+}

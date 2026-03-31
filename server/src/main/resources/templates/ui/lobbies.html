@@ -14,6 +14,121 @@
     </script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
+    <script th:src="@{/webjars/stomp-websocket/stomp.min.js}"></script>
+    <style>
+        .lobbies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .lobby-card {
+            display: grid;
+            gap: 1rem;
+            padding: 1.1rem;
+            background:
+                linear-gradient(160deg, color-mix(in oklab, var(--color-surface) 88%, transparent), transparent 65%),
+                var(--color-bg);
+        }
+
+        .lobby-card-head,
+        .lobby-card-footer,
+        .lobby-card-stats,
+        .lobby-card-players {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .lobby-card-head {
+            align-items: flex-start;
+        }
+
+        .lobby-card-title {
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .lobby-card-title h3,
+        .lobby-card-title p,
+        .lobby-card-settings p,
+        .lobby-card-footer p {
+            margin: 0;
+        }
+
+        .lobby-card-subtitle,
+        .lobby-card-footer p {
+            color: var(--color-text-muted);
+            font-size: 0.92rem;
+        }
+
+        .lobby-card-stats {
+            flex-wrap: wrap;
+        }
+
+        .lobby-card-settings {
+            display: grid;
+            gap: 0.45rem;
+            padding: 0.8rem 0.9rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: color-mix(in oklab, var(--color-surface) 80%, transparent);
+        }
+
+        .lobby-card-settings strong {
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-text-muted);
+        }
+
+        .lobby-card-players {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .lobby-card-player {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.55rem;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: var(--color-surface);
+            font-size: 0.88rem;
+        }
+
+        .lobby-card-avatar {
+            width: 1.6rem;
+            height: 1.6rem;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 50%;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .lobby-card-footer {
+            padding-top: 0.2rem;
+            border-top: 1px solid var(--color-border);
+            align-items: flex-end;
+        }
+
+        .lobby-card-footer .btn {
+            min-width: 7rem;
+        }
+
+        @media (max-width: 640px) {
+            .lobby-card-footer,
+            .lobby-card-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
 </head>
 <body>
     <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -68,11 +183,11 @@
                         <p class="lobbies-eyebrow">Open rooms</p>
                         <h2>Available lobbies</h2>
                     </div>
-                    <span class="chip">0 active</span>
+                    <span id="active-lobbies-count" class="chip" th:text="${#lists.size(lobbies) + ' active'}">0 active</span>
                 </div>
 
                 <div class="lobbies-list">
-                    <article class="card lobby-empty-state" th:if="${#lists.isEmpty(lobbies)}">
+                    <article id="lobbies-empty" class="card lobby-empty-state" th:if="${#lists.isEmpty(lobbies)}">
                         <h3>No active lobbies present</h3>
                         <p>
                             Create a room for yet another ULTRAgame
@@ -81,18 +196,7 @@
                             <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
                         </div>
                     </article>
-                    <div th:if="${!#lists.isEmpty(lobbies)}">
-                        <div th:each="lobby : ${lobbies}">
-                            <article class="card lobby-card">
-                                <h3 th:text="${lobby.name}">Lobby name</h3>
-                                <p>
-                                    <strong th:text="${lobby.gameType}">Game type</strong>
-                                    <span th:text="'(' + lobby.currentPlayers + '/' + lobby.maxPlayers + ' players)'">Player count</span>
-                                </p>
-                            </article>
-                        </div>
-                    </div>
-
+                    <div id="lobbies-grid" class="lobbies-grid"></div>
                 </div>
             </section>
         </section>
@@ -125,13 +229,16 @@
                 </div>
                 <div class="actions">
                     <button class="btn" type="button" data-close-create>Cancel</button>
-                    <button class="btn btn-accent" type="button" onclick="createLobby(document.getElementById('create-game-type').selectedOptions[0], document.getElementById('create-properties')?.selectedOptions[0], document.getElementById('create-lobby-name').value)">Create Lobby</button>
+                    <button id="create-lobby-submit" class="btn btn-accent" type="button" onclick="createLobby(document.getElementById('create-game-type').selectedOptions[0], document.getElementById('create-properties')?.selectedOptions[0], document.getElementById('create-lobby-name').value)">Create Lobby</button>
                 </div>
             </div>
         </div>
     </main>
 
     <script th:src="@{/js/gameTypes.js}"></script>
+    <script th:inline="javascript">
+        const initialLobbies = /*[[${lobbies}]]*/ [];
+    </script>
     <script>
         const gameSettingsAnimationDurationMs = 420;
 
@@ -215,27 +322,41 @@
         }
 
         async function createLobby(selectedGameType, selectedGameSetting, lobbyName) {
-            const gameType = selectedGameType.value;
-            const gameSetting = selectedGameSetting ? selectedGameSetting.value : null;
+            const gameType = selectedGameType?.value;
+            const gameSetting = selectedGameSetting?.value;
 
-            if (gameType === "briskula") {
-                const createLobbyReq = await fetch("/api/lobby/create", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: gameTypes.briskula[gameSetting].req(lobbyName)
-                })
-                console.log(gameTypes.briskula[gameSetting].req(lobbyName))
-                if (!createLobbyReq.ok)
-                    throw new Error("Failed to create new lobby")
-
-                const createdLobby = createLobbyReq.json();
-
-                localStorage.setItem("lobbyId", createdLobby.id)
-
-
+            if (!gameType || gameType === 'all') {
+                window.alert('Choose a game type first.');
+                return;
             }
+
+            if (!gameSetting) {
+                window.alert('Choose a game configuration first.');
+                return;
+            }
+
+            if (!supportsLobbyCreation(gameType, gameSetting)) {
+                window.alert('Lobby creation is not implemented for that game type yet.');
+                return;
+            }
+
+            const createLobbyReq = await fetch('/api/lobby/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: buildLobbyCreatePayload(gameType, gameSetting, lobbyName)
+            });
+
+            if (!createLobbyReq.ok) {
+                throw new Error('Failed to create new lobby');
+            }
+
+            const createdLobby = await createLobbyReq.json();
+            if (createdLobby?.id)
+                localStorage.setItem('lobbyId', createdLobby.id);
+
+            window.location.href = '/lobbies';
         }
 
         (() => {
@@ -244,6 +365,7 @@
             const createCloseButtons = createOverlay.querySelectorAll('[data-close-create]');
             const createGameType = document.getElementById('create-game-type');
             const createGameSettings = document.getElementById('create-game-settings');
+            const createForm = document.getElementById('create-lobby-form');
 
             function resetCreateModal() {
                 createGameType.value = 'all';
@@ -272,6 +394,221 @@
                 if (event.target === createOverlay) {
                     closeCreateModal();
                 }
+            });
+
+            createForm?.addEventListener('submit', (event) => {
+                event.preventDefault();
+                createLobby(
+                    document.getElementById('create-game-type').selectedOptions[0],
+                    document.getElementById('create-properties')?.selectedOptions[0],
+                    document.getElementById('create-lobby-name').value
+                );
+            });
+        })();
+
+        (() => {
+            const grid = document.getElementById('lobbies-grid');
+            let emptyState = document.getElementById('lobbies-empty');
+            const activeCount = document.getElementById('active-lobbies-count');
+
+            if (!grid) {
+                return;
+            }
+
+            function updateLobbyCount() {
+                const count = grid.querySelectorAll('.lobby-card').length;
+                if (activeCount) {
+                    activeCount.textContent = `${count} active`;
+                }
+                if (!emptyState && count === 0) {
+                    emptyState = document.createElement('article');
+                    emptyState.id = 'lobbies-empty';
+                    emptyState.className = 'card lobby-empty-state';
+                    emptyState.innerHTML = `
+                        <h3>No active lobbies present</h3>
+                        <p>Create a room for yet another ULTRAgame</p>
+                        <div class="lobby-empty-actions">
+                            <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                        </div>
+                    `;
+                    grid.insertAdjacentElement('beforebegin', emptyState);
+                    const button = emptyState.querySelector('[data-action="open-create-lobby"]');
+                    if (button) {
+                        button.addEventListener('click', () => {
+                            document.getElementById('create-div')?.classList.add('active');
+                        });
+                    }
+                }
+                if (emptyState) {
+                    if (count > 0) {
+                        emptyState.remove();
+                        emptyState = null;
+                    } else {
+                        emptyState.hidden = false;
+                    }
+                }
+            }
+
+            function escapeHtml(value) {
+                return String(value)
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#39;');
+            }
+
+            function describeLobbySettings(lobby) {
+                if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+                    return 'Standard rules';
+                }
+
+                const config = lobby.gameConfig;
+                const parts = [];
+                if (config.numberOfPlayers != null) {
+                    parts.push(`${config.numberOfPlayers} players`);
+                }
+                if (config.cardsInHandNum != null) {
+                    parts.push(`${config.cardsInHandNum} cards each`);
+                }
+                if (config.numberOfPlayers === 4) {
+                    parts.push(config.teamsEnabled ? 'teams enabled' : 'free-for-all');
+                }
+                return parts.join(' • ');
+            }
+
+            function renderPlayers(players, hostId) {
+                if (!players.length) {
+                    return '<span class="lobby-card-subtitle">Waiting for players…</span>';
+                }
+
+                return players.map((player) => {
+                    const initial = escapeHtml((player.name || 'U').charAt(0).toUpperCase());
+                    const name = escapeHtml(player.name || `User ${player.id}`);
+                    const isHost = hostId != null && String(player.id) === String(hostId);
+                    return `
+                        <span class="lobby-card-player">
+                            <span class="lobby-card-avatar">${initial}</span>
+                            <span>${name}</span>
+                            ${isHost ? '<span class="chip">Host</span>' : ''}
+                        </span>
+                    `;
+                }).join('');
+            }
+
+            function renderCard(lobby) {
+                const players = Array.isArray(lobby.players) ? lobby.players : [];
+                const openSlots = Math.max((lobby.maxPlayers ?? players.length) - players.length, 0);
+                const hostId = lobby.host?.id ?? null;
+                return `
+                    <article class="card lobby-card" data-id="${escapeHtml(lobby.id)}">
+                        <div class="lobby-card-head">
+                            <div class="lobby-card-title">
+                                <span class="chip">${escapeHtml(lobby.gameType || 'Unknown')}</span>
+                                <h3>${escapeHtml(lobby.name || `Lobby ${lobby.id}`)}</h3>
+                                <p class="lobby-card-subtitle">Host: ${escapeHtml(lobby.host?.name || 'Unknown')}</p>
+                            </div>
+                            <span class="chip">${players.length}/${lobby.maxPlayers ?? ''} players</span>
+                        </div>
+
+                        <div class="lobby-card-stats">
+                            <span class="chip">${openSlots} open slot${openSlots === 1 ? '' : 's'}</span>
+                            <span class="chip">Min ${escapeHtml(lobby.minPlayers ?? players.length)}</span>
+                        </div>
+
+                        <div class="lobby-card-settings">
+                            <strong>Lobby settings</strong>
+                            <p>${escapeHtml(describeLobbySettings(lobby))}</p>
+                        </div>
+
+                        <div class="lobby-card-players">
+                            ${renderPlayers(players, hostId)}
+                        </div>
+
+                        <div class="lobby-card-footer">
+                            <p>Join this room and continue in the live lobby view.</p>
+                            <button class="btn btn-accent" type="button" data-join-lobby="${escapeHtml(lobby.id)}">Join lobby</button>
+                        </div>
+                    </article>
+                `;
+            }
+
+            function upsertLobby(type, lobby) {
+                if (!lobby || !lobby.id) {
+                    return;
+                }
+
+                const existing = grid.querySelector(`[data-id="${CSS.escape(String(lobby.id))}"]`);
+                if (type === 'DELETED' || type === 'STARTED') {
+                    existing?.remove();
+                    updateLobbyCount();
+                    return;
+                }
+
+                const markup = renderCard(lobby);
+                if (existing) {
+                    existing.outerHTML = markup;
+                } else {
+                    grid.insertAdjacentHTML('beforeend', markup);
+                }
+                updateLobbyCount();
+            }
+
+            async function joinLobby(lobbyId) {
+                const response = await fetch('/api/lobby/join', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(lobbyId)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to join lobby');
+                }
+
+                window.location.href = '/lobbies';
+            }
+
+            grid.addEventListener('click', async (event) => {
+                const joinButton = event.target.closest('[data-join-lobby]');
+                if (!joinButton) {
+                    return;
+                }
+
+                try {
+                    await joinLobby(joinButton.dataset.joinLobby);
+                } catch (error) {
+                    window.alert('Unable to join this lobby right now.');
+                }
+            });
+
+            for (const lobby of initialLobbies) {
+                upsertLobby('UPDATED', lobby);
+            }
+            updateLobbyCount();
+
+            if (!window.Stomp) {
+                return;
+            }
+
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const client = Stomp.client(`${wsProtocol}//${window.location.host}/ws`);
+            client.reconnect_delay = 3000;
+            client.debug = null;
+            client.connect({}, () => {
+                client.subscribe('/topic/lobbies', (message) => {
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (!payload || !payload.lobbyDto) {
+                            return;
+                        }
+                        upsertLobby(payload.type, payload.lobbyDto);
+                    } catch (error) {
+                        console.error('Lobby list websocket parse error', error);
+                    }
+                });
             });
         })();
 

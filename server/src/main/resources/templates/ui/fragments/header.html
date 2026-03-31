@@ -216,7 +216,6 @@
 
         return { init };
       };
-      // FIXME: To fix when a user already has a username do not propose to create one
       // Phase 3: login and sign-up modal flow
       const createAuthModalPhase = () => {
         const overlay = document.querySelector('#login-modal');
@@ -522,10 +521,9 @@
                 return;
               }
               const username = await username_response.json();
+              const existingUsername = (username?.username || '').trim();
 
-              console.log(username)
-
-              if (username) {
+              if (!existingUsername) {
                 showStep('username');
                 usernameInput?.focus();
                 return;
