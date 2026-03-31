@@ -1,3 +1,22 @@
+let profile = {
+    username: '',
+    id: 0
+};
+
+fetch('/api/auth/profile')
+    .then((profileResponse) => {
+        if (!profileResponse.ok) {
+            throw new Error(`Response status: ${profileResponse.status}`);
+        }
+        return profileResponse.json();
+    })
+    .then((profilePayload) => {
+        profile = profilePayload;
+    })
+    .catch((error) => {
+        console.error('Failed to load profile for game types.', error);
+    });
+
 function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnabled=false) {
     return JSON.stringify({
         id: "",

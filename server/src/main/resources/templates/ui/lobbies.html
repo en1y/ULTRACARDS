@@ -131,14 +131,8 @@
         </div>
     </main>
 
-    <script th:src="@{/js/gameTypes.js}">
-        const profile_response = await fetch('api/auth/profile');
-
-        if (!profile_response.ok)
-            throw new Error(`Response status: ${profile_response.status}`);
-        const profile = await profile_response.json();
-
-
+    <script th:src="@{/js/gameTypes.js}"></script>
+    <script>
         const gameSettingsAnimationDurationMs = 420;
 
         function setGameSettingsContent(gameSettings, nodes) {
@@ -182,7 +176,7 @@
             for (let key in select) {
                 const option = document.createElement('option');
                 option.textContent = select[key].ui_text;
-                option.value = select[key].key;
+                option.value = key;
                 properties_select.appendChild(option);
             }
 
@@ -232,6 +226,7 @@
                     },
                     body: gameTypes.briskula[gameSetting].req(lobbyName)
                 })
+                console.log(gameTypes.briskula[gameSetting].req(lobbyName))
                 if (!createLobbyReq.ok)
                     throw new Error("Failed to create new lobby")
 
