@@ -17,7 +17,8 @@ public class ProfileDTO {
     @NotBlank @Email
     private String email;
     @NotBlank
-    @Pattern(regexp = "^[A-Za-z0-9_.-]{1,64}$",
+    @Pattern(
+            regexp = "^(?=.{1,64}$)[\\p{L}\\p{M}](?:[\\p{L}\\p{M}0-9 .,_\\-~']*[\\p{L}\\p{M}0-9])?$",
             message = "Username may contain letters, digits, dot, underscore, and dash (1–64 chars).")
     private String username;
     private List<String> roles;

@@ -13,7 +13,9 @@ import lombok.Setter;
 @Setter
 public class UsernameDTO {
     @NotBlank
-    @Pattern(regexp = "^\\p{L}[\\p{L}0-9_.-]{0,63}$",
-            message = "Username may contain letters (including Cyrillic and Croatian), digits, dot, underscore, and dash (1–64 chars).")
+    @Pattern(
+            regexp = "^(?=.{1,64}$)[\\p{L}\\p{M}](?:[\\p{L}\\p{M}0-9 .,_\\-~']*[\\p{L}\\p{M}0-9])?$",
+            message = "Username may contain Unicode letters (including Ukrainian, Russian, English, and Croatian), digits, spaces, dot, comma, underscore, dash, tilde, and apostrophe (1–64 chars)."
+    )
     private String username;
 }
