@@ -39,7 +39,7 @@ public class UserGamesStats {
 
     public UserGamesStats(UserEntity user) {
         this.user = user;
-        for (var gameType : GameType.values()) {
+        for (GameType gameType : GameType.values()) { // For some reason compiler sometimes sees it as an Object and not a GameType entity
             gameStats.put(gameType, new GameStats(0, 0));
         }
     }
