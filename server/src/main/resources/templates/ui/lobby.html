@@ -298,7 +298,8 @@
         const state = {
             lobby: initialLobby,
             currentUser: null,
-            wsConnected: false
+            wsConnected: false,
+            redirectingToGame: false
         };
 
         const dom = {
@@ -360,6 +361,7 @@
                         const payload = JSON.parse(message.body);
                         if (payload && payload.gameId) {
                             updateStatus(`Game started. Game id: ${payload.gameId}`);
+                            redirectToGame(payload.gameId);
                             return;
                         }
                         if (!payload || !payload.type) {
@@ -377,6 +379,7 @@
                             notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
                             if (payload.type === 'STARTED') {
                                 showToast('Game started', 'The lobby has started a game.');
+                                redirectToResolvedGame();
                             }
                         }
                     } catch (error) {
@@ -400,6 +403,7 @@
                         throw new Error('Failed to start lobby');
                     }
                     updateStatus('Starting game…');
+                    redirectToResolvedGame();
                 } catch (error) {
                     updateStatus('Unable to start the lobby.');
                 }
@@ -677,6 +681,39 @@
             if (dom.status) {
                 dom.status.textContent = text;
             }
+        }
+
+        function redirectToGame(gameId) {
+            if (state.redirectingToGame || !gameId) {
+                return;
+            }
+            state.redirectingToGame = true;
+            window.location.href = '/game';
+        }
+
+        async function redirectToResolvedGame() {
+            if (state.redirectingToGame || !state.lobby?.id) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/games/lobby/${encodeURIComponent(state.lobby.id)}`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const game = await response.json();
+                    if (game?.id) {
+                        redirectToGame(game.id);
+                        return;
+                    }
+                }
+            } catch (error) {
+            }
+            window.setTimeout(() => {
+                if (!state.redirectingToGame) {
+                    state.redirectingToGame = true;
+                    window.location.href = '/game';
+                }
+            }, 250);
         }
 
         function notifyLobbyEvent(type, previousLobby, nextLobby) {

@@ -11,6 +11,9 @@ import com.ultracards.server.service.lobby.LobbyManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Optional;
+
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO.*;
 
 @Service
@@ -19,12 +22,18 @@ public class GameService {
     private final GameManager gameManager;
     private final GameEventPublisher eventPublisher;
     private final LobbyManager lobbyManager;
+    private final HashMap<Long, GameEntity<?>> gameCache = new HashMap<>();
 
     public GameEntity<?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
         lobbyManager.putGame(lobby, game);
         eventPublisher.publish(game, STARTED);
+        game.getPlayers().forEach(p -> gameCache.put(p.getId(), game));
         return game;
+    }
+
+    public Optional<GameEntity<?>> getGameByUser(UserEntity user) {
+        return Optional.of(gameCache.get(user.getId()));
     }
 
     public void playCard(UserEntity user, GameCardDTO cardDTO) {
@@ -36,6 +45,7 @@ public class GameService {
                 eventPublisher.publish(game, UPDATED);
                 if (!game1.getGame().isGameActive()) {
                     eventPublisher.publish(game, RESULTED);
+                    game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
                 }
             }
         }
