@@ -1,9 +1,7 @@
 package com.ultracards.server.service.cards;
 
 import com.ultracards.cards.*;
-import com.ultracards.cardtopng.CardPictureDTO;
 import com.ultracards.cardtopng.CardToPngConverter;
-import com.ultracards.games.briskula.BriskulaCard;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;

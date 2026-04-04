@@ -6,7 +6,9 @@ import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.lobby.LobbyManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class GameService {
     private final GameEventPublisher eventPublisher;
     private final LobbyManager lobbyManager;
     private final HashMap<Long, GameEntity<?>> gameCache = new HashMap<>();
+    private final UserGamesStatsService userGamesStatsService;
 
     public GameEntity<?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
@@ -33,7 +36,7 @@ public class GameService {
     }
 
     public Optional<GameEntity<?>> getGameByUser(UserEntity user) {
-        return Optional.of(gameCache.get(user.getId()));
+        return Optional.ofNullable(gameCache.get(user.getId()));
     }
 
     public void playCard(UserEntity user, GameCardDTO cardDTO) {
@@ -45,9 +48,21 @@ public class GameService {
                 eventPublisher.publish(game, UPDATED);
                 if (!game1.getGame().isGameActive()) {
                     eventPublisher.publish(game, RESULTED);
+
+                    var winners = game1.getGame().determineGameWinners();
+                    game.getGame().getPlayers().forEach(p -> {
+                        var player = (BriskulaPlayerEntity) p;
+                        var stats = userGamesStatsService.getByUser(player.getUser());
+                        userGamesStatsService.addGamePlayed(stats, GameType.fromDTO(game.getGameType()));
+                        if (winners.contains(p)) {
+                            userGamesStatsService.addGameWon(stats, GameType.fromDTO(game.getGameType()));
+                        }
+                    });
+
                     game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
                 }
             }
         }
     }
+    // TODO: fix post game lobby logic, aka make it open again
 }
