@@ -43,6 +43,10 @@ public class LobbyEntity {
         return users.contains(user);
     }
 
+    public boolean isFull() {
+        return users.size() >= maxPlayers;
+    }
+
     public boolean addUser(UserEntity user) {
         return users.contains(user) || ( users.size() < maxPlayers && users.add(user) );
     }

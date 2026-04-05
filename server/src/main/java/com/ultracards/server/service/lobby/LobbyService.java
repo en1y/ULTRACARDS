@@ -23,6 +23,12 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class LobbyService {
+    public enum JoinLobbyResult {
+        JOINED,
+        FULL,
+        NOT_FOUND
+    }
+
     private final LobbyManager lobbyManager;
     private final LobbyEventPublisher lobbyEventPublisher;
     private final UserService userService;
@@ -37,10 +43,22 @@ public class LobbyService {
         return lobby.createLobbyDTO();
     }
 
-    public Boolean joinLobby(@NotNull UUID lobbyId, UserEntity user) {
+    public JoinLobbyResult joinLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
-        if (lobby != null) lobbyCache.put(user.getId(), lobby);
-        return lobby != null && lobby.addUser(user);
+        if (lobby == null) {
+            return JoinLobbyResult.NOT_FOUND;
+        }
+
+        if (lobby.isFull() && !lobby.containsUser(user)) {
+            return JoinLobbyResult.FULL;
+        }
+
+        if (lobby.addUser(user)) {
+            lobbyCache.put(user.getId(), lobby);
+            return JoinLobbyResult.JOINED;
+        }
+
+        return JoinLobbyResult.FULL;
     }
 
     public Boolean leaveLobby(@NotNull UUID lobbyId, UserEntity user) {

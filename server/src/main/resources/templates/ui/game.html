@@ -73,9 +73,30 @@
             --table-size: min(60vmin, 48vh, 620px);
             --avatar-size: clamp(38px, 6.2vmin, 56px);
             --player-ring-pad: clamp(48px, 7.5vmin, 82px);
-            padding-top: calc(var(--header-height) + var(--player-ring-pad));
+            --hand-card-width: clamp(98px, calc(var(--table-size) * 0.19), 118px);
+            --hand-card-overlap: calc(var(--table-size) * -0.04);
+            --deck-cluster-width: calc(var(--table-size) * 0.277);
+            --deck-cluster-height: calc(var(--table-size) * 0.342);
+            --deck-tower-width: calc(var(--table-size) * 0.18);
+            --deck-tower-height: calc(var(--table-size) * 0.245);
+            --deck-card-width: calc(var(--table-size) * 0.174);
+            --trump-card-width: calc(var(--table-size) * 0.185);
+            --trump-card-right: calc(var(--table-size) * 0.145);
+            --trump-card-bottom: calc(var(--table-size) * 0.039);
+            --trump-card-hover-right: calc(var(--table-size) * 0.306);
+            --trump-card-hover-width: calc(var(--table-size) * 0.21);
+            padding-top: calc((var(--header-height) * 0.65) + (var(--player-ring-pad) * 0.1));
             min-height: calc(100vh - var(--header-height));
             padding-bottom: 0.35rem;
+        }
+
+        .game-layout.is-four-player {
+            padding-top: calc(var(--header-height) + 1.25rem);
+            --player-ring-pad: clamp(64px, 9vmin, 102px);
+        }
+
+        .game-layout.is-four-player .table-wrap {
+            margin-top: 4.1rem;
         }
 
         .turn-subtext {
@@ -89,6 +110,7 @@
             display: grid;
             place-items: center;
             padding: 0 0.5rem 0.1rem;
+            margin-top: -1.2rem;
             animation: table-rise 520ms ease-out both;
         }
 
@@ -260,8 +282,8 @@
 
         .deck-cluster {
             position: relative;
-            width: 172px;
-            height: 212px;
+            width: var(--deck-cluster-width);
+            height: var(--deck-cluster-height);
             overflow: visible;
             padding: 12px 12px 28px 20px;
             box-sizing: border-box;
@@ -277,14 +299,14 @@
 
         .deck-tower {
             position: relative;
-            width: 112px;
-            height: 152px;
+            width: var(--deck-tower-width);
+            height: var(--deck-tower-height);
             z-index: 3;
         }
 
         .deck-tower img {
             position: absolute;
-            width: 108px;
+            width: var(--deck-card-width);
             border-radius: 12px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
             left: calc(var(--deck-offset-x, 0) * 1px);
@@ -297,14 +319,14 @@
         }
 
         .trump-card {
-            width: 115px;
+            width: var(--trump-card-width);
             border-radius: 10px;
             box-shadow: 0 16px 28px rgba(0, 0, 0, 0.34);
             transform: rotate(90deg) translate3d(0, 0, 0);
             transform-origin: 50% 50%;
             position: absolute;
-            right: 90px;
-            bottom: 24px;
+            right: var(--trump-card-right);
+            bottom: var(--trump-card-bottom);
             z-index: 2;
             cursor: pointer;
             transition: transform 280ms cubic-bezier(.2, .8, .2, 1),
@@ -324,8 +346,8 @@
             box-shadow: 0 26px 38px rgba(0, 0, 0, 0.42);
             filter: saturate(1.08);
             bottom: 10px;
-            right: 190px;
-            width: 130px;
+            right: var(--trump-card-hover-right);
+            width: var(--trump-card-hover-width);
         }
 
         .drop-zone {
@@ -450,7 +472,7 @@
             justify-content: center;
             gap: 0.9rem;
             flex-wrap: nowrap;
-            margin-top: -1.35rem;
+            margin-top: -4rem;
             position: relative;
             z-index: 4;
         }
@@ -506,13 +528,14 @@
         }
 
         .hand-card {
-            width: clamp(88px, 10.5vw, 118px);
+            width: var(--hand-card-width);
+            height: auto;
             border-radius: 14px;
             box-shadow: 0 16px 30px rgba(0, 0, 0, 0.26);
             cursor: grab;
             transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, filter 180ms ease;
             background: var(--cream);
-            margin-left: -32px;
+            margin-left: var(--hand-card-overlap);
             position: relative;
             z-index: 1;
             --tilt: 0deg;
@@ -784,10 +807,6 @@
                 width: 112px;
             }
 
-            .hand-card {
-                width: clamp(80px, 12vw, 102px);
-            }
-
             .deck-stack {
                 right: 2%;
             }
@@ -805,11 +824,6 @@
 
             .seat-card {
                 width: 24px;
-            }
-
-            .hand-card {
-                width: clamp(66px, 14vw, 88px);
-                margin-left: -20px;
             }
 
             .drop-zone {
@@ -832,13 +846,30 @@
                 right: 1%;
             }
 
-            .trump-card {
-                width: 74px;
-            }
-
             .player-summary-card {
                 min-width: 138px;
                 padding: 0.58rem 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-layout {
+                --hand-card-width: clamp(86px, calc(var(--table-size) * 0.16), 100px);
+                --hand-card-overlap: calc(var(--table-size) * -0.026);
+                --deck-cluster-width: calc(var(--table-size) * 0.23);
+                --deck-cluster-height: calc(var(--table-size) * 0.285);
+                --deck-tower-width: calc(var(--table-size) * 0.145);
+                --deck-tower-height: calc(var(--table-size) * 0.2);
+                --deck-card-width: calc(var(--table-size) * 0.135);
+                --trump-card-width: calc(var(--table-size) * 0.14);
+                --trump-card-right: calc(var(--table-size) * 0.1);
+                --trump-card-bottom: calc(var(--table-size) * 0.02);
+                --trump-card-hover-right: calc(var(--table-size) * 0.22);
+                --trump-card-hover-width: calc(var(--table-size) * 0.165);
+            }
+
+            .hand-cards {
+                padding-inline: 0.3rem;
             }
         }
 
@@ -846,15 +877,20 @@
             .game-layout {
                 --table-size: min(50vmin, 36vh, 460px);
                 --player-ring-pad: clamp(42px, 6.5vmin, 68px);
-                padding-top: calc(var(--header-height) + var(--player-ring-pad));
+                padding-top: calc(var(--header-height) + (var(--player-ring-pad) * 0.45));
             }
 
             .table-wrap {
                 padding-top: 0.15rem;
+                margin-top: -0.8rem;
+            }
+
+            .game-layout.is-four-player .table-wrap {
+                margin-top: 0.8rem;
             }
 
             .hand-row {
-                margin-top: -0.9rem;
+                margin-top: -1.35rem;
             }
 
             .hand-zone {
@@ -945,6 +981,7 @@
         const currentUsername = gameEl.dataset.username ? String(gameEl.dataset.username) : '';
         const initialGame = /*[[${game}]]*/ null;
         const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+        const gameLayout = document.querySelector('.game-layout');
 
         const dom = {
             ring: document.getElementById('player-ring'),
@@ -1239,6 +1276,7 @@
         function renderPlayers(game) {
             if (!dom.ring) return;
             const players = buildPlayers(game);
+            gameLayout?.classList.toggle('is-four-player', players.length === 4);
             const existingSeats = new Map();
             Array.from(dom.ring.children).forEach((seat) => {
                 const key = seat.dataset.playerKey;
@@ -1298,7 +1336,7 @@
                 const cardsCount = player.cards != null ? player.cards : (player.points ?? 0);
                 const cards = seat.querySelector('.seat-cards');
                 if (cards) {
-                    syncSeatCards(cards, cardsCount);
+                    syncSeatCards(cards, cardsCount, seat.dataset.seatSide || 'center');
                 }
 
                 const points = seat.querySelector('.seat-points');
@@ -1621,14 +1659,15 @@
                 const seatIndex = Number(seat.dataset.seatIndex);
                 const resolvedIndex = Number.isFinite(seatIndex) ? seatIndex : index;
                 const angle = (Math.PI * 2 * resolvedIndex) / count + Math.PI / 2;
-                const angleDeg = (angle * 180) / Math.PI;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
-                const selfTopOffset = seat.dataset.isSelf === '1' ? 180 : 0;
+                const selfTopOffset = seat.dataset.isSelf === '1' ? 110 : 0;
+                const seatSide = x < -8 ? 'left' : (x > 8 ? 'right' : (y < 0 ? 'top' : 'bottom'));
+                seat.dataset.seatSide = seatSide;
                 seat.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
                 seat.style.left = '50%';
                 seat.style.top = `calc(50% + ${selfTopOffset}px)`;
-                seat.style.setProperty('--hand-rotate', `${90 - angleDeg}deg`);
+                seat.style.setProperty('--hand-rotate', getSeatHandRotate(seatSide));
             });
         }
 
@@ -1718,7 +1757,7 @@
             return `name:${player.name || ''}`;
         }
 
-        function syncSeatCards(cardsEl, cardsCount) {
+        function syncSeatCards(cardsEl, cardsCount, seatSide) {
             const existingCards = Array.from(cardsEl.children);
             while (existingCards.length > cardsCount) {
                 const card = existingCards.pop();
@@ -1738,6 +1777,11 @@
                 const lift = Math.abs(centeredIndex) * 1.6;
                 img.style.transform = `translateY(${lift}px) rotate(${rotate}deg)`;
             });
+        }
+
+        function getSeatHandRotate(seatSide) {
+            if (seatSide !== 'bottom') return '180deg';
+            return '0deg';
         }
 
         function renderDeckTower(cardsLeft) {

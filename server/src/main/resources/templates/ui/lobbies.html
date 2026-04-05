@@ -121,6 +121,45 @@
             min-width: 7rem;
         }
 
+        .lobbies-toast {
+            position: fixed;
+            left: 50%;
+            top: 1.25rem;
+            z-index: 60;
+            width: min(28rem, calc(100% - 2rem));
+            padding: 0.95rem 1rem;
+            border: 1px solid rgba(232, 116, 116, 0.32);
+            border-radius: var(--radius-lg);
+            background: color-mix(in oklab, #8f1f1f 22%, var(--color-surface));
+            color: var(--color-text);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 18px 40px rgba(70, 16, 16, 0.22);
+            opacity: 0;
+            filter: blur(2px);
+            transform: translate(-50%, -4px);
+            pointer-events: none;
+            transition:
+                opacity 240ms ease,
+                transform 240ms ease,
+                filter 240ms ease;
+        }
+
+        .lobbies-toast.is-visible {
+            opacity: 1;
+            filter: blur(0);
+            transform: translate(-50%, 0);
+        }
+
+        .lobbies-toast-title {
+            margin: 0 0 0.2rem;
+            font-weight: 800;
+        }
+
+        .lobbies-toast-text {
+            margin: 0;
+            color: color-mix(in oklab, var(--color-text) 78%, transparent);
+        }
+
         @media (max-width: 640px) {
             .lobby-card-footer,
             .lobby-card-head {
@@ -234,6 +273,11 @@
             </div>
         </div>
     </main>
+
+    <aside id="lobbies-toast" class="lobbies-toast" aria-live="polite" aria-atomic="true" hidden>
+        <p id="lobbies-toast-title" class="lobbies-toast-title">Lobby unavailable</p>
+        <p id="lobbies-toast-text" class="lobbies-toast-text">This lobby is already full.</p>
+    </aside>
 
     <script th:src="@{/js/gameTypes.js}"></script>
     <script th:inline="javascript">
@@ -410,6 +454,11 @@
             const grid = document.getElementById('lobbies-grid');
             let emptyState = document.getElementById('lobbies-empty');
             const activeCount = document.getElementById('active-lobbies-count');
+            const toast = document.getElementById('lobbies-toast');
+            const toastTitle = document.getElementById('lobbies-toast-title');
+            const toastText = document.getElementById('lobbies-toast-text');
+            let toastHideTimer = null;
+            let toastCleanupTimer = null;
 
             if (!grid) {
                 return;
@@ -565,10 +614,38 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to join lobby');
+                    const message = (await response.text()).trim();
+                    const error = new Error(message || 'Failed to join lobby');
+                    error.status = response.status;
+                    throw error;
                 }
 
                 window.location.href = '/lobbies';
+            }
+
+            function showToast(title, text) {
+                if (!toast || !toastTitle || !toastText) {
+                    return;
+                }
+
+                window.clearTimeout(toastHideTimer);
+                window.clearTimeout(toastCleanupTimer);
+                toastTitle.textContent = title;
+                toastText.textContent = text;
+                toast.hidden = false;
+                toast.classList.remove('is-visible');
+                window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                        toast.classList.add('is-visible');
+                    });
+                });
+
+                toastHideTimer = window.setTimeout(() => {
+                    toast.classList.remove('is-visible');
+                    toastCleanupTimer = window.setTimeout(() => {
+                        toast.hidden = true;
+                    }, 260);
+                }, 2800);
             }
 
             grid.addEventListener('click', async (event) => {
@@ -580,7 +657,12 @@
                 try {
                     await joinLobby(joinButton.dataset.joinLobby);
                 } catch (error) {
-                    window.alert('Unable to join this lobby right now.');
+                    if (error?.status === 409) {
+                        showToast('Lobby full', error.message || 'This lobby is already full.');
+                        return;
+                    }
+
+                    showToast('Join failed', error?.message || 'Unable to join this lobby right now.');
                 }
             });
 
