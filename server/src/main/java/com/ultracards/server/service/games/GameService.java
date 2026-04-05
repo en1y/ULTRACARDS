@@ -8,6 +8,7 @@ import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.lobby.LobbyManager;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,7 @@ public class GameService {
             var success = game1.playCard(user, genericCard);
             if (success) {
                 eventPublisher.publish(game, UPDATED);
-                if (!game1.getGame().isGameActive()) {
+                if (!game.isActive()) {
                     eventPublisher.publish(game, RESULTED);
 
                     var winners = game1.getGame().determineGameWinners();
@@ -60,6 +61,7 @@ public class GameService {
                     });
 
                     game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
+                    lobbyManager.getLobby(game.getLobbyId()).setLobbyState(LobbyState.OPEN);
                 }
             }
         }

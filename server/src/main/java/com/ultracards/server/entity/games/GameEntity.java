@@ -30,4 +30,8 @@ public class GameEntity<Game extends AbstractGame<?, ?, ?, ?, ?, ?, ?>> {
         this.gameType = gameType;
         this.game = game;
     }
+
+    public boolean isActive() {
+        return getGame().isGameActive();
+    }
 }
