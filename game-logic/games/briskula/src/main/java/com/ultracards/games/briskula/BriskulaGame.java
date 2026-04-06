@@ -13,10 +13,12 @@ public class BriskulaGame extends AbstractGame<ItalianCardSuit, ItalianCardValue
 
     private BriskulaCard gameTrumpCard;
     private final boolean areTeamsEnabled;
+    private final BriskulaGameConfig gameConfig;
 
     public BriskulaGame(BriskulaGameConfig gameConfig, List<BriskulaPlayer> players) {
         super(players, 40, gameConfig.getCardsInHandNum());
         areTeamsEnabled = gameConfig.areTeamsEnabled();
+        this.gameConfig = gameConfig;
     }
 
     @Override
@@ -48,7 +50,7 @@ public class BriskulaGame extends AbstractGame<ItalianCardSuit, ItalianCardValue
 
     @Override
     public BriskulaPlayingField createPlayingField() {
-        return new BriskulaPlayingField(getPlayers(), this, getGameTrumpCard().getSuit());
+        return new BriskulaPlayingField(getPlayers(), this, getGameTrumpCard().getSuit(), gameConfig);
     }
 
     @Override
@@ -98,6 +100,11 @@ public class BriskulaGame extends AbstractGame<ItalianCardSuit, ItalianCardValue
         players.forEach(player -> {
             if (!deck.isEmpty()) player.getHand().addCard(deck.drawCard());
         });
+        if (gameConfig.equals(BriskulaGameConfig.TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH)) {
+            players.forEach(player -> {
+                if (!deck.isEmpty()) player.getHand().addCard(deck.drawCard());
+            });
+        }
     }
 
     @Override

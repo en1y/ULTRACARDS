@@ -555,22 +555,6 @@
             margin-left: 0;
         }
 
-        .hand-card:nth-child(odd) {
-            --tilt: -5deg;
-        }
-
-        .hand-card:nth-child(even) {
-            --tilt: 4deg;
-        }
-
-        .hand-card:nth-child(3n) {
-            --tilt: 7deg;
-        }
-
-        .hand-card:nth-child(4n) {
-            --tilt: -7deg;
-        }
-
         .hand-card.is-entering {
             animation: hand-arrive 560ms cubic-bezier(.2, .8, .2, 1) both;
         }
@@ -1412,7 +1396,18 @@
                 ordered.push(el);
             });
 
+            applyHandFan(ordered);
             ordered.forEach((el) => dom.hand.appendChild(el));
+        }
+
+        function applyHandFan(cards) {
+            const total = cards.length;
+            if (!total) return;
+            const spread = Math.min(6, total <= 2 ? 4 : total <= 4 ? 5 : 6);
+            cards.forEach((el, index) => {
+                const centeredIndex = index - ((total - 1) / 2);
+                el.style.setProperty('--tilt', `${centeredIndex * spread}deg`);
+            });
         }
 
         function createHandCard(card, isTurn) {
@@ -1670,7 +1665,7 @@
                 const angle = (Math.PI * 2 * resolvedIndex) / count + Math.PI / 2;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
-                const selfTopOffset = seat.dataset.isSelf === '1' ? 110 : 0;
+                const selfTopOffset = seat.dataset.isSelf === '1' ? 130 : 0;
                 const seatSide = x < -8 ? 'left' : (x > 8 ? 'right' : (y < 0 ? 'top' : 'bottom'));
                 seat.dataset.seatSide = seatSide;
                 seat.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
