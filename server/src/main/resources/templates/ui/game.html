@@ -1705,12 +1705,17 @@
                     const big = document.createElement('img');
                     big.src = img.src;
                     big.alt = 'Trump card';
+                    big.addEventListener('mouseleave', clear);
                     overlay.appendChild(big);
                     overlay.addEventListener('click', clear);
                     document.body.appendChild(overlay);
+                    timer = null;
                 }, 1000);
             });
-            img.addEventListener('mouseleave', clear);
+            img.addEventListener('mouseleave', () => {
+                if (overlay) return;
+                clear();
+            });
         }
 
         function normalizePlayer(player) {
