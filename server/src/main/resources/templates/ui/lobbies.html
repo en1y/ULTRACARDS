@@ -16,6 +16,10 @@
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/webjars/stomp-websocket/stomp.min.js}"></script>
     <style>
+        .lobbies-page {
+            padding-top: 1rem;
+        }
+
         .lobbies-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -124,7 +128,7 @@
         .lobbies-toast {
             position: fixed;
             left: 50%;
-            top: 1.25rem;
+            top: 5.75rem;
             z-index: 60;
             width: min(28rem, calc(100% - 2rem));
             padding: 0.95rem 1rem;
@@ -161,6 +165,14 @@
         }
 
         @media (max-width: 640px) {
+            .lobbies-page {
+                padding-top: 0.5rem;
+            }
+
+            .lobbies-toast {
+                top: 7.5rem;
+            }
+
             .lobby-card-footer,
             .lobby-card-head {
                 flex-direction: column;

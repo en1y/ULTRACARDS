@@ -95,6 +95,10 @@
             --player-ring-pad: clamp(64px, 9vmin, 102px);
         }
 
+        .game-layout.is-two-player {
+            padding-top: calc(var(--header-height) + 5.5rem);
+        }
+
         .game-layout.is-four-player .table-wrap {
             margin-top: 4.1rem;
         }
@@ -889,6 +893,10 @@
                 margin-top: 0.8rem;
             }
 
+            .game-layout.is-two-player {
+                padding-top: calc(var(--header-height) + 1.5rem);
+            }
+
             .hand-row {
                 margin-top: -1.35rem;
             }
@@ -1276,6 +1284,7 @@
         function renderPlayers(game) {
             if (!dom.ring) return;
             const players = buildPlayers(game);
+            gameLayout?.classList.toggle('is-two-player', players.length === 2);
             gameLayout?.classList.toggle('is-four-player', players.length === 4);
             const existingSeats = new Map();
             Array.from(dom.ring.children).forEach((seat) => {
@@ -1787,11 +1796,12 @@
         function renderDeckTower(cardsLeft) {
             if (!dom.deckTower) return;
             dom.deckTower.innerHTML = '';
+            const deckTowerCount = Math.max((cardsLeft ?? 0) - 1, 0);
             if (dom.deckStack) {
-                dom.deckStack.classList.toggle('is-empty', (!cardsLeft || cardsLeft <= 0) && !state.deckExhausting);
+                dom.deckStack.classList.toggle('is-empty', deckTowerCount <= 0 && !state.deckExhausting);
             }
-            if ((!cardsLeft || cardsLeft <= 0) && !state.deckExhausting) return;
-            const count = state.deckExhausting ? 1 : Math.max(cardsLeft, 0);
+            if (deckTowerCount <= 0 && !state.deckExhausting) return;
+            const count = state.deckExhausting ? 1 : deckTowerCount;
             for (let i = 0; i < count; i++) {
                 const img = document.createElement('img');
                 img.alt = 'Deck';
