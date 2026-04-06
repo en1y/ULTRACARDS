@@ -13,10 +13,6 @@
     <name>Web UIs Parent</name>
     <description>A module that contains differently implemented web uis</description>
 
-    <modules>
-        <module>web-ui</module>
-    </modules>
-
     <packaging>pom</packaging>
 
     <properties>
