@@ -128,9 +128,8 @@ public class LobbyService {
         return res;
     }
 
-    public GameLobbyDTO getLobbyByUser(UserEntity user) {
-        var lobby = lobbyCache.get(user.getId());
-        return lobby == null ? null: lobby.createLobbyDTO();
+    public LobbyEntity getLobbyByUser(UserEntity user) {
+        return lobbyCache.get(user.getId());
     }
 
     private LobbyEntity createLobbyEntity(GameLobbyDTO gameLobbyDTO, UserEntity owner) {

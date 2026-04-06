@@ -58,7 +58,7 @@ public class LobbyEntity {
     public GameEntity<?> createGame() {
         if (gameType.equals(GameTypeDTO.Briskula)) {
             var res = new BriskulaGameEntity(getId(), getName(), getOwner(), BriskulaDTOtoConfig((BriskulaGameConfigDTO) gameConfig), new ArrayList<>(getUsers()));
-            lobbyState = LobbyState.CLOSED;
+            lobbyState = LobbyState.STARTED;
             return res;
         }
         throw new UnsupportedOperationException("Not supported yet.");
