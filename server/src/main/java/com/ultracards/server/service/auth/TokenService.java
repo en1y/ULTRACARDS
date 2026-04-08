@@ -109,4 +109,7 @@ public class TokenService {
         );
     }
 
+    public boolean tokenExists(String token) {
+        return tokenRepository.findByToken(token).isPresent();
+    }
 }

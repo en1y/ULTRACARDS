@@ -1,0 +1,16 @@
+<th:block th:fragment="footer">
+  <footer class="footer" th:fragment="footer">
+    <div class="container">
+      <small>
+        © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> ULTRACARDS v<span th:text="${@environment.getProperty('app.version')}">0.0.0</span> — <span id="random-footer"></span>
+      </small>
+    </div>
+  </footer>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const randomFooter = document.getElementById('random-footer');
+      const footers = ["I'm so ULTRACARDSing it rn", "Where am I?", "SSStraight", "God Damn The Cards", "YOU INSIGNIFICANT CARD!"];
+      randomFooter.textContent = footers[Math.floor(Math.random() * footers.length)];
+    })
+  </script>
+</th:block>

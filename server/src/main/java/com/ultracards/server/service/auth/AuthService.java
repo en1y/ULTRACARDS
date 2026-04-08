@@ -12,14 +12,19 @@ import com.ultracards.server.service.EmailService;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,6 +38,15 @@ public class AuthService {
     private final EmailService emailService;
     private final UserGamesStatsService userGamesStatsService;
 
+    @Value("${app.cookie-token.same-site:Lax}")
+    private String sameSite;
+
+    @Value("${app.cookie-token.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-token.domain:}")
+    private String cookieDomain;
+
     public String updateUsername (UsernameDTO username, TokenEntity token) {
         var userEntity = token.getUser();
         userEntity.setUsername(username.getUsername());
@@ -44,18 +58,14 @@ public class AuthService {
         return token.getUser().getUsername();
     }
 
-    public void logout(String token, HttpServletRequest request, HttpServletResponse response) {
-        if (token != null) {
-            tokenService.deleteTokenIfExists(token);
-        }
-
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
         var cookies = request.getCookies();
 
-        for (var c: cookies) {
-            c.setValue("");
-            c.setPath(c.getPath());
-            c.setMaxAge(0);
-            response.addCookie(c);
+        for (var cookie : cookies) {
+            var delCookie = new Cookie(cookie.getName(), null);
+            delCookie.setMaxAge(0);
+            delCookie.setPath("/");
+            response.addCookie(delCookie);
         }
     }
 
@@ -108,7 +118,7 @@ public class AuthService {
         user.setUsername(profileDTO.getUsername());
         user.setEmail(profileDTO.getEmail());
         userRepository.save(user);
-        return profileDTO;
+        return createProfileByUser(user);
     }
 
     private ProfileDTO createProfileByUser(UserEntity user) {
@@ -116,35 +126,46 @@ public class AuthService {
 
         profile.setUsername(user.getUsername());
         profile.setEmail(user.getEmail());
-        profile.setRoles(user.getRoles().toString());
+        profile.setRoles(user.getRoles().stream().map(Enum::toString).collect(Collectors.toList()));
         profile.setId(user.getId());
 
-        var gamesWon = userGamesStatsService.getByUser(user);
+        var gameStats = userGamesStatsService.getByUser(user);
 
-        if (gamesWon == null) {
+        if (gameStats == null) {
             return profile;
         }
+        var games = new HashMap<String, Integer[]>();
+        games.put(GameType.BRISKULA.name(), new Integer[]{gameStats.getGamesPlayed(GameType.BRISKULA), gameStats.getGamesWon(GameType.BRISKULA)});
+        games.put(GameType.DURAK.name(), new Integer[]{gameStats.getGamesPlayed(GameType.DURAK), gameStats.getGamesWon(GameType.DURAK)});
+        games.put(GameType.TRESETA.name(), new Integer[]{gameStats.getGamesPlayed(GameType.TRESETA), gameStats.getGamesWon(GameType.TRESETA)});
+        games.put(GameType.POKER.name(), new Integer[]{gameStats.getGamesPlayed(GameType.POKER), gameStats.getGamesWon(GameType.POKER)});
 
-        profile.setBriskulaGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.BRISKULA));
-        profile.setBriskulaGamesWon(
-                gamesWon.getGamesWon(GameType.BRISKULA));
+        profile.setPlayedAndWonGames(games);
 
-        profile.setDurakGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.DURAK));
-        profile.setDurakGamesWon(
-                gamesWon.getGamesWon(GameType.DURAK));
-
-        profile.setTresetaGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.TRESETA));
-        profile.setTresetaGamesWon(
-                gamesWon.getGamesWon(GameType.TRESETA));
-
-        profile.setPokerGamesPlayed(
-                gamesWon.getGamesPlayed(GameType.POKER));
-        profile.setPokerGamesWon(
-                gamesWon.getGamesWon(GameType.POKER));
+        var gamesPlayed = 0;
+        var gamesWon = 0;
+        for (var arr: games.values()) {
+            gamesPlayed += arr[0];
+            gamesWon += arr[1];
+        }
+        profile.setGamesPlayed(gamesPlayed);
+        profile.setGamesWon(gamesWon);
 
         return profile;
+    }
+
+    private void expireRefreshTokenCookie(HttpServletResponse response, String path) {
+        var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
+                .path(path)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .maxAge(0);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            expiredRefreshToken.domain(cookieDomain);
+        }
+
+        response.addHeader("Set-Cookie", expiredRefreshToken.build().toString());
     }
 }

@@ -49,7 +49,7 @@ public class LobbyController {
 
     @PostMapping("/join")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<Boolean> joinLobby(
+    public ResponseEntity<String> joinLobby(
             @AuthenticationPrincipal UserEntity user,
             @RequestBody @NotNull UUID lobbyId
     ){
@@ -57,11 +57,16 @@ public class LobbyController {
                 lobbyId, user
         );
 
-        if (res) eventPublisher.publish(lobbyManager.getLobby(lobbyId), UPDATED);
+        if (res == LobbyService.JoinLobbyResult.JOINED) {
+            eventPublisher.publish(lobbyManager.getLobby(lobbyId), UPDATED);
+            return ResponseEntity.ok("Joined");
+        }
 
-        return res ?
-                ResponseEntity.ok(true) :
-                ResponseEntity.status(HttpStatus.CONFLICT).body(false);
+        if (res == LobbyService.JoinLobbyResult.FULL) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Lobby is full.");
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Lobby not found.");
     }
 
     @PostMapping("/leave")

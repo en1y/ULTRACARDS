@@ -39,7 +39,7 @@ public class EmailService {
         else
             context.setVariable("username", username);
 
-        var htmlContent = templateEngine.process("verification-mail-template", context);
+        var htmlContent = templateEngine.process("email/verification-mail-template", context);
 
         var message = mailSender.createMimeMessage();
         var helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");

@@ -45,8 +45,6 @@ public class LobbyManager {
         put(lobby);
         return lobby;
     }
-
-
     public Boolean deleteLobby(LobbyEntity lobby) {
         return remove(lobby);
     }

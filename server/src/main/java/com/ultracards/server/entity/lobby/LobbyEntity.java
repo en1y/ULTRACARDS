@@ -43,6 +43,10 @@ public class LobbyEntity {
         return users.contains(user);
     }
 
+    public boolean isFull() {
+        return users.size() >= maxPlayers;
+    }
+
     public boolean addUser(UserEntity user) {
         return users.contains(user) || ( users.size() < maxPlayers && users.add(user) );
     }
@@ -54,7 +58,7 @@ public class LobbyEntity {
     public GameEntity<?> createGame() {
         if (gameType.equals(GameTypeDTO.Briskula)) {
             var res = new BriskulaGameEntity(getId(), getName(), getOwner(), BriskulaDTOtoConfig((BriskulaGameConfigDTO) gameConfig), new ArrayList<>(getUsers()));
-            lobbyState = LobbyState.CLOSED;
+            lobbyState = LobbyState.STARTED;
             return res;
         }
         throw new UnsupportedOperationException("Not supported yet.");
