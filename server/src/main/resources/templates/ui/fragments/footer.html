@@ -2,7 +2,7 @@
   <footer class="footer" th:fragment="footer">
     <div class="container">
       <small>
-        © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> ULTRACARDS — <span id="random-footer"></span>
+        © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> ULTRACARDS v<span th:text="${@environment.getProperty('app.version')}">0.0.0</span> — <span id="random-footer"></span>
       </small>
     </div>
   </footer>
