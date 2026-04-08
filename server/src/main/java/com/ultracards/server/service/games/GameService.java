@@ -44,8 +44,17 @@ public class GameService {
         var game = gameManager.getGame(user.getId());
         var genericCard = cardDTO.toCard();
         if (game instanceof BriskulaGameEntity game1 && genericCard instanceof ItalianCard<?>) {
+            var briskulaGame = game1.getGame();
+            var playingField = briskulaGame.getPlayingField();
             var success = game1.playCard(user, genericCard);
+
             if (success) {
+                var newPlayingField = briskulaGame.getPlayingField();
+                if (newPlayingField == null || newPlayingField.getPlayedCards().isEmpty()) {
+                    briskulaGame.setPlayingField(playingField);
+                    eventPublisher.publish(game, UPDATED);
+                    briskulaGame.setPlayingField(newPlayingField);
+                }
                 eventPublisher.publish(game, UPDATED);
                 if (!game.isActive()) {
                     eventPublisher.publish(game, RESULTED);

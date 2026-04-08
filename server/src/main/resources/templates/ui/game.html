@@ -265,6 +265,10 @@
             z-index: 4;
         }
 
+        .trick-card.is-clearing {
+            animation: trick-clear 320ms ease-in forwards;
+        }
+
         .deck-stack {
             position: absolute;
             right: 10%;
@@ -785,6 +789,19 @@
             }
         }
 
+        @keyframes trick-clear {
+            from {
+                opacity: 1;
+                transform: rotate(var(--spin, 0deg)) scale(1);
+                filter: blur(0);
+            }
+            to {
+                opacity: 0;
+                transform: rotate(var(--spin, 0deg)) translateY(-12px) scale(0.88);
+                filter: blur(1px);
+            }
+        }
+
         @media (max-width: 900px) {
             .game-layout {
                 --header-height: 68px;
@@ -1005,6 +1022,10 @@
             finalTrumpDraw: false,
             deckExhausting: false,
             dragSession: null,
+            delayedTableUpdateTimer: null,
+            delayedTableCommitTimer: null,
+            delayedTablePayload: null,
+            delayedTablePending: false,
             endState: null,
             endRedirectTimer: null,
             endRedirectInterval: null
@@ -1126,8 +1147,46 @@
          * @param {string|null} gameEvent
          * @param {GameResult|null} result
          */
-        function applyGame(game, gameEvent, result) {
+        function applyGame(game, gameEvent, result, skipTableDelay = false) {
             game.playersTurn = normalizePlayer(game.playersTurn);
+            const previousPlayedCards = Array.isArray(state.game?.playedCards) ? state.game.playedCards : [];
+            const nextPlayedCards = Array.isArray(game.playedCards) ? game.playedCards : [];
+            const shouldDelayTableUpdate = !skipTableDelay && previousPlayedCards.length > 0 && nextPlayedCards.length === 0;
+            if (shouldDelayTableUpdate) {
+                if (!state.delayedTablePayload || isHigherPriorityGameEvent(gameEvent, state.delayedTablePayload.gameEvent)) {
+                    state.delayedTablePayload = {game, gameEvent, result};
+                } else if (gameEvent === state.delayedTablePayload.gameEvent) {
+                    state.delayedTablePayload = {game, gameEvent, result};
+                }
+                if (state.delayedTablePending) {
+                    return;
+                }
+                state.delayedTablePending = true;
+                state.delayedTableUpdateTimer = setTimeout(() => {
+                    state.delayedTableUpdateTimer = null;
+                    animateTrickClear();
+                    state.delayedTableCommitTimer = setTimeout(() => {
+                        state.delayedTableCommitTimer = null;
+                        const delayedPayload = state.delayedTablePayload;
+                        state.delayedTablePayload = null;
+                        state.delayedTablePending = false;
+                        if (delayedPayload) {
+                            applyGame(delayedPayload.game, delayedPayload.gameEvent, delayedPayload.result, true);
+                        }
+                    }, 320);
+                }, 1100);
+                return;
+            }
+            if (state.delayedTableUpdateTimer) {
+                clearTimeout(state.delayedTableUpdateTimer);
+                state.delayedTableUpdateTimer = null;
+            }
+            if (state.delayedTableCommitTimer) {
+                clearTimeout(state.delayedTableCommitTimer);
+                state.delayedTableCommitTimer = null;
+            }
+            state.delayedTablePayload = null;
+            state.delayedTablePending = false;
             state.game = game;
             const prevDeckLeft = state.deckLeft;
             const nextDeckLeft = game.cardsLeftInDeck ?? 0;
@@ -1142,7 +1201,7 @@
             if (dom.deckLeft) dom.deckLeft.textContent = String(nextDeckLeft);
             renderDeckTower(nextDeckLeft);
             renderTrump(game.trumpCard, nextDeckLeft);
-            renderTrick(game.playedCards);
+            renderTrick(nextPlayedCards);
             renderPlayers(game);
             renderCurrentPlayer(game);
             if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
@@ -1173,6 +1232,16 @@
             } else {
                 clearCenterResult();
             }
+        }
+
+        function isHigherPriorityGameEvent(nextEvent, currentEvent) {
+            const priority = {
+                UPDATED: 1,
+                STARTED: 1,
+                CLOSED: 2,
+                RESULTED: 3
+            };
+            return (priority[nextEvent] || 0) > (priority[currentEvent] || 0);
         }
 
         function renderTrump(card, deckLeft) {
@@ -1259,6 +1328,16 @@
                 img.alt = 'Played card';
                 img.src = italianCardUrl(card.card);
                 dom.trick.appendChild(img);
+            });
+        }
+
+        function animateTrickClear() {
+            if (!dom.trick) return;
+            const cards = dom.trick.querySelectorAll('.trick-card');
+            cards.forEach((card) => {
+                card.classList.remove('is-clearing');
+                void card.offsetWidth;
+                card.classList.add('is-clearing');
             });
         }
 
@@ -1367,7 +1446,8 @@
             if (!dom.hand) return;
             const isTurn = state.game && state.game.playersTurn
                 && isCurrentUser(state.game.playersTurn);
-            const nextKeys = new Set(state.hand.map(cardKey));
+            const visibleHand = state.hand.filter((card) => !state.pending.has(cardKey(card)));
+            const nextKeys = new Set(visibleHand.map(cardKey));
 
             state.handEls.forEach((el, key) => {
                 if (!nextKeys.has(key)) {
@@ -1377,7 +1457,7 @@
             });
 
             const ordered = [];
-            state.hand.forEach((card) => {
+            visibleHand.forEach((card) => {
                 const key = cardKey(card);
                 let el = state.handEls.get(key);
                 if (!el) {

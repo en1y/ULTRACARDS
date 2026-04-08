@@ -13,10 +13,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.templates.cards.AbstractCard;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
 
@@ -45,7 +42,10 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
             for (var card: playingField.getPlayedCards()) {
                 playedCards.add(GameCardDTO.createCardDTO(card));
             }
-            currentPlayer = ((BriskulaPlayerEntity) playingField.getCurrentPlayer()).getGamePlayerDTO();
+            var tempCurrentPlayer = (BriskulaPlayerEntity) playingField.getCurrentPlayer();
+            if (tempCurrentPlayer != null) {
+                currentPlayer = tempCurrentPlayer.getGamePlayerDTO();
+            }
         }
         return new BriskulaGameEntityDTO(
             getId(), getLobbyId(), getName(), playerCardsMap, playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, GameCardDTO.createCardDTO(getGame().getGameTrumpCard()));
