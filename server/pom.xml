@@ -33,12 +33,19 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${projectlombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.5.5</version>
+                <version>${spring-boot.version}</version>
             </plugin>
         </plugins>
     </build>
@@ -157,14 +164,6 @@
             <artifactId>spring-boot-devtools</artifactId>
             <optional>true</optional>
         </dependency>
-
-        <!--        Hibernate dependency-->
-        <dependency>
-            <groupId>com.vladmihalcea</groupId>
-            <artifactId>hibernate-types-60</artifactId>
-            <version>2.21.1</version>
-        </dependency>
-<!--Fucking bullshit. For some reason hibernate passes varchar into psql column of type jsonb. So that is why I need to use this dependency-->
 
         <!--        JJWT dependencies (needed for authorization)-->
         <dependency>

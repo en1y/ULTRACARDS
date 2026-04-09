@@ -23,7 +23,7 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.5.5</version>
+                <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -64,7 +64,7 @@
 
         <!-- spring versions -->
         <spring.version>6.2.10</spring.version>
-        <spring-boot.version>3.5.7</spring-boot.version>
+        <spring-boot.version>4.1.0-M4</spring-boot.version>
 
         <!-- jakarta versions -->
         <jakarta-validation.version>3.0.2</jakarta-validation.version>
@@ -74,7 +74,7 @@
         <jackson.version>2.20.0</jackson.version>
 
         <!-- Lombok -->
-        <projectlombok.version>1.18.38</projectlombok.version>
+        <projectlombok.version>1.18.44</projectlombok.version>
 
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>

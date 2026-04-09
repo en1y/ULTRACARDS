@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType;
@@ -35,7 +36,7 @@ public class LobbyEventPublisher {
             messagingTemplate.convertAndSend(
                     "/topic/lobbies/" + lobbyDTO.getId(), event);
             messagingTemplate.convertAndSend(
-                    "/topic/lobbies/" + lobbyDTO.getId(), Map.of("gameId", game.getId()));
+                    "/topic/lobbies/" + lobbyDTO.getId(), (Object) Map.of("gameId", game.getId()));
         }
     }
 }
