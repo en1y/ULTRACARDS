@@ -1151,6 +1151,8 @@
             game.playersTurn = normalizePlayer(game.playersTurn);
             const previousPlayedCards = Array.isArray(state.game?.playedCards) ? state.game.playedCards : [];
             const nextPlayedCards = Array.isArray(game.playedCards) ? game.playedCards : [];
+            const prevDeckLeft = state.deckLeft;
+            const nextDeckLeft = game.cardsLeftInDeck ?? 0;
             const shouldDelayTableUpdate = !skipTableDelay && previousPlayedCards.length > 0 && nextPlayedCards.length === 0;
             if (shouldDelayTableUpdate) {
                 if (!state.delayedTablePayload || isHigherPriorityGameEvent(gameEvent, state.delayedTablePayload.gameEvent)) {
@@ -1158,6 +1160,22 @@
                 } else if (gameEvent === state.delayedTablePayload.gameEvent) {
                     state.delayedTablePayload = {game, gameEvent, result};
                 }
+                state.game = {
+                    ...game,
+                    playedCards: previousPlayedCards
+                };
+                state.deckLeft = nextDeckLeft;
+                if (dom.deckLeft) dom.deckLeft.textContent = String(nextDeckLeft);
+                renderDeckTower(nextDeckLeft);
+                renderTrump(game.trumpCard, nextDeckLeft);
+                renderPlayers(game);
+                renderCurrentPlayer(game);
+                if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
+                    animateDeckDraw(prevDeckLeft - nextDeckLeft);
+                    if (currentUserId) scheduleHandRefresh(4);
+                }
+                updateTurn(game.playersTurn);
+                if (state.pending.size) scheduleHandRefresh(4);
                 if (state.delayedTablePending) {
                     return;
                 }
@@ -1188,8 +1206,6 @@
             state.delayedTablePayload = null;
             state.delayedTablePending = false;
             state.game = game;
-            const prevDeckLeft = state.deckLeft;
-            const nextDeckLeft = game.cardsLeftInDeck ?? 0;
             state.finalTrumpDraw = prevDeckLeft != null && prevDeckLeft > nextDeckLeft && nextDeckLeft === 0;
             if (state.finalTrumpDraw) {
                 state.deckExhausting = true;
