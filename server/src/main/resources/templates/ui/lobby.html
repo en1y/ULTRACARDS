@@ -28,6 +28,12 @@
             gap: 1rem;
         }
 
+        .lobby-side-column {
+            display: grid;
+            gap: 1rem;
+            align-content: start;
+        }
+
         .lobby-panel {
             padding: 1.25rem;
         }
@@ -146,6 +152,98 @@
             margin-top: 1rem;
         }
 
+        .chat-panel {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            height: 28rem;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .chat-messages {
+            display: grid;
+            align-content: start;
+            gap: 0.75rem;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chat-empty {
+            color: var(--color-text-muted);
+            padding: 1rem 0;
+        }
+
+        .chat-message {
+            display: grid;
+            gap: 0.35rem;
+            justify-items: start;
+            justify-self: start;
+            width: fit-content;
+            max-width: 100%;
+        }
+
+        .chat-message.is-own {
+            justify-items: end;
+            justify-self: end;
+        }
+
+        .chat-message.is-new {
+            animation: chat-pop 220ms ease-out;
+        }
+
+        .chat-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.78rem;
+            color: var(--color-text-muted);
+        }
+
+        .chat-bubble {
+            max-width: min(100%, 22rem);
+            padding: 0.7rem 0.85rem;
+            border-radius: 1rem;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        .chat-message.is-own .chat-bubble {
+            background: color-mix(in oklab, var(--color-accent) 14%, var(--color-surface));
+            border-color: color-mix(in oklab, var(--color-accent) 34%, var(--color-border));
+        }
+
+        .chat-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .chat-form textarea {
+            box-sizing: border-box;
+            height: calc(2.8em + 1.6rem);
+            min-height: calc(2.8em + 1.6rem);
+            max-height: calc(2.8em + 1.6rem);
+            line-height: 1.4;
+            resize: none;
+        }
+
         .player-row {
             padding: 0.85rem 0.9rem;
             border: 1px solid var(--color-border);
@@ -199,6 +297,17 @@
 
             .lobby-meta-value {
                 text-align: left;
+            }
+        }
+
+        @keyframes chat-pop {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.96);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
     </style>
@@ -258,27 +367,31 @@
             </div>
         </article>
 
-        <aside class="card lobby-panel">
-            <div class="lobby-title-row">
-                <div>
-                    <span class="chip">Players</span>
-                    <h2>Lobby members</h2>
-                </div>
-            </div>
-            <div id="players-list" class="players-list">
-                <div class="player-row" th:each="player : ${lobby.players}">
-                    <div class="player-main">
-                        <div class="player-avatar" th:text="${player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'U'}">U</div>
-                        <div>
-                            <div class="player-name" th:text="${player.name != null ? player.name : 'User ' + player.id}">Player</div>
-                            <div class="player-role"
-                                 th:text="${lobby.host != null and player.id == lobby.host.id ? 'Host' : (player.name == username ? 'You' : 'Player')}">Player</div>
-                        </div>
+        <div class="lobby-side-column">
+            <aside class="card lobby-panel">
+                <div class="lobby-title-row">
+                    <div>
+                        <span class="chip">Players</span>
+                        <h2>Lobby members</h2>
                     </div>
                 </div>
-                <div class="lobby-empty" th:if="${#sets.isEmpty(lobby.players)}">No players in this lobby.</div>
-            </div>
-        </aside>
+                <div id="players-list" class="players-list">
+                    <div class="player-row" th:each="player : ${lobby.players}">
+                        <div class="player-main">
+                            <div class="player-avatar" th:text="${player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'U'}">U</div>
+                            <div>
+                                <div class="player-name" th:text="${player.name != null ? player.name : 'User ' + player.id}">Player</div>
+                                <div class="player-role"
+                                     th:text="${lobby.host != null and player.id == lobby.host.id ? 'Host' : (player.name == username ? 'You' : 'Player')}">Player</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lobby-empty" th:if="${#sets.isEmpty(lobby.players)}">No players in this lobby.</div>
+                </div>
+            </aside>
+
+            <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel', 'chat-header', 'Lobby chat', 'Too scared to send a message?', ${chat}, true, ${username}, null)}"></th:block>
+        </div>
     </section>
     <aside id="lobby-toast" class="lobby-toast" aria-live="polite" aria-atomic="true" hidden>
     <p id="lobby-toast-title" class="lobby-toast-title">Lobby update</p>
@@ -287,9 +400,12 @@
 </main>
 
 <script th:src="@{/js/gameTypes.js}"></script>
+<script th:src="@{/js/chat.js}"></script>
 <script th:inline="javascript">
     (() => {
         const initialLobby = /*[[${lobby}]]*/ null;
+        const initialChat = /*[[${chat}]]*/ null;
+        const username = /*[[${username}]]*/ '';
         const lobbyPage = document.getElementById('lobby-page');
         if (!lobbyPage || !initialLobby || !initialLobby.id) {
             return;
@@ -323,6 +439,20 @@
         let toastHideTimer = null;
         let toastCleanupTimer = null;
         let previousLobbySnapshot = state.lobby;
+        const chat = window.UltracardsChat?.create({
+            initialChat,
+            currentUsername: username,
+            messagesId: 'chat-messages',
+            formId: 'chat-form',
+            inputId: 'chat-input',
+            sendId: 'chat-send',
+            messageClass: 'chat-message',
+            metaClass: 'chat-meta',
+            bubbleClass: 'chat-bubble',
+            timeClass: 'chat-time',
+            emptyClass: 'chat-empty',
+            emptyText: 'Too scared to send a message?'
+        });
 
         renderLobby(state.lobby);
         bindActions();
@@ -335,6 +465,10 @@
                 .then((profile) => {
                     state.currentUser = profile;
                     renderLobby(state.lobby);
+                    chat?.setIdentity({
+                        id: profile?.id,
+                        username: profile?.username || username
+                    });
                 })
                 .catch(() => {
                     updateStatus('Unable to load current profile.');
@@ -375,15 +509,26 @@
                             const previousLobby = previousLobbySnapshot;
                             state.lobby = payload.lobbyDto;
                             previousLobbySnapshot = payload.lobbyDto;
-                            renderLobby(state.lobby);
-                            notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
-                            if (payload.type === 'STARTED') {
+                        renderLobby(state.lobby);
+                        notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
+                        if (payload.type === 'STARTED') {
                                 showToast('Game started', 'The lobby has started a game.');
                                 redirectToResolvedGame();
                             }
                         }
                     } catch (error) {
                         console.error('Lobby websocket parse error', error);
+                    }
+                });
+                client.subscribe(`/topic/lobbies/${state.lobby.id}/chat`, (message) => {
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (!payload || !payload.message) {
+                            return;
+                        }
+                        chat?.addMessage(payload);
+                    } catch (error) {
+                        console.error('Lobby chat websocket parse error', error);
                     }
                 });
             }, () => {

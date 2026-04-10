@@ -12,8 +12,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.Optional;
-
 @Controller
 @RequestMapping("/lobbies")
 @RequiredArgsConstructor
@@ -24,7 +22,7 @@ public class LobbiesController {
 
     @GetMapping
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public String getLobbiesView(
+    public String getLobby(
             @AuthenticationPrincipal UserEntity user,
             Model model
     ) {
