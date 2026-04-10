@@ -21,4 +21,12 @@ public class ChatService{
         var messageObj = getChat(lobbyId).sendMessage(sender, message);
         eventPublisher.publish(messageObj.toDto(), lobbyId);
     }
+
+    public void deleteChat(UUID lobbyId) {
+        chatManager.deleteChat(lobbyId);
+    }
+
+    public void createChat(UUID lobbyId) {
+        chatManager.createChat(lobbyId);
+    }
 }

@@ -7,6 +7,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.UserService;
+import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -33,6 +34,7 @@ public class LobbyService {
     private final LobbyEventPublisher lobbyEventPublisher;
     private final UserService userService;
     private final GameService gameService;
+    private final ChatService chatService;
     private final HashMap<Long, LobbyEntity> lobbyCache = new HashMap<>();
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
@@ -40,6 +42,7 @@ public class LobbyService {
                 createLobbyEntity(gameLobbyDTO, owner)
         );
         lobbyCache.put(owner.getId(), lobby);
+        chatService.createChat(lobby.getId());
         return lobby.createLobbyDTO();
     }
 
@@ -113,6 +116,7 @@ public class LobbyService {
             for (var players: lobby.getUsers()) {
                 lobbyCache.remove(players.getId());
             }
+            chatService.deleteChat(lobby.getId());
             return lobbyManager.deleteLobby(lobby);
         }
         return false;
