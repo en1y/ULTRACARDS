@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.lobby.LobbyService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class GameUIController {
 
     private final GameService gameService;
     private final LobbyService lobbyService;
+    private final ChatService chatService;
 
     @GetMapping
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -45,6 +47,7 @@ public class GameUIController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("currentUserId", user.getId());
         model.addAttribute("game", gameDto);
+        model.addAttribute("chat", chatService.getChat(currentLobby.getId()).toDto());
         return "ui/game";
     }
 
