@@ -1,0 +1,43 @@
+<th:block th:fragment="chatPanel(panelClass, headerClass, title, emptyText, chat, useUsername, username, currentUserId)"
+          xmlns:th="http://www.thymeleaf.org">
+    <aside th:class="${panelClass}">
+        <div th:class="${headerClass}">
+            <div>
+                <span class="chip">Chat</span>
+                <h2 th:text="${title}">Chat</h2>
+            </div>
+        </div>
+
+        <div id="chat-messages" class="chat-messages">
+            <div class="chat-message"
+                 th:each="message : ${chat.messages}"
+                 th:classappend="${
+                    useUsername
+                        ? (message.sender != null and message.sender.name == username ? ' is-own' : '')
+                        : (message.sender != null and currentUserId != null and message.sender.id == currentUserId ? ' is-own' : '')
+                 }">
+                <div class="chat-meta">
+                    <span th:text="${message.sender != null and message.sender.name != null ? message.sender.name : 'Player'}">Player</span>
+                    <span th:if="${message.timestamp != null}"
+                          class="chat-time"
+                          th:attr="data-timestamp=${message.timestamp}"
+                          th:text="${#temporals.format(message.timestamp, 'HH:mm')}">10:15</span>
+                </div>
+                <div class="chat-bubble" th:text="${message.message}">Hello</div>
+            </div>
+            <div class="chat-empty"
+                 th:if="${chat.messages == null or #lists.isEmpty(chat.messages)}"
+                 th:text="${emptyText}">No messages yet.</div>
+        </div>
+
+        <form id="chat-form" class="chat-form">
+            <textarea id="chat-input"
+                      name="message"
+                      rows="2"
+                      maxlength="200"
+                      placeholder="Send a message"
+                      th:disabled="${!chat.isOpen}"></textarea>
+            <button id="chat-send" class="btn btn-accent" type="submit" th:disabled="${!chat.isOpen}">Send</button>
+        </form>
+    </aside>
+</th:block>

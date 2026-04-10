@@ -88,6 +88,10 @@
             padding-top: calc((var(--header-height) * 0.65) + (var(--player-ring-pad) * 0.1));
             min-height: calc(100vh - var(--header-height));
             padding-bottom: 0.35rem;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+            gap: 1rem;
+            align-items: start;
         }
 
         .game-layout.is-four-player {
@@ -106,6 +110,122 @@
         .turn-subtext {
             margin-top: 0.25rem;
             font-size: 0.88rem;
+            color: var(--seat-muted);
+        }
+
+        .chat-sidebar {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            gap: 1rem;
+            height: 31rem;
+            padding: 1.1rem;
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            background: var(--panel-bg);
+            backdrop-filter: blur(18px);
+            box-shadow: var(--panel-shadow);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        .chat-header h2,
+        .chat-header p {
+            margin: 0;
+        }
+
+        .chat-messages {
+            display: grid;
+            align-content: start;
+            gap: 0.75rem;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chat-empty {
+            color: var(--seat-muted);
+            padding: 1rem 0;
+        }
+
+        .chat-message {
+            display: grid;
+            gap: 0.35rem;
+            justify-items: start;
+            justify-self: start;
+            width: fit-content;
+            max-width: 100%;
+        }
+
+        .chat-message.is-own {
+            justify-items: end;
+            justify-self: end;
+        }
+
+        .chat-message.is-new {
+            animation: chat-pop 220ms ease-out;
+        }
+
+        .chat-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.76rem;
+            color: var(--seat-muted);
+        }
+
+        .chat-bubble {
+            max-width: min(100%, 18rem);
+            padding: 0.7rem 0.85rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: color-mix(in oklab, var(--color-surface) 78%, transparent);
+            color: var(--seat-text);
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        .chat-message.is-own .chat-bubble {
+            background: color-mix(in oklab, var(--gold) 18%, var(--color-surface));
+            border-color: color-mix(in oklab, var(--gold) 32%, rgba(255, 255, 255, 0.12));
+        }
+
+        .chat-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .chat-form textarea {
+            width: 100%;
+            box-sizing: border-box;
+            height: calc(2.8em + 1.6rem);
+            min-height: calc(2.8em + 1.6rem);
+            max-height: calc(2.8em + 1.6rem);
+            resize: none;
+            padding: 0.8rem 0.9rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--panel-border);
+            background: color-mix(in oklab, var(--color-bg) 76%, transparent);
+            color: var(--seat-text);
+            font: inherit;
+            line-height: 1.4;
+        }
+
+        .chat-form textarea::placeholder {
             color: var(--seat-muted);
         }
 
@@ -806,6 +926,7 @@
             .game-layout {
                 --header-height: 68px;
                 --table-size: min(56vmin, 44vh, 560px);
+                grid-template-columns: 1fr;
             }
 
             .player-seat {
@@ -814,6 +935,11 @@
 
             .deck-stack {
                 right: 2%;
+            }
+
+            .chat-sidebar {
+                margin-top: 0;
+                height: 29rem;
             }
         }
 
@@ -919,6 +1045,17 @@
                 padding: 0.5rem 0.75rem;
             }
         }
+
+        @keyframes chat-pop {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.96);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
     </style>
 </head>
 <body>
@@ -960,10 +1097,13 @@
             </div>
         </div>
     </div>
+
+    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId})}"></th:block>
 </main>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <!--suppress JSUnresolvedVariable, RegExpRedundantEscape, CheckTagEmptyBody -->
+<script th:src="@{/js/chat.js}"></script>
 <script th:inline="javascript">
     (function () {
         /**
@@ -989,6 +1129,7 @@
         const currentUserId = gameEl.dataset.currentUserId ? String(gameEl.dataset.currentUserId) : null;
         const currentUsername = gameEl.dataset.username ? String(gameEl.dataset.username) : '';
         const initialGame = /*[[${game}]]*/ null;
+        const initialChat = /*[[${chat}]]*/ null;
         const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
         const gameLayout = document.querySelector('.game-layout');
 
@@ -1032,6 +1173,21 @@
         };
         let refreshTimer = null;
         let refreshAttempts = 0;
+        const chat = window.UltracardsChat?.create({
+            initialChat,
+            currentUserId,
+            currentUsername,
+            messagesId: 'chat-messages',
+            formId: 'chat-form',
+            inputId: 'chat-input',
+            sendId: 'chat-send',
+            messageClass: 'chat-message',
+            metaClass: 'chat-meta',
+            bubbleClass: 'chat-bubble',
+            timeClass: 'chat-time',
+            emptyClass: 'chat-empty',
+            emptyText: 'Why so scared to talk?'
+        });
 
         if (dom.dropZone) setupDropZone(dom.dropZone);
         window.addEventListener('resize', () => positionSeats(dom.ring));
@@ -1063,6 +1219,17 @@
                         console.error('Game event error', err);
                     }
                 });
+                if (initialGame?.lobbyId) {
+                    client.subscribe(`/topic/lobbies/${initialGame.lobbyId}/chat`, (msg) => {
+                        try {
+                            const payload = JSON.parse(msg.body);
+                            if (!payload || !payload.message) return;
+                            chat?.addMessage(payload);
+                        } catch (err) {
+                            console.error('Game chat event error', err);
+                        }
+                    });
+                }
             }, () => {
                 state.wsConnected = false;
                 setConnectionStatus(false, 'Connection lost. Reconnecting...');

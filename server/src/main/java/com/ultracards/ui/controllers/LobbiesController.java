@@ -2,9 +2,7 @@ package com.ultracards.ui.controllers;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
-import com.ultracards.server.service.auth.AuthService;
-import com.ultracards.server.service.auth.TokenService;
-import com.ultracards.server.service.games.GameService;
+import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.lobby.LobbyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,21 +12,17 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.Optional;
-
 @Controller
 @RequestMapping("/lobbies")
 @RequiredArgsConstructor
 public class LobbiesController {
 
-    private final AuthService authService;
-    private final TokenService tokenService;
+    private final ChatService chatService;
     private final LobbyService lobbyService;
-    private final GameService gameService;
 
     @GetMapping
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public String getLobbiesView(
+    public String getLobby(
             @AuthenticationPrincipal UserEntity user,
             Model model
     ) {
@@ -47,6 +41,7 @@ public class LobbiesController {
         }
 
         model.addAttribute("lobby", lobby.createLobbyDTO());
+        model.addAttribute("chat", chatService.getChat(lobby.getId()).toDto());
         return "ui/lobby";
     }
 }
