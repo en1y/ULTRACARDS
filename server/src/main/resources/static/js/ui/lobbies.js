@@ -192,13 +192,14 @@ const gameSettingsAnimationDurationMs = 420;
             });
         })();
 
-        (() => {
+(() => {
             const grid = document.getElementById('lobbies-grid');
             let emptyState = document.getElementById('lobbies-empty');
             const activeCount = document.getElementById('active-lobbies-count');
             const toast = document.getElementById('lobbies-toast');
             const toastTitle = document.getElementById('lobbies-toast-title');
             const toastText = document.getElementById('lobbies-toast-text');
+            const lobbyClosedNoticeKey = 'uc-lobby-closed-notice';
             let toastHideTimer = null;
             let toastCleanupTimer = null;
 
@@ -390,6 +391,29 @@ const gameSettingsAnimationDurationMs = 420;
                 }, 2800);
             }
 
+            function showPendingLobbyClosedNotice() {
+                let rawNotice = null;
+                try {
+                    rawNotice = window.sessionStorage.getItem(lobbyClosedNoticeKey);
+                    window.sessionStorage.removeItem(lobbyClosedNoticeKey);
+                } catch (error) {
+                    console.error('Unable to read lobby close notice', error);
+                    return;
+                }
+
+                if (!rawNotice) {
+                    return;
+                }
+
+                try {
+                    const notice = JSON.parse(rawNotice);
+                    const lobbyName = notice?.lobbyName || 'Your lobby';
+                    showToast('Lobby closed', `${lobbyName} was closed because its timer ran out.`);
+                } catch (error) {
+                    console.error('Unable to parse lobby close notice', error);
+                }
+            }
+
             grid.addEventListener('click', async (event) => {
                 const joinButton = event.target.closest('[data-join-lobby]');
                 if (!joinButton) {
@@ -412,6 +436,7 @@ const gameSettingsAnimationDurationMs = 420;
                 upsertLobby('UPDATED', lobby);
             }
             updateLobbyCount();
+            showPendingLobbyClosedNotice();
 
             if (!window.Stomp) {
                 return;

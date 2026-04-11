@@ -83,6 +83,33 @@
             background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
         }
 
+        .lobby-close-warning {
+            margin-top: 0.85rem;
+            padding: 0.9rem 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid color-mix(in oklab, #ff8a4c 55%, var(--color-border));
+            background: color-mix(in oklab, #ff8a4c 14%, var(--color-surface));
+            box-shadow: 0 12px 28px rgba(255, 138, 76, 0.12);
+        }
+
+        .lobby-close-warning[hidden] {
+            display: none;
+        }
+
+        .lobby-close-warning-title,
+        .lobby-close-warning-text {
+            margin: 0;
+        }
+
+        .lobby-close-warning-title {
+            font-weight: 800;
+        }
+
+        .lobby-close-warning-text {
+            margin-top: 0.2rem;
+            color: color-mix(in oklab, var(--color-text) 82%, transparent);
+        }
+
         .lobby-toast {
             position: absolute;
             left: 50%;
