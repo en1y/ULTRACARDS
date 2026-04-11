@@ -11,18 +11,22 @@ import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
+import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
+
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LobbyService {
     public enum JoinLobbyResult {
         JOINED,
@@ -35,7 +39,30 @@ public class LobbyService {
     private final UserService userService;
     private final GameService gameService;
     private final ChatService chatService;
+    private final TaskScheduler taskScheduler;
     private final HashMap<Long, LobbyEntity> lobbyCache = new HashMap<>();
+    private final LobbyEventPublisher eventPublisher;
+
+    @Value("${app.lobby.timer.duration-seconds}")
+    private int lobbyTimer;
+
+    public LobbyService(
+            LobbyManager lobbyManager,
+            LobbyEventPublisher lobbyEventPublisher,
+            UserService userService,
+            GameService gameService,
+            ChatService chatService,
+            LobbyEventPublisher eventPublisher,
+            @Qualifier("timer") TaskScheduler taskScheduler
+    ) {
+        this.lobbyManager = lobbyManager;
+        this.lobbyEventPublisher = lobbyEventPublisher;
+        this.userService = userService;
+        this.gameService = gameService;
+        this.chatService = chatService;
+        this.eventPublisher = eventPublisher;
+        this.taskScheduler = taskScheduler;
+    }
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
         var lobby = lobbyManager.createLobby(
@@ -43,6 +70,8 @@ public class LobbyService {
         );
         lobbyCache.put(owner.getId(), lobby);
         chatService.createChat(lobby.getId());
+        openLobby(lobby);
+        eventPublisher.publish(lobby, CREATED);
         return lobby.createLobbyDTO();
     }
 
@@ -58,6 +87,7 @@ public class LobbyService {
 
         if (lobby.addUser(user)) {
             lobbyCache.put(user.getId(), lobby);
+            eventPublisher.publish(lobby, UPDATED);
             return JoinLobbyResult.JOINED;
         }
 
@@ -66,15 +96,21 @@ public class LobbyService {
 
     public Boolean leaveLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
-        if (lobby != null) lobbyCache.remove(user.getId());
-        return lobby != null && lobby.removeUser(user);
+        var success = false;
+        if (lobby != null) {
+            success = lobby.removeUser(user);
+            lobbyCache.remove(user.getId());
+            eventPublisher.publish(lobby, UPDATED);
+        }
+        return lobby != null && success;
     }
 
     public Boolean startLobby(UserEntity user) {
         var lobby = lobbyManager.getLobby(user);
         if (lobby != null) {
             gameService.startGame(lobby);
-            lobbyEventPublisher.publish(lobby, GameLobbyEventDTO.GameLobbyEventType.STARTED);
+            lobby.setLobbyState(LobbyState.STARTED);
+            eventPublisher.publish(lobby, STARTED);
             return true;
         }
         return false;
@@ -94,6 +130,7 @@ public class LobbyService {
             } catch (Exception e) {
                 log.warn(e.getMessage());
             }
+            eventPublisher.publish(lobby, UPDATED);
             return lobby.createLobbyDTO();
         }
         return null;
@@ -105,6 +142,7 @@ public class LobbyService {
             lobby.removeUser(
                     userService.getUserById(playerToKickId));
             lobbyCache.remove(playerToKickId);
+            eventPublisher.publish(lobby, UPDATED);
             return lobby.createLobbyDTO();
         }
         return null;
@@ -117,9 +155,21 @@ public class LobbyService {
                 lobbyCache.remove(players.getId());
             }
             chatService.deleteChat(lobby.getId());
-            return lobbyManager.deleteLobby(lobby);
+            lobby.setLobbyState(LobbyState.CLOSED);
+            var res = lobbyManager.deleteLobby(lobby);
+            if (res) eventPublisher.publish(lobby, DELETED);
+            return res;
         }
         return false;
+    }
+
+    public void openLobby(LobbyEntity lobby) {
+        lobby.setLobbyState(LobbyState.OPEN);
+        lobby.setClosedAt(Instant.now().plusSeconds(lobbyTimer));
+        taskScheduler.schedule(() -> {
+            if(lobby.getLobbyState().equals(LobbyState.OPEN))
+                deleteLobby(lobby.getOwner());
+        }, lobby.getClosedAt());
     }
 
     public List<GameLobbyDTO> getLobbies() {
@@ -143,7 +193,8 @@ public class LobbyService {
                 owner,
                 gameLobbyDTO.getMinPlayers(),
                 gameLobbyDTO.getMaxPlayers(),
-                gameLobbyDTO.getGameConfig()
+                gameLobbyDTO.getGameConfig(),
+                lobbyTimer
         );
     }
 }

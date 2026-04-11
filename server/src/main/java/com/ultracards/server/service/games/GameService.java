@@ -11,9 +11,12 @@ import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.lobby.LobbyManager;
+import com.ultracards.server.service.lobby.LobbyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -27,6 +30,10 @@ public class GameService {
     private final LobbyManager lobbyManager;
     private final HashMap<Long, GameEntity<?>> gameCache = new HashMap<>();
     private final UserGamesStatsService userGamesStatsService;
+    private final LobbyService lobbyService;
+
+    @Value("${app.lobby.timer.duration-seconds}")
+    private int lobbyTimer;
 
     public GameEntity<?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
@@ -70,7 +77,7 @@ public class GameService {
                     });
 
                     game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
-                    lobbyManager.getLobby(game.getLobbyId()).setLobbyState(LobbyState.OPEN);
+                    lobbyService.openLobby(lobbyManager.getLobby(game.getLobbyId()));
                 }
             }
         }
