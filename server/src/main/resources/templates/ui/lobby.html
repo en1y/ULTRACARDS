@@ -7,7 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
-        <link rel="stylesheet" th:href="@{/ui/lobby.css}">
+        <link rel="stylesheet" th:href="@{/css/ui/lobby.css}">
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -102,7 +102,7 @@
     window.__INITIAL_LOBBY__ = /*[[${lobby}]]*/ null;
     window.__INITIAL_LOBBY_CHAT__ = /*[[${chat}]]*/ null;
 </script>
-<script th:src="@{/ui/lobby.js}"></script>
+<script th:src="@{/js/ui/lobby.js}"></script>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>

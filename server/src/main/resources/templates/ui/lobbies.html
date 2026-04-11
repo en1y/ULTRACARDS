@@ -7,7 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
-        <link rel="stylesheet" th:href="@{/ui/lobbies.css}">
+        <link rel="stylesheet" th:href="@{/css/ui/lobbies.css}">
 </head>
 <body>
     <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -123,7 +123,7 @@
     <script th:inline="javascript">
         window.__INITIAL_LOBBIES__ = /*[[${lobbies}]]*/ [];
     </script>
-    <script th:src="@{/ui/lobbies.js}"></script>
+    <script th:src="@{/js/ui/lobbies.js}"></script>
 
     <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>

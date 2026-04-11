@@ -9,7 +9,7 @@
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
     <!--suppress CssUnusedSymbol -->
-        <link rel="stylesheet" th:href="@{/ui/game.css}">
+        <link rel="stylesheet" th:href="@{/css/ui/game.css}">
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -61,6 +61,6 @@
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
 </script>
-<script th:src="@{/ui/game.js}"></script>
+<script th:src="@{/js/ui/game.js}"></script>
 </body>
 </html>
