@@ -57,6 +57,9 @@ public class GameService {
     public GameEntity<?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
         lobbyManager.putGame(lobby, game);
+        if (game.getGameType().equals(GameTypeDTO.Briskula)) {
+            game.setTurnDurationSeconds(briskulaTimerDuration);
+        }
         setTimer(game);
         eventPublisher.publish(game, STARTED);
         game.getPlayers().forEach(p -> gameCache.put(p.getId(), game));

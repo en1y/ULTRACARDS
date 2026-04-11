@@ -20,6 +20,8 @@
          *   cardsLeftInDeck: number,
          *   pointsPerPerson?: Object<string, number>,
          *   playersTurn?: {name: string, id: (string|null)}|null,
+         *   turnEndTime?: (string|null),
+         *   turnDurationSeconds?: (number|null),
          *   trumpCard?: GameCard|null
          * }} GameState
          */
@@ -59,11 +61,16 @@
             playing: false,
             deckLeft: null,
             pending: new Set(),
+            autoPlayedPending: new Set(),
             handEls: new Map(),
             justDealtKeys: new Set(),
             finalTrumpDraw: false,
             deckExhausting: false,
             dragSession: null,
+            turnIndicatorFrame: null,
+            turnIndicatorTargetKey: null,
+            turnIndicatorEndsAt: null,
+            turnDurationMs: Number(initialGame?.turnDurationSeconds) > 0 ? Number(initialGame.turnDurationSeconds) * 1000 : 15000,
             delayedTableUpdateTimer: null,
             delayedTableCommitTimer: null,
             delayedTablePayload: null,
@@ -167,6 +174,11 @@
                             state.pending.delete(key);
                         }
                     });
+                    state.autoPlayedPending.forEach((key) => {
+                        if (!serverKeys.has(key)) {
+                            state.autoPlayedPending.delete(key);
+                        }
+                    });
                     list.forEach((card) => {
                         const key = cardKey(card);
                         if (!prevKeys.has(key)) {
@@ -217,6 +229,9 @@
          */
         function applyGame(game, gameEvent, result, skipTableDelay = false) {
             game.playersTurn = normalizePlayer(game.playersTurn);
+            if (Number(game.turnDurationSeconds) > 0) {
+                state.turnDurationMs = Number(game.turnDurationSeconds) * 1000;
+            }
             const previousPlayedCards = Array.isArray(state.game?.playedCards) ? state.game.playedCards : [];
             const nextPlayedCards = Array.isArray(game.playedCards) ? game.playedCards : [];
             const prevDeckLeft = state.deckLeft;
@@ -237,6 +252,7 @@
                 renderDeckTower(nextDeckLeft);
                 renderTrump(game.trumpCard, nextDeckLeft);
                 renderPlayers(game);
+                updateTurnIndicator(game);
                 renderCurrentPlayer(game);
                 if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
                     animateDeckDraw(prevDeckLeft - nextDeckLeft);
@@ -285,8 +301,14 @@
             if (dom.deckLeft) dom.deckLeft.textContent = String(nextDeckLeft);
             renderDeckTower(nextDeckLeft);
             renderTrump(game.trumpCard, nextDeckLeft);
-            renderTrick(nextPlayedCards);
+            const autoplayedCard = detectAutoPlayedCard(previousPlayedCards, nextPlayedCards);
+            if (autoplayedCard) {
+                animateAutoPlayedHandRemoval(autoplayedCard);
+                scheduleHandRefresh(4);
+            }
+            renderTrick(nextPlayedCards, previousPlayedCards);
             renderPlayers(game);
+            updateTurnIndicator(game);
             renderCurrentPlayer(game);
             if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
                 animateDeckDraw(prevDeckLeft - nextDeckLeft);
@@ -401,16 +423,20 @@
         /**
          * @param {GameCard[]} cards
          */
-        function renderTrick(cards) {
+        function renderTrick(cards, previousCards = []) {
             if (!dom.trick) return;
             dom.trick.innerHTML = '';
             if (!cards || !cards.length) return;
+            const enteringKeys = collectEnteringCardKeys(previousCards, cards);
             cards.forEach((card, idx) => {
                 const img = document.createElement('img');
                 img.className = 'trick-card';
                 img.style.setProperty('--spin', `${(idx * 4) - 6}deg`);
                 img.alt = 'Played card';
                 img.src = italianCardUrl(card.card);
+                if (enteringKeys.has(cardKey(card))) {
+                    img.classList.add('is-entering');
+                }
                 dom.trick.appendChild(img);
             });
         }
@@ -530,7 +556,10 @@
             if (!dom.hand) return;
             const isTurn = state.game && state.game.playersTurn
                 && isCurrentUser(state.game.playersTurn);
-            const visibleHand = state.hand.filter((card) => !state.pending.has(cardKey(card)));
+            const visibleHand = state.hand.filter((card) => {
+                const key = cardKey(card);
+                return !state.pending.has(key) && !state.autoPlayedPending.has(key);
+            });
             const nextKeys = new Set(visibleHand.map(cardKey));
 
             state.handEls.forEach((el, key) => {
@@ -896,6 +925,17 @@
             if (el) el.classList.add('played');
         }
 
+        function animateAutoPlayedHandRemoval(card) {
+            const key = cardKey(card);
+            if (!key || state.pending.has(key) || state.autoPlayedPending.has(key)) return;
+            cancelDragForCard(key);
+            state.autoPlayedPending.add(key);
+            animateHandRemoval(key);
+            setTimeout(() => {
+                syncHand();
+            }, 230);
+        }
+
         function restoreDraggedCard(key) {
             if (!dom.hand) return;
             const el = dom.hand.querySelector(`[data-card-key="${key}"]`);
@@ -903,6 +943,112 @@
             el.classList.remove('is-dragging');
             el.classList.add('returning');
             setTimeout(() => el.classList.remove('returning'), 220);
+        }
+
+        function cancelDragForCard(key) {
+            const session = state.dragSession;
+            if (!session || cardKey(session.card) !== key) return;
+            session.originEl.classList.remove('is-pressed', 'is-dragging');
+            session.ghost?.remove();
+            dom.dropZone?.classList.remove('ready');
+            state.dragSession = null;
+        }
+
+        function collectEnteringCardKeys(previousCards, nextCards) {
+            const previousCounts = new Map();
+            (previousCards || []).forEach((card) => {
+                const key = cardKey(card);
+                previousCounts.set(key, (previousCounts.get(key) || 0) + 1);
+            });
+            const entering = new Set();
+            (nextCards || []).forEach((card) => {
+                const key = cardKey(card);
+                const count = previousCounts.get(key) || 0;
+                if (count > 0) {
+                    previousCounts.set(key, count - 1);
+                } else {
+                    entering.add(key);
+                }
+            });
+            return entering;
+        }
+
+        function detectAutoPlayedCard(previousCards, nextCards) {
+            if (!nextCards || nextCards.length <= (previousCards?.length || 0)) return null;
+            const enteringKeys = collectEnteringCardKeys(previousCards || [], nextCards);
+            for (const card of nextCards) {
+                const key = cardKey(card);
+                if (!enteringKeys.has(key)) continue;
+                const matchesHand = state.hand.some((handCard) => cardKey(handCard) === key);
+                if (matchesHand && !state.pending.has(key)) {
+                    return card;
+                }
+            }
+            return null;
+        }
+
+        function updateTurnIndicator(game) {
+            const turnPlayer = game?.playersTurn || null;
+            const turnEndTimeMs = game?.turnEndTime ? Date.parse(game.turnEndTime) : NaN;
+            const nextTargetKey = playerSeatKey(turnPlayer);
+            const hasCountdown = turnPlayer && Number.isFinite(turnEndTimeMs);
+            state.turnIndicatorTargetKey = hasCountdown ? nextTargetKey : null;
+            state.turnIndicatorEndsAt = hasCountdown ? turnEndTimeMs : null;
+
+            Array.from(dom.ring?.children || []).forEach((seat) => {
+                const isTarget = hasCountdown && seat.dataset.playerKey === nextTargetKey;
+                const avatar = seat.querySelector('.seat-avatar');
+                seat.classList.toggle('has-turn-indicator', isTarget);
+                if (!isTarget) {
+                    seat.classList.remove('is-turn-warning');
+                    avatar?.style.setProperty('--turn-progress', '0');
+                }
+            });
+
+            if (!hasCountdown) {
+                stopTurnIndicatorLoop();
+                return;
+            }
+            if (!state.turnIndicatorFrame) {
+                runTurnIndicatorFrame();
+            }
+        }
+
+        function runTurnIndicatorFrame() {
+            state.turnIndicatorFrame = null;
+            const targetKey = state.turnIndicatorTargetKey;
+            const endsAt = state.turnIndicatorEndsAt;
+            if (!targetKey || !Number.isFinite(endsAt)) {
+                stopTurnIndicatorLoop();
+                return;
+            }
+            const seat = dom.ring?.querySelector(`[data-player-key="${CSS.escape(targetKey)}"]`);
+            if (!seat) {
+                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
+                return;
+            }
+            const avatar = seat.querySelector('.seat-avatar');
+            if (!avatar) {
+                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
+                return;
+            }
+            const remaining = Math.max(0, endsAt - Date.now());
+            const progress = Math.max(0, Math.min(1, remaining / Math.max(state.turnDurationMs, 1)));
+            avatar.style.setProperty('--turn-progress', progress.toFixed(4));
+            seat.classList.toggle('is-turn-warning', remaining <= 5000 && remaining > 0);
+
+            if (remaining > 0) {
+                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
+            } else {
+                seat.classList.add('is-turn-warning');
+            }
+        }
+
+        function stopTurnIndicatorLoop() {
+            if (state.turnIndicatorFrame) {
+                cancelAnimationFrame(state.turnIndicatorFrame);
+                state.turnIndicatorFrame = null;
+            }
         }
 
         function italianCardUrl(code) {

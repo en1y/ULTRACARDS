@@ -21,6 +21,7 @@ public class GameEntity<Game extends AbstractGame<?, ?, ?, ?, ?, ?, ?>> {
     private GameTypeDTO gameType;
     private Game game;
     private Instant turnEndTime = null;
+    private Integer turnDurationSeconds = null;
 
     public GameEntity(UUID lobbyId, String name, UserEntity owner, List<UserEntity> players, GameTypeDTO gameType, Game game) {
         this.lobbyId = lobbyId;
