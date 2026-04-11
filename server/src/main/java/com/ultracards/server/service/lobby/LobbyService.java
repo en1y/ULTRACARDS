@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 
 import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
 
@@ -65,9 +67,7 @@ public class LobbyService {
     }
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
-        var lobby = lobbyManager.createLobby(
-                createLobbyEntity(gameLobbyDTO, owner)
-        );
+        var lobby = lobbyManager.createLobby(gameLobbyDTO, owner);
         lobbyCache.put(owner.getId(), lobby);
         chatService.createChat(lobby.getId());
         openLobby(lobby);
@@ -149,7 +149,10 @@ public class LobbyService {
     }
 
     public Boolean deleteLobby(UserEntity user) {
-        var lobby = lobbyManager.getLobby(user);
+        return deleteLobby(lobbyManager.getLobby(user));
+    }
+
+    public Boolean deleteLobby(LobbyEntity lobby) {
         if (lobby != null) {
             for (var players: lobby.getUsers()) {
                 lobbyCache.remove(players.getId());
@@ -163,13 +166,14 @@ public class LobbyService {
         return false;
     }
 
-    public void openLobby(LobbyEntity lobby) {
+    public Boolean openLobby(LobbyEntity lobby) {
         lobby.setLobbyState(LobbyState.OPEN);
         lobby.setClosedAt(Instant.now().plusSeconds(lobbyTimer));
         taskScheduler.schedule(() -> {
             if(lobby.getLobbyState().equals(LobbyState.OPEN))
                 deleteLobby(lobby.getOwner());
         }, lobby.getClosedAt());
+        return true;
     }
 
     public List<GameLobbyDTO> getLobbies() {
@@ -186,15 +190,8 @@ public class LobbyService {
         return lobbyCache.get(user.getId());
     }
 
-    private LobbyEntity createLobbyEntity(GameLobbyDTO gameLobbyDTO, UserEntity owner) {
-        return new LobbyEntity(
-                gameLobbyDTO.getName(),
-                gameLobbyDTO.getGameType(),
-                owner,
-                gameLobbyDTO.getMinPlayers(),
-                gameLobbyDTO.getMaxPlayers(),
-                gameLobbyDTO.getGameConfig(),
-                lobbyTimer
-        );
+    @Bean(name = {"openLobby"})
+    public Function<LobbyEntity, Boolean> openLobbyFunction() {
+        return this::openLobby;
     }
 }

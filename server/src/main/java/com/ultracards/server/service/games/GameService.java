@@ -13,27 +13,36 @@ import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.lobby.LobbyManager;
 import com.ultracards.server.service.lobby.LobbyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO.*;
 
 @Service
-@RequiredArgsConstructor
 public class GameService {
     private final GameManager gameManager;
     private final GameEventPublisher eventPublisher;
     private final LobbyManager lobbyManager;
     private final HashMap<Long, GameEntity<?>> gameCache = new HashMap<>();
     private final UserGamesStatsService userGamesStatsService;
-    private final LobbyService lobbyService;
+    @Qualifier("openLobby")
+    private Function<LobbyEntity, Boolean> openLobby;
 
     @Value("${app.lobby.timer.duration-seconds}")
     private int lobbyTimer;
+
+    public GameService(GameManager gameManager, GameEventPublisher eventPublisher, LobbyManager lobbyManager, UserGamesStatsService userGamesStatsService) {
+        this.gameManager = gameManager;
+        this.eventPublisher = eventPublisher;
+        this.lobbyManager = lobbyManager;
+        this.userGamesStatsService = userGamesStatsService;
+    }
 
     public GameEntity<?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
@@ -77,7 +86,7 @@ public class GameService {
                     });
 
                     game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
-                    lobbyService.openLobby(lobbyManager.getLobby(game.getLobbyId()));
+                    openLobby.apply(lobbyManager.getLobby(game.getLobbyId()));
                 }
             }
         }
