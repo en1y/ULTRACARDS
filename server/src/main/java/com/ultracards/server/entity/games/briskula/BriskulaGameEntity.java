@@ -56,6 +56,7 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
         var playerEntity = (BriskulaPlayerEntity) getGame().getPlayingField().getCurrentPlayer();
         if (user.equals(playerEntity.getUser())) {
             getGame().getPlayingField().play(card, playerEntity);
+            setTurnNumber(getTurnNumber() + 1);
             return true;
         }
         return false;

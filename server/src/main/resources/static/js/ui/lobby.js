@@ -430,7 +430,7 @@
             if (playerCount < Number(lobby.maxPlayers || 0)) {
                 return 'Minimum player count reached. The host can start the lobby now.';
             }
-            return 'Lobby is full and ready to start.';
+            return 'Start the lobby!';
         }
 
         function updateStatus(text) {

@@ -345,6 +345,11 @@
             overflow: visible;
         }
 
+        .trick-area.is-clearing {
+            animation: trick-area-clear 320ms ease-in forwards;
+            pointer-events: none;
+        }
+
         .trick-card {
             width: 94px;
             border-radius: 12px;
@@ -365,10 +370,6 @@
             transform: rotate(var(--spin, 0deg)) scale(1.18);
             box-shadow: 0 20px 26px rgba(0, 0, 0, 0.4);
             z-index: 4;
-        }
-
-        .trick-card.is-clearing {
-            animation: trick-clear 320ms ease-in forwards;
         }
 
         .trick-card.is-entering {
@@ -766,12 +767,20 @@
             filter: drop-shadow(0 0 16px color-mix(in oklab, var(--turn-frame-color) 78%, transparent));
         }
 
+        .player-seat.turn-indicator-enter .seat-avatar::before {
+            animation: timer-ring-in 240ms cubic-bezier(.16, .84, .28, 1.08);
+        }
+
         .player-seat.is-turn-warning .seat-avatar {
             --turn-frame-color: var(--turn-frame-danger);
         }
 
         .player-seat.is-turn-warning .seat-avatar::before {
             animation: turn-warning-pulse 820ms ease-in-out infinite;
+        }
+
+        .player-seat.turn-indicator-exit .seat-avatar::before {
+            animation: timer-ring-out 220ms ease forwards;
         }
 
         .trump-zoom {
@@ -945,16 +954,16 @@
             }
         }
 
-        @keyframes trick-clear {
+        @keyframes trick-area-clear {
             from {
                 opacity: 1;
-                transform: rotate(var(--spin, 0deg)) scale(1);
+                transform: scale(1);
                 filter: blur(0);
             }
             to {
                 opacity: 0;
-                transform: rotate(var(--spin, 0deg)) translateY(-12px) scale(0.88);
-                filter: blur(1px);
+                transform: scale(0.92);
+                filter: blur(1.5px);
             }
         }
 
@@ -975,6 +984,28 @@
             }
             50% {
                 filter: drop-shadow(0 0 26px rgba(255, 30, 30, 0.95));
+            }
+        }
+
+        @keyframes timer-ring-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.72);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes timer-ring-out {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.14);
             }
         }
 

@@ -70,13 +70,14 @@ public class GameService {
         if (game.getGameType().equals(GameTypeDTO.Briskula)) {
             var briskulaGame = ((BriskulaGameEntity) game);
             game.setTurnEndTime(Instant.now().plusSeconds(briskulaTimerDuration));
-            var prevCurrPlayer = briskulaGame.getCurrentPlayer();
+            var prevTurnNum = game.getTurnNumber();
             taskScheduler.schedule(() -> {
-                if (briskulaGame.getCurrentPlayer().equals(prevCurrPlayer)){
+                if (briskulaGame.getTurnNumber().equals(prevTurnNum)) {
+                    var player = briskulaGame.getCurrentPlayer();
                     var card = GameCardDTO.createCardDTO(
-                            prevCurrPlayer.getHand().getCards().getFirst());
+                            player.getHand().getCards().getFirst());
                     if (card != null) {
-                        playCard(prevCurrPlayer.getUser(), card);
+                        playCard(player.getUser(), card);
 
                     }
                 }

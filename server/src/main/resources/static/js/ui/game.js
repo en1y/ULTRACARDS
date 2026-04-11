@@ -425,6 +425,7 @@
          */
         function renderTrick(cards, previousCards = []) {
             if (!dom.trick) return;
+            dom.trick.classList.remove('is-clearing');
             dom.trick.innerHTML = '';
             if (!cards || !cards.length) return;
             const enteringKeys = collectEnteringCardKeys(previousCards, cards);
@@ -443,11 +444,11 @@
 
         function animateTrickClear() {
             if (!dom.trick) return;
-            const cards = dom.trick.querySelectorAll('.trick-card');
-            cards.forEach((card) => {
-                card.classList.remove('is-clearing');
-                void card.offsetWidth;
-                card.classList.add('is-clearing');
+            if (!dom.trick.querySelector('.trick-card')) return;
+            dom.trick.classList.remove('is-clearing');
+            void dom.trick.offsetWidth;
+            requestAnimationFrame(() => {
+                dom.trick.classList.add('is-clearing');
             });
         }
 
@@ -998,7 +999,16 @@
             Array.from(dom.ring?.children || []).forEach((seat) => {
                 const isTarget = hasCountdown && seat.dataset.playerKey === nextTargetKey;
                 const avatar = seat.querySelector('.seat-avatar');
+                const wasTarget = seat.classList.contains('has-turn-indicator');
                 seat.classList.toggle('has-turn-indicator', isTarget);
+                if (isTarget && !wasTarget) {
+                    seat.classList.remove('turn-indicator-exit');
+                    void seat.offsetWidth;
+                    seat.classList.add('turn-indicator-enter');
+                } else if (!isTarget && wasTarget) {
+                    seat.classList.remove('turn-indicator-enter');
+                    seat.classList.add('turn-indicator-exit');
+                }
                 if (!isTarget) {
                     seat.classList.remove('is-turn-warning');
                     avatar?.style.setProperty('--turn-progress', '0');
