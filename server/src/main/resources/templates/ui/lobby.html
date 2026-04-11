@@ -98,11 +98,9 @@
 
 <script th:src="@{/js/gameTypes.js}"></script>
 <script th:src="@{/js/chat.js}"></script>
-<script id="initial-lobby-data" type="application/json" th:inline="javascript">
-    [[${lobby}]]
-</script>
-<script id="initial-lobby-chat-data" type="application/json" th:inline="javascript">
-    [[${chat}]]
+<script th:inline="javascript">
+    window.__INITIAL_LOBBY__ = /*[[${lobby}]]*/ null;
+    window.__INITIAL_LOBBY_CHAT__ = /*[[${chat}]]*/ null;
 </script>
 <script th:src="@{/ui/lobby.js}"></script>
 

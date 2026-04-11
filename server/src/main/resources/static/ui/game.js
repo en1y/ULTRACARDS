@@ -6,20 +6,6 @@
             document.documentElement.setAttribute('data-theme', theme);
         })();
 
-function readJsonPayload(id) {
-    const payload = document.getElementById(id);
-    if (!payload) {
-        return null;
-    }
-
-    try {
-        return JSON.parse(payload.textContent);
-    } catch (error) {
-        console.error(`Unable to parse ${id}`, error);
-        return null;
-    }
-}
-
 (function () {
         /**
          * @typedef {{ cardType: string, card: string }} GameCard
@@ -43,8 +29,8 @@ function readJsonPayload(id) {
         const gameId = gameEl.dataset.gameId;
         const currentUserId = gameEl.dataset.currentUserId ? String(gameEl.dataset.currentUserId) : null;
         const currentUsername = gameEl.dataset.username ? String(gameEl.dataset.username) : '';
-        const initialGame = readJsonPayload('initial-game-data');
-        const initialChat = readJsonPayload('initial-game-chat-data');
+        const initialGame = window.__INITIAL_GAME__ ?? null;
+        const initialChat = window.__INITIAL_GAME_CHAT__ ?? null;
         const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
         const gameLayout = document.querySelector('.game-layout');
 

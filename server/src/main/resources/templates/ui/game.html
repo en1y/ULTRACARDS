@@ -57,11 +57,9 @@
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <!--suppress JSUnresolvedVariable, RegExpRedundantEscape, CheckTagEmptyBody -->
 <script th:src="@{/js/chat.js}"></script>
-<script id="initial-game-data" type="application/json" th:inline="javascript">
-    [[${game}]]
-</script>
-<script id="initial-game-chat-data" type="application/json" th:inline="javascript">
-    [[${chat}]]
+<script th:inline="javascript">
+    window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
+    window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
 </script>
 <script th:src="@{/ui/game.js}"></script>
 </body>

@@ -39,7 +39,7 @@
                 <div class="lobbies-filter-group">
                     <label class="field" for="game-type">
                         <span>Game type</span>
-                        <select id="game-type" onchange="handleGameTypeChange(this)">
+                        <select id="game-type">
                             <option value="all">All games</option>
                             <option value="briskula">Briskula</option>
                             <option value="durak">Durak</option>
@@ -94,7 +94,7 @@
 
                         <div class="field">
                             <label for="create-game-type">Game type</label>
-                            <select id="create-game-type" onchange="handleCreateGameTypeChange(this)">
+                            <select id="create-game-type">
                                 <option value="all">Choose a game</option>
                                 <option value="briskula">Briskula</option>
                                 <option value="durak">Durak</option>
@@ -108,7 +108,7 @@
                 </div>
                 <div class="actions">
                     <button class="btn" type="button" data-close-create>Cancel</button>
-                    <button id="create-lobby-submit" class="btn btn-accent" type="button" onclick="createLobby(document.getElementById('create-game-type').selectedOptions[0], document.getElementById('create-properties')?.selectedOptions[0], document.getElementById('create-lobby-name').value)">Create Lobby</button>
+                    <button id="create-lobby-submit" class="btn btn-accent" type="button">Create Lobby</button>
                 </div>
             </div>
         </div>
@@ -120,10 +120,10 @@
     </aside>
 
     <script th:src="@{/js/gameTypes.js}"></script>
-        <script id="initial-lobbies-data" type="application/json" th:inline="javascript">
-        [[${lobbies}]]
+    <script th:inline="javascript">
+        window.__INITIAL_LOBBIES__ = /*[[${lobbies}]]*/ [];
     </script>
-        <script th:src="@{/ui/lobbies.js}"></script>
+    <script th:src="@{/ui/lobbies.js}"></script>
 
     <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>

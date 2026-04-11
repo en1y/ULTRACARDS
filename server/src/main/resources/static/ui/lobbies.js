@@ -6,21 +6,7 @@
             document.documentElement.setAttribute('data-theme', theme);
         })();
 
-function readInitialLobbies() {
-    const payload = document.getElementById('initial-lobbies-data');
-    if (!payload) {
-        return [];
-    }
-
-    try {
-        return JSON.parse(payload.textContent);
-    } catch (error) {
-        console.error('Unable to parse initial lobbies payload', error);
-        return [];
-    }
-}
-
-const initialLobbies = readInitialLobbies();
+const initialLobbies = Array.isArray(window.__INITIAL_LOBBIES__) ? window.__INITIAL_LOBBIES__ : [];
 
 const gameSettingsAnimationDurationMs = 420;
 
@@ -145,9 +131,11 @@ const gameSettingsAnimationDurationMs = 420;
             const createOverlay = document.getElementById('create-div');
             const createOpenButtons = document.querySelectorAll('[data-action="open-create-lobby"]');
             const createCloseButtons = createOverlay.querySelectorAll('[data-close-create]');
+            const gameTypeSelect = document.getElementById('game-type');
             const createGameType = document.getElementById('create-game-type');
             const createGameSettings = document.getElementById('create-game-settings');
             const createForm = document.getElementById('create-lobby-form');
+            const createSubmitButton = document.getElementById('create-lobby-submit');
 
             function resetCreateModal() {
                 createGameType.value = 'all';
@@ -172,10 +160,26 @@ const gameSettingsAnimationDurationMs = 420;
                 button.addEventListener('click', closeCreateModal);
             });
 
+            gameTypeSelect?.addEventListener('change', (event) => {
+                handleGameTypeChange(event.currentTarget);
+            });
+
+            createGameType?.addEventListener('change', (event) => {
+                handleCreateGameTypeChange(event.currentTarget);
+            });
+
             createOverlay.addEventListener('click', (event) => {
                 if (event.target === createOverlay) {
                     closeCreateModal();
                 }
+            });
+
+            createSubmitButton?.addEventListener('click', () => {
+                createLobby(
+                    document.getElementById('create-game-type').selectedOptions[0],
+                    document.getElementById('create-properties')?.selectedOptions[0],
+                    document.getElementById('create-lobby-name').value
+                );
             });
 
             createForm?.addEventListener('submit', (event) => {

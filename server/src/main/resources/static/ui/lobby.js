@@ -6,24 +6,10 @@
             document.documentElement.setAttribute('data-theme', theme);
         })();
 
-function readJsonPayload(id) {
-    const payload = document.getElementById(id);
-    if (!payload) {
-        return null;
-    }
-
-    try {
-        return JSON.parse(payload.textContent);
-    } catch (error) {
-        console.error(`Unable to parse ${id}`, error);
-        return null;
-    }
-}
-
 (() => {
         const lobbyPage = document.getElementById('lobby-page');
-        const initialLobby = readJsonPayload('initial-lobby-data');
-        const initialChat = readJsonPayload('initial-lobby-chat-data');
+        const initialLobby = window.__INITIAL_LOBBY__ ?? null;
+        const initialChat = window.__INITIAL_LOBBY_CHAT__ ?? null;
         const username = lobbyPage?.dataset.username || '';
         if (!lobbyPage || !initialLobby || !initialLobby.id) {
             return;

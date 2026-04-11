@@ -151,3 +151,6 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             per_game_type.appendChild(game_card);
         })
     }
+
+document.getElementById('refresh')?.addEventListener('click', refresh);
+document.getElementById('save-profile')?.addEventListener('click', save);
