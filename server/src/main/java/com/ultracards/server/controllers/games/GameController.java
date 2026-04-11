@@ -8,6 +8,7 @@ import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.GameService;
+import com.ultracards.server.service.lobby.LobbyService;
 import com.ultracards.templates.game.model.AbstractPlayer;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +30,7 @@ public class GameController {
 
     private final GameManager gameManager;
     private final GameService gameService;
+    private final LobbyService lobbyService;
 
     @GetMapping("/{gameId}")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")

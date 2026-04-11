@@ -2,7 +2,6 @@ package com.ultracards.server.service.lobby;
 
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
-import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
@@ -19,10 +18,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 
 import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
@@ -37,7 +33,6 @@ public class LobbyService {
     }
 
     private final LobbyManager lobbyManager;
-    private final LobbyEventPublisher lobbyEventPublisher;
     private final UserService userService;
     private final GameService gameService;
     private final ChatService chatService;
@@ -50,7 +45,6 @@ public class LobbyService {
 
     public LobbyService(
             LobbyManager lobbyManager,
-            LobbyEventPublisher lobbyEventPublisher,
             UserService userService,
             GameService gameService,
             ChatService chatService,
@@ -58,7 +52,6 @@ public class LobbyService {
             @Qualifier("timer") TaskScheduler taskScheduler
     ) {
         this.lobbyManager = lobbyManager;
-        this.lobbyEventPublisher = lobbyEventPublisher;
         this.userService = userService;
         this.gameService = gameService;
         this.chatService = chatService;
@@ -190,8 +183,9 @@ public class LobbyService {
         return lobbyCache.get(user.getId());
     }
 
-    @Bean(name = {"openLobby"})
+    @Bean(name = "openLobby")
     public Function<LobbyEntity, Boolean> openLobbyFunction() {
         return this::openLobby;
     }
+
 }

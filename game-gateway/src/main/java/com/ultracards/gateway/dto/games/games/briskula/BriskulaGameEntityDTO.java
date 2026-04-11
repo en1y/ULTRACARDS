@@ -5,13 +5,16 @@ import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@Data
 public class BriskulaGameEntityDTO extends GameEntityDTO {
     @Getter @Setter
     @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
@@ -19,9 +22,11 @@ public class BriskulaGameEntityDTO extends GameEntityDTO {
     @Getter @Setter
     private GamePlayerDTO playersTurn;
     @Getter @Setter
+    private Instant turnEndTime;
+    @Getter @Setter
     private GameCardDTO trumpCard;
 
-    public BriskulaGameEntityDTO(UUID id, UUID lobbyId, String name, Map<GamePlayerDTO, Integer> playersCardsMap, List<GameCardDTO> playedCards, int cardsLeftInDeck, Map<GamePlayerDTO, Integer> pointsPerPerson, GamePlayerDTO playersTurn, GameCardDTO trumpCard) {
+    public BriskulaGameEntityDTO(UUID id, UUID lobbyId, String name, Map<GamePlayerDTO, Integer> playersCardsMap, List<GameCardDTO> playedCards, int cardsLeftInDeck, Map<GamePlayerDTO, Integer> pointsPerPerson, GamePlayerDTO playersTurn, Instant turnEndTime, GameCardDTO trumpCard) {
         super(id, lobbyId, name, playersCardsMap, playedCards, cardsLeftInDeck);
         this.pointsPerPerson = pointsPerPerson;
         this.playersTurn = playersTurn;
