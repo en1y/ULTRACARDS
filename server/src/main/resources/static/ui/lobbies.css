@@ -1,0 +1,163 @@
+.lobbies-page {
+            padding-top: 1rem;
+        }
+
+        .lobbies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .lobby-card {
+            display: grid;
+            gap: 1rem;
+            padding: 1.1rem;
+            background:
+                linear-gradient(160deg, color-mix(in oklab, var(--color-surface) 88%, transparent), transparent 65%),
+                var(--color-bg);
+        }
+
+        .lobby-card-head,
+        .lobby-card-footer,
+        .lobby-card-stats,
+        .lobby-card-players {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .lobby-card-head {
+            align-items: flex-start;
+        }
+
+        .lobby-card-title {
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .lobby-card-title h3,
+        .lobby-card-title p,
+        .lobby-card-settings p,
+        .lobby-card-footer p {
+            margin: 0;
+        }
+
+        .lobby-card-subtitle,
+        .lobby-card-footer p {
+            color: var(--color-text-muted);
+            font-size: 0.92rem;
+        }
+
+        .lobby-card-stats {
+            flex-wrap: wrap;
+        }
+
+        .lobby-card-settings {
+            display: grid;
+            gap: 0.45rem;
+            padding: 0.8rem 0.9rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: color-mix(in oklab, var(--color-surface) 80%, transparent);
+        }
+
+        .lobby-card-settings strong {
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-text-muted);
+        }
+
+        .lobby-card-players {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .lobby-card-player {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.55rem;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: var(--color-surface);
+            font-size: 0.88rem;
+        }
+
+        .lobby-card-avatar {
+            width: 1.6rem;
+            height: 1.6rem;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 50%;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .lobby-card-footer {
+            padding-top: 0.2rem;
+            border-top: 1px solid var(--color-border);
+            align-items: flex-end;
+        }
+
+        .lobby-card-footer .btn {
+            min-width: 7rem;
+        }
+
+        .lobbies-toast {
+            position: fixed;
+            left: 50%;
+            top: 5.75rem;
+            z-index: 60;
+            width: min(28rem, calc(100% - 2rem));
+            padding: 0.95rem 1rem;
+            border: 1px solid rgba(232, 116, 116, 0.32);
+            border-radius: var(--radius-lg);
+            background: color-mix(in oklab, #8f1f1f 22%, var(--color-surface));
+            color: var(--color-text);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 18px 40px rgba(70, 16, 16, 0.22);
+            opacity: 0;
+            filter: blur(2px);
+            transform: translate(-50%, -4px);
+            pointer-events: none;
+            transition:
+                opacity 240ms ease,
+                transform 240ms ease,
+                filter 240ms ease;
+        }
+
+        .lobbies-toast.is-visible {
+            opacity: 1;
+            filter: blur(0);
+            transform: translate(-50%, 0);
+        }
+
+        .lobbies-toast-title {
+            margin: 0 0 0.2rem;
+            font-weight: 800;
+        }
+
+        .lobbies-toast-text {
+            margin: 0;
+            color: color-mix(in oklab, var(--color-text) 78%, transparent);
+        }
+
+        @media (max-width: 640px) {
+            .lobbies-page {
+                padding-top: 0.5rem;
+            }
+
+            .lobbies-toast {
+                top: 7.5rem;
+            }
+
+            .lobby-card-footer,
+            .lobby-card-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
