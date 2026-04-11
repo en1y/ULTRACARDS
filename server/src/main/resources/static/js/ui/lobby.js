@@ -11,6 +11,7 @@
         const initialLobby = window.__INITIAL_LOBBY__ ?? null;
         const initialChat = window.__INITIAL_LOBBY_CHAT__ ?? null;
         const username = lobbyPage?.dataset.username || '';
+        const lobbyClosedNoticeKey = 'uc-lobby-closed-notice';
         if (!lobbyPage || !initialLobby || !initialLobby.id) {
             return;
         }
@@ -19,7 +20,8 @@
             lobby: initialLobby,
             currentUser: null,
             wsConnected: false,
-            redirectingToGame: false
+            redirectingToGame: false,
+            closeWarningVisible: false
         };
 
         const dom = {
@@ -32,6 +34,8 @@
             configSelect: document.getElementById('lobby-config-select'),
             wsStatus: document.getElementById('ws-status'),
             status: document.getElementById('lobby-status'),
+            closeWarning: document.getElementById('lobby-close-warning'),
+            closeWarningText: document.getElementById('lobby-close-warning-text'),
             toast: document.getElementById('lobby-toast'),
             toastTitle: document.getElementById('lobby-toast-title'),
             toastText: document.getElementById('lobby-toast-text'),
@@ -42,6 +46,7 @@
         };
         let toastHideTimer = null;
         let toastCleanupTimer = null;
+        let closeWarningTimer = null;
         let previousLobbySnapshot = state.lobby;
         const chat = window.UltracardsChat?.create({
             initialChat,
@@ -106,6 +111,7 @@
                             return;
                         }
                         if (payload.type === 'DELETED') {
+                            persistLobbyClosedNotice(payload.lobbyDto || state.lobby);
                             window.location.href = '/lobbies';
                             return;
                         }
@@ -254,6 +260,7 @@
             if (dom.config) dom.config.textContent = describeConfig(lobby);
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
             renderConfigEditor(lobby, !!(currentUserId && lobby.host && String(lobby.host.id) === currentUserId));
+            syncCloseWarning(lobby);
 
             if (dom.start) {
                 dom.start.hidden = !isHost;
@@ -423,7 +430,7 @@
             if (playerCount < Number(lobby.maxPlayers || 0)) {
                 return 'Minimum player count reached. The host can start the lobby now.';
             }
-            return 'Lobby is full and ready to start.';
+            return 'Start the lobby!';
         }
 
         function updateStatus(text) {
@@ -432,11 +439,92 @@
             }
         }
 
+        function syncCloseWarning(lobby) {
+            window.clearInterval(closeWarningTimer);
+            closeWarningTimer = null;
+
+            if (!lobby?.openUntil || lobby?.lobbyState === 'STARTED' || state.redirectingToGame) {
+                hideCloseWarning();
+                return;
+            }
+
+            renderCloseWarning(lobby.openUntil);
+            closeWarningTimer = window.setInterval(() => {
+                renderCloseWarning(lobby.openUntil);
+            }, 1000);
+        }
+
+        function renderCloseWarning(openUntil) {
+            if (!dom.closeWarning || !dom.closeWarningText) {
+                return;
+            }
+
+            const closeAt = Date.parse(openUntil);
+            if (!Number.isFinite(closeAt)) {
+                hideCloseWarning();
+                return;
+            }
+
+            const remainingMs = closeAt - Date.now();
+            if (remainingMs <= 0 || remainingMs > 30000) {
+                hideCloseWarning();
+                return;
+            }
+
+            const secondsLeft = Math.max(1, Math.ceil(remainingMs / 1000));
+            dom.closeWarning.hidden = false;
+            dom.closeWarningText.textContent = `Closing in ${secondsLeft} second${secondsLeft === 1 ? '' : 's'}.`;
+
+            if (!state.closeWarningVisible) {
+                state.closeWarningVisible = true;
+                showToast('Lobby closing soon', 'Your lobby is gonna close soon.');
+            }
+        }
+
+        function hideCloseWarning() {
+            if (dom.closeWarning) {
+                dom.closeWarning.hidden = true;
+            }
+            state.closeWarningVisible = false;
+        }
+
+        function persistLobbyClosedNotice(lobby) {
+            if (!wasLobbyClosedByTimeout(lobby)) {
+                return;
+            }
+
+            const notice = {
+                lobbyId: lobby?.id || state.lobby?.id,
+                lobbyName: lobby?.name || state.lobby?.name || 'Your lobby',
+                closedAt: Date.now()
+            };
+
+            try {
+                window.sessionStorage.setItem(lobbyClosedNoticeKey, JSON.stringify(notice));
+            } catch (error) {
+                console.error('Unable to persist lobby close notice', error);
+            }
+        }
+
+        function wasLobbyClosedByTimeout(lobby) {
+            if (!lobby?.openUntil) {
+                return false;
+            }
+
+            const closeAt = Date.parse(lobby.openUntil);
+            if (!Number.isFinite(closeAt)) {
+                return false;
+            }
+
+            return Date.now() >= closeAt - 1000;
+        }
+
         function redirectToGame(gameId) {
             if (state.redirectingToGame || !gameId) {
                 return;
             }
             state.redirectingToGame = true;
+            window.clearInterval(closeWarningTimer);
             window.location.href = '/game';
         }
 

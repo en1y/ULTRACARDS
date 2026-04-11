@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
@@ -30,4 +31,5 @@ public class GameLobbyDTO {
             property = "gameType"
     )
     @NotNull private GameConfigDTO gameConfig;
+    private Instant openUntil;
 }

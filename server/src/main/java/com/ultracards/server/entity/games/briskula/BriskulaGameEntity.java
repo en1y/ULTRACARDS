@@ -48,7 +48,7 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
             }
         }
         return new BriskulaGameEntityDTO(
-            getId(), getLobbyId(), getName(), playerCardsMap, playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, GameCardDTO.createCardDTO(getGame().getGameTrumpCard()));
+            getId(), getLobbyId(), getName(), playerCardsMap, playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, getTurnEndTime(), getTurnDurationSeconds(), GameCardDTO.createCardDTO(getGame().getGameTrumpCard()));
     }
 
     public boolean playCard(UserEntity user, AbstractCard<?, ?, ? extends AbstractCard<?, ?, ?>> genericCard) {
@@ -56,8 +56,19 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
         var playerEntity = (BriskulaPlayerEntity) getGame().getPlayingField().getCurrentPlayer();
         if (user.equals(playerEntity.getUser())) {
             getGame().getPlayingField().play(card, playerEntity);
+            setTurnNumber(getTurnNumber() + 1);
             return true;
         }
         return false;
+    }
+
+    public BriskulaPlayerEntity getCurrentPlayer() {
+        var pf = getGame().getPlayingField();
+        if (pf != null) {
+            var currPlayer = pf.getCurrentPlayer();
+            if (currPlayer != null)
+                return (BriskulaPlayerEntity) currPlayer;
+        }
+        return null;
     }
 }

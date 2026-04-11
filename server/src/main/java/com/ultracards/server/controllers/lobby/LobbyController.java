@@ -39,9 +39,6 @@ public class LobbyController {
         var lobby = lobbyService.createLobby(
                 user, lobbyDTO
         );
-
-        eventPublisher.publish(lobby, CREATED);
-
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(lobby);
@@ -57,14 +54,11 @@ public class LobbyController {
                 lobbyId, user
         );
 
-        if (res == LobbyService.JoinLobbyResult.JOINED) {
-            eventPublisher.publish(lobbyManager.getLobby(lobbyId), UPDATED);
+        if (res == LobbyService.JoinLobbyResult.JOINED)
             return ResponseEntity.ok("Joined");
-        }
 
-        if (res == LobbyService.JoinLobbyResult.FULL) {
+        if (res == LobbyService.JoinLobbyResult.FULL)
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Lobby is full.");
-        }
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Lobby not found.");
     }
@@ -78,9 +72,6 @@ public class LobbyController {
         var res = lobbyService.leaveLobby(
                 lobbyId, user
         );
-
-        if (res) eventPublisher.publish(lobbyManager.getLobby(lobbyId), UPDATED);
-
         return res ?
                 ResponseEntity.ok(true) :
                 ResponseEntity.status(HttpStatus.NO_CONTENT).body(false);
@@ -92,9 +83,6 @@ public class LobbyController {
             @AuthenticationPrincipal UserEntity user
     ){
         var res = lobbyService.startLobby(user);
-
-        if (res) eventPublisher.publish(lobbyManager.getLobby(user), STARTED);
-
         return res ?
                 ResponseEntity.ok(res) :
                 ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
@@ -109,9 +97,6 @@ public class LobbyController {
         var res = lobbyService.updateLobby(
                 lobbyDTO, user
         );
-
-        if (res != null) eventPublisher.publish(res, UPDATED);
-
         return res != null ?
                 ResponseEntity.ok(res):
                 ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
@@ -126,9 +111,6 @@ public class LobbyController {
         var lobby = lobbyService.kickPlayer(
                 playerToKickId, user
         );
-
-        if (lobby != null) eventPublisher.publish(lobby, UPDATED);
-
         return lobby != null ?
                 ResponseEntity.ok(lobby):
                 ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
@@ -139,11 +121,7 @@ public class LobbyController {
     public ResponseEntity<Void> deleteLobby(
             @AuthenticationPrincipal UserEntity user
     ){
-        var lobby = lobbyManager.getLobby(user);
         var res = lobbyService.deleteLobby(user);
-
-        if (res) eventPublisher.publish(lobby, DELETED);
-
         return res ?
                 ResponseEntity.ok().build():
                 ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);

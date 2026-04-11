@@ -1,11 +1,13 @@
 package com.ultracards.server.service.lobby;
 
 import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -21,6 +23,9 @@ public class LobbyManager {
     private final List<LobbyEntity> lobbies = Collections.synchronizedList(new ArrayList<>());
 
     private final LobbyEventPublisher lobbyEventPublisher;
+
+    @Value("${app.lobby.timer.duration-seconds}")
+    private int lobbyTimer;
 
     public LobbyManager(LobbyEventPublisher lobbyEventPublisher) {
         this.lobbyEventPublisher = lobbyEventPublisher;
@@ -39,6 +44,19 @@ public class LobbyManager {
 
     public LobbyEntity getByGame(UUID gameId) {
         return lobbyByGameId.get(gameId);
+    }
+
+    public LobbyEntity createLobby(GameLobbyDTO gameLobbyDTO, UserEntity owner) {
+        var lobby = new LobbyEntity(
+                gameLobbyDTO.getName(),
+                gameLobbyDTO.getGameType(),
+                owner,
+                gameLobbyDTO.getMinPlayers(),
+                gameLobbyDTO.getMaxPlayers(),
+                gameLobbyDTO.getGameConfig(),
+                lobbyTimer
+        );
+        return createLobby(lobby);
     }
 
     public LobbyEntity createLobby(LobbyEntity lobby) {

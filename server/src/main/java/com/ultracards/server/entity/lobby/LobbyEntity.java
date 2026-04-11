@@ -26,17 +26,20 @@ public class LobbyEntity {
     private int maxPlayers;
     private GameConfigDTO gameConfig;
     private LobbyState lobbyState;
+    private Instant closedAt;
 
-    public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig) {
+    public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, int lobbyTimer) {
         id = UUID.randomUUID();
         this.name = name;
         this.gameType = gameType;
+        this.createdAt = Instant.now();
         this.owner = owner;
         users.add(owner);
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.gameConfig = gameConfig;
         this.lobbyState = LobbyState.OPEN;
+        this.closedAt = createdAt.plusSeconds(lobbyTimer);
     }
 
     public boolean containsUser(UserEntity user) {
@@ -79,7 +82,8 @@ public class LobbyEntity {
                 users,
                 new GamePlayerDTO(getOwner().getUsername(), getOwner().getId()),
                 getGameType(),
-                getGameConfig()
+                getGameConfig(),
+                closedAt
         );
     }
 
@@ -93,9 +97,9 @@ public class LobbyEntity {
                 return BriskulaGameConfig.TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH;
             }
         } else if (briskulaGameConfigDTO.getNumberOfPlayers() == 4) {
-            if (briskulaGameConfigDTO.getTeamsEnabled()) {
+            if (briskulaGameConfigDTO.getTeamsEnabled())
                 return BriskulaGameConfig.FOUR_PLAYERS_WITH_TEAMS;
-            } else return BriskulaGameConfig.FOUR_PLAYERS_WITH_TEAMS;
+            else return BriskulaGameConfig.FOUR_PLAYERS_NO_TEAMS;
         }
         throw new IllegalArgumentException("Invalid briskulaGameConfigDTO");
     }
