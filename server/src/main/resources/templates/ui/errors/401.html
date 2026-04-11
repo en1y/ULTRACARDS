@@ -3,15 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>ULTRACARDS - 401</title>
-    <script>
-        (() => {
-            const storageKey = 'uc-theme';
-            const savedTheme = localStorage.getItem(storageKey);
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (systemDark ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
+    
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
@@ -23,5 +15,6 @@
     <h3 th:if="${isAuthenticated}">You do have permission to access this page :O</h3>
 </section>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
+    <script th:src="@{/js/ui/errors/401.js}"></script>
 </body>
 </html>

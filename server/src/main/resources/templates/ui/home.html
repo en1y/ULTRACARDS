@@ -3,15 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>ULTRACARDS</title>
-    <script>
-        (() => {
-            const storageKey = 'uc-theme';
-            const savedTheme = localStorage.getItem(storageKey);
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (systemDark ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
+    
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
@@ -34,5 +26,6 @@
 </main>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
+    <script th:src="@{/js/ui/home.js}"></script>
 </body>
 </html>

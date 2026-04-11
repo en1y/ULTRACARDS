@@ -4,6 +4,8 @@
   --color-text: #111111;
   --color-text-muted: color-mix(in oklab, var(--color-text) 78%, transparent);
   --color-accent: #c62828;
+  --color-success: #2f9e44;
+  --color-danger: #c92a2a;
   --color-surface: #f2f2f2;
   --color-surface-2: #e6e6e6;
   --color-border: #d0d0d0;
@@ -24,6 +26,8 @@
   --color-text: #e9e9e9;
   --color-text-muted: color-mix(in oklab, var(--color-text) 74%, transparent);
   --color-accent: #e53935;
+  --color-success: #69db7c;
+  --color-danger: #ff6b6b;
   --color-surface: #1c1c1e;
   --color-surface-2: #2a2a2d;
   --color-border: #333336;

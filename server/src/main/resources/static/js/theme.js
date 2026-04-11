@@ -22,6 +22,16 @@ const syncThemeUi = () => {
     });
 };
 
+const bindThemeToggle = () => {
+    const toggleButton = document.querySelector('[data-action="toggle-theme"]');
+    if (!toggleButton || toggleButton.dataset.themeBound === 'true') {
+        return;
+    }
+
+    toggleButton.addEventListener('click', toggleTheme);
+    toggleButton.dataset.themeBound = 'true';
+};
+
 const applyTheme = (theme) => {
     root.setAttribute('data-theme', theme);
     localStorage.setItem(storageKey, theme);
@@ -41,7 +51,11 @@ window.applyTheme = applyTheme;
 window.toggleTheme = toggleTheme;
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', syncThemeUi, { once: true });
+    document.addEventListener('DOMContentLoaded', () => {
+        bindThemeToggle();
+        syncThemeUi();
+    }, { once: true });
 } else {
+    bindThemeToggle();
     syncThemeUi();
 }
