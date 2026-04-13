@@ -5,7 +5,6 @@ import com.ultracards.server.service.auth.SessionService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -62,12 +61,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         }
 
         if (!tokenService.tokenExists(token)) {
-            var delete_refresh_token = new Cookie("refreshToken", "");
-            delete_refresh_token.setMaxAge(0);
-            delete_refresh_token.setPath("/");
-
-            res.addCookie(delete_refresh_token);
-            res.sendRedirect("/");
+            handleUnauthorized(req, res);
             return;
         }
 
@@ -100,19 +94,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             // rotation/validation failed -> unauthenticated
             log.error("Error while validating with token.", ex);
             SecurityContextHolder.clearContext();
-            var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
-                    .path("/")
-                    .httpOnly(true)
-                    .secure(cookieSecure)
-                    .sameSite(sameSite)
-                    .maxAge(0);
-
-            if (cookieDomain != null && !cookieDomain.isBlank()) {
-                expiredRefreshToken.domain(cookieDomain);
-            }
-
-            res.addHeader("Set-Cookie", expiredRefreshToken.build().toString());
-            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            handleUnauthorized(req, res);
         }
     }
 
@@ -127,6 +109,32 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         if (cookieDomain != null && !cookieDomain.isBlank()) cookie.domain(cookieDomain);
 
         return cookie.build();
+    }
+
+    private void handleUnauthorized(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        expireRefreshToken(res);
+
+        if (req.getRequestURI().startsWith("/api/")) {
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        res.sendRedirect("/errors/401");
+    }
+
+    private void expireRefreshToken(HttpServletResponse res) {
+        var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .maxAge(0);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            expiredRefreshToken.domain(cookieDomain);
+        }
+
+        res.addHeader("Set-Cookie", expiredRefreshToken.build().toString());
     }
 
     private boolean shouldBypass(HttpServletRequest req) {
