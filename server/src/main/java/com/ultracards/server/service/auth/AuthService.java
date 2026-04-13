@@ -5,7 +5,6 @@ import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.EmailService;
@@ -47,15 +46,14 @@ public class AuthService {
     @Value("${app.cookie-token.domain:}")
     private String cookieDomain;
 
-    public String updateUsername (UsernameDTO username, TokenEntity token) {
-        var userEntity = token.getUser();
-        userEntity.setUsername(username.getUsername());
-        userEntity = userRepository.save(userEntity);
-        return userEntity.getUsername();
+    public String updateUsername(UserEntity user, @Valid UsernameDTO username) {
+        user.setUsername(username.getUsername());
+        userRepository.save(user);
+        return user.getUsername();
     }
 
-    public String getUsername (TokenEntity token) {
-        return token.getUser().getUsername();
+    public String getUsername(UserEntity user) {
+        return user.getUsername();
     }
 
     public void logout(HttpServletRequest request, HttpServletResponse response) {
@@ -69,9 +67,8 @@ public class AuthService {
         }
     }
 
-    public void sendVerificationEmail(@Valid EmailDTO emailDTO, TokenEntity token) {
+    public void sendVerificationEmail(@Valid EmailDTO emailDTO, UserEntity user) {
 
-        var user = token.getUser();
         var code = verificationCodeService.createVerificationCode(user);
 
         try {
@@ -101,16 +98,14 @@ public class AuthService {
         return res;
     }
 
-    public ProfileDTO getProfile(TokenEntity token) {
-        var user = token.getUser();
+    public ProfileDTO getProfile(UserEntity user) {
         return createProfileByUser(user);
     }
 
     public ProfileDTO updateProfile(
             @Valid ProfileDTO profileDTO,
-            TokenEntity token
+            UserEntity user
     ) {
-        var user = token.getUser();
         return updateProfileByUser(user, profileDTO);
     }
 

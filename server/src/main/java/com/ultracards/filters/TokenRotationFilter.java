@@ -1,6 +1,7 @@
 package com.ultracards.filters;
 
 import com.ultracards.server.entity.auth.TokenEntity;
+import com.ultracards.server.service.auth.SessionService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,10 +10,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.LazyInitializationException;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -20,8 +23,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
-import java.util.HashSet;
 
 @Component
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(TokenRotationFilter.class);
 
     private final TokenService tokenService;
+    private final SessionService sessionService;
 
     @Value("${app.cookie-token.duration-days:15}")
     private int tokenDurationDays;
@@ -44,9 +46,9 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     private String cookieDomain;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest req,
-                                    HttpServletResponse res,
-                                    FilterChain chain) throws IOException, ServletException {
+    protected void doFilterInternal(@NonNull HttpServletRequest req,
+                                    @NonNull HttpServletResponse res,
+                                    @NonNull FilterChain chain) throws IOException, ServletException {
         if (shouldBypass(req)) {
             chain.doFilter(req, res);
             return;
@@ -60,7 +62,6 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         }
 
         if (!tokenService.tokenExists(token)) {
-
             var delete_refresh_token = new Cookie("refreshToken", "");
             delete_refresh_token.setMaxAge(0);
             delete_refresh_token.setPath("/");
@@ -72,7 +73,8 @@ public class TokenRotationFilter extends OncePerRequestFilter {
 
         try {
             // 1) rotate token
-            var rotatedToken = tokenService.rotateToken(token);
+            var session = sessionService.handleSession(token, req);
+            var rotatedToken = session.getToken();
 
             // 2) reissue cookie
             var cookie = getRefreshToken(rotatedToken);
@@ -98,6 +100,18 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             // rotation/validation failed -> unauthenticated
             log.error("Error while validating with token.", ex);
             SecurityContextHolder.clearContext();
+            var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .sameSite(sameSite)
+                    .maxAge(0);
+
+            if (cookieDomain != null && !cookieDomain.isBlank()) {
+                expiredRefreshToken.domain(cookieDomain);
+            }
+
+            res.addHeader("Set-Cookie", expiredRefreshToken.build().toString());
             res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }
     }
@@ -134,4 +148,3 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         return null;
     }
 }
-
