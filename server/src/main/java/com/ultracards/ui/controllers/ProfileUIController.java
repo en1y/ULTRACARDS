@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @RequestMapping("/profile")
 @RequiredArgsConstructor
-public class ProfileController {
+public class ProfileUIController {
 
     private final AuthService authService;
 

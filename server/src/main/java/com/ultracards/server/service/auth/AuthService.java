@@ -2,9 +2,11 @@ package com.ultracards.server.service.auth;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
+import com.ultracards.gateway.dto.auth.UserSessionDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.entity.auth.UserSession;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.EmailService;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,20 +39,25 @@ public class AuthService {
     private final TokenService tokenService;
     private final EmailService emailService;
     private final UserGamesStatsService userGamesStatsService;
+    private final SessionService sessionService;
 
     @Value("${app.cookie-token.same-site:Lax}")
     private String sameSite;
-
     @Value("${app.cookie-token.secure:false}")
     private boolean cookieSecure;
-
     @Value("${app.cookie-token.domain:}")
     private String cookieDomain;
+    @Value("${app.token.update-privelege-duration-minutes:4}")
+    private long updateDuration;
 
-    public String updateUsername(UserEntity user, @Valid UsernameDTO username) {
-        user.setUsername(username.getUsername());
-        userRepository.save(user);
-        return user.getUsername();
+    public Boolean updateUsername(UserEntity user, @Valid UsernameDTO username, String token) {
+        var session = sessionService.getSession(token);
+        var createdAt = session.getLastAuthenticatedAt();
+        if (createdAt.isBefore(createdAt.plusSeconds(updateDuration * 60))) {
+            user.setUsername(username.getUsername());
+            userRepository.save(user);
+            return true;
+        } else return false;
     }
 
     public String getUsername(UserEntity user) {
@@ -102,18 +110,23 @@ public class AuthService {
         return createProfileByUser(user);
     }
 
-    public ProfileDTO updateProfile(
+    public Boolean updateProfile(
+            UserEntity user,
             @Valid ProfileDTO profileDTO,
-            UserEntity user
-    ) {
-        return updateProfileByUser(user, profileDTO);
+            String token) {
+        return updateProfileByUser(user, profileDTO, token);
     }
 
-    private ProfileDTO updateProfileByUser(UserEntity user, @Valid ProfileDTO profileDTO) {
-        user.setUsername(profileDTO.getUsername());
-        user.setEmail(profileDTO.getEmail());
-        userRepository.save(user);
-        return createProfileByUser(user);
+    private Boolean updateProfileByUser(UserEntity user, @Valid ProfileDTO profileDTO, String token) {
+        var session = sessionService.getSession(token);
+        var createdAt = session.getLastAuthenticatedAt();
+        if (createdAt.isBefore(createdAt.plusSeconds(updateDuration * 60))) {
+            user.setUsername(profileDTO.getUsername());
+            user.setEmail(profileDTO.getEmail());
+            userRepository.save(user);
+            return true;
+        }
+        return false;
     }
 
     private ProfileDTO createProfileByUser(UserEntity user) {

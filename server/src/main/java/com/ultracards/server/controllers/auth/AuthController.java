@@ -1,10 +1,11 @@
-package com.ultracards.server.controllers;
+package com.ultracards.server.controllers.auth;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.entity.auth.UserSession;
 import com.ultracards.server.service.EmailService;
 import com.ultracards.server.service.auth.AuthService;
 import com.ultracards.server.service.UserService;
@@ -22,6 +23,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
 
 @Slf4j
 @RestController
@@ -49,38 +52,6 @@ public class AuthController {
 
     @Value("${app.cookie-token.domain:}")
     private String cookieDomain;
-
-    @PutMapping(
-            value = "/username",
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE
-    )
-    @ResponseBody
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<?> updateUsername(
-            @AuthenticationPrincipal UserEntity user,
-            @Valid @RequestBody UsernameDTO username,
-            BindingResult errors) {
-        if (errors.hasErrors() || username.getUsername().length() > MAX_USERNAME_LENGTH) {
-            var errorsString = errors.getAllErrors().stream().map(e -> e.getDefaultMessage()).toList().toString();
-            return ResponseEntity.badRequest().body(errorsString);
-        }
-
-        authService.updateUsername(user, username);
-
-        if (username.getUsername() == null)
-            return redirectToLogout();
-        return ResponseEntity.ok(username);
-    }
-
-    @GetMapping("/username")
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<UsernameDTO> getUsername(
-            @AuthenticationPrincipal UserEntity user
-    ) {
-        return ResponseEntity
-                .ok(new UsernameDTO(user.getUsername()));
-    }
 
     @PostMapping("/logout")
     public ResponseEntity<String> logout(
@@ -118,6 +89,7 @@ public class AuthController {
     @PostMapping("/email/verify")
     public ResponseEntity<Void> verifyCode(
             @AuthenticationPrincipal UserEntity user,
+            @RequestAttribute(value = "token", required = false) String token,
             @RequestBody @NotNull @Valid VerificationCodeDTO verificationCodeDTO,
             BindingResult errors,
             HttpServletRequest req
@@ -125,8 +97,11 @@ public class AuthController {
         if (errors.hasErrors())
             return ResponseEntity.badRequest().build();
 
+        var userSet = true;
+
         if (user != null) {
             verificationCodeDTO.setEmail(user.getEmail());
+            userSet = false;
         }
 
         var isVerificationCodeCorrect = authService.verifyCode(verificationCodeDTO);
@@ -135,46 +110,14 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
 
         user = userService.getUserByEmail(new EmailDTO(verificationCodeDTO.getEmail()));
-        var session = sessionService.createSession(user, req);
-        var token = session.getTokenString();
-
+        if (userSet){
+            var session = sessionService.recreateTokenForSession(token);
+            var cookie = buildRefreshTokenCookie(session.getTokenString(), 24L * 3600 * tokenDurationDays);
+            return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).build();
+        }
+        token = sessionService.createSession(user, req).getTokenString();
         var cookie = buildRefreshTokenCookie(token, 24L * 3600 * tokenDurationDays);
         return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).build();
-    }
-
-    @GetMapping("/profile")
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<ProfileDTO> getProfile(
-            @AuthenticationPrincipal UserEntity user
-    ) {
-        var res = authService.getProfile(user);
-
-        return ResponseEntity.ok(res);
-    }
-
-    @PostMapping("/profile")
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<ProfileDTO> updateProfile(
-            @AuthenticationPrincipal UserEntity user,
-            @RequestBody @Valid ProfileDTO profileDTO,
-            BindingResult errors
-    ) {
-        if (errors.hasErrors()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        if (user == null) {
-            return ResponseEntity.badRequest().build();
-        }
-        var res = authService.updateProfile(profileDTO, user);
-
-        return ResponseEntity.ok(res);
-    }
-
-    private <T> ResponseEntity<T> redirectToLogout() {
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .header(HttpHeaders.LOCATION, "/api/auth/logout")
-                .build();
     }
 
     private ResponseCookie buildRefreshTokenCookie(String tokenValue, long maxAgeSeconds) {

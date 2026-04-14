@@ -1,7 +1,7 @@
 package com.ultracards.server.service.auth;
 
+import com.ultracards.gateway.dto.auth.UserSessionDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.entity.auth.UserSession;
 import com.ultracards.server.repositories.auth.SessionRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,12 +11,32 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class SessionService {
     private final SessionRepository sessionRepository;
     private final TokenService tokenService;
+
+    @Transactional
+    public UserSession getSession(String token) {
+        var tokenEntity = tokenService.getToken(token);
+        var session = sessionRepository.findByToken(tokenEntity)
+                .orElseThrow(() -> new AccessDeniedException("Session not found"));
+        session.setLastSeenAt(Instant.now());
+        return sessionRepository.save(session);
+    }
+
+    @Transactional
+    public UserSession recreateTokenForSession(String token) {
+        var session = getSession(token);
+        var newToken = tokenService.createToken(session.getToken().getUser());
+        session.setToken(newToken);
+        session.setLastAuthenticatedAt(Instant.now());
+        return sessionRepository.save(session);
+    }
 
     @Transactional
     public UserSession createSession(UserEntity user, HttpServletRequest request) {
@@ -49,6 +69,28 @@ public class SessionService {
         session = sessionRepository.save(session);
         session.setCurrentSession(true);
         return session;
+    }
+
+    @Transactional
+    public List<UserSessionDTO> getSessions(UserEntity user, String token) {
+        var sessions = sessionRepository.findAllByUserId(user.getId());
+        var res = new ArrayList<UserSessionDTO>();
+        for (var session : sessions) {
+            var dto = new UserSessionDTO();
+            dto.setId(session.getId());
+            dto.setFirstSeenAt(session.getFirstSeenAt());
+            dto.setLastSeenAt(session.getLastSeenAt());
+            dto.setLastAuthenticatedAt(session.getLastAuthenticatedAt());
+            dto.setDeviceId(session.getDeviceId());
+            dto.setClientType(session.getClientType());
+            dto.setOs(session.getOs());
+            dto.setUserAgent(session.getUserAgent());
+            dto.setCountry(session.getCountry());
+            dto.setRegion(session.getRegion());
+            dto.setCurrentSession(session.getToken().getToken().equals(token));
+            res.add(dto);
+        }
+        return res;
     }
 
     private void updateSessionByRequest(UserSession session, HttpServletRequest request) {

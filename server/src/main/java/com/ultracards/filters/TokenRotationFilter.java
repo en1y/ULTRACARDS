@@ -75,8 +75,8 @@ public class TokenRotationFilter extends OncePerRequestFilter {
 
             res.addHeader("Set-Cookie", cookie.toString());
 
-            // 3) expose token string for controllers that use @RequestAttribute("tokenEntity")
-            req.setAttribute("refreshToken", rotatedToken.getToken());
+            // 3) expose token string for controllers that use @RequestAttribute("token")
+            req.setAttribute("token", rotatedToken.getToken());
 
             // 4) authenticate the request so Spring Security stops throwing 401
             var user = rotatedToken.getUser();
