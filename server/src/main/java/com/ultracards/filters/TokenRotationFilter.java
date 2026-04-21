@@ -143,8 +143,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         if ("OPTIONS".equals(method)) return true;
         // endpoints where rotation/auth is inappropriate
         return path.startsWith("/active")
-                || path.startsWith("/public")
-                || path.startsWith("/api/auth/logout");
+                || path.startsWith("/public");
     }
 
     private String readRefreshToken(HttpServletRequest req) {
