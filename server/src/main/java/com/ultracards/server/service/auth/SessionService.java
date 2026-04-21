@@ -13,12 +13,19 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class SessionService {
     private final SessionRepository sessionRepository;
     private final TokenService tokenService;
+
+    @Transactional
+    public UserSession getSession(UUID id) {
+        return sessionRepository.findById(id)
+                .orElseThrow(() -> new AccessDeniedException("Session not found"));
+    }
 
     @Transactional
     public UserSession getSession(String token) {
@@ -91,6 +98,10 @@ public class SessionService {
             res.add(dto);
         }
         return res;
+    }
+
+    public void deleteSession(UserSession session) {
+        sessionRepository.delete(session);
     }
 
     private void updateSessionByRequest(UserSession session, HttpServletRequest request) {

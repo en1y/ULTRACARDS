@@ -20,7 +20,7 @@ public class UserSessionDTO {
     private String country;
     private String region;
     private String userAgent;
-    @NotNull private Boolean currentSession;
+    private Boolean currentSession;
     Instant firstSeenAt;
     Instant lastSeenAt;
     Instant lastAuthenticatedAt;

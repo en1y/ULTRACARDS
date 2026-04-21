@@ -105,6 +105,24 @@ public class ProfileController {
         return ResponseEntity.ok(sessionService.getSessions(user, token));
     }
 
+    @DeleteMapping("sessions")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<?> deleteSessions(
+            @AuthenticationPrincipal UserEntity user,
+            @RequestAttribute("token") String token,
+            @Valid UserSessionDTO userSession
+    ) {
+        var session = sessionService.getSession(userSession.getId());
+        if (session.getUserId().equals(user.getId())) {
+            var isCurrentSession = session.getToken().getToken().equals(token);
+            sessionService.deleteSession(session);
+            if (isCurrentSession)
+                return redirectToLogout();
+            return ResponseEntity.ok("Session deleted");
+        }
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only delete your own sessions");
+    }
+
     private <T> ResponseEntity<T> redirectToLogout() {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, "/api/auth/logout")
