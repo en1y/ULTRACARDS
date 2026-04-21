@@ -3,73 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <title>ULTRACARDS</title>
-    
+
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
-        <link rel="stylesheet" th:href="@{/css/ui/profile.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/profile.css}">
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div class="profile-summary-card profile-edit-row">
-    <div class="profile-identity-grid">
-        <div class="profile-field-card">
-            <label for="username">Username</label>
-            <div class="profile-input-shell">
-                <span class="profile-input-icon" aria-hidden="true">@</span>
-                <input
-                        class="profile-input"
-                        id="username"
-                        type="text"
-                        th:value="${profile.getUsername()}"
-                        placeholder="Enter your username"
-                        autocomplete="username">
-            </div>
+<div id="session-toast" class="profile-floating-status" role="status" aria-live="polite"></div>
+
+<main class="profile-page">
+    <section class="profile-hero">
+        <div>
+            <p class="profile-eyebrow">Account management</p>
+            <h1>Profile</h1>
         </div>
-        <div class="profile-field-card">
-            <label for="email">Email</label>
-            <div class="profile-input-shell">
-                <span class="profile-input-icon" aria-hidden="true">✉</span>
-                <input
-                        class="profile-input"
-                        id="email"
-                        type="email"
-                        th:value="${profile.getEmail()}"
-                        placeholder="Enter your email"
+        <button class="btn profile-refresh-button" id="page-refresh" type="button">Refresh</button>
+    </section>
+
+    <nav class="profile-tabs" aria-label="Profile sections">
+        <button class="profile-tab is-active" type="button" data-profile-tab="overview">Overview</button>
+        <button class="profile-tab" type="button" data-profile-tab="sessions">Sessions</button>
+    </nav>
+
+    <section class="profile-panel is-active" data-profile-panel="overview">
+        <div class="profile-summary-card profile-edit-row">
+            <div class="section-heading">
+                <h2>Profile information</h2>
+            </div>
+            <div class="profile-identity-grid">
+                <div class="profile-field-card">
+                    <label for="username">Username</label>
+                    <div class="profile-input-shell">
+                        <span class="profile-input-icon" aria-hidden="true">@</span>
+                        <input
+                                class="profile-input"
+                                id="username"
+                                type="text"
+                                th:value="${profile.getUsername()}"
+                                placeholder="Enter your username"
+                                autocomplete="username">
+                    </div>
+                </div>
+                <div class="profile-field-card">
+                    <label for="email">Email</label>
+                    <div class="profile-input-shell">
+                        <span class="profile-input-icon" aria-hidden="true">✉</span>
+                        <input
+                                class="profile-input"
+                                id="email"
+                                type="email"
+                                th:value="${profile.getEmail()}"
+                                placeholder="Enter your email"
                         autocomplete="email">
+                    </div>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button class="btn btn-accent" id="save-profile" type="button">Save</button>
+            </div>
+            <div class="profile-meta-grid">
+                <div class="profile-summary-card profile-summary-stack profile-summary-inline">
+                    <span class="summary-label">User ID</span>
+                    <span class="summary-value" th:text="${profile.getId()}" id="id">-</span>
+                </div>
+                <div class="profile-summary-card profile-summary-stack profile-summary-inline">
+                    <span class="summary-label">Roles</span>
+                    <span class="summary-value" th:text='${T(java.lang.String).join(", ", profile.roles)}' id="roles">USER</span>
+                </div>
+            </div>
+            <div id="profile-status" class="profile-status" role="status" aria-live="polite"></div>
+        </div>
+
+        <div id="games" class="profile-history">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Game stats</p>
+                    <h2>History</h2>
+                </div>
+            </div>
+            <div class="profile-history-stats">
+                <div class="profile-summary-card profile-summary-stack">
+                    <span class="summary-label">Games played</span>
+                    <span class="summary-value" th:text="${profile.getGamesPlayed()}" id="games_played">0</span>
+                </div>
+                <div class="profile-summary-card profile-summary-stack">
+                    <span class="summary-label">Games won</span>
+                    <span class="summary-value" th:text="${profile.getGamesWon()}" id="games_won">0</span>
+                </div>
+            </div>
+            <div id="per-game-type" class="profile-game-grid">
+                <div class="profile-game-card" th:each="game: ${profile.getPlayedAndWonGames()}">
+                    <span th:text="${game.getKey()}"></span> <br>
+                    Games played: <span th:text="${game.getValue()[0]}"></span> <br>
+                    Games won: <span th:text="${game.getValue()[1]}"></span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="profile-actions">
-        <button id="refresh" type="button">🔄</button>
-        <button class="btn btn-accent" id="save-profile" type="button">Save</button>
-    </div>
-    <div id="profile-status" class="profile-status" role="status" aria-live="polite"></div>
-</div>
-<div class="profile-summary-card">
-    Roles: <span th:text='${T(java.lang.String).join(", ", profile.roles)}' id="roles"></span>
-</div>
-<div class="profile-summary-card">
-    Id: <span th:text="${profile.getId()}" id="id"></span>
-</div>
-<div id="games" class="profile-history">
-    <div class="profile-history-stats">
-        <div class="profile-summary-card">
-            Games played: <span th:text="${profile.getGamesPlayed()}" id="games_played"></span>
+    </section>
+
+    <section class="profile-panel" data-profile-panel="sessions">
+        <div class="profile-history">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Session management</p>
+                    <h2>All active sessions</h2>
+                    <p class="section-copy">Manage your sessions from different devices</p>
+                    <p class="section-copy">It is recommended to remove the old ones</p>
+                </div>
+            </div>
+            <div id="sessions-list" class="profile-session-list">
+                <article class="profile-session-card profile-session-card--placeholder">
+                    <p>Loading sessions...</p>
+                </article>
+            </div>
         </div>
-        <div class="profile-summary-card">
-            Games won: <span th:text="${profile.getGamesWon()}" id="games_won"></span>
-        </div>
-    </div>
-    <div id="per-game-type" class="profile-game-grid">
-        <div class="profile-game-card" th:each="game: ${profile.getPlayedAndWonGames()}">
-            <span th:text="${game.getKey()}"></span> <br>
-            Games played: <span th:text="${game.getValue()[0]}"></span> <br>
-            Games won: <span th:text="${game.getValue()[1]}"></span>
-        </div>
-    </div>
-</div>
+    </section>
+</main>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-    <script th:src="@{/js/ui/profile.js}"></script>
+<script th:src="@{/js/ui/profile.js}"></script>
 </body>
 </html>
