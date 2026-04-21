@@ -52,8 +52,8 @@ public class AuthService {
 
     public Boolean updateUsername(UserEntity user, @Valid UsernameDTO username, String token) {
         var session = sessionService.getSession(token);
-        var createdAt = session.getLastAuthenticatedAt();
-        if (createdAt.isBefore(createdAt.plusSeconds(updateDuration * 60))) {
+        var authenticatedAt = session.getLastAuthenticatedAt();
+        if (authenticatedAt.isBefore(authenticatedAt.plusSeconds(updateDuration * 60))) {
             user.setUsername(username.getUsername());
             userRepository.save(user);
             return true;
@@ -119,8 +119,8 @@ public class AuthService {
 
     private Boolean updateProfileByUser(UserEntity user, @Valid ProfileDTO profileDTO, String token) {
         var session = sessionService.getSession(token);
-        var createdAt = session.getLastAuthenticatedAt();
-        if (createdAt.isBefore(createdAt.plusSeconds(updateDuration * 60))) {
+        var authenticatedAt = session.getLastAuthenticatedAt();
+        if (authenticatedAt.isBefore(authenticatedAt.plusSeconds(updateDuration * 60))) {
             user.setUsername(profileDTO.getUsername());
             user.setEmail(profileDTO.getEmail());
             userRepository.save(user);

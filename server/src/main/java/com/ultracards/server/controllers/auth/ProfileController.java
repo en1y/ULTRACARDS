@@ -115,7 +115,9 @@ public class ProfileController {
         var session = sessionService.getSession(userSession.getId());
         if (session.getUserId().equals(user.getId())) {
             var isCurrentSession = session.getToken().getToken().equals(token);
-            sessionService.deleteSession(session);
+            var res = sessionService.deleteSession(session);
+            if (!res) return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Username can only be updated within " + updateDuration + " minutes of login");
             if (isCurrentSession)
                 return redirectToLogout();
             return ResponseEntity.ok("Session deleted");

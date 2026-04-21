@@ -7,6 +7,7 @@ import com.ultracards.server.repositories.auth.SessionRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,9 @@ import java.util.UUID;
 public class SessionService {
     private final SessionRepository sessionRepository;
     private final TokenService tokenService;
+
+    @Value("${app.token.update-privelege-duration-minutes:4}")
+    private long updateDuration;
 
     @Transactional
     public UserSession getSession(UUID id) {
@@ -100,8 +104,13 @@ public class SessionService {
         return res;
     }
 
-    public void deleteSession(UserSession session) {
+    public Boolean deleteSession(UserSession session) {
+        var authenticatedAt = session.getLastAuthenticatedAt();
+        if (authenticatedAt.isBefore(authenticatedAt.plusSeconds(updateDuration * 60))) {
+            return false;
+        }
         sessionRepository.delete(session);
+        return true;
     }
 
     private void updateSessionByRequest(UserSession session, HttpServletRequest request) {
