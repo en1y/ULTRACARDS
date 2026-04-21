@@ -24,6 +24,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,17 +48,17 @@ public class AuthService {
     private boolean cookieSecure;
     @Value("${app.cookie-token.domain:}")
     private String cookieDomain;
-    @Value("${app.token.update-privelege-duration-minutes:4}")
+    @Value("${app.token.update-privilege-duration-minutes:4}")
     private long updateDuration;
 
     public Boolean updateUsername(UserEntity user, @Valid UsernameDTO username, String token) {
         var session = sessionService.getSession(token);
         var authenticatedAt = session.getLastAuthenticatedAt();
-        if (authenticatedAt.isBefore(authenticatedAt.plusSeconds(updateDuration * 60))) {
-            user.setUsername(username.getUsername());
-            userRepository.save(user);
-            return true;
-        } else return false;
+        if (Instant.now().isAfter(authenticatedAt.plusSeconds(updateDuration * 60)))
+            return false;
+        user.setUsername(username.getUsername());
+        userRepository.save(user);
+        return true;
     }
 
     public String getUsername(UserEntity user) {
@@ -67,7 +68,7 @@ public class AuthService {
     public void logout(HttpServletRequest request, HttpServletResponse response, String token) {
         var cookies = request.getCookies();
         if (token != null){
-            sessionService.deleteSession(
+            sessionService.logout(
                     sessionService.getSession(token)
             );
         }
@@ -80,17 +81,18 @@ public class AuthService {
     }
 
     public void sendVerificationEmail(UserEntity user) {
+        if (!verificationCodeService.hasACodeBeenSentRecently(user)) {
+            var code = verificationCodeService.createVerificationCode(user);
 
-        var code = verificationCodeService.createVerificationCode(user);
-
-        try {
-            emailService.sendVerificationEmail(user, code);
-        } catch (MessagingException e) {
-            log.error("Failed to send verification email to {}", user.getEmail(), e);
-            throw new IllegalStateException("Failed to send verification email: " + e.getMessage(), e);
-        } catch (UnsupportedEncodingException e) {
-            log.error("Wrong file encoding was used to send verification email to {}", user.getEmail(), e);
-            throw new IllegalStateException("Wrong file encoding was used to send verification email. " + e.getMessage(), e);
+            try {
+                emailService.sendVerificationEmail(user, code);
+            } catch (MessagingException e) {
+                log.error("Failed to send verification email to {}", user.getEmail(), e);
+                throw new IllegalStateException("Failed to send verification email: " + e.getMessage(), e);
+            } catch (UnsupportedEncodingException e) {
+                log.error("Wrong file encoding was used to send verification email to {}", user.getEmail(), e);
+                throw new IllegalStateException("Wrong file encoding was used to send verification email. " + e.getMessage(), e);
+            }
         }
     }
 
@@ -124,13 +126,12 @@ public class AuthService {
     private Boolean updateProfileByUser(UserEntity user, @Valid ProfileDTO profileDTO, String token) {
         var session = sessionService.getSession(token);
         var authenticatedAt = session.getLastAuthenticatedAt();
-        if (authenticatedAt.isBefore(authenticatedAt.plusSeconds(updateDuration * 60))) {
-            user.setUsername(profileDTO.getUsername());
-            user.setEmail(profileDTO.getEmail());
-            userRepository.save(user);
-            return true;
-        }
-        return false;
+        if (Instant.now().isAfter(authenticatedAt.plusSeconds(updateDuration * 60)))
+            return false;
+        user.setUsername(profileDTO.getUsername());
+        user.setEmail(profileDTO.getEmail());
+        userRepository.save(user);
+        return true;
     }
 
     private ProfileDTO createProfileByUser(UserEntity user) {

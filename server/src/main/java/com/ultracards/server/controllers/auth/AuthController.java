@@ -69,7 +69,7 @@ public class AuthController {
             @RequestBody(required = false) EmailDTO emailDTO,
             BindingResult errors
     ) {
-        if (errors.hasErrors()) {
+        if (errors.hasErrors() || (emailDTO == null && user == null)) {
             return ResponseEntity.badRequest().build();
         }
         if (user == null) {

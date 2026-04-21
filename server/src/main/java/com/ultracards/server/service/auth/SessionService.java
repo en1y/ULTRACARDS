@@ -22,7 +22,7 @@ public class SessionService {
     private final SessionRepository sessionRepository;
     private final TokenService tokenService;
 
-    @Value("${app.token.update-privelege-duration-minutes:4}")
+    @Value("${app.token.update-privilege-duration-minutes:4}")
     private long updateDuration;
 
     @Transactional
@@ -104,13 +104,17 @@ public class SessionService {
         return res;
     }
 
-    public Boolean deleteSession(UserSession session) {
-        var authenticatedAt = session.getLastAuthenticatedAt();
-        if (authenticatedAt.isBefore(authenticatedAt.plusSeconds(updateDuration * 60))) {
+    public Boolean deleteSession(UserSession userSession, UserSession deleteSession) {
+        var authenticatedAt = userSession.getLastAuthenticatedAt();
+        if (Instant.now().isAfter(authenticatedAt.plusSeconds(updateDuration * 60)))
             return false;
-        }
-        sessionRepository.delete(session);
+        sessionRepository.delete(deleteSession);
         return true;
+    }
+
+    @Transactional
+    public void logout(UserSession session) {
+        sessionRepository.delete(session);
     }
 
     private void updateSessionByRequest(UserSession session, HttpServletRequest request) {

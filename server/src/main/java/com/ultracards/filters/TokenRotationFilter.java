@@ -144,8 +144,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         // endpoints where rotation/auth is inappropriate
         return path.startsWith("/active")
                 || path.startsWith("/public")
-                || path.startsWith("/api/auth/logout")
-                || path.startsWith("/api/auth/email/");
+                || path.startsWith("/api/auth/logout");
     }
 
     private String readRefreshToken(HttpServletRequest req) {

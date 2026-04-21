@@ -29,7 +29,7 @@ public class ProfileController {
     private Integer MAX_USERNAME_LENGTH;
     private final AuthService authService;
     private final SessionService sessionService;
-    @Value("${app.token.update-privelege-duration-minutes:4}")
+    @Value("${app.token.update-privilege-duration-minutes:4}")
     private long updateDuration;
 
     @GetMapping("/username")
@@ -112,10 +112,11 @@ public class ProfileController {
             @RequestAttribute("token") String token,
             @Valid UserSessionDTO userSession
     ) {
-        var session = sessionService.getSession(userSession.getId());
-        if (session.getUserId().equals(user.getId())) {
-            var isCurrentSession = session.getToken().getToken().equals(token);
-            var res = sessionService.deleteSession(session);
+        var deleteSession = sessionService.getSession(userSession.getId());
+        if (deleteSession.getUserId().equals(user.getId())) {
+            var currentSession = sessionService.getSession(token);
+            var isCurrentSession = deleteSession.equals(currentSession);
+            var res = sessionService.deleteSession(currentSession, deleteSession);
             if (!res) return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Username can only be updated within " + updateDuration + " minutes of login");
             if (isCurrentSession)

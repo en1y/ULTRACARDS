@@ -23,6 +23,17 @@ public class VerificationCodeService {
 
     private final VerificationCodeRepository codeRepository;
 
+    public boolean hasACodeBeenSentRecently(UserEntity user) {
+        var code = codeRepository.findAllByUserAndUsedFalse(user);
+        if (code.isEmpty()) return false;
+        var codes = code.get();
+        for (var c: codes) {
+            if (Instant.now().isBefore(c.getExpirationTime().minusSeconds(300)) && !c.isUsed())
+                return true;
+        }
+        return false;
+    }
+
     public VerificationCode createVerificationCode(UserEntity user) {
         codeRepository.findAllByUserAndUsedFalse(user).ifPresent(
                 list -> list.forEach(code -> {
