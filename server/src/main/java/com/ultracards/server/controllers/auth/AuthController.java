@@ -56,9 +56,10 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<String> logout(
             HttpServletRequest request,
-            HttpServletResponse response
+            HttpServletResponse response,
+            @RequestAttribute(value = "token", required = false) String token
     ) {
-        authService.logout(request, response);
+        authService.logout(request, response, token);
         return ResponseEntity.ok("Logged out");
     }
 
@@ -97,11 +98,11 @@ public class AuthController {
         if (errors.hasErrors())
             return ResponseEntity.badRequest().build();
 
-        var userSet = true;
+        var userSet = false;
 
         if (user != null) {
             verificationCodeDTO.setEmail(user.getEmail());
-            userSet = false;
+            userSet = true;
         }
 
         var isVerificationCodeCorrect = authService.verifyCode(verificationCodeDTO);

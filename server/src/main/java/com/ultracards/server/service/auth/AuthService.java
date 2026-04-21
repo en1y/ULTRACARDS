@@ -64,9 +64,13 @@ public class AuthService {
         return user.getUsername();
     }
 
-    public void logout(HttpServletRequest request, HttpServletResponse response) {
+    public void logout(HttpServletRequest request, HttpServletResponse response, String token) {
         var cookies = request.getCookies();
-
+        if (token != null){
+            sessionService.deleteSession(
+                    sessionService.getSession(token)
+            );
+        }
         for (var cookie : cookies) {
             var delCookie = new Cookie(cookie.getName(), null);
             delCookie.setMaxAge(0);
