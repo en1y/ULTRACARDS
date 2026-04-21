@@ -79,10 +79,10 @@ public class AuthController {
                 user = userService.createUser(emailDTO);
         }
 
-        if (!user.getEmail().equals(emailDTO.getEmail()))
+        if (emailDTO != null && !user.getEmail().equals(emailDTO.getEmail()))
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
 
-        authService.sendVerificationEmail(emailDTO, user);
+        authService.sendVerificationEmail(user);
         return ResponseEntity.ok().build();
     }
 

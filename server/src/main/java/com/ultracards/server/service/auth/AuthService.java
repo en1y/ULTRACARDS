@@ -75,17 +75,17 @@ public class AuthService {
         }
     }
 
-    public void sendVerificationEmail(@Valid EmailDTO emailDTO, UserEntity user) {
+    public void sendVerificationEmail(UserEntity user) {
 
         var code = verificationCodeService.createVerificationCode(user);
 
         try {
             emailService.sendVerificationEmail(user, code);
         } catch (MessagingException e) {
-            log.error("Failed to send verification email to {}", emailDTO.getEmail(), e);
+            log.error("Failed to send verification email to {}", user.getEmail(), e);
             throw new IllegalStateException("Failed to send verification email: " + e.getMessage(), e);
         } catch (UnsupportedEncodingException e) {
-            log.error("Wrong file encoding was used to send verification email to {}", emailDTO.getEmail(), e);
+            log.error("Wrong file encoding was used to send verification email to {}", user.getEmail(), e);
             throw new IllegalStateException("Wrong file encoding was used to send verification email. " + e.getMessage(), e);
         }
     }
