@@ -38,6 +38,10 @@
     animation: profile-floating-status-out 0.24s ease-in forwards;
 }
 
+.profile-confirm-modal .content {
+    padding-top: 1.2rem;
+}
+
 .profile-hero,
 .profile-summary-card,
 .profile-history,
@@ -60,6 +64,31 @@
 .profile-refresh-button {
     flex: 0 0 auto;
     align-self: flex-start;
+}
+
+.profile-refresh-button.is-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+.profile-refresh-button.is-loading::before,
+#save-profile.is-loading::before {
+    content: "";
+    display: inline-block;
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-right: 0.45rem;
+    vertical-align: -0.12rem;
+    border: 2px solid color-mix(in oklab, var(--color-text) 24%, transparent);
+    border-top-color: var(--color-accent);
+    border-radius: 999px;
+    animation: profile-refresh-spin 0.72s linear infinite;
+}
+
+#save-profile.is-loading {
+    pointer-events: none;
+    opacity: 0.9;
 }
 
 .profile-eyebrow,
@@ -560,6 +589,15 @@
     to {
         opacity: 0;
         transform: translateX(-50%) translateY(-12px) scale(0.98);
+    }
+}
+
+@keyframes profile-refresh-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
     }
 }
 

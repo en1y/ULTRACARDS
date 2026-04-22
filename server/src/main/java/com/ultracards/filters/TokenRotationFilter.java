@@ -113,13 +113,19 @@ public class TokenRotationFilter extends OncePerRequestFilter {
 
     private void handleUnauthorized(HttpServletRequest req, HttpServletResponse res) throws IOException {
         expireRefreshToken(res);
+        SecurityContextHolder.clearContext();
 
         if (req.getRequestURI().startsWith("/api/")) {
             res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
-        res.sendRedirect("/errors/401");
+        res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        try {
+            req.getRequestDispatcher("/errors/401").forward(req, res);
+        } catch (ServletException ex) {
+            throw new IOException("Failed to forward to 401 page", ex);
+        }
     }
 
     private void expireRefreshToken(HttpServletResponse res) {

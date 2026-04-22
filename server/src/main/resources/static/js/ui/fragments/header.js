@@ -137,7 +137,7 @@
       },
       reverify: {
         title: 'Confirm Profile Changes',
-        subtitle: 'We sent a fresh verification code to your email. Enter it to continue.'
+        subtitle: 'A verification code has been sent to your email.'
       }
     };
 

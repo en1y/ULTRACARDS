@@ -13,6 +13,96 @@ let sessionsStatusTimer = null;
 let sessionToastTimer = null;
 let cachedSessions = [];
 let pendingSessionDeletion = null;
+let sessionConfirmResolver = null;
+let currentProfileSnapshot = {
+    username: '',
+    email: ''
+};
+
+function syncProfileSnapshotFromDom() {
+    currentProfileSnapshot = {
+        username: (document.getElementById('username')?.value || '').trim(),
+        email: (document.getElementById('email')?.value || '').trim()
+    };
+}
+
+function setRefreshButtonLoading(isLoading) {
+    const button = document.getElementById('page-refresh');
+    if (!button) {
+        return;
+    }
+
+    button.classList.toggle('is-loading', isLoading);
+    button.disabled = isLoading;
+    button.textContent = isLoading ? 'Refreshing' : 'Refresh';
+}
+
+function setSaveButtonLoading(isLoading) {
+    const button = document.getElementById('save-profile');
+    if (!button) {
+        return;
+    }
+
+    button.classList.toggle('is-loading', isLoading);
+    button.disabled = isLoading;
+    button.textContent = isLoading ? 'Saving' : 'Save';
+}
+
+function closeSessionConfirmModal(confirmed) {
+    const overlay = document.getElementById('session-confirm-modal');
+    if (!overlay) {
+        return;
+    }
+
+    overlay.classList.remove('active');
+    sessionConfirmResolver?.(confirmed);
+    sessionConfirmResolver = null;
+}
+
+function confirmSessionAction(message, confirmLabel) {
+    const overlay = document.getElementById('session-confirm-modal');
+    const text = document.getElementById('session-confirm-text');
+    const submit = document.getElementById('session-confirm-submit');
+
+    if (!overlay || !text || !submit) {
+        return Promise.resolve(false);
+    }
+
+    text.textContent = message;
+    submit.textContent = confirmLabel;
+    overlay.classList.add('active');
+
+    return new Promise((resolve) => {
+        sessionConfirmResolver = resolve;
+    });
+}
+
+function initialiseSessionConfirmModal() {
+    const overlay = document.getElementById('session-confirm-modal');
+    const close = document.getElementById('session-confirm-close');
+    const cancel = document.getElementById('session-confirm-cancel');
+    const submit = document.getElementById('session-confirm-submit');
+
+    if (!overlay || !close || !cancel || !submit) {
+        return;
+    }
+
+    close.addEventListener('click', () => closeSessionConfirmModal(false));
+    cancel.addEventListener('click', () => closeSessionConfirmModal(false));
+    submit.addEventListener('click', () => closeSessionConfirmModal(true));
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            closeSessionConfirmModal(false);
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && overlay.classList.contains('active')) {
+            closeSessionConfirmModal(false);
+        }
+    });
+}
 
 function positionSessionToast() {
     const toast = document.getElementById('session-toast');
@@ -132,10 +222,12 @@ function hideAnimatedStatus(elementId) {
 
 function setProfileStatus(message, type) {
     setAnimatedStatus('profile-status', message, type);
+    setAnimatedStatus('session-toast', message, type);
 }
 
 function clearProfileStatus() {
     clearAnimatedStatus('profile-status');
+    clearAnimatedStatus('session-toast');
 }
 
 function setSessionsStatus(message, type) {
@@ -212,6 +304,29 @@ function initialiseTabs() {
     const tabs = Array.from(document.querySelectorAll('[data-profile-tab]'));
     const panels = Array.from(document.querySelectorAll('[data-profile-panel]'));
     let switching = false;
+    const validTabs = new Set(tabs.map((tab) => tab.getAttribute('data-profile-tab')));
+
+    const setActiveTabState = (selected) => {
+        tabs.forEach((candidate) => {
+            candidate.classList.toggle('is-active', candidate.getAttribute('data-profile-tab') === selected);
+        });
+        panels.forEach((panel) => {
+            panel.classList.toggle('is-active', panel.getAttribute('data-profile-panel') === selected);
+            panel.classList.remove('is-entering', 'is-leaving');
+        });
+    };
+
+    const getHashTab = () => {
+        const hash = window.location.hash.replace('#', '');
+        return validTabs.has(hash) ? hash : null;
+    };
+
+    const updateHash = (selected) => {
+        const nextHash = `#${selected}`;
+        if (window.location.hash !== nextHash) {
+            window.history.replaceState(null, '', nextHash);
+        }
+    };
 
     tabs.forEach((tab) => {
         tab.addEventListener('click', () => {
@@ -228,6 +343,7 @@ function initialiseTabs() {
             }
 
             switching = true;
+            updateHash(selected);
             tabs.forEach((candidate) => {
                 candidate.classList.toggle('is-active', candidate === tab);
             });
@@ -255,6 +371,33 @@ function initialiseTabs() {
                 switching = false;
             }, 280);
         });
+    });
+
+    const initialTab = getHashTab();
+    if (initialTab) {
+        setActiveTabState(initialTab);
+        if (initialTab === 'sessions') {
+            refreshSessions();
+        }
+    } else {
+        updateHash(getActiveProfileTab());
+    }
+
+    window.addEventListener('hashchange', () => {
+        if (switching) {
+            return;
+        }
+
+        const hashTab = getHashTab();
+        if (!hashTab) {
+            updateHash(getActiveProfileTab());
+            return;
+        }
+
+        setActiveTabState(hashTab);
+        if (hashTab === 'sessions') {
+            refreshSessions();
+        }
     });
 }
 
@@ -289,12 +432,23 @@ async function save({ allowRetry = true } = {}) {
 
     clearProfileStatus();
 
+    if (!username) {
+        setProfileStatus('Username cannot be blank.', 'error');
+        return;
+    }
+
     if (!EMAIL_PATTERN.test(email)) {
         setProfileStatus('Wrong email format.', 'error');
         return;
     }
 
+    if (username === currentProfileSnapshot.username && email === currentProfileSnapshot.email) {
+        setProfileStatus('No changes to save.', 'error');
+        return;
+    }
+
     try {
+        setSaveButtonLoading(true);
         const response = await fetch('/api/profile', {
             method: 'POST',
             headers: {
@@ -336,6 +490,8 @@ async function save({ allowRetry = true } = {}) {
             setProfileStatus('Network error while saving profile.', 'error');
         }
         console.error(error.message);
+    } finally {
+        setSaveButtonLoading(false);
     }
 }
 
@@ -501,10 +657,11 @@ function renderSessions(sessions) {
         button.addEventListener('click', async () => {
             const sessionId = button.getAttribute('data-delete-session');
             const isCurrentSession = button.getAttribute('data-current-session') === 'true';
-            const confirmed = window.confirm(
+            const confirmed = await confirmSessionAction(
                 isCurrentSession
                     ? 'This will log out your current device. Continue?'
-                    : 'Remove this session from your account?'
+                    : 'Remove this session from your account?',
+                isCurrentSession ? 'Log out' : 'Remove session'
             );
 
             if (!confirmed) {
@@ -517,6 +674,11 @@ function renderSessions(sessions) {
 }
 
 async function updateProfile(data) {
+    currentProfileSnapshot = {
+        username: (data.username || '').trim(),
+        email: (data.email || '').trim()
+    };
+
     document.getElementById('username').value = data.username || '';
     const usernameHeader = document.getElementById('username-header');
     if (usernameHeader) {
@@ -562,13 +724,20 @@ async function updateProfile(data) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     initialiseTabs();
+    initialiseSessionConfirmModal();
+    syncProfileSnapshotFromDom();
     window.addEventListener('resize', positionSessionToast);
     document.getElementById('page-refresh')?.addEventListener('click', async () => {
-        if (getActiveProfileTab() === 'sessions') {
-            await refreshSessions();
-            return;
+        setRefreshButtonLoading(true);
+        try {
+            if (getActiveProfileTab() === 'sessions') {
+                await refreshSessions();
+                return;
+            }
+            await refresh();
+        } finally {
+            setRefreshButtonLoading(false);
         }
-        await refresh();
     });
     document.getElementById('save-profile')?.addEventListener('click', () => save());
     await refreshSessions();
