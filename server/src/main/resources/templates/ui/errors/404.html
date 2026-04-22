@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>ULTRACARDS - 404</title>
-    
+
+    <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
@@ -12,6 +13,9 @@
 <section class="hero container">
     <h2>Error 404</h2>
     <h3>This page does not exist! :3</h3>
+    <p>
+        <a th:href="@{/}" class="btn btn-accent">Go to home</a>
+    </p>
 </section>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
     <script th:src="@{/js/ui/errors/404.js}"></script>

@@ -2,7 +2,6 @@ package com.ultracards.ui.controllers;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.auth.AuthService;
-import com.ultracards.server.service.auth.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,10 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @RequestMapping("/profile")
 @RequiredArgsConstructor
-public class ProfileController {
+public class ProfileUIController {
 
     private final AuthService authService;
-    private final TokenService tokenService;
 
     @GetMapping
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -27,7 +25,7 @@ public class ProfileController {
     ) {
         var isAuthenticated = user != null;
         model.addAttribute("isAuthenticated", isAuthenticated);
-        var profile = authService.getProfile(tokenService.getTokenByUser(user));
+        var profile = authService.getProfile(user);
         model.addAttribute("username", user.getUsername());
         model.addAttribute("profile", profile);
         return "ui/profile";

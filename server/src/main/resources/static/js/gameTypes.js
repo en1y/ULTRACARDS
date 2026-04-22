@@ -3,7 +3,7 @@ let profile = {
     id: 0
 };
 
-fetch('/api/auth/profile')
+fetch('/api/profile')
     .then((profileResponse) => {
         if (!profileResponse.ok) {
             throw new Error(`Response status: ${profileResponse.status}`);

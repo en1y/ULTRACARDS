@@ -4,13 +4,14 @@ import com.ultracards.gateway.dto.auth.TokenDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.repositories.auth.TokenRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.AccessDeniedException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
@@ -36,7 +37,8 @@ public class TokenService {
         return URL_ENCODER.encodeToString(bytes);
     }
 
-    private TokenEntity createToken(UserEntity user) {
+    @Transactional
+    public TokenEntity createToken(UserEntity user) {
         try {
             var token = new TokenEntity();
             token.setUser(user);
@@ -50,7 +52,7 @@ public class TokenService {
 
     public TokenEntity getToken(String token) {
          return tokenRepository.findByToken(token)
-                .orElseThrow( () -> new IllegalArgumentException("Invalid token") );
+                .orElseThrow( () -> new IllegalArgumentException("Invalid token"));
     }
 
     public ValidationResult validateToken(TokenDTO token) {
@@ -70,11 +72,11 @@ public class TokenService {
         return ValidationResult.logout();
     }
 
-    public TokenEntity rotateToken (String token) throws AccessDeniedException {
+    public TokenEntity rotateToken (String token) {
         return rotateToken(new TokenDTO(token));
     }
 
-    public TokenEntity rotateToken (TokenDTO token) throws AccessDeniedException {
+    public TokenEntity rotateToken (TokenDTO token) {
         var validatedToken = validateToken(token);
         var tokenValidationStatus = validatedToken.status();
 
@@ -90,14 +92,6 @@ public class TokenService {
 
         log.error("Token status \"{}\" is not supported. Redirecting to logout.", tokenValidationStatus);
         throw new UnsupportedOperationException("Invalid token status: " + tokenValidationStatus);
-    }
-
-    public TokenEntity getTokenByUser(UserEntity user) {
-        var token = tokenRepository.findByUser(user);
-        if (token.isPresent()) {
-            return validateToken(new TokenDTO(token.get().getToken())).token();
-        }
-        return createToken(user);
     }
 
     public void deleteTokenIfExists(String token) {

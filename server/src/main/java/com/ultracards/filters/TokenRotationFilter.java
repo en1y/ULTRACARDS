@@ -1,18 +1,20 @@
 package com.ultracards.filters;
 
 import com.ultracards.server.entity.auth.TokenEntity;
+import com.ultracards.server.service.auth.SessionService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.LazyInitializationException;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -20,8 +22,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
-import java.util.HashSet;
 
 @Component
 @RequiredArgsConstructor
@@ -30,6 +30,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(TokenRotationFilter.class);
 
     private final TokenService tokenService;
+    private final SessionService sessionService;
 
     @Value("${app.cookie-token.duration-days:15}")
     private int tokenDurationDays;
@@ -44,9 +45,9 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     private String cookieDomain;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest req,
-                                    HttpServletResponse res,
-                                    FilterChain chain) throws IOException, ServletException {
+    protected void doFilterInternal(@NonNull HttpServletRequest req,
+                                    @NonNull HttpServletResponse res,
+                                    @NonNull FilterChain chain) throws IOException, ServletException {
         if (shouldBypass(req)) {
             chain.doFilter(req, res);
             return;
@@ -60,27 +61,22 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         }
 
         if (!tokenService.tokenExists(token)) {
-
-            var delete_refresh_token = new Cookie("refreshToken", "");
-            delete_refresh_token.setMaxAge(0);
-            delete_refresh_token.setPath("/");
-
-            res.addCookie(delete_refresh_token);
-            res.sendRedirect("/");
+            handleUnauthorized(req, res);
             return;
         }
 
         try {
             // 1) rotate token
-            var rotatedToken = tokenService.rotateToken(token);
+            var session = sessionService.handleSession(token, req);
+            var rotatedToken = session.getToken();
 
             // 2) reissue cookie
             var cookie = getRefreshToken(rotatedToken);
 
             res.addHeader("Set-Cookie", cookie.toString());
 
-            // 3) expose token string for controllers that use @RequestAttribute("tokenEntity")
-            req.setAttribute("refreshToken", rotatedToken.getToken());
+            // 3) expose token string for controllers that use @RequestAttribute("token")
+            req.setAttribute("token", rotatedToken.getToken());
 
             // 4) authenticate the request so Spring Security stops throwing 401
             var user = rotatedToken.getUser();
@@ -98,7 +94,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             // rotation/validation failed -> unauthenticated
             log.error("Error while validating with token.", ex);
             SecurityContextHolder.clearContext();
-            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            handleUnauthorized(req, res);
         }
     }
 
@@ -115,15 +111,45 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         return cookie.build();
     }
 
+    private void handleUnauthorized(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        expireRefreshToken(res);
+        SecurityContextHolder.clearContext();
+
+        if (req.getRequestURI().startsWith("/api/")) {
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        try {
+            req.getRequestDispatcher("/errors/401").forward(req, res);
+        } catch (ServletException ex) {
+            throw new IOException("Failed to forward to 401 page", ex);
+        }
+    }
+
+    private void expireRefreshToken(HttpServletResponse res) {
+        var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(sameSite)
+                .maxAge(0);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            expiredRefreshToken.domain(cookieDomain);
+        }
+
+        res.addHeader("Set-Cookie", expiredRefreshToken.build().toString());
+    }
+
     private boolean shouldBypass(HttpServletRequest req) {
         var path = req.getRequestURI();
         var method = req.getMethod();
         if ("OPTIONS".equals(method)) return true;
         // endpoints where rotation/auth is inappropriate
         return path.startsWith("/active")
-                || path.startsWith("/public")
-                || path.startsWith("/api/auth/logout")
-                || path.startsWith("/api/auth/email/");
+                || path.startsWith("/public");
     }
 
     private String readRefreshToken(HttpServletRequest req) {
@@ -134,4 +160,3 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         return null;
     }
 }
-

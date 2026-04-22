@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ULTRACARDS - 401</title>
+    <title>ULTRACARDS - 500</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
@@ -11,14 +11,13 @@
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
 <section class="hero container">
-    <h2>Error 401</h2>
-    <h3 th:if="${!isAuthenticated}">You have to log in to access this page :O</h3>
-    <h3 th:if="${isAuthenticated}">You do have permission to access this page :O</h3>
+    <h2>Error 500</h2>
+    <h3>Something broke on our side. Try again in a moment.</h3>
     <p>
         <a th:href="@{/}" class="btn btn-accent">Go to home</a>
     </p>
 </section>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-    <script th:src="@{/js/ui/errors/401.js}"></script>
+    <script th:src="@{/js/ui/errors/500.js}"></script>
 </body>
 </html>

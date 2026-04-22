@@ -1,5 +1,6 @@
 package com.ultracards.server.entity;
 
+import com.ultracards.server.entity.auth.TokenEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.enums.UserStatus;
 import jakarta.persistence.*;
@@ -66,6 +67,9 @@ public class UserEntity implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 32)
     private Set<UserRole> roles = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<TokenEntity> tokens = new ArrayList<>();
 
     /* -------- Basic entity constructor -------- */
 

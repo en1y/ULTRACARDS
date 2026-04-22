@@ -9,5 +9,5 @@ import java.util.UUID;
 
 public interface TokenRepository extends JpaRepository<TokenEntity, UUID> {
     Optional<TokenEntity> findByToken(String token);
-    Optional<TokenEntity> findByUser(UserEntity user);
+    Optional<TokenEntity> findFirstByUserOrderByExpiresAtDesc(UserEntity user);
 }

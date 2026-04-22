@@ -69,7 +69,7 @@
         connectLobbyWs();
 
         function loadProfile() {
-            fetch('/api/auth/profile', { credentials: 'include' })
+            fetch('/api/profile', { credentials: 'include' })
                 .then((response) => response.ok ? response.json() : Promise.reject(response.status))
                 .then((profile) => {
                     state.currentUser = profile;
