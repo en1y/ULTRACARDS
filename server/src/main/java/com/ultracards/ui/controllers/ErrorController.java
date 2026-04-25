@@ -10,17 +10,16 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @Controller
-@RequestMapping("/errors")
-@ControllerAdvice("com.ultracards.ui.controllers")
+@ControllerAdvice
 public class ErrorController {
-    @GetMapping("/401")
+    @GetMapping("/errors/401")
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(AccessDeniedException.class)
     public String error401(
             @AuthenticationPrincipal UserEntity user,
             Model model
@@ -29,8 +28,9 @@ public class ErrorController {
         return "ui/errors/401";
     }
 
-    @GetMapping("/404")
+    @GetMapping("/errors/404")
     @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NoResourceFoundException.class)
     public String error404(
             @AuthenticationPrincipal UserEntity user,
             Model model
@@ -39,45 +39,13 @@ public class ErrorController {
         return "ui/errors/404";
     }
 
-    @GetMapping("/500")
+    @GetMapping("/errors/500")
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(Exception.class)
     public String error500(
             @AuthenticationPrincipal UserEntity user,
             Model model
     ) {
-        populateAuthModel(user, model);
-        return "ui/errors/500";
-    }
-
-    @ExceptionHandler(NoResourceFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public String handleNoResourceFound(
-            @AuthenticationPrincipal UserEntity user,
-            Model model) {
-        populateAuthModel(user, model);
-        return "ui/errors/404";
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public String handleAccessDenied(
-            AccessDeniedException exception,
-            @AuthenticationPrincipal UserEntity user,
-            Model model
-    ) {
-        log.warn("Unauthorized UI access: {}", exception.getMessage());
-        populateAuthModel(user, model);
-        return "ui/errors/401";
-    }
-
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public String handleServerError(
-            Exception exception,
-            @AuthenticationPrincipal UserEntity user,
-            Model model
-    ) {
-        log.error("Unhandled UI error", exception);
         populateAuthModel(user, model);
         return "ui/errors/500";
     }
