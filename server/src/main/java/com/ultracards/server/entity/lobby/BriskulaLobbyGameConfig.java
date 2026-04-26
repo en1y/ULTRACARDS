@@ -46,15 +46,18 @@ public class BriskulaLobbyGameConfig implements GameConfig {
         return new BriskulaGameEntity(lobbyId, name, owner, this, users);
     }
 
-    public static BriskulaLobbyGameConfig fromDto(BriskulaGameConfigDTO gameConfigDTO, List<UserEntity> users) {
+    public static BriskulaLobbyGameConfig fromDto(BriskulaGameConfigDTO gameConfigDTO, List<UserEntity> users, UserEntity owner) {
         var orderedUsers = new ArrayList<UserEntity>();
         var idUserMap = users.stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
+        var briskulaGameConfig = toBriskulaGameConfig(gameConfigDTO);
 
-        for (var player: gameConfigDTO.getOrderedUsers())
-            if (idUserMap.containsKey(player.getId()))
+        orderedUsers.add(owner);
+        for (var player: gameConfigDTO.getOrderedUsers()) // FIXME: lobby owner can be autokicked
+
+            if ((idUserMap.containsKey(player.getId()) && !player.getId().equals(owner.getId()) && orderedUsers.size() < briskulaGameConfig.getNumberOfPlayers()))
                 orderedUsers.add(idUserMap.get(player.getId()));
 
-        return new BriskulaLobbyGameConfig(toBriskulaGameConfig(gameConfigDTO), orderedUsers);
+        return new BriskulaLobbyGameConfig(briskulaGameConfig, orderedUsers);
     }
 
     private static GamePlayerDTO userToPlayerDto(UserEntity user) {
