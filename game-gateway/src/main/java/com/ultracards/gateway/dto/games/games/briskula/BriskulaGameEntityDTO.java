@@ -28,8 +28,8 @@ public class BriskulaGameEntityDTO extends GameEntityDTO {
     @Getter @Setter
     private GameCardDTO trumpCard;
 
-    public BriskulaGameEntityDTO(UUID id, UUID lobbyId, String name, Map<GamePlayerDTO, Integer> playersCardsMap, List<GameCardDTO> playedCards, int cardsLeftInDeck, Map<GamePlayerDTO, Integer> pointsPerPerson, GamePlayerDTO playersTurn, Instant turnEndTime, Integer turnDurationSeconds, GameCardDTO trumpCard) {
-        super(id, lobbyId, name, playersCardsMap, playedCards, cardsLeftInDeck);
+    public BriskulaGameEntityDTO(UUID id, UUID lobbyId, String name, Map<GamePlayerDTO, Integer> playersCardsMap, List<GameCardDTO> playedCards, int cardsLeftInDeck, Map<GamePlayerDTO, Integer> pointsPerPerson, GamePlayerDTO playersTurn, Instant turnEndTime, Integer turnDurationSeconds, GameCardDTO trumpCard, BriskulaGameConfigDTO gameConfig) {
+        super(id, lobbyId, name, playersCardsMap, playedCards, cardsLeftInDeck, gameConfig);
         this.pointsPerPerson = pointsPerPerson;
         this.playersTurn = playersTurn;
         this.turnEndTime = turnEndTime;

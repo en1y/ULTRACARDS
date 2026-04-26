@@ -51,7 +51,7 @@ public class GameUIController {
         return "ui/game";
     }
 
-    private GameEntityDTO toGameDto(GameEntity<?> game) {
+    private GameEntityDTO toGameDto(GameEntity<?, ?> game) {
         if (game instanceof BriskulaGameEntity briskulaGame) {
             return briskulaGame.createGameDTO();
         }

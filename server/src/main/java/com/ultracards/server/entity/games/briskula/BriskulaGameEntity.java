@@ -8,21 +8,23 @@ import com.ultracards.games.briskula.BriskulaPlayer;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
+import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
+import com.ultracards.server.entity.lobby.GameConfig;
 import com.ultracards.templates.cards.AbstractCard;
 
 import java.util.*;
 
-public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
-
-    public BriskulaGameEntity(UUID lobbyId, String name, UserEntity owner, BriskulaGameConfig briskulaConfig, List<UserEntity> players) {
+public class BriskulaGameEntity extends GameEntity<BriskulaGame, BriskulaLobbyGameConfig> {
+    public BriskulaGameEntity(UUID lobbyId, String name, UserEntity owner, BriskulaLobbyGameConfig briskulaConfig, List<UserEntity> players) {
         var briskulaPlayers = new ArrayList<BriskulaPlayer>();
         for (var user : players) {
             briskulaPlayers.add(new BriskulaPlayerEntity(user.getUsername(), user));
         }
-        super(lobbyId, name, owner, players, GameTypeDTO.Briskula, new BriskulaGame(briskulaConfig, briskulaPlayers));
+        super(lobbyId, name, owner, players, GameTypeDTO.Briskula, new BriskulaGame(briskulaConfig.getGameConfig(), briskulaPlayers), briskulaConfig);
         getGame().start();
     }
 
@@ -48,7 +50,10 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
             }
         }
         return new BriskulaGameEntityDTO(
-            getId(), getLobbyId(), getName(), playerCardsMap, playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, getTurnEndTime(), getTurnDurationSeconds(), GameCardDTO.createCardDTO(getGame().getGameTrumpCard()));
+                getId(), getLobbyId(), getName(), playerCardsMap,
+                playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, getTurnEndTime(),
+                getTurnDurationSeconds(), GameCardDTO.createCardDTO(getGame().getGameTrumpCard()),
+                getGameConfig().toDto());
     }
 
     public boolean playCard(UserEntity user, AbstractCard<?, ?, ? extends AbstractCard<?, ?, ?>> genericCard) {

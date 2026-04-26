@@ -67,7 +67,7 @@ public class LobbyManager {
         return remove(lobby);
     }
 
-    public void putGame(LobbyEntity lobby, GameEntity<?> game) {
+    public void putGame(LobbyEntity lobby, GameEntity<?, ?> game) {
         lobbyByGameId.put(game.getId(), lobby);
     }
 

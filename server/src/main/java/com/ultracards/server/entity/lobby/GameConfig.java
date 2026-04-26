@@ -19,5 +19,5 @@ public interface GameConfig {
 
     GameConfigDTO toDto();
 
-    GameEntity<?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users);
+    GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users);
 }

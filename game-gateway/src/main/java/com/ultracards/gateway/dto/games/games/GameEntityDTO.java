@@ -1,6 +1,7 @@
 package com.ultracards.gateway.dto.games.games;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
 import jakarta.validation.constraints.NotBlank;
@@ -25,4 +26,5 @@ public class GameEntityDTO {
     private Map<GamePlayerDTO, Integer> playersCardsMap;
     @NotNull private List<GameCardDTO> playedCards;
     @NotNull private int cardsLeftInDeck;
+    @NotNull private GameConfigDTO gameConfig;
 }

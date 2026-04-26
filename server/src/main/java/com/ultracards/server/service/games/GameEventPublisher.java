@@ -20,7 +20,7 @@ import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeD
 public class GameEventPublisher {
     private final SimpMessagingTemplate messagingTemplate;
 
-    public void publish(GameEntity<?> gameEntity, GameEventTypeDTO gameEventDTO) {
+    public void publish(GameEntity<?, ?> gameEntity, GameEventTypeDTO gameEventDTO) {
         if (gameEntity.getGameType().equals(GameTypeDTO.Briskula)) {
             var briskulaGame = (BriskulaGameEntity) gameEntity;
             var event = new GameEventDTO(briskulaGame.createGameDTO(), gameEventDTO);

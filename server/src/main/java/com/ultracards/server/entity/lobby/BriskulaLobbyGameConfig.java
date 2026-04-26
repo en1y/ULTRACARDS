@@ -7,6 +7,7 @@ import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,9 +15,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class BriskulaLobbyGameConfig implements GameConfig {
-    private final BriskulaGameConfig gameConfig;
-    private final List<UserEntity> team1;
-    private final List<UserEntity> team2;
+    @Getter private final BriskulaGameConfig gameConfig;
+    @Getter private final List<UserEntity> team1;
+    @Getter private final List<UserEntity> team2;
 
     public BriskulaLobbyGameConfig(BriskulaGameConfigDTO gameConfigDTO) {
         this(
@@ -33,7 +34,7 @@ public class BriskulaLobbyGameConfig implements GameConfig {
     }
 
     @Override
-    public GameConfigDTO toDto() {
+    public BriskulaGameConfigDTO toDto() {
         var normalizedTeams = normalizeTeams();
         return new BriskulaGameConfigDTO(
                 gameConfig.getNumberOfPlayers(),
@@ -45,8 +46,8 @@ public class BriskulaLobbyGameConfig implements GameConfig {
     }
 
     @Override
-    public GameEntity<?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
-        return new BriskulaGameEntity(lobbyId, name, owner, gameConfig, orderPlayers(users));
+    public GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
+        return new BriskulaGameEntity(lobbyId, name, owner, this, orderPlayers(users));
     }
 
     private List<UserEntity> orderPlayers(List<UserEntity> users) {

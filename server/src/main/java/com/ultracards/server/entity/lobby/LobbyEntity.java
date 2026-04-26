@@ -66,7 +66,7 @@ public class LobbyEntity {
         return !owner.equals(user) && users.remove(user);
     }
 
-    public GameEntity<?> createGame() {
+    public GameEntity<?, ?> createGame() {
         var game = lobbyGameConfig.createGame(getId(), getName(), getOwner(), getUsers());
         lobbyState = LobbyState.STARTED;
         return game;
