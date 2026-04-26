@@ -396,7 +396,10 @@
                 return;
             }
 
-            dom.players.innerHTML = players.map((player) => {
+            const helper = isHost && isBriskulaOrderReorderable(state.lobby)
+                ? '<p class="team-board-helper">Drag and drop the players to rearrange order</p>'
+                : '';
+            dom.players.innerHTML = helper + players.map((player) => {
                 const playerId = String(player.id);
                 const owner = host && String(host.id) === playerId;
                 const current = currentUserId && currentUserId === playerId;
