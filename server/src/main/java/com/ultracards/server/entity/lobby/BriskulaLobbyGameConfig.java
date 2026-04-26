@@ -39,13 +39,17 @@ public class BriskulaLobbyGameConfig implements GameConfig {
 
     @Override
     public GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
+        if (gameConfig.areTeamsEnabled())
+            return new BriskulaGameEntity(lobbyId, name, owner, this,
+                    new ArrayList<>(List.of(orderedUsers.get(0), users.get(2), users.get(1), users.get(3))));
+
         return new BriskulaGameEntity(lobbyId, name, owner, this, orderedUsers);
     }
 
     public static BriskulaLobbyGameConfig fromDto(BriskulaGameConfigDTO gameConfigDTO, List<UserEntity> users) {
         var orderedUsers = new ArrayList<UserEntity>();
         var idUserMap = users.stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
-        
+
         for (var player: gameConfigDTO.getOrderedUsers())
             if (idUserMap.containsKey(player.getId()))
                 orderedUsers.add(idUserMap.get(player.getId()));
