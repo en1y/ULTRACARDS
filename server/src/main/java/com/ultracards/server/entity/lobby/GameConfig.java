@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface GameConfig {
-    static GameConfig from(GameTypeDTO gameType, GameConfigDTO gameConfigDTO) {
+    static GameConfig from(GameTypeDTO gameType, GameConfigDTO gameConfigDTO, List<UserEntity> users) {
         return switch (gameType) {
-            case Briskula -> new BriskulaLobbyGameConfig((BriskulaGameConfigDTO) gameConfigDTO);
+            case Briskula -> new BriskulaLobbyGameConfig((BriskulaGameConfigDTO) gameConfigDTO, users);
             default -> throw new UnsupportedOperationException("Game config is not supported for " + gameType + ".");
         };
     }

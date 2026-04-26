@@ -37,7 +37,7 @@ public class LobbyEntity {
         users.add(owner);
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
-        this.lobbyGameConfig = GameConfig.from(gameType, gameConfig);
+        this.lobbyGameConfig = GameConfig.from(gameType, gameConfig, users);
         this.lobbyState = LobbyState.OPEN;
         this.closedAt = createdAt.plusSeconds(lobbyTimer);
     }
@@ -46,8 +46,14 @@ public class LobbyEntity {
         return lobbyGameConfig.toDto();
     }
 
+    public void setGameConfig(GameConfig gameConfig) {
+        this.lobbyGameConfig = gameConfig;
+        if (gameType.equals(GameTypeDTO.Briskula))
+            this.users = ((BriskulaLobbyGameConfig) gameConfig).getOrderedUsers();
+    }
+
     public void setGameConfig(GameConfigDTO gameConfig) {
-        this.lobbyGameConfig = GameConfig.from(gameType, gameConfig);
+        this.lobbyGameConfig = GameConfig.from(gameType, gameConfig, users);
     }
 
     public boolean containsUser(UserEntity user) {

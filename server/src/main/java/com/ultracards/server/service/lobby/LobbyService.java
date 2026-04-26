@@ -125,7 +125,7 @@ public class LobbyService {
                 var config = lobbyDTO.getGameConfig();
                 if (config != null) {
                     if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
-                        lobby.setLobbyGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers()));
+                        lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers()));
                     } else {
                         lobby.setGameConfig(config);
                     }
