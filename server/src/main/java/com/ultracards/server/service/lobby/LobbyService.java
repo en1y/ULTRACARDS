@@ -118,6 +118,7 @@ public class LobbyService {
     public GameLobbyDTO updateLobby(@Valid GameLobbyDTO lobbyDTO, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyDTO.getId());
         if (lobby != null && lobby.getOwner().equals(user)) {
+            var previousUsers = new ArrayList<>(lobby.getUsers());
             lobby.setName(lobbyDTO.getName());
             lobby.setMinPlayers(lobbyDTO.getMinPlayers());
             lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
@@ -133,6 +134,7 @@ public class LobbyService {
             } catch (Exception e) {
                 log.warn(e.getMessage());
             }
+            removeStaleLobbyCacheEntries(lobby, previousUsers);
             eventPublisher.publish(lobby, UPDATED);
             return lobby.createLobbyDTO();
         }
@@ -192,7 +194,12 @@ public class LobbyService {
     }
 
     public LobbyEntity getLobbyByUser(UserEntity user) {
-        return lobbyCache.get(user.getId());
+        var lobby = lobbyCache.get(user.getId());
+        if (lobby != null && !lobby.containsUser(user)) {
+            lobbyCache.remove(user.getId());
+            return null;
+        }
+        return lobby;
     }
 
     private void syncLobbyConfig(LobbyEntity lobby) {
@@ -203,6 +210,14 @@ public class LobbyService {
         var config = lobby.getGameConfig();
         if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
             lobby.setLobbyGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
+        }
+    }
+
+    private void removeStaleLobbyCacheEntries(LobbyEntity lobby, List<UserEntity> previousUsers) {
+        for (var previousUser : previousUsers) {
+            if (!lobby.containsUser(previousUser)) {
+                lobbyCache.remove(previousUser.getId());
+            }
         }
     }
 

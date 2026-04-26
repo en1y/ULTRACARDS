@@ -417,7 +417,7 @@
                                 <div class="player-role">${escapeHtml(role)}</div>
                             </div>
                         </div>
-                        ${canKick ? `<button class="btn danger" type="button" data-kick-player="${player.id}">Kick</button>` : ''}
+                        ${renderKickAction(canKick, player.id)}
                     </div>
                 `;
             }).join('');
@@ -473,7 +473,7 @@
             const orderIndex = teamNumber === 1 ? index : splitIndex + index;
 
             return `
-                <div class="player-row team-player-card team-player-card-${tone}" data-team-player-card="${player.id}" data-player-card="${player.id}" data-team-number="${teamNumber}" data-team-order-index="${orderIndex}">
+                <div class="player-row team-player-card team-player-card-${tone}${owner ? ' team-player-card-owner' : ''}" data-team-player-card="${player.id}" data-player-card="${player.id}" data-team-number="${teamNumber}" data-team-order-index="${orderIndex}">
                     <div class="player-main">
                         <div class="player-avatar">${escapeHtml(initial)}</div>
                         <div>
@@ -487,9 +487,16 @@
                             </div>
                         </div>
                     </div>
-                    ${canKick ? `<button class="btn danger" type="button" data-kick-player="${player.id}">Kick</button>` : ''}
+                    ${renderKickAction(canKick, player.id)}
                 </div>
             `;
+        }
+
+        function renderKickAction(canKick, playerId) {
+            if (canKick) {
+                return `<button class="btn danger" type="button" data-kick-player="${playerId}">Kick</button>`;
+            }
+            return '';
         }
 
         function sortPlayers(players, host) {
@@ -859,6 +866,9 @@
                 splitIndex: teamState.team1Capacity,
                 previewOrderIds: getOrderedTeamPlayers(teamState).map((player) => String(player.id)),
                 startSignature: buildLobbyTeamSignature(state.lobby),
+                previewSignature: buildLobbyTeamSignature(state.lobby),
+                pendingDragPoint: null,
+                moveFrame: null,
                 offsetX: event.clientX - rect.left,
                 offsetY: event.clientY - rect.top,
                 containerBounds: containerRect ? {
@@ -895,6 +905,9 @@
                 proxy,
                 previewOrderIds: orderedPlayers.map((player) => String(player.id)),
                 startSignature: buildLobbyOrderSignature(state.lobby),
+                previewSignature: buildLobbyOrderSignature(state.lobby),
+                pendingDragPoint: null,
+                moveFrame: null,
                 offsetX: event.clientX - rect.left,
                 offsetY: event.clientY - rect.top,
                 containerBounds: containerRect ? {
@@ -912,17 +925,43 @@
         }
 
         function handleTeamDragMove(event) {
-            if (!state.dragSession) {
+            if (!state.dragSession || state.dragSession.pointerId !== event.pointerId) {
                 return;
             }
 
             const dragPoint = resolveConstrainedDragPoint(event.clientX, event.clientY);
+            state.dragSession.pendingDragPoint = dragPoint;
+            if (state.dragSession.moveFrame) {
+                return;
+            }
+
+            state.dragSession.moveFrame = window.requestAnimationFrame(processDragMoveFrame);
+        }
+
+        function processDragMoveFrame() {
+            const dragSession = state.dragSession;
+            if (!dragSession) {
+                return;
+            }
+
+            dragSession.moveFrame = null;
+            const dragPoint = dragSession.pendingDragPoint;
+            dragSession.pendingDragPoint = null;
+            if (!dragPoint) {
+                return;
+            }
+
             positionTeamDragProxy(dragPoint.x, dragPoint.y);
-            if (state.dragSession.mode === 'list') {
+            if (dragSession.mode === 'list') {
                 handlePlayerListDragMove(dragPoint.x, dragPoint.y);
                 return;
             }
-            const insertionIndex = resolvePreviewInsertionIndex(dragPoint.x, dragPoint.y);
+
+            handleTeamBoardDragMove(dragPoint.x, dragPoint.y);
+        }
+
+        function handleTeamBoardDragMove(clientX, clientY) {
+            const insertionIndex = resolvePreviewInsertionIndex(clientX, clientY);
             if (insertionIndex == null) {
                 return;
             }
@@ -933,11 +972,12 @@
                 insertionIndex
             );
             const nextSignature = buildTeamBoardSignature(nextOrderIds, state.dragSession.splitIndex);
-            if (nextSignature === captureTeamBoardSignature()) {
+            if (nextSignature === state.dragSession.previewSignature) {
                 return;
             }
 
             state.dragSession.previewOrderIds = nextOrderIds;
+            state.dragSession.previewSignature = nextSignature;
             applyOrderedPlayersToTeamBoard(nextOrderIds, state.dragSession.splitIndex, {
                 animate: true,
                 skipPlayerId: state.dragSession.playerId
@@ -956,11 +996,12 @@
                 insertionIndex
             );
             const nextSignature = buildPlayerListSignature(nextOrderIds);
-            if (nextSignature === capturePlayerListSignature()) {
+            if (nextSignature === state.dragSession.previewSignature) {
                 return;
             }
 
             state.dragSession.previewOrderIds = nextOrderIds;
+            state.dragSession.previewSignature = nextSignature;
             applyOrderedPlayersToPlayerList(nextOrderIds, {
                 animate: true,
                 skipPlayerId: state.dragSession.playerId
@@ -972,6 +1013,7 @@
                 return;
             }
 
+            flushPendingDragMove();
             if (state.dragSession.mode === 'list') {
                 await handlePlayerListDragEnd();
                 return;
@@ -1041,9 +1083,26 @@
                 return;
             }
 
+            if (state.dragSession.moveFrame) {
+                window.cancelAnimationFrame(state.dragSession.moveFrame);
+                state.dragSession.moveFrame = null;
+            }
             state.dragSession.sourceCard?.classList.remove('is-source-hidden');
             state.dragSession.proxy?.remove();
             document.body.classList.remove('is-team-dragging');
+        }
+
+        function flushPendingDragMove() {
+            const dragSession = state.dragSession;
+            if (!dragSession) {
+                return;
+            }
+
+            if (dragSession.moveFrame) {
+                window.cancelAnimationFrame(dragSession.moveFrame);
+                dragSession.moveFrame = null;
+            }
+            processDragMoveFrame();
         }
 
         function positionTeamDragProxy(clientX, clientY) {

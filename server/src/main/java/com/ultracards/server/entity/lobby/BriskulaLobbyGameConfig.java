@@ -50,12 +50,29 @@ public class BriskulaLobbyGameConfig implements GameConfig {
         var orderedUsers = new ArrayList<UserEntity>();
         var idUserMap = users.stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
         var briskulaGameConfig = toBriskulaGameConfig(gameConfigDTO);
+        var maxPlayers = briskulaGameConfig.getNumberOfPlayers();
 
-        orderedUsers.add(owner);
-        for (var player: gameConfigDTO.getOrderedUsers()) // FIXME: lobby owner can be autokicked
-
-            if ((idUserMap.containsKey(player.getId()) && !player.getId().equals(owner.getId()) && orderedUsers.size() < briskulaGameConfig.getNumberOfPlayers()))
-                orderedUsers.add(idUserMap.get(player.getId()));
+        for (var player: gameConfigDTO.getOrderedUsers()) {
+            var user = idUserMap.get(player.getId());
+            if (user != null && !orderedUsers.contains(user)) {
+                orderedUsers.add(user);
+            }
+        }
+        for (var user: users) {
+            if (!orderedUsers.contains(user)) {
+                orderedUsers.add(user);
+            }
+        }
+        if (!orderedUsers.contains(owner)) {
+            orderedUsers.addFirst(owner);
+        }
+        while (orderedUsers.size() > maxPlayers) {
+            var lastIndex = orderedUsers.size() - 1;
+            if (orderedUsers.get(lastIndex).equals(owner)) {
+                lastIndex--;
+            }
+            orderedUsers.remove(lastIndex);
+        }
 
         return new BriskulaLobbyGameConfig(briskulaGameConfig, orderedUsers);
     }
