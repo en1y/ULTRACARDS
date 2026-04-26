@@ -3,6 +3,7 @@ package com.ultracards.server.service.lobby;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.UserService;
@@ -61,6 +62,7 @@ public class LobbyService {
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
         var lobby = lobbyManager.createLobby(gameLobbyDTO, owner);
+        syncLobbyConfig(lobby);
         lobbyCache.put(owner.getId(), lobby);
         chatService.createChat(lobby.getId());
         openLobby(lobby);
@@ -79,6 +81,7 @@ public class LobbyService {
         }
 
         if (lobby.addUser(user)) {
+            syncLobbyConfig(lobby);
             lobbyCache.put(user.getId(), lobby);
             eventPublisher.publish(lobby, UPDATED);
             return JoinLobbyResult.JOINED;
@@ -93,7 +96,10 @@ public class LobbyService {
         if (lobby != null) {
             success = lobby.removeUser(user);
             lobbyCache.remove(user.getId());
-            eventPublisher.publish(lobby, UPDATED);
+            if (success) {
+                syncLobbyConfig(lobby);
+                eventPublisher.publish(lobby, UPDATED);
+            }
         }
         return lobby != null && success;
     }
@@ -112,17 +118,23 @@ public class LobbyService {
     public GameLobbyDTO updateLobby(@Valid GameLobbyDTO lobbyDTO, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyDTO.getId());
         if (lobby != null && lobby.getOwner().equals(user)) {
+            var previousUsers = new ArrayList<>(lobby.getUsers());
             lobby.setName(lobbyDTO.getName());
             lobby.setMinPlayers(lobbyDTO.getMinPlayers());
             lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
             try {
-                var config = (BriskulaGameConfigDTO) lobbyDTO.getGameConfig();
+                var config = lobbyDTO.getGameConfig();
                 if (config != null) {
-                    lobby.setGameConfig(config);
+                    if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
+                        lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
+                    } else {
+                        lobby.setGameConfig(config);
+                    }
                 }
             } catch (Exception e) {
                 log.warn(e.getMessage());
             }
+            removeStaleLobbyCacheEntries(lobby, previousUsers);
             eventPublisher.publish(lobby, UPDATED);
             return lobby.createLobbyDTO();
         }
@@ -132,11 +144,13 @@ public class LobbyService {
     public GameLobbyDTO kickPlayer(@NotNull Long playerToKickId, UserEntity owner) {
         var lobby = lobbyManager.getLobby(owner);
         if (lobby != null) {
-            lobby.removeUser(
-                    userService.getUserById(playerToKickId));
-            lobbyCache.remove(playerToKickId);
-            eventPublisher.publish(lobby, UPDATED);
-            return lobby.createLobbyDTO();
+            var removed = lobby.removeUser(userService.getUserById(playerToKickId));
+            if (removed) {
+                syncLobbyConfig(lobby);
+                lobbyCache.remove(playerToKickId);
+                eventPublisher.publish(lobby, UPDATED);
+                return lobby.createLobbyDTO();
+            }
         }
         return null;
     }
@@ -172,7 +186,7 @@ public class LobbyService {
     public List<GameLobbyDTO> getLobbies() {
         var lobbies = lobbyManager.getLobbies();
         var res =  new ArrayList<GameLobbyDTO>(lobbies.size());
-        for (var l:  lobbies) {
+        for (var l: lobbies) {
             if (l.getLobbyState().equals(LobbyState.OPEN))
                 res.add(l.createLobbyDTO());
         }
@@ -180,7 +194,31 @@ public class LobbyService {
     }
 
     public LobbyEntity getLobbyByUser(UserEntity user) {
-        return lobbyCache.get(user.getId());
+        var lobby = lobbyCache.get(user.getId());
+        if (lobby != null && !lobby.containsUser(user)) {
+            lobbyCache.remove(user.getId());
+            return null;
+        }
+        return lobby;
+    }
+
+    private void syncLobbyConfig(LobbyEntity lobby) {
+        if (lobby == null) {
+            return;
+        }
+
+        var config = lobby.getGameConfig();
+        if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
+            lobby.setLobbyGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
+        }
+    }
+
+    private void removeStaleLobbyCacheEntries(LobbyEntity lobby, List<UserEntity> previousUsers) {
+        for (var previousUser : previousUsers) {
+            if (!lobby.containsUser(previousUser)) {
+                lobbyCache.remove(previousUser.getId());
+            }
+        }
     }
 
     @Bean(name = "openLobby")

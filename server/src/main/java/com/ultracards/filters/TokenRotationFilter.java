@@ -112,6 +112,11 @@ public class TokenRotationFilter extends OncePerRequestFilter {
     }
 
     private void handleUnauthorized(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        if (res.isCommitted()) {
+            SecurityContextHolder.clearContext();
+            return;
+        }
+
         expireRefreshToken(res);
         SecurityContextHolder.clearContext();
 
@@ -120,15 +125,14 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             return;
         }
 
-        res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        try {
-            req.getRequestDispatcher("/errors/401").forward(req, res);
-        } catch (ServletException ex) {
-            throw new IOException("Failed to forward to 401 page", ex);
-        }
+        res.sendRedirect("/errors/401");
     }
 
     private void expireRefreshToken(HttpServletResponse res) {
+        if (res.isCommitted()) {
+            return;
+        }
+
         var expiredRefreshToken = ResponseCookie.from("refreshToken", "")
                 .path("/")
                 .httpOnly(true)
@@ -149,7 +153,14 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         if ("OPTIONS".equals(method)) return true;
         // endpoints where rotation/auth is inappropriate
         return path.startsWith("/active")
-                || path.startsWith("/public");
+                || path.startsWith("/public")
+                || path.startsWith("/errors/")
+                || path.startsWith("/css/")
+                || path.startsWith("/js/")
+                || path.startsWith("/pics/")
+                || path.equals("/favicon.ico")
+                || path.equals("/robots.txt")
+                || path.equals("/sitemap.xml");
     }
 
     private String readRefreshToken(HttpServletRequest req) {

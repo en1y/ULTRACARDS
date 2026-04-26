@@ -10,13 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GameManager {
-    private final Map<UUID, GameEntity<?>> gamesById = new ConcurrentHashMap<>();
-    private final Map<Long, GameEntity<?>> gamesByUser = new ConcurrentHashMap<>();
-    private final Map<UUID, GameEntity<?>> gamesByLobby = new ConcurrentHashMap<>();
-    private final Map<UUID, GameEntity<?>>  lobbyByGameId = new ConcurrentHashMap<>();
-    private final Map<GameTypeDTO, List<GameEntity<?>>> gamesByGameType = new ConcurrentHashMap<>();
+    private final Map<UUID, GameEntity<?, ?>> gamesById = new ConcurrentHashMap<>();
+    private final Map<Long, GameEntity<?, ?>> gamesByUser = new ConcurrentHashMap<>();
+    private final Map<UUID, GameEntity<?, ?>> gamesByLobby = new ConcurrentHashMap<>();
+    private final Map<UUID, GameEntity<?, ?>>  lobbyByGameId = new ConcurrentHashMap<>();
+    private final Map<GameTypeDTO, List<GameEntity<?, ?>>> gamesByGameType = new ConcurrentHashMap<>();
     @Getter
-    private final List<GameEntity<?>> games = Collections.synchronizedList(new ArrayList<>());
+    private final List<GameEntity<?, ?>> games = Collections.synchronizedList(new ArrayList<>());
 
     public GameManager() {
         for (var gt: GameTypeDTO.values()) {
@@ -24,33 +24,33 @@ public class GameManager {
         }
     }
 
-    public GameEntity<?> getGame(UUID id) {
+    public GameEntity<?, ?> getGame(UUID id) {
         return gamesById.get(id);
     }
-    public GameEntity<?> getGame(Long userId) {
+    public GameEntity<?, ?> getGame(Long userId) {
         return gamesByUser.get(userId);
     }
-    public GameEntity<?> getGameByLobbyId(UUID lobbyId) {
+    public GameEntity<?, ?> getGameByLobbyId(UUID lobbyId) {
         return gamesByLobby.get(lobbyId);
     }
-    public List<GameEntity<?>> getGames(GameTypeDTO gameTypeDTO) {
+    public List<GameEntity<?, ?>> getGames(GameTypeDTO gameTypeDTO) {
         return gamesByGameType.get(gameTypeDTO);
     }
 
-    public GameEntity<?> getByLobby(UUID lobbyId) {
+    public GameEntity<?, ?> getByLobby(UUID lobbyId) {
         return lobbyByGameId.get(lobbyId);
     }
 
-    public GameEntity<?> createGame(GameEntity<?> gameEntity) {
+    public GameEntity<?, ?> createGame(GameEntity<?, ?> gameEntity) {
         put(gameEntity);
         lobbyByGameId.put(gameEntity.getLobbyId(), gameEntity);
         return gameEntity;
     }
-    public Boolean deleteGame(GameEntity<?> game) {
+    public Boolean deleteGame(GameEntity<?, ?> game) {
         return remove(game);
     }
 
-    private Boolean remove(GameEntity<?> game) {
+    private Boolean remove(GameEntity<?, ?> game) {
         var g = getGame(game.getId());
         if (g != null) {
             gamesById.remove(g.getId());
@@ -65,7 +65,7 @@ public class GameManager {
         return g != null;
     }
 
-    private void put(GameEntity<?> game) {
+    private void put(GameEntity<?, ?> game) {
         remove(game);
 
         gamesById.put(game.getId(), game);

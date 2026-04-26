@@ -22,7 +22,8 @@
          *   playersTurn?: {name: string, id: (string|null)}|null,
          *   turnEndTime?: (string|null),
          *   turnDurationSeconds?: (number|null),
-         *   trumpCard?: GameCard|null
+         *   trumpCard?: GameCard|null,
+         *   gameConfig?: Object|null
          * }} GameState
          */
         const gameEl = document.getElementById('game-container');
@@ -317,11 +318,11 @@
             updateTurn(game.playersTurn);
             if (state.pending.size) scheduleHandRefresh(4);
             if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
-                const winners = result.gameWinners.map((winner) => winner.name).join(', ');
+                const winners = formatWinnerText(result.gameWinners, game);
                 state.endState = {
                     title: 'Match Result',
                     winnersText: winners,
-                    metaText: 'Game ended.'
+                    metaText: buildResultMetaText(result.gameWinners, game)
                 };
                 renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
                 startLobbyReturnCountdown();
@@ -458,8 +459,10 @@
         function renderPlayers(game) {
             if (!dom.ring) return;
             const players = buildPlayers(game);
+            const teamState = resolveTeams(game);
             gameLayout?.classList.toggle('is-two-player', players.length === 2);
             gameLayout?.classList.toggle('is-four-player', players.length === 4);
+            gameLayout?.classList.toggle('is-team-game', !!teamState);
             const existingSeats = new Map();
             Array.from(dom.ring.children).forEach((seat) => {
                 const key = seat.dataset.playerKey;
@@ -484,6 +487,11 @@
                     name.className = 'seat-name';
                     seat.appendChild(name);
 
+                    const badge = document.createElement('div');
+                    badge.className = 'seat-team-badge';
+                    badge.hidden = true;
+                    seat.appendChild(badge);
+
                     const cards = document.createElement('div');
                     cards.className = 'seat-cards';
                     seat.appendChild(cards);
@@ -495,13 +503,26 @@
                 existingSeats.delete(key);
 
                 const isSelf = isCurrentUser(player);
+                const teamNumber = getPlayerTeamNumber(teamState, player);
+                const teamTone = resolvePlayerTeamTone(teamState, player);
                 if (player.id) seat.dataset.playerId = String(player.id);
                 seat.classList.toggle('is-turn', isSamePlayer(player, game.playersTurn));
                 seat.classList.toggle('is-self', isSelf);
+                seat.classList.remove('team-seat-ally', 'team-seat-enemy', 'team-seat-neutral');
+                seat.classList.remove('team-seat-1', 'team-seat-2');
+                seat.classList.add(`team-seat-${teamTone}`);
+                if (teamNumber != null) {
+                    seat.classList.add(`team-seat-${teamNumber}`);
+                }
                 if (isSelf) {
                     seat.dataset.isSelf = '1';
                 } else {
                     delete seat.dataset.isSelf;
+                }
+                if (teamNumber != null) {
+                    seat.dataset.teamNumber = String(teamNumber);
+                } else {
+                    delete seat.dataset.teamNumber;
                 }
                 seat.dataset.seatIndex = String(index);
                 seat.dataset.seatTotal = String(players.length || 1);
@@ -514,6 +535,13 @@
                 const name = seat.querySelector('.seat-name');
                 if (name) {
                     name.textContent = player.name || 'Player';
+                }
+
+                const badge = seat.querySelector('.seat-team-badge');
+                if (badge) {
+                    const badgeText = formatSeatTeamBadge(teamState, player);
+                    badge.textContent = badgeText;
+                    badge.hidden = !badgeText;
                 }
 
                 const cardsCount = player.cards != null ? player.cards : (player.points ?? 0);
@@ -795,33 +823,174 @@
          */
         function buildPlayers(game) {
             const players = new Map();
+            const orderedKeys = [];
+            const registerPlayer = (candidate, keyFallback = '') => {
+                const parsed = parsePlayerKey(candidate);
+                const idKey = parsed.id || parsed.name || keyFallback;
+                if (!idKey) {
+                    return null;
+                }
+                const existing = players.get(idKey) || {};
+                players.set(idKey, {...existing, ...parsed});
+                if (!orderedKeys.includes(idKey)) {
+                    orderedKeys.push(idKey);
+                }
+                return idKey;
+            };
+
+            (game.playersOrder || []).forEach((player) => {
+                registerPlayer(player);
+            });
+
             const cardsMap = game.playersCardsMap || {};
             Object.keys(cardsMap).forEach((key) => {
-                const parsed = parsePlayerKey(key);
-                const idKey = parsed.id || parsed.name || key;
-                players.set(idKey, {...parsed, cards: cardsMap[key]});
+                const idKey = registerPlayer(key, key);
+                if (!idKey) {
+                    return;
+                }
+                const existing = players.get(idKey) || {};
+                players.set(idKey, {...existing, cards: cardsMap[key]});
             });
             const pointsMap = game.pointsPerPerson || {};
             Object.keys(pointsMap).forEach((key) => {
-                const parsed = parsePlayerKey(key);
-                const idKey = parsed.id || parsed.name || key;
-                const existing = players.get(idKey) || parsed;
+                const idKey = registerPlayer(key, key);
+                if (!idKey) {
+                    return;
+                }
+                const existing = players.get(idKey) || {};
                 players.set(idKey, {...existing, points: pointsMap[key]});
             });
-            const list = Array.from(players.values());
-            list.sort((a, b) => {
-                const aNum = Number(a.id);
-                const bNum = Number(b.id);
-                if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
-                return String(a.name).localeCompare(String(b.name));
-            });
-            if (currentUserId) {
-                const idx = list.findIndex((player) => isCurrentUser(player));
-                if (idx > 0) {
-                    return list.slice(idx).concat(list.slice(0, idx));
+            const orderedPlayers = orderedKeys
+                .map((key) => players.get(key))
+                .filter(Boolean);
+            if (!currentUserId) {
+                return orderedPlayers;
+            }
+
+            const currentIndex = orderedPlayers.findIndex((player) => isCurrentUser(player));
+            if (currentIndex <= 0) {
+                return orderedPlayers;
+            }
+
+            return orderedPlayers
+                .slice(currentIndex)
+                .concat(orderedPlayers.slice(0, currentIndex));
+        }
+
+        function resolveTeams(game) {
+            const config = game?.gameConfig;
+            if (!config || config.teamsEnabled !== true) {
+                return null;
+            }
+
+            const configuredUsers = normalizeTeamPlayers(config.orderedUsers);
+            const playOrderUsers = normalizeTeamPlayers(game?.playersOrder);
+            const orderedUsers = configuredUsers.length >= 4 ? configuredUsers : playOrderUsers;
+            if (orderedUsers.length < 4) {
+                return null;
+            }
+            const usePlayOrderTeams = configuredUsers.length < 4;
+            const team1 = usePlayOrderTeams
+                ? [orderedUsers[0], orderedUsers[2]]
+                : orderedUsers.slice(0, 2);
+            const team2 = usePlayOrderTeams
+                ? [orderedUsers[1], orderedUsers[3]]
+                : orderedUsers.slice(2, 4);
+            const teamByKey = new Map();
+            team1.forEach((player) => addTeamLookupKeys(teamByKey, player, 1));
+            team2.forEach((player) => addTeamLookupKeys(teamByKey, player, 2));
+
+            return {
+                team1,
+                team2,
+                teamByKey,
+                currentUserTeamNumber: getPlayerTeamNumber({teamByKey}, {id: currentUserId, name: currentUsername})
+            };
+        }
+
+        function normalizeTeamPlayers(team) {
+            if (!Array.isArray(team)) {
+                return [];
+            }
+            return team
+                .map((player) => parsePlayerKey(player))
+                .filter((player) => player && (player.id != null || player.name));
+        }
+
+        function getPlayerTeamNumber(teamState, player) {
+            if (!teamState || !player) {
+                return null;
+            }
+            for (const key of playerLookupKeys(player)) {
+                const teamNumber = teamState.teamByKey.get(key);
+                if (teamNumber != null) {
+                    return teamNumber;
                 }
             }
-            return list;
+            return null;
+        }
+
+        function resolvePlayerTeamTone(teamState, player) {
+            if (!teamState) {
+                return 'neutral';
+            }
+            const playerTeam = getPlayerTeamNumber(teamState, player);
+            if (!playerTeam || !teamState.currentUserTeamNumber) {
+                return 'neutral';
+            }
+            return playerTeam === teamState.currentUserTeamNumber ? 'ally' : 'enemy';
+        }
+
+        function formatSeatTeamBadge(teamState, player) {
+            const teamNumber = getPlayerTeamNumber(teamState, player);
+            if (!teamNumber) {
+                return '';
+            }
+            if (isCurrentUser(player)) {
+                return '';
+            }
+            const tone = resolvePlayerTeamTone(teamState, player);
+            if (tone === 'ally') {
+                return 'Teammate';
+            }
+            if (tone === 'enemy') {
+                return 'Opponent';
+            }
+            return getTeamDisplayName(teamNumber);
+        }
+
+        function formatWinnerText(winners, game) {
+            if (!Array.isArray(winners) || !winners.length) {
+                return 'No winner recorded';
+            }
+            const teamState = resolveTeams(game);
+            if (teamState && winners.length > 1) {
+                return `Winning team: ${formatPlayerList(winners)}`;
+            }
+            return winners.map((winner) => winner.name).join(', ');
+        }
+
+        function buildResultMetaText(winners, game) {
+            const teamState = resolveTeams(game);
+            if (!teamState || !Array.isArray(winners) || !winners.length) {
+                return 'Game ended.';
+            }
+            const currentTeamPlayers = teamState.currentUserTeamNumber === 1
+                ? teamState.team1
+                : (teamState.currentUserTeamNumber === 2 ? teamState.team2 : []);
+            if (!currentTeamPlayers.length) {
+                return 'Game ended.';
+            }
+            const currentTeamWon = currentTeamPlayers.length > 0
+                && winners.every((winner) => currentTeamPlayers.some((player) => isSamePlayer(player, winner)));
+            return currentTeamWon ? 'Your team won.' : 'Your team lost.';
+        }
+
+        function formatPlayerList(players) {
+            if (!Array.isArray(players) || !players.length) {
+                return 'Waiting for players';
+            }
+            return players.map((player) => player?.name || `User ${player?.id ?? ''}`).join(', ');
         }
 
         /**
@@ -858,9 +1027,12 @@
                 const resolvedIndex = Number.isFinite(seatIndex) ? seatIndex : index;
                 const angle = (Math.PI * 2 * resolvedIndex) / count + Math.PI / 2;
                 const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                const selfTopOffset = seat.dataset.isSelf === '1' ? 130 : 0;
+                let y = Math.sin(angle) * radius;
+                const selfTopOffset = seat.dataset.isSelf === '1' ? 84 : 0;
                 const seatSide = x < -8 ? 'left' : (x > 8 ? 'right' : (y < 0 ? 'top' : 'bottom'));
+                if (count === 4 && seatSide === 'top') {
+                    y += 20;
+                }
                 seat.dataset.seatSide = seatSide;
                 seat.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
                 seat.style.left = '50%';
@@ -1084,6 +1256,24 @@
             if (!player) return '';
             if (player.id != null) return `id:${player.id}`;
             return `name:${player.name || ''}`;
+        }
+
+        function addTeamLookupKeys(teamByKey, player, teamNumber) {
+            playerLookupKeys(player).forEach((key) => teamByKey.set(key, teamNumber));
+        }
+
+        function playerLookupKeys(player) {
+            if (!player) return [];
+            const keys = [];
+            if (player.id != null && String(player.id) !== '') {
+                keys.push(`id:${String(player.id)}`);
+            }
+            if (player.name) {
+                const name = String(player.name);
+                keys.push(`name:${name}`);
+                keys.push(`name:${name.toLowerCase()}`);
+            }
+            return [...new Set(keys)];
         }
 
         function syncSeatCards(cardsEl, cardsCount, seatSide) {

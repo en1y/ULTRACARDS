@@ -29,7 +29,7 @@ public class GameService {
     private final GameManager gameManager;
     private final GameEventPublisher eventPublisher;
     private final LobbyManager lobbyManager;
-    private final HashMap<Long, GameEntity<?>> gameCache = new HashMap<>();
+    private final HashMap<Long, GameEntity<?, ?>> gameCache = new HashMap<>();
     private final UserGamesStatsService userGamesStatsService;
     private final TaskScheduler taskScheduler;
     private final Function<LobbyEntity, Boolean> openLobby;
@@ -54,7 +54,7 @@ public class GameService {
         this.openLobby = openLobby;
     }
 
-    public GameEntity<?> startGame(LobbyEntity lobby) {
+    public GameEntity<?, ?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
         lobbyManager.putGame(lobby, game);
         if (game.getGameType().equals(GameTypeDTO.Briskula)) {
@@ -66,7 +66,7 @@ public class GameService {
         return game;
     }
 
-    public void setTimer(GameEntity<?> game) {
+    public void setTimer(GameEntity<?, ?> game) {
         if (game.getGameType().equals(GameTypeDTO.Briskula)) {
             var briskulaGame = ((BriskulaGameEntity) game);
             game.setTurnEndTime(Instant.now().plusSeconds(briskulaTimerDuration));
@@ -85,7 +85,7 @@ public class GameService {
         }
     }
 
-    public Optional<GameEntity<?>> getGameByUser(UserEntity user) {
+    public Optional<GameEntity<?, ?>> getGameByUser(UserEntity user) {
         return Optional.ofNullable(gameCache.get(user.getId()));
     }
 
