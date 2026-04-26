@@ -21,6 +21,7 @@ public class GameEntityDTO {
     @NotNull UUID id;
     @NotNull UUID lobbyId;
     @NotBlank String name;
+    @NotNull private List<GamePlayerDTO> playersOrder;
     @NotNull
     @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
     private Map<GamePlayerDTO, Integer> playersCardsMap;

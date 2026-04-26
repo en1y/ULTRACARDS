@@ -49,8 +49,12 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame, BriskulaLobbyGa
                 currentPlayer = tempCurrentPlayer.getGamePlayerDTO();
             }
         }
+        var playersOrder = new ArrayList<GamePlayerDTO>();
+        for (var p: getGame().getPlayers())
+            playersOrder.add(((BriskulaPlayerEntity)p).getGamePlayerDTO());
+
         return new BriskulaGameEntityDTO(
-                getId(), getLobbyId(), getName(), playerCardsMap,
+                getId(), getLobbyId(), getName(), playersOrder, playerCardsMap,
                 playedCards, getGame().getDeck().getSize(), playerPointsMap, currentPlayer, getTurnEndTime(),
                 getTurnDurationSeconds(), GameCardDTO.createCardDTO(getGame().getGameTrumpCard()),
                 getGameConfig().toDto());
