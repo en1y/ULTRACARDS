@@ -17,7 +17,7 @@ import java.util.*;
 
 public class BriskulaGameEntity extends GameEntity<BriskulaGame> {
 
-    public BriskulaGameEntity(UUID lobbyId, String name, UserEntity owner,BriskulaGameConfig briskulaConfig, List<UserEntity> players) {
+    public BriskulaGameEntity(UUID lobbyId, String name, UserEntity owner, BriskulaGameConfig briskulaConfig, List<UserEntity> players) {
         var briskulaPlayers = new ArrayList<BriskulaPlayer>();
         for (var user : players) {
             briskulaPlayers.add(new BriskulaPlayerEntity(user.getUsername(), user));

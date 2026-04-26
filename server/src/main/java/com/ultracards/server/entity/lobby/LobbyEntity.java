@@ -1,18 +1,18 @@
 package com.ultracards.server.entity.lobby;
 
-import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
-import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
-import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 public class LobbyEntity {
@@ -20,11 +20,11 @@ public class LobbyEntity {
     private String name;
     private GameTypeDTO gameType;
     private Instant createdAt;
-    private Set<UserEntity> users = new HashSet<>();
+    private List<UserEntity> users = new ArrayList<>();
     private UserEntity owner;
     private int minPlayers;
     private int maxPlayers;
-    private GameConfigDTO gameConfig;
+    private GameConfig lobbyGameConfig;
     private LobbyState lobbyState;
     private Instant closedAt;
 
@@ -37,9 +37,17 @@ public class LobbyEntity {
         users.add(owner);
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
-        this.gameConfig = gameConfig;
+        this.lobbyGameConfig = GameConfig.from(gameType, gameConfig);
         this.lobbyState = LobbyState.OPEN;
         this.closedAt = createdAt.plusSeconds(lobbyTimer);
+    }
+
+    public GameConfigDTO getGameConfig() {
+        return lobbyGameConfig.toDto();
+    }
+
+    public void setGameConfig(GameConfigDTO gameConfig) {
+        this.lobbyGameConfig = GameConfig.from(gameType, gameConfig);
     }
 
     public boolean containsUser(UserEntity user) {
@@ -51,7 +59,7 @@ public class LobbyEntity {
     }
 
     public boolean addUser(UserEntity user) {
-        return users.contains(user) || ( users.size() < maxPlayers && users.add(user) );
+        return users.contains(user) || ( users.size() < maxPlayers && !users.contains(user) && users.add(user) );
     }
 
     public boolean removeUser(UserEntity user) {
@@ -59,12 +67,9 @@ public class LobbyEntity {
     }
 
     public GameEntity<?> createGame() {
-        if (gameType.equals(GameTypeDTO.Briskula)) {
-            var res = new BriskulaGameEntity(getId(), getName(), getOwner(), BriskulaDTOtoConfig((BriskulaGameConfigDTO) gameConfig), new ArrayList<>(getUsers()));
-            lobbyState = LobbyState.STARTED;
-            return res;
-        }
-        throw new UnsupportedOperationException("Not supported yet.");
+        var game = lobbyGameConfig.createGame(getId(), getName(), getOwner(), getUsers());
+        lobbyState = LobbyState.STARTED;
+        return game;
     }
 
     public GameLobbyDTO createLobbyDTO() {
@@ -85,22 +90,5 @@ public class LobbyEntity {
                 getGameConfig(),
                 closedAt
         );
-    }
-
-    private BriskulaGameConfig BriskulaDTOtoConfig(BriskulaGameConfigDTO briskulaGameConfigDTO) {
-        if (briskulaGameConfigDTO.getNumberOfPlayers() == 3) {
-            return BriskulaGameConfig.THREE_PLAYERS;
-        } else if (briskulaGameConfigDTO.getNumberOfPlayers() == 2) {
-            if (briskulaGameConfigDTO.getCardsInHandNum() == 3) {
-                return  BriskulaGameConfig.TWO_PLAYERS;
-            } else if (briskulaGameConfigDTO.getCardsInHandNum() == 4) {
-                return BriskulaGameConfig.TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH;
-            }
-        } else if (briskulaGameConfigDTO.getNumberOfPlayers() == 4) {
-            if (briskulaGameConfigDTO.getTeamsEnabled())
-                return BriskulaGameConfig.FOUR_PLAYERS_WITH_TEAMS;
-            else return BriskulaGameConfig.FOUR_PLAYERS_NO_TEAMS;
-        }
-        throw new IllegalArgumentException("Invalid briskulaGameConfigDTO");
     }
 }

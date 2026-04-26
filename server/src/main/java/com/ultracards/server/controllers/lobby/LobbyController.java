@@ -2,15 +2,12 @@ package com.ultracards.server.controllers.lobby;
 
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.service.lobby.LobbyEventPublisher;
-import com.ultracards.server.service.lobby.LobbyManager;
 import com.ultracards.server.service.lobby.LobbyService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -18,17 +15,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
-
 @RestController
 @RequestMapping("/api/lobby")
 @RequiredArgsConstructor
 public class LobbyController {
 
     private final LobbyService lobbyService;
-    private final LobbyManager lobbyManager;
-    private final SimpMessagingTemplate messagingTemplate;
-    private final LobbyEventPublisher eventPublisher;
 
     @PostMapping("/create")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -84,8 +76,8 @@ public class LobbyController {
     ){
         var res = lobbyService.startLobby(user);
         return res ?
-                ResponseEntity.ok(res) :
-                ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
+                ResponseEntity.ok(true) :
+                ResponseEntity.status(HttpStatus.NO_CONTENT).body(false);
     }
 
     @PutMapping("/update")
