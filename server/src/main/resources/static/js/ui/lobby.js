@@ -271,7 +271,7 @@
             });
 
             dom.players?.addEventListener('pointerdown', (event) => {
-                if (event.button !== 0 || !isCurrentUserHost()) {
+                if (event.button !== 0 || !isCurrentUserHost() || !isBriskulaOrderReorderable(state.lobby)) {
                     return;
                 }
 
@@ -279,18 +279,24 @@
                     return;
                 }
 
-                const card = event.target.closest('[data-team-player-card]');
+                const card = event.target.closest('[data-player-card]');
                 if (!card) {
                     return;
                 }
 
                 const teamState = resolveTeams(state.lobby);
-                if (!teamState) {
+                const orderedPlayers = resolveOrderedLobbyPlayers(state.lobby);
+                if (teamState) {
+                    event.preventDefault();
+                    startTeamDrag(event, card, teamState);
                     return;
                 }
 
+                if (!orderedPlayers.length) {
+                    return;
+                }
                 event.preventDefault();
-                startTeamDrag(event, card, teamState);
+                startPlayerListDrag(event, card, orderedPlayers);
             });
 
             window.addEventListener('pointermove', handleTeamDragMove);
@@ -299,7 +305,7 @@
         }
 
         function renderLobby(lobby, options = {}) {
-            const players = sortPlayers(lobby.players || [], lobby.host);
+            const players = resolveOrderedLobbyPlayers(lobby);
             const teamState = resolveTeams(lobby);
             const leavingTeamMode = !teamState && state.teamModeActive;
             const teamExitTransition = options.playerAreaTransitionSnapshot || (
@@ -397,9 +403,10 @@
                 const canKick = isHost && !owner;
                 const initial = (player.name || 'U').charAt(0).toUpperCase();
                 const role = owner ? 'Host' : 'Player';
+                const reorderable = isHost && isBriskulaOrderReorderable(state.lobby) ? ' player-row-reorderable' : '';
 
                 return `
-                    <div class="player-row" data-player-card="${player.id}">
+                    <div class="player-row${reorderable}" data-player-card="${player.id}">
                         <div class="player-main">
                             <div class="player-avatar">${escapeHtml(initial)}</div>
                             <div>
@@ -423,7 +430,7 @@
                     <div class="team-board-toolbar">
                         <p class="team-board-helper">
                             ${isHost
-                                ? 'Drag and drop the players to rearrange teams'
+                                ? 'Drag and drop the players to rearrange order and teams'
                                 : 'Ask the host to change the teams if you will'}
                         </p>
                     </div>
@@ -606,6 +613,9 @@
             updatedLobby.name = state.lobby.name;
             updatedLobby.players = state.lobby.players;
             updatedLobby.host = state.lobby.host;
+            if (gameTypeKey === 'briskula' && updatedLobby.gameConfig) {
+                updatedLobby.gameConfig.orderedUsers = resolveOrderedLobbyPlayers(state.lobby);
+            }
 
             const response = await fetch('/api/lobby/update', {
                 method: 'PUT',
@@ -645,7 +655,7 @@
             applyOrderedPlayersToLobbyState(shuffledIds);
             renderLobby(state.lobby);
             try {
-                await saveLobbyTeams(shuffledIds, { preserveTeamBoard: false });
+                await saveLobbyPlayerOrder(shuffledIds, { preserveTeamBoard: false });
             } catch (error) {
                 state.lobby = rollbackLobby;
                 previousLobbySnapshot = rollbackLobby;
@@ -654,13 +664,9 @@
             }
         }
 
-        async function saveLobbyTeams(orderedPlayerIds, options = {}) {
-            const teamState = resolveTeams(state.lobby);
-            if (!teamState) {
-                throw new Error('Teams are not enabled for this lobby');
-            }
-
-            const playersById = new Map(teamState.players.map((player) => [String(player.id), player]));
+        async function saveLobbyPlayerOrder(orderedPlayerIds, options = {}) {
+            const currentOrderedPlayers = resolveOrderedLobbyPlayers(state.lobby);
+            const playersById = new Map(currentOrderedPlayers.map((player) => [String(player.id), player]));
             const orderedPlayers = orderedPlayerIds
                 .map((playerId) => playersById.get(String(playerId)))
                 .filter(Boolean);
@@ -675,8 +681,7 @@
                     ...state.lobby,
                     gameConfig: {
                         ...state.lobby.gameConfig,
-                        team1: orderedPlayers.slice(0, teamState.team1Capacity),
-                        team2: orderedPlayers.slice(teamState.team1Capacity)
+                        orderedUsers: orderedPlayers
                     }
                 })
             });
@@ -694,12 +699,12 @@
         }
 
         function applyOrderedPlayersToLobbyState(orderedPlayerIds) {
-            const teamState = resolveTeams(state.lobby);
-            if (!teamState) {
+            const orderedLobbyPlayers = resolveOrderedLobbyPlayers(state.lobby);
+            if (!orderedLobbyPlayers.length) {
                 return;
             }
 
-            const playersById = new Map(teamState.players.map((player) => [String(player.id), player]));
+            const playersById = new Map(orderedLobbyPlayers.map((player) => [String(player.id), player]));
             const orderedPlayers = orderedPlayerIds
                 .map((playerId) => playersById.get(String(playerId)))
                 .filter(Boolean);
@@ -708,8 +713,7 @@
                 ...state.lobby,
                 gameConfig: {
                     ...state.lobby.gameConfig,
-                    team1: orderedPlayers.slice(0, teamState.team1Capacity),
-                    team2: orderedPlayers.slice(teamState.team1Capacity)
+                    orderedUsers: orderedPlayers
                 }
             };
             renderTeams(state.lobby);
@@ -765,17 +769,11 @@
                 return null;
             }
 
-            const players = sortPlayers(Array.isArray(lobby.players) ? lobby.players : [], lobby.host);
+            const players = resolveOrderedLobbyPlayers(lobby);
             const team1Capacity = Math.min(players.length, 2);
-            const team2Capacity = Math.max(players.length - team1Capacity, 0);
-            const playersById = new Map(players.map((player) => [String(player.id), player]));
-
-            let team1 = normalizeTeamPlayers(config.team1, playersById);
-            let team2 = normalizeTeamPlayers(config.team2, playersById);
-            if (team1.length !== team1Capacity || team2.length !== team2Capacity || hasDuplicatePlayers(team1, team2)) {
-                team1 = players.slice(0, team1Capacity);
-                team2 = players.slice(team1Capacity);
-            }
+            const team2Capacity = Math.max(Math.min(players.length, 4) - team1Capacity, 0);
+            const team1 = players.slice(0, team1Capacity);
+            const team2 = players.slice(team1Capacity, team1Capacity + team2Capacity);
 
             return {
                 players,
@@ -787,23 +785,28 @@
             };
         }
 
-        function normalizeTeamPlayers(team, playersById) {
-            if (!Array.isArray(team)) {
-                return [];
+        function resolveOrderedLobbyPlayers(lobby) {
+            const players = sortPlayers(Array.isArray(lobby?.players) ? lobby.players : [], lobby?.host);
+            if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+                return players;
             }
 
-            const normalized = [];
-            for (const candidate of team) {
+            const playersById = new Map(players.map((player) => [String(player.id), player]));
+            const ordered = [];
+            for (const candidate of lobby.gameConfig.orderedUsers || []) {
                 const player = playersById.get(String(candidate?.id));
-                if (player && !normalized.some((existing) => String(existing.id) === String(player.id))) {
-                    normalized.push(player);
+                if (player && !ordered.some((existing) => String(existing.id) === String(player.id))) {
+                    ordered.push(player);
                 }
             }
-            return normalized;
-        }
 
-        function hasDuplicatePlayers(team1, team2) {
-            return team1.some((player) => team2.some((other) => String(other.id) === String(player.id)));
+            for (const player of players) {
+                if (!ordered.some((existing) => String(existing.id) === String(player.id))) {
+                    ordered.push(player);
+                }
+            }
+
+            return ordered;
         }
 
         function getPlayerTeamNumber(teamState, playerId) {
@@ -830,6 +833,10 @@
 
         function getOrderedTeamPlayers(teamState) {
             return [...teamState.orderedPlayers];
+        }
+
+        function isBriskulaOrderReorderable(lobby) {
+            return !!(lobby && lobby.gameType === 'Briskula' && lobby.gameConfig);
         }
 
         function startTeamDrag(event, card, teamState) {
@@ -868,6 +875,42 @@
             document.body.classList.add('is-team-dragging');
         }
 
+        function startPlayerListDrag(event, card, orderedPlayers) {
+            cancelTeamDrag();
+
+            const rect = card.getBoundingClientRect();
+            const containerRect = dom.players?.getBoundingClientRect();
+            const proxy = card.cloneNode(true);
+            proxy.classList.add('team-drag-proxy');
+            proxy.style.width = `${rect.width}px`;
+            proxy.style.height = `${rect.height}px`;
+            document.body.appendChild(proxy);
+
+            card.classList.add('is-source-hidden');
+            state.dragSession = {
+                mode: 'list',
+                pointerId: event.pointerId,
+                playerId: card.dataset.playerCard,
+                sourceCard: card,
+                proxy,
+                previewOrderIds: orderedPlayers.map((player) => String(player.id)),
+                startSignature: buildLobbyOrderSignature(state.lobby),
+                offsetX: event.clientX - rect.left,
+                offsetY: event.clientY - rect.top,
+                containerBounds: containerRect ? {
+                    left: containerRect.left,
+                    top: containerRect.top,
+                    right: containerRect.right,
+                    bottom: containerRect.bottom
+                } : null,
+                proxyWidth: rect.width,
+                proxyHeight: rect.height
+            };
+
+            positionTeamDragProxy(event.clientX, event.clientY);
+            document.body.classList.add('is-team-dragging');
+        }
+
         function handleTeamDragMove(event) {
             if (!state.dragSession) {
                 return;
@@ -875,6 +918,10 @@
 
             const dragPoint = resolveConstrainedDragPoint(event.clientX, event.clientY);
             positionTeamDragProxy(dragPoint.x, dragPoint.y);
+            if (state.dragSession.mode === 'list') {
+                handlePlayerListDragMove(dragPoint.x, dragPoint.y);
+                return;
+            }
             const insertionIndex = resolvePreviewInsertionIndex(dragPoint.x, dragPoint.y);
             if (insertionIndex == null) {
                 return;
@@ -897,8 +944,36 @@
             });
         }
 
+        function handlePlayerListDragMove(clientX, clientY) {
+            const insertionIndex = resolvePlayerListInsertionIndex(clientY);
+            if (insertionIndex == null) {
+                return;
+            }
+
+            const nextOrderIds = buildPreviewOrder(
+                state.dragSession.previewOrderIds,
+                state.dragSession.playerId,
+                insertionIndex
+            );
+            const nextSignature = buildPlayerListSignature(nextOrderIds);
+            if (nextSignature === capturePlayerListSignature()) {
+                return;
+            }
+
+            state.dragSession.previewOrderIds = nextOrderIds;
+            applyOrderedPlayersToPlayerList(nextOrderIds, {
+                animate: true,
+                skipPlayerId: state.dragSession.playerId
+            });
+        }
+
         async function handleTeamDragEnd() {
             if (!state.dragSession) {
+                return;
+            }
+
+            if (state.dragSession.mode === 'list') {
+                await handlePlayerListDragEnd();
                 return;
             }
 
@@ -917,12 +992,37 @@
             state.dragSession = null;
 
             try {
-                await saveLobbyTeams(finalOrderIds, { preserveTeamBoard: true });
+                await saveLobbyPlayerOrder(finalOrderIds, { preserveTeamBoard: true });
             } catch (error) {
                 state.lobby = rollbackLobby;
                 previousLobbySnapshot = rollbackLobby;
                 renderLobby(state.lobby);
                 showToast('Update failed', 'Unable to update team assignments.');
+            }
+        }
+
+        async function handlePlayerListDragEnd() {
+            const dragSession = state.dragSession;
+            const finalOrderIds = [...dragSession.previewOrderIds];
+            finishTeamDragVisuals();
+
+            const nextSignature = buildPlayerListSignature(finalOrderIds);
+            if (nextSignature === dragSession.startSignature) {
+                state.dragSession = null;
+                return;
+            }
+
+            const rollbackLobby = JSON.parse(JSON.stringify(state.lobby));
+            applyOrderedPlayersToLobbyState(finalOrderIds);
+            state.dragSession = null;
+
+            try {
+                await saveLobbyPlayerOrder(finalOrderIds);
+            } catch (error) {
+                state.lobby = rollbackLobby;
+                previousLobbySnapshot = rollbackLobby;
+                renderLobby(state.lobby);
+                showToast('Update failed', 'Unable to update player order.');
             }
         }
 
@@ -998,6 +1098,23 @@
                 state.dragSession.splitIndex,
                 Math.min(state.dragSession.splitIndex + localIndex, state.dragSession.previewOrderIds.length - 1)
             );
+        }
+
+        function resolvePlayerListInsertionIndex(clientY) {
+            const cards = [...(dom.players?.querySelectorAll('[data-player-card]') || [])]
+                .filter((card) => card.dataset.playerCard !== state.dragSession?.playerId);
+            if (!cards.length) {
+                return 0;
+            }
+
+            for (let index = 0; index < cards.length; index += 1) {
+                const rect = cards[index].getBoundingClientRect();
+                if (clientY <= rect.top + rect.height / 2) {
+                    return index;
+                }
+            }
+
+            return cards.length;
         }
 
         function resolveTeamPanelInsertionIndex(cards, clientX, clientY) {
@@ -1135,6 +1252,46 @@
             }
         }
 
+        function applyOrderedPlayersToPlayerList(orderedPlayerIds, options = {}) {
+            if (!dom.players) {
+                return;
+            }
+
+            const previousRects = options.animate ? capturePlayerCardRects() : null;
+            const cardsById = new Map(
+                [...dom.players.querySelectorAll('[data-player-card]')].map((card) => [card.dataset.playerCard, card])
+            );
+
+            for (const playerId of orderedPlayerIds) {
+                const card = cardsById.get(String(playerId));
+                if (card) {
+                    dom.players.appendChild(card);
+                }
+            }
+
+            if (previousRects) {
+                animatePlayerCardsFromRects(previousRects);
+            }
+        }
+
+        function capturePlayerListSignature() {
+            const cards = dom.players?.querySelectorAll('[data-player-card]');
+            if (!cards?.length) {
+                return null;
+            }
+            return [...cards].map((card) => card.dataset.playerCard).join(',');
+        }
+
+        function buildPlayerListSignature(orderedPlayersOrIds) {
+            return orderedPlayersOrIds
+                .map((player) => typeof player === 'object' ? String(player.id) : String(player))
+                .join(',');
+        }
+
+        function buildLobbyOrderSignature(lobby) {
+            return buildPlayerListSignature(resolveOrderedLobbyPlayers(lobby));
+        }
+
         function captureTeamBoardSignature() {
             const team1Cards = dom.players?.querySelectorAll('[data-team-panel="1"] [data-team-player-card]');
             const team2Cards = dom.players?.querySelectorAll('[data-team-panel="2"] [data-team-player-card]');
@@ -1211,7 +1368,7 @@
                 return `teams:${teamSignature}`;
             }
 
-            const players = sortPlayers(Array.isArray(lobby.players) ? lobby.players : [], lobby.host);
+            const players = resolveOrderedLobbyPlayers(lobby);
             return `list:${players.map((player) => player.id).join(',')}`;
         }
 

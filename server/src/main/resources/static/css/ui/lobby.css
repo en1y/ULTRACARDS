@@ -487,6 +487,15 @@
             background: var(--color-surface);
         }
 
+        .player-row-reorderable {
+            cursor: grab;
+            touch-action: none;
+        }
+
+        .player-row.is-source-hidden {
+            visibility: hidden;
+        }
+
         .player-main {
             display: flex;
             align-items: center;
