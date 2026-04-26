@@ -41,9 +41,9 @@ public class BriskulaLobbyGameConfig implements GameConfig {
     public GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
         if (gameConfig.areTeamsEnabled())
             return new BriskulaGameEntity(lobbyId, name, owner, this,
-                    new ArrayList<>(List.of(orderedUsers.get(0), users.get(2), users.get(1), users.get(3))));
+                    new ArrayList<>(List.of(users.get(0), users.get(2), users.get(1), users.get(3))));
 
-        return new BriskulaGameEntity(lobbyId, name, owner, this, orderedUsers);
+        return new BriskulaGameEntity(lobbyId, name, owner, this, users);
     }
 
     public static BriskulaLobbyGameConfig fromDto(BriskulaGameConfigDTO gameConfigDTO, List<UserEntity> users) {

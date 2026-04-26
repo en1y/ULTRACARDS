@@ -15,7 +15,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @Controller
-@ControllerAdvice
+@ControllerAdvice(assignableTypes = {
+        HomeController.class,
+        LobbiesController.class,
+        GameUIController.class,
+        ProfileUIController.class
+})
 public class ErrorController {
     @GetMapping("/errors/401")
     @ResponseStatus(HttpStatus.UNAUTHORIZED)

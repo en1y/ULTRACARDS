@@ -74,7 +74,6 @@ public class WebSecurityConfig {
             return;
         }
 
-        res.setStatus(status);
-        req.getRequestDispatcher("/errors/401").forward(req, res);
+        res.sendRedirect("/errors/401");
     }
 }
