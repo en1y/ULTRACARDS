@@ -17,7 +17,32 @@
       id="lobby-page"
       th:attr="data-lobby-id=${lobby.id},data-username=${username}">
     <section class="lobby-layout">
-        <article class="card lobby-panel">
+        <aside class="card lobby-panel lobby-members-panel">
+            <div class="lobby-title-row">
+                <div>
+                    <span class="chip">Players</span>
+                    <h2>Lobby members and teams</h2>
+                </div>
+            </div>
+            <div id="players-list" class="players-list">
+                <div class="player-row" th:each="player : ${lobby.players}">
+                    <div class="player-main">
+                        <div class="player-avatar" th:text="${player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'U'}">U</div>
+                        <div>
+                            <div class="player-name">
+                                <span th:text="${player.name != null ? player.name : 'User ' + player.id}">Player</span>
+                                <span class="player-self-tag" th:if="${player.name == username}">(you)</span>
+                            </div>
+                            <div class="player-role"
+                                 th:text="${lobby.host != null and player.id == lobby.host.id ? 'Host' : 'Player'}">Player</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lobby-empty" th:if="${#sets.isEmpty(lobby.players)}">No players in this lobby.</div>
+            </div>
+        </aside>
+
+        <article class="card lobby-panel lobby-settings-panel">
             <div class="lobby-title-row">
                 <div>
                     <span class="chip" id="lobby-type-chip" th:text="${lobby.gameType}">Briskula</span>
@@ -54,6 +79,17 @@
                         <div id="ws-status" class="lobby-meta-value">Connecting…</div>
                     </div>
                 </div>
+                <div id="lobby-teams-section" class="lobby-meta-row lobby-teams-section" hidden>
+                    <div class="lobby-teams-content">
+                        <div class="lobby-teams-bar">
+                            <div>
+                                <div class="lobby-meta-label">Teams</div>
+                                <div id="lobby-teams-summary" class="lobby-meta-value">Teams will appear here.</div>
+                            </div>
+                            <button id="lobby-team-randomize" class="btn" type="button" hidden>Randomize</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="lobby-status" class="lobby-status">Waiting for players…</div>
@@ -69,31 +105,7 @@
             </div>
         </article>
 
-        <div class="lobby-side-column">
-            <aside class="card lobby-panel">
-                <div class="lobby-title-row">
-                    <div>
-                        <span class="chip">Players</span>
-                        <h2>Lobby members</h2>
-                    </div>
-                </div>
-                <div id="players-list" class="players-list">
-                    <div class="player-row" th:each="player : ${lobby.players}">
-                        <div class="player-main">
-                            <div class="player-avatar" th:text="${player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'U'}">U</div>
-                            <div>
-                                <div class="player-name" th:text="${player.name != null ? player.name : 'User ' + player.id}">Player</div>
-                                <div class="player-role"
-                                     th:text="${lobby.host != null and player.id == lobby.host.id ? 'Host' : (player.name == username ? 'You' : 'Player')}">Player</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="lobby-empty" th:if="${#sets.isEmpty(lobby.players)}">No players in this lobby.</div>
-                </div>
-            </aside>
-
-            <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel', 'chat-header', 'Lobby chat', 'Too scared to send a message?', ${chat}, true, ${username}, null)}"></th:block>
-        </div>
+        <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel lobby-chat-panel', 'chat-header', 'Lobby chat', 'Too scared to send a message?', ${chat}, true, ${username}, null)}"></th:block>
     </section>
     <aside id="lobby-toast" class="lobby-toast" aria-live="polite" aria-atomic="true" hidden>
     <p id="lobby-toast-title" class="lobby-toast-title">Lobby update</p>

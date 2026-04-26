@@ -29,7 +29,9 @@ function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnable
         gameConfig: {
             numberOfPlayers: playerNum,
             cardsInHandNum: cardsInHandNum,
-            teamsEnabled: teamsEnabled
+            teamsEnabled: teamsEnabled,
+            team1: [],
+            team2: []
         }
     })
 }

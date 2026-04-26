@@ -21,7 +21,11 @@
             currentUser: null,
             wsConnected: false,
             redirectingToGame: false,
-            closeWarningVisible: false
+            closeWarningVisible: false,
+            teamModeActive: false,
+            dragSession: null,
+            pendingPlayerAreaTransition: null,
+            preservePlayersAreaUntil: 0
         };
 
         const dom = {
@@ -32,6 +36,9 @@
             config: document.getElementById('lobby-config'),
             configEditor: document.getElementById('lobby-config-editor'),
             configSelect: document.getElementById('lobby-config-select'),
+            teamsSection: document.getElementById('lobby-teams-section'),
+            teamsSummary: document.getElementById('lobby-teams-summary'),
+            teamRandomize: document.getElementById('lobby-team-randomize'),
             wsStatus: document.getElementById('ws-status'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
@@ -116,12 +123,23 @@
                             return;
                         }
                         if (payload.lobbyDto) {
+                            if (state.dragSession) {
+                                cancelTeamDrag();
+                            }
                             const previousLobby = previousLobbySnapshot;
+                            const previousRects = capturePlayerCardRects();
                             state.lobby = payload.lobbyDto;
                             previousLobbySnapshot = payload.lobbyDto;
-                        renderLobby(state.lobby);
-                        notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
-                        if (payload.type === 'STARTED') {
+                            const preserveTeamBoard = shouldPreserveTeamBoard(state.lobby);
+                            renderLobby(state.lobby, {
+                                preserveTeamBoard,
+                                ...buildPlayerAreaRenderOptions(previousLobby, payload.lobbyDto)
+                            });
+                            if (!preserveTeamBoard && shouldAnimateObservedTeams(previousLobby, payload.lobbyDto)) {
+                                animateObservedTeamBoard(previousRects);
+                            }
+                            notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
+                            if (payload.type === 'STARTED') {
                                 showToast('Game started', 'The lobby has started a game.');
                                 redirectToResolvedGame();
                             }
@@ -238,10 +256,64 @@
                     showToast('Update failed', 'Unable to update the lobby configuration.');
                 }
             });
+
+            dom.teamRandomize?.addEventListener('click', async () => {
+                if (!isCurrentUserHost()) {
+                    return;
+                }
+
+                try {
+                    await randomizeLobbyTeams();
+                } catch (error) {
+                    renderLobby(state.lobby);
+                    showToast('Update failed', 'Unable to randomize teams.');
+                }
+            });
+
+            dom.players?.addEventListener('pointerdown', (event) => {
+                if (event.button !== 0 || !isCurrentUserHost()) {
+                    return;
+                }
+
+                if (event.target.closest('[data-kick-player]')) {
+                    return;
+                }
+
+                const card = event.target.closest('[data-team-player-card]');
+                if (!card) {
+                    return;
+                }
+
+                const teamState = resolveTeams(state.lobby);
+                if (!teamState) {
+                    return;
+                }
+
+                event.preventDefault();
+                startTeamDrag(event, card, teamState);
+            });
+
+            window.addEventListener('pointermove', handleTeamDragMove);
+            window.addEventListener('pointerup', handleTeamDragEnd);
+            window.addEventListener('pointercancel', cancelTeamDrag);
         }
 
-        function renderLobby(lobby) {
+        function renderLobby(lobby, options = {}) {
             const players = sortPlayers(lobby.players || [], lobby.host);
+            const teamState = resolveTeams(lobby);
+            const leavingTeamMode = !teamState && state.teamModeActive;
+            const teamExitTransition = options.playerAreaTransitionSnapshot || (
+                !options.preserveTeamBoard && leavingTeamMode
+                    ? captureTeamModeTransitionSnapshot()
+                    : null
+            );
+            const enteringTeamMode = !!teamState && !state.teamModeActive;
+            const teamEntryTransition = options.playerAreaEntrySnapshot || (
+                !options.preserveTeamBoard && enteringTeamMode
+                    ? capturePlayerCardRects()
+                    : null
+            );
+            state.teamModeActive = !!teamState;
             const currentUserId = state.currentUser?.id != null ? String(state.currentUser.id) : null;
             const isHost = currentUserId && lobby.host && String(lobby.host.id) === currentUserId;
             const isPlayer = currentUserId
@@ -259,7 +331,8 @@
             if (dom.host) dom.host.textContent = lobby.host?.name || 'Unknown';
             if (dom.config) dom.config.textContent = describeConfig(lobby);
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
-            renderConfigEditor(lobby, !!(currentUserId && lobby.host && String(lobby.host.id) === currentUserId));
+            renderConfigEditor(lobby, !!isHost);
+            renderTeams(lobby);
             syncCloseWarning(lobby);
 
             if (dom.start) {
@@ -273,11 +346,42 @@
                 dom.leave.hidden = !!isHost;
             }
 
-            renderPlayers(players, isHost, currentUserId, lobby.host);
+            if (options.preservePlayersArea) {
+                return;
+            }
+
+            if (!options.preserveTeamBoard) {
+                renderPlayers(
+                    players,
+                    isHost,
+                    currentUserId,
+                    lobby.host,
+                    teamState,
+                    enteringTeamMode,
+                    teamExitTransition,
+                    teamEntryTransition
+                );
+            } else {
+                updateRenderedTeamState(teamState);
+            }
         }
 
-        function renderPlayers(players, isHost, currentUserId, host) {
+        function renderPlayers(
+            players,
+            isHost,
+            currentUserId,
+            host,
+            teamState,
+            enteringTeamMode = false,
+            transitionSnapshot = null,
+            teamEntryTransition = null
+        ) {
             if (!dom.players) {
+                return;
+            }
+
+            if (teamState) {
+                renderTeamPlayers(teamState, isHost, currentUserId, host, enteringTeamMode, teamEntryTransition);
                 return;
             }
 
@@ -292,14 +396,17 @@
                 const current = currentUserId && currentUserId === playerId;
                 const canKick = isHost && !owner;
                 const initial = (player.name || 'U').charAt(0).toUpperCase();
-                const role = owner ? 'Host' : (current ? 'You' : 'Player');
+                const role = owner ? 'Host' : 'Player';
 
                 return `
-                    <div class="player-row">
+                    <div class="player-row" data-player-card="${player.id}">
                         <div class="player-main">
                             <div class="player-avatar">${escapeHtml(initial)}</div>
                             <div>
-                                <div class="player-name">${escapeHtml(player.name || `User ${player.id}`)}</div>
+                                <div class="player-name">
+                                    <span>${escapeHtml(player.name || `User ${player.id}`)}</span>
+                                    ${current ? '<span class="player-self-tag">(you)</span>' : ''}
+                                </div>
                                 <div class="player-role">${escapeHtml(role)}</div>
                             </div>
                         </div>
@@ -307,6 +414,75 @@
                     </div>
                 `;
             }).join('');
+            startPlayerLayoutTransition(transitionSnapshot);
+        }
+
+        function renderTeamPlayers(teamState, isHost, currentUserId, host, enteringTeamMode, transitionSnapshot = null) {
+            dom.players.innerHTML = `
+                <div class="team-board${enteringTeamMode ? ' is-entering' : ''}" data-team-board>
+                    <div class="team-board-toolbar">
+                        <p class="team-board-helper">
+                            ${isHost
+                                ? 'Drag and drop the players to rearrange teams'
+                                : 'Ask the host to change the teams if you will'}
+                        </p>
+                    </div>
+                    ${renderTeamPanel(teamState, 1, currentUserId)}
+                    ${renderTeamPanel(teamState, 2, currentUserId)}
+                </div>
+            `;
+            updateRenderedTeamState(teamState);
+            startTeamLayoutTransition(transitionSnapshot);
+        }
+
+        function renderTeamPanel(teamState, teamNumber, currentUserId) {
+            const team = teamNumber === 1 ? teamState.team1 : teamState.team2;
+            const capacity = teamNumber === 1 ? teamState.team1Capacity : teamState.team2Capacity;
+            const tone = resolveTeamTone(teamState, currentUserId, teamNumber);
+            const cards = team.map((player, index) => renderTeamPlayerCard(player, teamNumber, tone, index, teamState)).join('');
+            return `
+                <section class="team-panel team-panel-${tone}" data-team-panel-shell="${teamNumber}">
+                    <div class="team-panel-header">
+                        <div>
+                            <div class="team-panel-title">${escapeHtml(getTeamDisplayName(teamNumber))}</div>
+                            <div class="team-panel-meta" data-team-panel-meta="${teamNumber}">${team.length}/${capacity} players</div>
+                        </div>
+                    </div>
+                    <div class="team-panel-body" data-team-panel="${teamNumber}">
+                        ${cards || '<div class="team-drop-hint">Waiting for players</div>'}
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderTeamPlayerCard(player, teamNumber, tone, index, teamState) {
+            const playerId = String(player.id);
+            const owner = state.lobby.host && String(state.lobby.host.id) === playerId;
+            const current = state.currentUser?.id != null && String(state.currentUser.id) === playerId;
+            const canKick = isCurrentUserHost() && !owner;
+            const initial = (player.name || 'U').charAt(0).toUpperCase();
+            const role = owner ? 'Host' : 'Player';
+            const splitIndex = teamState.team1Capacity;
+            const orderIndex = teamNumber === 1 ? index : splitIndex + index;
+
+            return `
+                <div class="player-row team-player-card team-player-card-${tone}" data-team-player-card="${player.id}" data-player-card="${player.id}" data-team-number="${teamNumber}" data-team-order-index="${orderIndex}">
+                    <div class="player-main">
+                        <div class="player-avatar">${escapeHtml(initial)}</div>
+                        <div>
+                            <div class="player-name">
+                                <span>${escapeHtml(player.name || `User ${player.id}`)}</span>
+                                ${current ? '<span class="player-self-tag">(you)</span>' : ''}
+                            </div>
+                            <div class="player-role">
+                                ${escapeHtml(role)}
+                                <span class="player-team-chip player-team-chip-${tone}">${escapeHtml(getTeamDisplayName(teamNumber))}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${canKick ? `<button class="btn danger" type="button" data-kick-player="${player.id}">Kick</button>` : ''}
+                </div>
+            `;
         }
 
         function sortPlayers(players, host) {
@@ -366,6 +542,19 @@
             dom.configEditor.hidden = false;
         }
 
+        function renderTeams(lobby) {
+            if (!dom.teamsSection || !dom.teamsSummary || !dom.teamRandomize) {
+                return;
+            }
+
+            const teamState = resolveTeams(lobby);
+            dom.teamsSection.hidden = !teamState;
+            if (teamState) {
+                dom.teamsSummary.textContent = formatTeamsSummary(teamState);
+            }
+            dom.teamRandomize.hidden = !(teamState && isCurrentUserHost());
+        }
+
         function resolveGameSettingKey(lobby) {
             if (!lobby || String(lobby.gameType) !== 'Briskula' || !lobby.gameConfig) {
                 return '';
@@ -396,6 +585,22 @@
                 throw new Error('Unsupported game configuration');
             }
 
+            const teamModeActive = !!resolveTeams(state.lobby);
+            const teamModeNext = settingKey === 'p4teams';
+            if (teamModeActive && !teamModeNext) {
+                state.pendingPlayerAreaTransition = {
+                    kind: 'exit-team',
+                    ...captureTeamModeTransitionSnapshot()
+                };
+            } else if (!teamModeActive && teamModeNext) {
+                state.pendingPlayerAreaTransition = {
+                    kind: 'enter-team',
+                    cardRects: capturePlayerCardRects()
+                };
+            } else {
+                state.pendingPlayerAreaTransition = null;
+            }
+
             const updatedLobby = JSON.parse(buildLobbyCreatePayload(gameTypeKey, settingKey, state.lobby.name));
             updatedLobby.id = state.lobby.id;
             updatedLobby.name = state.lobby.name;
@@ -417,10 +622,862 @@
 
             const lobby = await response.json();
             if (lobby) {
+                const previousLobby = previousLobbySnapshot;
                 state.lobby = lobby;
                 previousLobbySnapshot = lobby;
-                renderLobby(state.lobby);
+                renderLobby(state.lobby, buildPlayerAreaRenderOptions(previousLobby, lobby));
             }
+        }
+
+        async function randomizeLobbyTeams() {
+            const teamState = resolveTeams(state.lobby);
+            if (!teamState) {
+                throw new Error('Teams are not enabled for this lobby');
+            }
+
+            const rollbackLobby = JSON.parse(JSON.stringify(state.lobby));
+            const shuffledIds = getOrderedTeamPlayers(teamState).map((player) => String(player.id));
+            for (let index = shuffledIds.length - 1; index > 0; index -= 1) {
+                const randomIndex = Math.floor(Math.random() * (index + 1));
+                [shuffledIds[index], shuffledIds[randomIndex]] = [shuffledIds[randomIndex], shuffledIds[index]];
+            }
+
+            applyOrderedPlayersToLobbyState(shuffledIds);
+            renderLobby(state.lobby);
+            try {
+                await saveLobbyTeams(shuffledIds, { preserveTeamBoard: false });
+            } catch (error) {
+                state.lobby = rollbackLobby;
+                previousLobbySnapshot = rollbackLobby;
+                renderLobby(state.lobby);
+                throw error;
+            }
+        }
+
+        async function saveLobbyTeams(orderedPlayerIds, options = {}) {
+            const teamState = resolveTeams(state.lobby);
+            if (!teamState) {
+                throw new Error('Teams are not enabled for this lobby');
+            }
+
+            const playersById = new Map(teamState.players.map((player) => [String(player.id), player]));
+            const orderedPlayers = orderedPlayerIds
+                .map((playerId) => playersById.get(String(playerId)))
+                .filter(Boolean);
+
+            const response = await fetch('/api/lobby/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    ...state.lobby,
+                    gameConfig: {
+                        ...state.lobby.gameConfig,
+                        team1: orderedPlayers.slice(0, teamState.team1Capacity),
+                        team2: orderedPlayers.slice(teamState.team1Capacity)
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update lobby teams');
+            }
+
+            const lobby = await response.json();
+            if (lobby) {
+                state.lobby = lobby;
+                previousLobbySnapshot = lobby;
+                renderLobby(state.lobby, { preserveTeamBoard: !!options.preserveTeamBoard });
+            }
+        }
+
+        function applyOrderedPlayersToLobbyState(orderedPlayerIds) {
+            const teamState = resolveTeams(state.lobby);
+            if (!teamState) {
+                return;
+            }
+
+            const playersById = new Map(teamState.players.map((player) => [String(player.id), player]));
+            const orderedPlayers = orderedPlayerIds
+                .map((playerId) => playersById.get(String(playerId)))
+                .filter(Boolean);
+
+            state.lobby = {
+                ...state.lobby,
+                gameConfig: {
+                    ...state.lobby.gameConfig,
+                    team1: orderedPlayers.slice(0, teamState.team1Capacity),
+                    team2: orderedPlayers.slice(teamState.team1Capacity)
+                }
+            };
+            renderTeams(state.lobby);
+        }
+
+        function updateRenderedTeamState(teamState = resolveTeams(state.lobby)) {
+            if (!teamState || !dom.players) {
+                return;
+            }
+
+            syncTeamPanel(teamState, 1);
+            syncTeamPanel(teamState, 2);
+            renderTeams(state.lobby);
+        }
+
+        function syncTeamPanel(teamState, teamNumber) {
+            const shell = dom.players.querySelector(`[data-team-panel-shell="${teamNumber}"]`);
+            const body = dom.players.querySelector(`[data-team-panel="${teamNumber}"]`);
+            const meta = dom.players.querySelector(`[data-team-panel-meta="${teamNumber}"]`);
+            if (!shell || !body || !meta) {
+                return;
+            }
+
+            const currentUserId = state.currentUser?.id != null ? String(state.currentUser.id) : null;
+            const tone = resolveTeamTone(teamState, currentUserId, teamNumber);
+            const count = teamNumber === 1 ? teamState.team1.length : teamState.team2.length;
+            const capacity = teamNumber === 1 ? teamState.team1Capacity : teamState.team2Capacity;
+
+            shell.classList.remove('team-panel-ally', 'team-panel-enemy', 'team-panel-neutral');
+            shell.classList.add(`team-panel-${tone}`);
+            meta.textContent = `${count}/${capacity} players`;
+            const badge = shell.querySelector('.team-panel-badge');
+            if (badge) {
+                badge.textContent = tone === 'ally' ? 'Your side' : (tone === 'enemy' ? 'Opposition' : 'Team');
+            }
+
+            body.querySelectorAll('[data-team-player-card]').forEach((card, index) => {
+                card.dataset.teamNumber = String(teamNumber);
+                card.dataset.teamOrderIndex = String(teamNumber === 1 ? index : teamState.team1Capacity + index);
+                card.classList.remove('team-player-card-ally', 'team-player-card-enemy', 'team-player-card-neutral');
+                card.classList.add(`team-player-card-${tone}`);
+                const chip = card.querySelector('.player-team-chip');
+                if (chip) {
+                    chip.className = `player-team-chip player-team-chip-${tone}`;
+                    chip.textContent = getTeamDisplayName(teamNumber);
+                }
+            });
+        }
+
+        function resolveTeams(lobby) {
+            const config = lobby?.gameConfig;
+            if (!lobby || lobby.gameType !== 'Briskula' || !config || config.numberOfPlayers !== 4 || !config.teamsEnabled) {
+                return null;
+            }
+
+            const players = sortPlayers(Array.isArray(lobby.players) ? lobby.players : [], lobby.host);
+            const team1Capacity = Math.min(players.length, 2);
+            const team2Capacity = Math.max(players.length - team1Capacity, 0);
+            const playersById = new Map(players.map((player) => [String(player.id), player]));
+
+            let team1 = normalizeTeamPlayers(config.team1, playersById);
+            let team2 = normalizeTeamPlayers(config.team2, playersById);
+            if (team1.length !== team1Capacity || team2.length !== team2Capacity || hasDuplicatePlayers(team1, team2)) {
+                team1 = players.slice(0, team1Capacity);
+                team2 = players.slice(team1Capacity);
+            }
+
+            return {
+                players,
+                team1,
+                team2,
+                team1Capacity,
+                team2Capacity,
+                orderedPlayers: [...team1, ...team2]
+            };
+        }
+
+        function normalizeTeamPlayers(team, playersById) {
+            if (!Array.isArray(team)) {
+                return [];
+            }
+
+            const normalized = [];
+            for (const candidate of team) {
+                const player = playersById.get(String(candidate?.id));
+                if (player && !normalized.some((existing) => String(existing.id) === String(player.id))) {
+                    normalized.push(player);
+                }
+            }
+            return normalized;
+        }
+
+        function hasDuplicatePlayers(team1, team2) {
+            return team1.some((player) => team2.some((other) => String(other.id) === String(player.id)));
+        }
+
+        function getPlayerTeamNumber(teamState, playerId) {
+            if (teamState.team1.some((player) => String(player.id) === String(playerId))) {
+                return 1;
+            }
+            if (teamState.team2.some((player) => String(player.id) === String(playerId))) {
+                return 2;
+            }
+            return 0;
+        }
+
+        function resolveTeamTone(teamState, currentUserId, teamNumber) {
+            if (!currentUserId) {
+                return 'neutral';
+            }
+
+            const currentUserTeam = getPlayerTeamNumber(teamState, currentUserId);
+            if (!currentUserTeam) {
+                return 'neutral';
+            }
+            return currentUserTeam === teamNumber ? 'ally' : 'enemy';
+        }
+
+        function getOrderedTeamPlayers(teamState) {
+            return [...teamState.orderedPlayers];
+        }
+
+        function startTeamDrag(event, card, teamState) {
+            cancelTeamDrag();
+
+            const rect = card.getBoundingClientRect();
+            const containerRect = dom.players?.getBoundingClientRect();
+            const proxy = card.cloneNode(true);
+            proxy.classList.add('team-drag-proxy');
+            proxy.style.width = `${rect.width}px`;
+            proxy.style.height = `${rect.height}px`;
+            document.body.appendChild(proxy);
+
+            card.classList.add('is-source-hidden');
+            state.dragSession = {
+                pointerId: event.pointerId,
+                playerId: card.dataset.teamPlayerCard,
+                sourceCard: card,
+                proxy,
+                splitIndex: teamState.team1Capacity,
+                previewOrderIds: getOrderedTeamPlayers(teamState).map((player) => String(player.id)),
+                startSignature: buildLobbyTeamSignature(state.lobby),
+                offsetX: event.clientX - rect.left,
+                offsetY: event.clientY - rect.top,
+                containerBounds: containerRect ? {
+                    left: containerRect.left,
+                    top: containerRect.top,
+                    right: containerRect.right,
+                    bottom: containerRect.bottom
+                } : null,
+                proxyWidth: rect.width,
+                proxyHeight: rect.height
+            };
+
+            positionTeamDragProxy(event.clientX, event.clientY);
+            document.body.classList.add('is-team-dragging');
+        }
+
+        function handleTeamDragMove(event) {
+            if (!state.dragSession) {
+                return;
+            }
+
+            const dragPoint = resolveConstrainedDragPoint(event.clientX, event.clientY);
+            positionTeamDragProxy(dragPoint.x, dragPoint.y);
+            const insertionIndex = resolvePreviewInsertionIndex(dragPoint.x, dragPoint.y);
+            if (insertionIndex == null) {
+                return;
+            }
+
+            const nextOrderIds = buildPreviewOrder(
+                state.dragSession.previewOrderIds,
+                state.dragSession.playerId,
+                insertionIndex
+            );
+            const nextSignature = buildTeamBoardSignature(nextOrderIds, state.dragSession.splitIndex);
+            if (nextSignature === captureTeamBoardSignature()) {
+                return;
+            }
+
+            state.dragSession.previewOrderIds = nextOrderIds;
+            applyOrderedPlayersToTeamBoard(nextOrderIds, state.dragSession.splitIndex, {
+                animate: true,
+                skipPlayerId: state.dragSession.playerId
+            });
+        }
+
+        async function handleTeamDragEnd() {
+            if (!state.dragSession) {
+                return;
+            }
+
+            const dragSession = state.dragSession;
+            const finalOrderIds = [...dragSession.previewOrderIds];
+            finishTeamDragVisuals();
+
+            const nextSignature = buildTeamBoardSignature(finalOrderIds, dragSession.splitIndex);
+            if (nextSignature === dragSession.startSignature) {
+                state.dragSession = null;
+                return;
+            }
+
+            const rollbackLobby = JSON.parse(JSON.stringify(state.lobby));
+            applyOrderedPlayersToLobbyState(finalOrderIds);
+            state.dragSession = null;
+
+            try {
+                await saveLobbyTeams(finalOrderIds, { preserveTeamBoard: true });
+            } catch (error) {
+                state.lobby = rollbackLobby;
+                previousLobbySnapshot = rollbackLobby;
+                renderLobby(state.lobby);
+                showToast('Update failed', 'Unable to update team assignments.');
+            }
+        }
+
+        function cancelTeamDrag() {
+            if (!state.dragSession) {
+                return;
+            }
+
+            finishTeamDragVisuals();
+            state.dragSession = null;
+            renderLobby(state.lobby);
+        }
+
+        function finishTeamDragVisuals() {
+            if (!state.dragSession) {
+                return;
+            }
+
+            state.dragSession.sourceCard?.classList.remove('is-source-hidden');
+            state.dragSession.proxy?.remove();
+            document.body.classList.remove('is-team-dragging');
+        }
+
+        function positionTeamDragProxy(clientX, clientY) {
+            if (!state.dragSession?.proxy) {
+                return;
+            }
+
+            const { left, top } = resolveConstrainedProxyPosition(clientX, clientY);
+            state.dragSession.proxy.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        }
+
+        function resolvePreviewInsertionIndex(clientX, clientY) {
+            const panels = [...(dom.players?.querySelectorAll('[data-team-panel]') || [])]
+                .map((panel) => ({
+                    panel,
+                    rect: panel.getBoundingClientRect()
+                }))
+                .sort((left, right) => left.rect.top - right.rect.top);
+            if (!panels.length || !state.dragSession) {
+                return null;
+            }
+
+            let targetPanel = panels.find(({ rect }) => pointInRect(clientX, clientY, rect));
+            if (!targetPanel) {
+                targetPanel = resolvePanelFromGap(panels, clientY);
+            }
+            if (!targetPanel) {
+                targetPanel = panels.reduce((closest, candidate) => {
+                    if (!closest) {
+                        return candidate;
+                    }
+                    const currentDistance = distanceToRect(clientX, clientY, candidate.rect);
+                    const closestDistance = distanceToRect(clientX, clientY, closest.rect);
+                    return currentDistance < closestDistance ? candidate : closest;
+                }, null);
+            }
+
+            if (!targetPanel) {
+                return null;
+            }
+
+            const teamNumber = Number(targetPanel.panel.dataset.teamPanel);
+            const cards = [...targetPanel.panel.querySelectorAll('[data-team-player-card]')]
+                .filter((card) => card.dataset.teamPlayerCard !== state.dragSession.playerId);
+            const localIndex = resolveTeamPanelInsertionIndex(cards, clientX, clientY);
+
+            if (teamNumber === 1) {
+                return Math.max(0, Math.min(localIndex, state.dragSession.splitIndex));
+            }
+
+            return Math.max(
+                state.dragSession.splitIndex,
+                Math.min(state.dragSession.splitIndex + localIndex, state.dragSession.previewOrderIds.length - 1)
+            );
+        }
+
+        function resolveTeamPanelInsertionIndex(cards, clientX, clientY) {
+            if (!cards.length) {
+                return 0;
+            }
+
+            const rows = [];
+            cards.forEach((card) => {
+                const rect = card.getBoundingClientRect();
+                let row = rows.find((candidate) => Math.abs(candidate.top - rect.top) < 12);
+                if (!row) {
+                    row = {
+                        top: rect.top,
+                        bottom: rect.bottom,
+                        cards: []
+                    };
+                    rows.push(row);
+                }
+                row.bottom = Math.max(row.bottom, rect.bottom);
+                row.cards.push({ card, rect });
+            });
+
+            rows.sort((left, right) => left.top - right.top);
+            rows.forEach((row) => {
+                row.cards.sort((left, right) => left.rect.left - right.rect.left);
+            });
+
+            let offset = 0;
+            for (let index = 0; index < rows.length; index += 1) {
+                const row = rows[index];
+                const nextRow = rows[index + 1];
+                const boundary = nextRow
+                    ? row.bottom + Math.max(0, nextRow.top - row.bottom) / 2
+                    : row.bottom;
+
+                if (clientY <= boundary) {
+                    for (let cardIndex = 0; cardIndex < row.cards.length; cardIndex += 1) {
+                        const { rect } = row.cards[cardIndex];
+                        if (clientX <= rect.left + rect.width / 2) {
+                            return offset + cardIndex;
+                        }
+                    }
+                    return offset + row.cards.length;
+                }
+
+                offset += row.cards.length;
+            }
+
+            return cards.length;
+        }
+
+        function resolveConstrainedDragPoint(clientX, clientY) {
+            const bounds = state.dragSession?.containerBounds;
+            if (!bounds) {
+                return { x: clientX, y: clientY };
+            }
+
+            return {
+                x: clamp(clientX, bounds.left, bounds.right),
+                y: clamp(clientY, bounds.top, bounds.bottom)
+            };
+        }
+
+        function resolveConstrainedProxyPosition(clientX, clientY) {
+            const dragSession = state.dragSession;
+            const preferredLeft = clientX - dragSession.offsetX;
+            const preferredTop = clientY - dragSession.offsetY;
+            const bounds = dragSession.containerBounds;
+            if (!bounds) {
+                return {
+                    left: preferredLeft,
+                    top: preferredTop
+                };
+            }
+
+            const minLeft = bounds.left;
+            const maxLeft = Math.max(bounds.left, bounds.right - dragSession.proxyWidth);
+            const minTop = bounds.top;
+            const maxTop = Math.max(bounds.top, bounds.bottom - dragSession.proxyHeight);
+
+            return {
+                left: clamp(preferredLeft, minLeft, maxLeft),
+                top: clamp(preferredTop, minTop, maxTop)
+            };
+        }
+
+        function resolvePanelFromGap(panels, clientY) {
+            for (let index = 0; index < panels.length - 1; index += 1) {
+                const current = panels[index];
+                const next = panels[index + 1];
+                if (clientY >= current.rect.bottom && clientY <= next.rect.top) {
+                    const midpoint = current.rect.bottom + (next.rect.top - current.rect.bottom) / 2;
+                    return clientY <= midpoint ? current : next;
+                }
+            }
+            return null;
+        }
+
+        function buildPreviewOrder(currentOrderIds, playerId, insertionIndex) {
+            const remainingIds = currentOrderIds.filter((candidate) => candidate !== playerId);
+            remainingIds.splice(Math.max(0, Math.min(insertionIndex, remainingIds.length)), 0, playerId);
+            return remainingIds;
+        }
+
+        function applyOrderedPlayersToTeamBoard(orderedPlayerIds, splitIndex, options = {}) {
+            const team1Body = dom.players?.querySelector('[data-team-panel="1"]');
+            const team2Body = dom.players?.querySelector('[data-team-panel="2"]');
+            if (!team1Body || !team2Body) {
+                return;
+            }
+
+            const previousRects = options.animate ? captureTeamCardRects() : null;
+            const cardsById = new Map(
+                [...dom.players.querySelectorAll('[data-team-player-card]')].map((card) => [card.dataset.teamPlayerCard, card])
+            );
+
+            for (const playerId of orderedPlayerIds.slice(0, splitIndex)) {
+                const card = cardsById.get(String(playerId));
+                if (card) {
+                    team1Body.appendChild(card);
+                }
+            }
+
+            for (const playerId of orderedPlayerIds.slice(splitIndex)) {
+                const card = cardsById.get(String(playerId));
+                if (card) {
+                    team2Body.appendChild(card);
+                }
+            }
+
+            updateRenderedTeamState();
+            if (previousRects) {
+                animateTeamCardsFromRects(previousRects, options.skipPlayerId);
+            }
+        }
+
+        function captureTeamBoardSignature() {
+            const team1Cards = dom.players?.querySelectorAll('[data-team-panel="1"] [data-team-player-card]');
+            const team2Cards = dom.players?.querySelectorAll('[data-team-panel="2"] [data-team-player-card]');
+            if (!team1Cards || !team2Cards) {
+                return null;
+            }
+
+            return `${[...team1Cards].map((card) => card.dataset.teamPlayerCard).join(',')}|${[...team2Cards]
+                .map((card) => card.dataset.teamPlayerCard)
+                .join(',')}`;
+        }
+
+        function buildTeamBoardSignature(orderedPlayersOrIds, splitIndex) {
+            const orderedIds = orderedPlayersOrIds.map((player) => typeof player === 'object' ? String(player.id) : String(player));
+            return `${orderedIds
+                .slice(0, splitIndex)
+                .join(',')}|${orderedIds
+                .slice(splitIndex)
+                .join(',')}`;
+        }
+
+        function buildLobbyTeamSignature(lobby) {
+            const teamState = resolveTeams(lobby);
+            if (!teamState) {
+                return null;
+            }
+            return buildTeamBoardSignature(
+                teamState.orderedPlayers,
+                teamState.team1Capacity
+            );
+        }
+
+        function buildPlayerAreaRenderOptions(previousLobby, nextLobby) {
+            const options = {};
+
+            if (state.pendingPlayerAreaTransition) {
+                if (state.pendingPlayerAreaTransition.kind === 'exit-team' && isTeamExitTransition(previousLobby, nextLobby)) {
+                    options.playerAreaTransitionSnapshot = state.pendingPlayerAreaTransition;
+                    state.pendingPlayerAreaTransition = null;
+                    state.preservePlayersAreaUntil = Date.now() + 420;
+                    return options;
+                }
+
+                if (state.pendingPlayerAreaTransition.kind === 'enter-team' && isTeamEntryTransition(previousLobby, nextLobby)) {
+                    options.playerAreaEntrySnapshot = state.pendingPlayerAreaTransition.cardRects;
+                    state.pendingPlayerAreaTransition = null;
+                    state.preservePlayersAreaUntil = Date.now() + 420;
+                    return options;
+                }
+            }
+
+            if (Date.now() < state.preservePlayersAreaUntil && buildPlayerAreaSignature(previousLobby) === buildPlayerAreaSignature(nextLobby)) {
+                options.preservePlayersArea = true;
+            }
+
+            return options;
+        }
+
+        function isTeamExitTransition(previousLobby, nextLobby) {
+            return !!resolveTeams(previousLobby) && !resolveTeams(nextLobby);
+        }
+
+        function isTeamEntryTransition(previousLobby, nextLobby) {
+            return !resolveTeams(previousLobby) && !!resolveTeams(nextLobby);
+        }
+
+        function buildPlayerAreaSignature(lobby) {
+            if (!lobby) {
+                return 'none';
+            }
+
+            const teamSignature = buildLobbyTeamSignature(lobby);
+            if (teamSignature) {
+                return `teams:${teamSignature}`;
+            }
+
+            const players = sortPlayers(Array.isArray(lobby.players) ? lobby.players : [], lobby.host);
+            return `list:${players.map((player) => player.id).join(',')}`;
+        }
+
+        function shouldPreserveTeamBoard(nextLobby) {
+            if (!isCurrentUserHost()) {
+                return false;
+            }
+
+            const domSignature = captureTeamBoardSignature();
+            const nextSignature = buildLobbyTeamSignature(nextLobby);
+            return !!domSignature && !!nextSignature && domSignature === nextSignature;
+        }
+
+        function shouldAnimateObservedTeams(previousLobby, nextLobby) {
+            if (isCurrentUserHost()) {
+                return false;
+            }
+            return buildLobbyTeamSignature(previousLobby) !== buildLobbyTeamSignature(nextLobby);
+        }
+
+        function animateObservedTeamBoard(previousRects) {
+            const board = dom.players?.querySelector('.team-board');
+            if (!board) {
+                return;
+            }
+
+            animateTeamCardsFromRects(previousRects);
+            board.classList.remove('is-observer-update');
+            void board.offsetWidth;
+            board.classList.add('is-observer-update');
+            window.setTimeout(() => {
+                board.classList.remove('is-observer-update');
+            }, 320);
+        }
+
+        function captureTeamCardRects() {
+            const cards = dom.players?.querySelectorAll('[data-team-player-card]');
+            if (!cards?.length) {
+                return null;
+            }
+
+            const rects = new Map();
+            cards.forEach((card) => {
+                rects.set(card.dataset.teamPlayerCard, card.getBoundingClientRect());
+            });
+            return rects;
+        }
+
+        function captureTeamModeTransitionSnapshot() {
+            const board = dom.players?.querySelector('[data-team-board]');
+            const container = dom.players;
+            const cardRects = capturePlayerCardRects();
+            if (!board || !container || !cardRects) {
+                return null;
+            }
+
+            const boardRect = board.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const boardClone = board.cloneNode(true);
+            boardClone.classList.remove('is-entering', 'is-observer-update');
+            boardClone.classList.add('players-transition-overlay');
+
+            return {
+                boardClone,
+                cardRects,
+                frame: {
+                    left: boardRect.left - containerRect.left + container.scrollLeft,
+                    top: boardRect.top - containerRect.top + container.scrollTop,
+                    width: boardRect.width,
+                    height: boardRect.height
+                }
+            };
+        }
+
+        function capturePlayerCardRects() {
+            const cards = dom.players?.querySelectorAll('[data-player-card]');
+            if (!cards?.length) {
+                return null;
+            }
+
+            const rects = new Map();
+            cards.forEach((card) => {
+                rects.set(card.dataset.playerCard, card.getBoundingClientRect());
+            });
+            return rects;
+        }
+
+        function animateTeamCardsFromRects(previousRects, skipPlayerId = null) {
+            if (!previousRects) {
+                return;
+            }
+
+            const cards = dom.players?.querySelectorAll('[data-team-player-card]');
+            if (!cards?.length) {
+                return;
+            }
+
+            cards.forEach((card) => {
+                if (skipPlayerId && card.dataset.teamPlayerCard === String(skipPlayerId)) {
+                    return;
+                }
+
+                const previousRect = previousRects.get(card.dataset.teamPlayerCard);
+                if (!previousRect) {
+                    return;
+                }
+
+                const nextRect = card.getBoundingClientRect();
+                const deltaX = previousRect.left - nextRect.left;
+                const deltaY = previousRect.top - nextRect.top;
+                if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) {
+                    return;
+                }
+
+                card.style.transition = 'none';
+                card.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+                window.requestAnimationFrame(() => {
+                    card.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+                    card.style.transform = '';
+                });
+                window.setTimeout(() => {
+                    card.style.transition = '';
+                }, 240);
+            });
+        }
+
+        function animatePlayerCardsFromRects(previousRects) {
+            if (!previousRects) {
+                return;
+            }
+
+            const cards = dom.players?.querySelectorAll('[data-player-card]');
+            if (!cards?.length) {
+                return;
+            }
+
+            cards.forEach((card) => {
+                const previousRect = previousRects.get(card.dataset.playerCard);
+                if (!previousRect) {
+                    card.animate([
+                        { opacity: 0, transform: 'translateY(10px) scale(0.98)' },
+                        { opacity: 1, transform: 'translateY(0) scale(1)' }
+                    ], {
+                        duration: 260,
+                        easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+                    });
+                    return;
+                }
+
+                const nextRect = card.getBoundingClientRect();
+                const deltaX = previousRect.left - nextRect.left;
+                const deltaY = previousRect.top - nextRect.top;
+                card.style.transition = 'none';
+                card.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+                card.style.opacity = '0.82';
+                window.requestAnimationFrame(() => {
+                    card.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
+                    card.style.transform = '';
+                    card.style.opacity = '';
+                });
+                window.setTimeout(() => {
+                    card.style.transition = '';
+                }, 300);
+            });
+
+        }
+
+        function startPlayerLayoutTransition(transitionSnapshot) {
+            if (!dom.players) {
+                return;
+            }
+
+            dom.players.querySelectorAll('.players-transition-overlay').forEach((overlay) => overlay.remove());
+
+            if (!transitionSnapshot) {
+                dom.players.classList.remove('is-config-transition');
+                return;
+            }
+
+            dom.players.classList.add('is-config-transition');
+
+            const { boardClone, cardRects, frame } = transitionSnapshot;
+            boardClone.style.left = `${frame.left}px`;
+            boardClone.style.top = `${frame.top}px`;
+            boardClone.style.width = `${frame.width}px`;
+            boardClone.style.height = `${frame.height}px`;
+            dom.players.appendChild(boardClone);
+
+            window.requestAnimationFrame(() => {
+                animatePlayerCardsFromRects(cardRects);
+                boardClone.animate([
+                    {
+                        opacity: 1,
+                        transform: 'translateY(0) scale(1)',
+                        filter: 'blur(0)',
+                        clipPath: 'inset(0 0 0 0 round 1.25rem)'
+                    },
+                    {
+                        opacity: 0,
+                        transform: 'translateY(-10px) scale(0.985)',
+                        filter: 'blur(5px)',
+                        clipPath: 'inset(12% 0 0 0 round 1.25rem)'
+                    }
+                ], {
+                    duration: 320,
+                    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                    fill: 'forwards'
+                });
+            });
+
+            window.setTimeout(() => {
+                boardClone.remove();
+                dom.players?.classList.remove('is-config-transition');
+            }, 360);
+        }
+
+        function startTeamLayoutTransition(previousRects) {
+            if (!dom.players) {
+                return;
+            }
+
+            if (!previousRects) {
+                return;
+            }
+
+            dom.players.classList.add('is-config-transition');
+            window.requestAnimationFrame(() => {
+                animateTeamCardsFromRects(previousRects);
+            });
+
+            window.setTimeout(() => {
+                dom.players?.classList.remove('is-config-transition');
+            }, 320);
+        }
+
+        function pointInRect(clientX, clientY, rect) {
+            return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+        }
+
+        function distanceToRect(clientX, clientY, rect) {
+            const dx = clientX < rect.left ? rect.left - clientX : (clientX > rect.right ? clientX - rect.right : 0);
+            const dy = clientY < rect.top ? rect.top - clientY : (clientY > rect.bottom ? clientY - rect.bottom : 0);
+            return Math.hypot(dx, dy);
+        }
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function getTeamDisplayName(teamNumber) {
+            return teamNumber === 1 ? '1st team' : '2nd team';
+        }
+
+        function formatTeamsSummary(teamState) {
+            return `${getTeamDisplayName(1)}: ${formatTeamNames(teamState.team1)} • ${getTeamDisplayName(2)}: ${formatTeamNames(teamState.team2)}`;
+        }
+
+        function formatTeamNames(team) {
+            if (!team.length) {
+                return 'Waiting for players';
+            }
+            return team.map((player) => player.name || `User ${player.id}`).join(', ');
+        }
+
+        function isCurrentUserHost() {
+            return !!(state.currentUser && state.lobby?.host && String(state.currentUser.id) === String(state.lobby.host.id));
         }
 
         function buildLobbyStatus(lobby, playerCount) {
