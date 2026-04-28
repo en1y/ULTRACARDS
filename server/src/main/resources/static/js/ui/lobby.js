@@ -167,6 +167,17 @@
 
         function bindActions() {
             dom.start?.addEventListener('click', async () => {
+                if (!isLobbyReadyToStart(state.lobby)) {
+                    const message = buildStartBlockedMessage(state.lobby);
+                    updateStatus(message);
+                    showToast('Lobby is not ready', message);
+                    dom.start?.classList.add('is-start-blocked-pulse');
+                    window.setTimeout(() => {
+                        dom.start?.classList.remove('is-start-blocked-pulse');
+                    }, 700);
+                    return;
+                }
+
                 try {
                     const response = await fetch('/api/lobby/start', {
                         method: 'POST',
@@ -333,7 +344,7 @@
 
             if (dom.name) dom.name.textContent = lobby.name || 'ULTRAlobby';
             if (dom.gameType) dom.gameType.textContent = lobby.gameType || 'Lobby';
-            if (dom.playerChip) dom.playerChip.textContent = `${players.length} / ${lobby.maxPlayers} players`;
+            if (dom.playerChip) dom.playerChip.textContent = formatLobbyPlayerCounter(lobby, players.length);
             if (dom.host) dom.host.textContent = lobby.host?.name || 'Unknown';
             if (dom.config) dom.config.textContent = describeConfig(lobby);
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
@@ -343,7 +354,11 @@
 
             if (dom.start) {
                 dom.start.hidden = !isHost;
-                dom.start.disabled = players.length < Number(lobby.minPlayers || lobby.maxPlayers || 0);
+                const readyToStart = isLobbyReadyToStart(lobby, players.length);
+                dom.start.disabled = false;
+                dom.start.setAttribute('aria-disabled', String(!readyToStart));
+                dom.start.classList.toggle('is-start-blocked', !readyToStart);
+                dom.start.title = readyToStart ? '' : buildStartBlockedMessage(lobby, players.length);
             }
             if (dom.delete) {
                 dom.delete.hidden = !isHost;
@@ -780,8 +795,9 @@
             }
 
             const players = resolveOrderedLobbyPlayers(lobby);
-            const team1Capacity = Math.min(players.length, 2);
-            const team2Capacity = Math.max(Math.min(players.length, 4) - team1Capacity, 0);
+            const teamSize = 2;
+            const team1Capacity = teamSize;
+            const team2Capacity = teamSize;
             const team1 = players.slice(0, team1Capacity);
             const team2 = players.slice(team1Capacity, team1Capacity + team2Capacity);
 
@@ -791,6 +807,7 @@
                 team2,
                 team1Capacity,
                 team2Capacity,
+                totalCapacity: team1Capacity + team2Capacity,
                 orderedPlayers: [...team1, ...team2]
             };
         }
@@ -1699,11 +1716,50 @@
             return !!(state.currentUser && state.lobby?.host && String(state.currentUser.id) === String(state.lobby.host.id));
         }
 
-        function buildLobbyStatus(lobby, playerCount) {
-            if (playerCount < Number(lobby.minPlayers || 0)) {
-                return `Waiting for ${Number(lobby.minPlayers) - playerCount} more player(s) to start.`;
+        function resolveLobbyCapacity(lobby) {
+            const configuredPlayers = Number(lobby?.gameConfig?.numberOfPlayers);
+            if (Number.isFinite(configuredPlayers) && configuredPlayers > 0) {
+                return configuredPlayers;
             }
-            if (playerCount < Number(lobby.maxPlayers || 0)) {
+
+            const maxPlayers = Number(lobby?.maxPlayers);
+            if (Number.isFinite(maxPlayers) && maxPlayers > 0) {
+                return maxPlayers;
+            }
+
+            const minPlayers = Number(lobby?.minPlayers);
+            return Number.isFinite(minPlayers) && minPlayers > 0 ? minPlayers : 0;
+        }
+
+        function formatLobbyPlayerCounter(lobby, playerCount) {
+            const teamState = resolveTeams(lobby);
+            if (teamState) {
+                return `${teamState.team1.length + teamState.team2.length} / ${teamState.totalCapacity} players`;
+            }
+
+            const capacity = resolveLobbyCapacity(lobby);
+            return `${playerCount} / ${capacity || playerCount} players`;
+        }
+
+        function isLobbyReadyToStart(lobby, playerCount = resolveOrderedLobbyPlayers(lobby).length) {
+            const requiredPlayers = Number(lobby?.minPlayers || resolveLobbyCapacity(lobby));
+            return Number.isFinite(requiredPlayers) && requiredPlayers > 0 && playerCount >= requiredPlayers;
+        }
+
+        function buildStartBlockedMessage(lobby, playerCount = resolveOrderedLobbyPlayers(lobby).length) {
+            const requiredPlayers = Number(lobby?.minPlayers || resolveLobbyCapacity(lobby));
+            const missingPlayers = Math.max((Number.isFinite(requiredPlayers) ? requiredPlayers : 0) - playerCount, 0);
+            if (missingPlayers > 0) {
+                return `Waiting for ${missingPlayers} more player${missingPlayers === 1 ? '' : 's'} before the lobby can start.`;
+            }
+            return 'The lobby is not ready to start yet.';
+        }
+
+        function buildLobbyStatus(lobby, playerCount) {
+            if (!isLobbyReadyToStart(lobby, playerCount)) {
+                return buildStartBlockedMessage(lobby, playerCount);
+            }
+            if (playerCount < resolveLobbyCapacity(lobby)) {
                 return 'Minimum player count reached. The host can start the lobby now.';
             }
             return 'Start the lobby!';
