@@ -49,7 +49,7 @@
                     <h1 id="lobby-name" th:text="${lobby.name}">ULTRAlobby</h1>
                 </div>
                 <span class="chip" id="lobby-player-chip"
-                      th:text="${#sets.size(lobby.players) + ' / ' + lobby.maxPlayers + ' players'}">1 / 2 players</span>
+                      th:text="${#sets.size(lobby.players) + ' / ' + (lobby.gameConfig != null and lobby.gameConfig.numberOfPlayers != null ? lobby.gameConfig.numberOfPlayers : lobby.maxPlayers) + ' players'}">1 / 2 players</span>
             </div>
 
             <div class="lobby-meta">

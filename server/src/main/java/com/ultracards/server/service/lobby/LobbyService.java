@@ -106,7 +106,7 @@ public class LobbyService {
 
     public Boolean startLobby(UserEntity user) {
         var lobby = lobbyManager.getLobby(user);
-        if (lobby != null) {
+        if (lobby != null && lobby.getUsers().size() >= lobby.getMinPlayers()) {
             gameService.startGame(lobby);
             lobby.setLobbyState(LobbyState.STARTED);
             eventPublisher.publish(lobby, STARTED);
