@@ -74,7 +74,7 @@ public class LobbyService {
     }
 
     public JoinLobbyResult joinLobby(@NotNull String lobbyCode, UserEntity user) {
-        var lobby = lobbyManager.getLobby(new LobbyCode(lobbyCode));
+        var lobby = lobbyManager.getLobby(new LobbyCode(lobbyCode.toUpperCase()));
         if (lobby == null) {
             return JoinLobbyResult.NOT_FOUND;
         }

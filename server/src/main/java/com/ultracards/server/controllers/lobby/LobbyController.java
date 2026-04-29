@@ -1,6 +1,7 @@
 package com.ultracards.server.controllers.lobby;
 
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.JoinLobbyRequestDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.lobby.LobbyService;
 import jakarta.validation.Valid;
@@ -43,13 +44,10 @@ public class LobbyController {
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<String> joinLobby(
             @AuthenticationPrincipal UserEntity user,
-            @NotBlank
-            @Size(min = 6, max = 6)
-            @Pattern(regexp = "^[A-Z0-9]{6}$", message = "Code must be 6 characters A-Z and 0-9")
-            @RequestBody String lobbyId
+            @RequestBody @Valid JoinLobbyRequestDTO lobbyCode
             ){
         var res = lobbyService.joinLobby(
-                lobbyId, user
+                lobbyCode.lobbyCode(), user
         );
 
         if (res == LobbyService.JoinLobbyResult.JOINED)
