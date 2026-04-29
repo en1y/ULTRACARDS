@@ -94,7 +94,7 @@ public class LobbyEntity {
                 users,
                 new GamePlayerDTO(getOwner().getUsername(), getOwner().getId()),
                 getGameType(),
-                getLobbyCode().toString(),
+                getLobbyCode().lobbyCode(),
                 getGameConfig(),
                 closedAt
         );
