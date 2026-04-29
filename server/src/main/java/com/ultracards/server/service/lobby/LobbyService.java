@@ -6,6 +6,7 @@ import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
+import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.UserService;
@@ -72,8 +73,8 @@ public class LobbyService {
         return lobby.createLobbyDTO();
     }
 
-    public JoinLobbyResult joinLobby(@NotNull UUID lobbyId, UserEntity user) {
-        var lobby = lobbyManager.getLobby(lobbyId);
+    public JoinLobbyResult joinLobby(@NotNull String lobbyCode, UserEntity user) {
+        var lobby = lobbyManager.getLobby(new LobbyCode(lobbyCode));
         if (lobby == null) {
             return JoinLobbyResult.NOT_FOUND;
         }

@@ -26,6 +26,7 @@ public class LobbyEntity {
     private int maxPlayers;
     private GameConfig lobbyGameConfig;
     private LobbyState lobbyState;
+    private LobbyCode lobbyCode;
     private Instant closedAt;
 
     public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, int lobbyTimer) {
@@ -93,6 +94,7 @@ public class LobbyEntity {
                 users,
                 new GamePlayerDTO(getOwner().getUsername(), getOwner().getId()),
                 getGameType(),
+                getLobbyCode().toString(),
                 getGameConfig(),
                 closedAt
         );

@@ -5,6 +5,7 @@ import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
+import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,12 +24,14 @@ public class LobbyManager {
     private final List<LobbyEntity> lobbies = Collections.synchronizedList(new ArrayList<>());
 
     private final LobbyEventPublisher lobbyEventPublisher;
+    private final LobbyCodeManager lobbyCodeManager;
 
     @Value("${app.lobby.timer.duration-seconds}")
     private int lobbyTimer;
 
-    public LobbyManager(LobbyEventPublisher lobbyEventPublisher) {
+    public LobbyManager(LobbyEventPublisher lobbyEventPublisher, LobbyCodeManager lobbyCodeManager) {
         this.lobbyEventPublisher = lobbyEventPublisher;
+        this.lobbyCodeManager = lobbyCodeManager;
         for (var gt: GameTypeDTO.values()) {
             lobbiesByGameType.put(gt, Collections.synchronizedList(new ArrayList<>()));
         }
@@ -40,6 +43,10 @@ public class LobbyManager {
 
     public LobbyEntity getLobby(UserEntity owner) {
         return lobbiesByUser.get(owner.getId());
+    }
+
+    public LobbyEntity getLobby(LobbyCode lobbyCode) {
+        return lobbyCodeManager.getLobbyByCode(lobbyCode);
     }
 
     public List<LobbyEntity> getLobbies(GameTypeDTO gameTypeDTO) {
@@ -79,6 +86,7 @@ public class LobbyManager {
         var l = lobbiesByUser.get(lobby.getOwner().getId());
 
         if (l != null) {
+            lobbyCodeManager.removeLobbyCode(l);
             lobbiesById.remove(l.getId());
             lobbiesByGameType.get(l.getGameType()).remove(l);
             lobbyByGameId.remove(l.getId());
@@ -93,6 +101,7 @@ public class LobbyManager {
     private void put(LobbyEntity lobby) {
         remove(lobby);
 
+        lobbyCodeManager.addLobbyCode(lobby);
         lobbiesById.put(lobby.getId(), lobby);
         lobbiesByUser.put(lobby.getOwner().getId(), lobby);
         lobbiesByGameType.get(lobby.getGameType()).add(lobby);
