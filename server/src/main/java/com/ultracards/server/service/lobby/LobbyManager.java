@@ -42,6 +42,10 @@ public class LobbyManager {
         return lobbiesByUser.get(owner.getId());
     }
 
+    public List<LobbyEntity> getLobbies(GameTypeDTO gameTypeDTO) {
+        return lobbiesByGameType.get(gameTypeDTO);
+    }
+
     public LobbyEntity getByGame(UUID gameId) {
         return lobbyByGameId.get(gameId);
     }

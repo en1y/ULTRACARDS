@@ -123,6 +123,17 @@ public class LobbyController {
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<List<GameLobbyDTO>> getLobbies() {
         return ResponseEntity.ok(lobbyService.getLobbies());
-        // TODO: create mappings to get just one game type
+    }
+
+    @GetMapping("/get-lobbies/{gameType}/{gameSettingId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<?> getLobbiesByType(
+            @PathVariable String gameType,
+            @PathVariable Integer gameSettingId
+    ) {
+        var res = lobbyService.getLobbies(gameType, gameSettingId);
+        if (res == null)
+            return ResponseEntity.badRequest().body("The game type or the game setting ID provided are invalid.");
+        return ResponseEntity.ok(res);
     }
 }

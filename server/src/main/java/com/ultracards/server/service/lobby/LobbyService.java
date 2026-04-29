@@ -1,5 +1,7 @@
 package com.ultracards.server.service.lobby;
 
+import com.ultracards.games.briskula.BriskulaGameConfig;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
@@ -191,6 +193,29 @@ public class LobbyService {
                 res.add(l.createLobbyDTO());
         }
         return res;
+    }
+
+    public List<GameLobbyDTO> getLobbies(String gameType, Integer gameSettingId) {
+        return switch (gameType.toLowerCase()) {
+            case "briskula" -> {
+                var lobbies = lobbyManager.getLobbies(GameTypeDTO.Briskula);
+                var res = new ArrayList<GameLobbyDTO>();
+                var briskulaConfigs = BriskulaGameConfig.values();
+
+                if (gameSettingId == null || gameSettingId < 0 ||  gameSettingId >= briskulaConfigs.length)
+                    yield null;
+                var config = briskulaConfigs[gameSettingId];
+
+                for (var l: lobbies)
+                    if (l.getLobbyState().equals(LobbyState.OPEN) &&
+                        ((BriskulaLobbyGameConfig)l.getLobbyGameConfig()).getGameConfig().equals(config))
+                            res.add(l.createLobbyDTO());
+
+                yield res;
+            }
+            case "treseta", "durak", "poker" -> new ArrayList<>();
+            default -> null;
+        };
     }
 
     public LobbyEntity getLobbyByUser(UserEntity user) {
