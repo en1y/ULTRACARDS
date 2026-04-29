@@ -39,16 +39,38 @@ public class WebSecurityConfig {
                 .addFilterBefore(tokenRotationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers("/", "/css/**", "/pics/**", "/js/**", "/error", "/errors/**", "/favicon.ico", "/static/favicon.ico").permitAll()
-                        .requestMatchers("/errors/**").permitAll()
-                        .requestMatchers("/profile/**").permitAll()
-                        .requestMatchers("/lobbies/**").permitAll()
-                        .requestMatchers("/active").permitAll()
-                        .requestMatchers("/ws", "/ws/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/email/send").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/email/verify").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
+                        // Public static/pages
+                        .requestMatchers(
+                                "/",
+                                "/error",
+                                "/errors/**",
+                                "/favicon.ico",
+                                "/css/**",
+                                "/pics/**",
+                                "/js/**"
+                        ).permitAll()
+                        // Public app routes
+                        .requestMatchers(
+                                "/active",
+                                "/ws",
+                                "/ws/**"
+                        ).permitAll()
+                        // Public auth endpoints
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/email/send",
+                                "/api/auth/email/verify",
+                                "/api/auth/logout"
+                        ).permitAll()
+                        // Post auth available endpoints
+                        .requestMatchers(
+                                "/profile/**",
+                                "/lobbies/**",
+                                "/game/**"
+                        ).authenticated()
+                        // backend API
+                        // TODO: check whether i should to make any more of the api calls public
                         .requestMatchers("/api/**").authenticated()
+                        // Everything else public
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(h -> h
@@ -64,7 +86,7 @@ public class WebSecurityConfig {
     }
 
     private AccessDeniedHandler accessDeniedHandler() {
-        return (req, res, ex) -> res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        return (req, res, ex) -> handleForbidden(req, res);
     }
 
     private void handleAuthFailure(HttpServletRequest req, HttpServletResponse res, int status)
@@ -74,6 +96,15 @@ public class WebSecurityConfig {
             return;
         }
 
-        res.sendRedirect("/errors/401");
+        res.sendError(status);
+    }
+
+    private void handleForbidden(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        if (req.getRequestURI().startsWith("/api/")) {
+            res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
+        res.sendError(HttpServletResponse.SC_FORBIDDEN);
     }
 }
