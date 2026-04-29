@@ -53,7 +53,8 @@
                 <div id="game-settings" class="lobbies-dynamic-settings" hidden="hidden"></div>
 
                 <div class="lobbies-sidebar-actions">
-                    <button class="btn-accent" type="button">Apply Filters</button>
+                    <button id="apply-filters-button" class="btn-accent" type="button">Apply Filters</button>
+                    <button id="clear-filters-button" class="btn" type="button">Show All</button>
                 </div>
             </aside>
 
@@ -62,6 +63,7 @@
                     <div>
                         <p class="lobbies-eyebrow">Open rooms</p>
                         <h2>Available lobbies</h2>
+                        <p id="active-filter-label" class="lobbies-filter-summary">Showing all open lobbies.</p>
                     </div>
                     <span id="active-lobbies-count" class="chip" th:text="${#lists.size(lobbies) + ' active'}">0 active</span>
                 </div>

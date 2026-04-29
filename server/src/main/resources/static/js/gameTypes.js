@@ -45,36 +45,44 @@ const gameTypes = {
     briskula: {
         p2: {
             ui_text: '1v1 3 cards each',
+            settingId: 0,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 2, 3)
         },
         p2c4: {
             ui_text: '1v1 4 cards each',
+            settingId: 1,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 2, 4)
         },
         p3: {
             ui_text: '3 players',
+            settingId: 2,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 3, 3)
         },
         p4: {
             ui_text: '4 players',
+            settingId: 3,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 4, 3)
         },
         p4teams: {
             ui_text: '2v2',
+            settingId: 4,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 4, 3, true)
         }
     },
     treseta: {
         p2: {
             ui_text: '1v1',
+            settingId: 0,
             req: ''
         },
         p3: {
             ui_text: '3 players',
+            settingId: 1,
             req: ''
         },
         p4: {
             ui_text: '2v2',
+            settingId: 2,
             req: ''
         }
     },
@@ -92,6 +100,49 @@ function getGameTypeSetting(gameType, settingKey) {
         return null;
     }
     return settings[settingKey] || null;
+}
+
+function getGameTypeSettingId(gameType, settingKey) {
+    const setting = getGameTypeSetting(gameType, settingKey);
+    return Number.isInteger(setting?.settingId) ? setting.settingId : null;
+}
+
+function resolveLobbyGameSettingKey(lobby) {
+    if (!lobby) {
+        return '';
+    }
+
+    const gameType = String(lobby.gameType || '').toLowerCase();
+    if (gameType !== 'briskula' || !lobby.gameConfig) {
+        return '';
+    }
+
+    const config = lobby.gameConfig;
+    if (config.numberOfPlayers === 2 && config.cardsInHandNum === 3) {
+        return 'p2';
+    }
+    if (config.numberOfPlayers === 2 && config.cardsInHandNum === 4) {
+        return 'p2c4';
+    }
+    if (config.numberOfPlayers === 3) {
+        return 'p3';
+    }
+    if (config.numberOfPlayers === 4 && config.teamsEnabled) {
+        return 'p4teams';
+    }
+    if (config.numberOfPlayers === 4) {
+        return 'p4';
+    }
+    return '';
+}
+
+function resolveLobbyGameSettingId(lobby) {
+    const gameType = String(lobby?.gameType || '').toLowerCase();
+    const settingKey = resolveLobbyGameSettingKey(lobby);
+    if (!gameType || !settingKey) {
+        return null;
+    }
+    return getGameTypeSettingId(gameType, settingKey);
 }
 
 function buildLobbyCreatePayload(gameType, settingKey, lobbyName) {

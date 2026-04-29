@@ -2,6 +2,12 @@
             padding-top: 1rem;
         }
 
+        .lobbies-filter-summary,
+        .lobbies-settings-note {
+            margin: 0.45rem 0 0;
+            color: var(--color-text-muted);
+        }
+
         .lobbies-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

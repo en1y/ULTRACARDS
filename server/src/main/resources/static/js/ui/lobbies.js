@@ -62,6 +62,21 @@ const gameSettingsAnimationDurationMs = 420;
             return nodes;
         }
 
+        function buildSettingsNotice(title, text) {
+            const nodes = [];
+
+            const h3Settings = document.createElement('h3');
+            h3Settings.className = 'lobbies-settings-title';
+            h3Settings.textContent = `${title} settings`;
+
+            const notice = document.createElement('p');
+            notice.className = 'lobbies-settings-note';
+            notice.textContent = text;
+
+            nodes.push(h3Settings, notice);
+            return nodes;
+        }
+
         function applyGameTypeSettings(gameType, settingsElement) {
             window.clearTimeout(settingsElement.hideTimeoutId);
 
@@ -78,6 +93,13 @@ const gameSettingsAnimationDurationMs = 420;
 
             const title = gameType.charAt(0).toUpperCase() + gameType.slice(1);
             const selectId = settingsElement.id === 'create-game-settings' ? 'create-properties' : 'properties';
+            if (!Object.keys(selectedGame).length) {
+                const text = settingsElement.id === 'create-game-settings'
+                    ? 'Lobby creation is not available for this game yet.'
+                    : 'No saved configurations are available for this game yet.';
+                setGameSettingsContent(settingsElement, buildSettingsNotice(title, text));
+                return;
+            }
             setGameSettingsContent(settingsElement, buildProperties(title, selectedGame, selectId));
         }
 
@@ -196,15 +218,71 @@ const gameSettingsAnimationDurationMs = 420;
             const grid = document.getElementById('lobbies-grid');
             let emptyState = document.getElementById('lobbies-empty');
             const activeCount = document.getElementById('active-lobbies-count');
+            const activeFilterLabel = document.getElementById('active-filter-label');
+            const gameTypeSelect = document.getElementById('game-type');
+            const applyFiltersButton = document.getElementById('apply-filters-button');
+            const clearFiltersButton = document.getElementById('clear-filters-button');
             const toast = document.getElementById('lobbies-toast');
             const toastTitle = document.getElementById('lobbies-toast-title');
             const toastText = document.getElementById('lobbies-toast-text');
             const lobbyClosedNoticeKey = 'uc-lobby-closed-notice';
+            const lobbyFilterStorageKey = 'uc-lobbies-filter';
+            const filterState = {
+                gameType: 'all',
+                settingKey: '',
+                settingId: null
+            };
+            let latestFilterRequestId = 0;
             let toastHideTimer = null;
             let toastCleanupTimer = null;
 
             if (!grid) {
                 return;
+            }
+
+            function getFilterSummary() {
+                if (filterState.gameType === 'all') {
+                    return 'Showing all open lobbies.';
+                }
+
+                const gameLabel = filterState.gameType.charAt(0).toUpperCase() + filterState.gameType.slice(1);
+                const settingLabel = getGameTypeSetting(filterState.gameType, filterState.settingKey)?.ui_text;
+                if (settingLabel) {
+                    return `Showing ${gameLabel} lobbies for ${settingLabel}.`;
+                }
+                return `Showing ${gameLabel} lobbies.`;
+            }
+
+            function syncFilterSummary() {
+                if (activeFilterLabel) {
+                    activeFilterLabel.textContent = getFilterSummary();
+                }
+            }
+
+            function buildEmptyStateMarkup() {
+                const title = filterState.gameType === 'all'
+                    ? 'No active lobbies present'
+                    : 'No lobbies match this filter';
+                const text = filterState.gameType === 'all'
+                    ? 'Create a room for yet another ULTRAgame'
+                    : 'Try another game setup or create a lobby for this configuration.';
+
+                return `
+                    <h3>${title}</h3>
+                    <p>${text}</p>
+                    <div class="lobby-empty-actions">
+                        <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                    </div>
+                `;
+            }
+
+            function wireEmptyStateActions() {
+                const button = emptyState?.querySelector('[data-action="open-create-lobby"]');
+                if (button) {
+                    button.addEventListener('click', () => {
+                        document.getElementById('create-div')?.classList.add('active');
+                    });
+                }
             }
 
             function updateLobbyCount() {
@@ -216,26 +294,17 @@ const gameSettingsAnimationDurationMs = 420;
                     emptyState = document.createElement('article');
                     emptyState.id = 'lobbies-empty';
                     emptyState.className = 'card lobby-empty-state';
-                    emptyState.innerHTML = `
-                        <h3>No active lobbies present</h3>
-                        <p>Create a room for yet another ULTRAgame</p>
-                        <div class="lobby-empty-actions">
-                            <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
-                        </div>
-                    `;
+                    emptyState.innerHTML = buildEmptyStateMarkup();
                     grid.insertAdjacentElement('beforebegin', emptyState);
-                    const button = emptyState.querySelector('[data-action="open-create-lobby"]');
-                    if (button) {
-                        button.addEventListener('click', () => {
-                            document.getElementById('create-div')?.classList.add('active');
-                        });
-                    }
+                    wireEmptyStateActions();
                 }
                 if (emptyState) {
                     if (count > 0) {
                         emptyState.remove();
                         emptyState = null;
                     } else {
+                        emptyState.innerHTML = buildEmptyStateMarkup();
+                        wireEmptyStateActions();
                         emptyState.hidden = false;
                     }
                 }
@@ -325,6 +394,183 @@ const gameSettingsAnimationDurationMs = 420;
                 `;
             }
 
+            function getSelectedFilter() {
+                const gameType = gameTypeSelect?.value || 'all';
+                if (gameType === 'all') {
+                    return {
+                        gameType: 'all',
+                        settingKey: '',
+                        settingId: null
+                    };
+                }
+
+                const settings = getGameTypeSettings(gameType) || {};
+                const selectedSettingKey = document.getElementById('properties')?.value || Object.keys(settings)[0] || '';
+                const selectedSettingId = getGameTypeSettingId(gameType, selectedSettingKey);
+
+                return {
+                    gameType,
+                    settingKey: selectedSettingKey,
+                    settingId: selectedSettingId ?? 0
+                };
+            }
+
+            function buildLobbyFetchUrl(nextFilter) {
+                if (nextFilter.gameType === 'all') {
+                    return '/api/lobby/get-lobbies';
+                }
+
+                return `/api/lobby/get-lobbies/${encodeURIComponent(nextFilter.gameType)}/${encodeURIComponent(nextFilter.settingId)}`;
+            }
+
+            function persistFilter(nextFilter) {
+                try {
+                    window.localStorage.setItem(lobbyFilterStorageKey, JSON.stringify({
+                        gameType: nextFilter.gameType,
+                        settingKey: nextFilter.settingKey
+                    }));
+                } catch (error) {
+                    console.error('Unable to persist lobby filter', error);
+                }
+            }
+
+            function readSavedFilter() {
+                try {
+                    const rawFilter = window.localStorage.getItem(lobbyFilterStorageKey);
+                    if (!rawFilter) {
+                        return null;
+                    }
+
+                    const parsedFilter = JSON.parse(rawFilter);
+                    if (!parsedFilter || parsedFilter.gameType === 'all') {
+                        return {
+                            gameType: 'all',
+                            settingKey: '',
+                            settingId: null
+                        };
+                    }
+
+                    const gameType = String(parsedFilter.gameType || '').toLowerCase();
+                    const settingKey = String(parsedFilter.settingKey || '');
+                    const settingId = getGameTypeSettingId(gameType, settingKey);
+                    if (!gameType || !settingKey || settingId == null) {
+                        return null;
+                    }
+
+                    return {
+                        gameType,
+                        settingKey,
+                        settingId
+                    };
+                } catch (error) {
+                    console.error('Unable to read saved lobby filter', error);
+                    return null;
+                }
+            }
+
+            function syncFilterControls(nextFilter) {
+                if (!gameTypeSelect) {
+                    return;
+                }
+
+                gameTypeSelect.value = nextFilter.gameType;
+                handleGameTypeChange(gameTypeSelect);
+
+                if (nextFilter.gameType === 'all') {
+                    return;
+                }
+
+                const propertiesSelect = document.getElementById('properties');
+                if (propertiesSelect && getGameTypeSetting(nextFilter.gameType, nextFilter.settingKey)) {
+                    propertiesSelect.value = nextFilter.settingKey;
+                }
+            }
+
+            function lobbyMatchesFilter(lobby) {
+                if (!lobby || filterState.gameType === 'all') {
+                    return true;
+                }
+
+                if (String(lobby.gameType || '').toLowerCase() !== filterState.gameType) {
+                    return false;
+                }
+
+                const lobbySettingId = resolveLobbyGameSettingId(lobby);
+                return lobbySettingId != null && lobbySettingId === filterState.settingId;
+            }
+
+            function replaceLobbies(lobbies) {
+                grid.innerHTML = '';
+                for (const lobby of lobbies) {
+                    grid.insertAdjacentHTML('beforeend', renderCard(lobby));
+                }
+                updateLobbyCount();
+            }
+
+            function applyFilterState(nextFilter) {
+                filterState.gameType = nextFilter.gameType;
+                filterState.settingKey = nextFilter.settingKey;
+                filterState.settingId = nextFilter.settingId;
+                persistFilter(nextFilter);
+                syncFilterSummary();
+            }
+
+            async function refreshLobbies(nextFilter) {
+                const requestId = ++latestFilterRequestId;
+                applyFiltersButton?.setAttribute('disabled', 'disabled');
+                clearFiltersButton?.setAttribute('disabled', 'disabled');
+
+                try {
+                    const response = await fetch(buildLobbyFetchUrl(nextFilter), {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                    if (!response.ok) {
+                        const message = (await response.text()).trim();
+                        throw new Error(message || 'Failed to refresh lobbies.');
+                    }
+
+                    const lobbies = await response.json();
+                    if (requestId !== latestFilterRequestId) {
+                        return;
+                    }
+
+                    applyFilterState(nextFilter);
+                    replaceLobbies(Array.isArray(lobbies) ? lobbies : []);
+                } finally {
+                    if (requestId === latestFilterRequestId) {
+                        applyFiltersButton?.removeAttribute('disabled');
+                        clearFiltersButton?.removeAttribute('disabled');
+                    }
+                }
+            }
+
+            async function applySelectedFilters() {
+                const nextFilter = getSelectedFilter();
+                try {
+                    await refreshLobbies(nextFilter);
+                } catch (error) {
+                    showToast('Filter failed', error?.message || 'Unable to refresh lobbies right now.');
+                }
+            }
+
+            async function clearFilters() {
+                if (gameTypeSelect) {
+                    gameTypeSelect.value = 'all';
+                    handleGameTypeChange(gameTypeSelect);
+                }
+
+                try {
+                    await refreshLobbies({
+                        gameType: 'all',
+                        settingKey: '',
+                        settingId: null
+                    });
+                } catch (error) {
+                    showToast('Reset failed', error?.message || 'Unable to reset filters right now.');
+                }
+            }
+
             function upsertLobby(type, lobby) {
                 if (!lobby || !lobby.id) {
                     return;
@@ -332,6 +578,12 @@ const gameSettingsAnimationDurationMs = 420;
 
                 const existing = grid.querySelector(`[data-id="${CSS.escape(String(lobby.id))}"]`);
                 if (type === 'DELETED' || type === 'STARTED') {
+                    existing?.remove();
+                    updateLobbyCount();
+                    return;
+                }
+
+                if (!lobbyMatchesFilter(lobby)) {
                     existing?.remove();
                     updateLobbyCount();
                     return;
@@ -432,10 +684,21 @@ const gameSettingsAnimationDurationMs = 420;
                 }
             });
 
-            for (const lobby of initialLobbies) {
-                upsertLobby('UPDATED', lobby);
+            applyFiltersButton?.addEventListener('click', applySelectedFilters);
+            clearFiltersButton?.addEventListener('click', clearFilters);
+
+            const savedFilter = readSavedFilter();
+            if (savedFilter) {
+                syncFilterControls(savedFilter);
+                refreshLobbies(savedFilter).catch((error) => {
+                    replaceLobbies(initialLobbies);
+                    syncFilterSummary();
+                    showToast('Saved filter failed', error?.message || 'Unable to restore your saved lobby filter.');
+                });
+            } else {
+                replaceLobbies(initialLobbies);
+                syncFilterSummary();
             }
-            updateLobbyCount();
             showPendingLobbyClosedNotice();
 
             if (!window.Stomp) {
