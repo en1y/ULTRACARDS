@@ -25,6 +25,7 @@ public class GameLobbyDTO {
     @NotNull private Set<GamePlayerDTO> players;
     @NotNull private GamePlayerDTO host;
     @NotNull private GameTypeDTO gameType;
+    private Boolean isPublic;
     private String lobbyCode;
     @JsonTypeInfo(
             use = JsonTypeInfo.Id.NAME,

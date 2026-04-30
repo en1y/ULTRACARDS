@@ -94,6 +94,7 @@ public class LobbyEntity {
                 users,
                 new GamePlayerDTO(getOwner().getUsername(), getOwner().getId()),
                 getGameType(),
+                getLobbyState().equals(LobbyState.PUBLIC),
                 includeLobbyCode ? getLobbyCode().lobbyCode() : null,
                 getGameConfig(),
                 closedAt

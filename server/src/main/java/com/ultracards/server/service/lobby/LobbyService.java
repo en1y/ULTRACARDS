@@ -139,6 +139,11 @@ public class LobbyService {
             lobby.setName(lobbyDTO.getName());
             lobby.setMinPlayers(lobbyDTO.getMinPlayers());
             lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
+
+            var isPublic = lobbyDTO.getIsPublic();
+            if (isPublic != null)
+                lobby.setLobbyState(lobbyDTO.getIsPublic() ? LobbyState.PUBLIC : LobbyState.PRIVATE);
+
             try {
                 var config = lobbyDTO.getGameConfig();
                 if (config != null) {
