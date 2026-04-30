@@ -15,7 +15,6 @@ import com.ultracards.server.service.games.GameService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -89,7 +88,7 @@ public class LobbyService {
     }
 
     private JoinLobbyResult getJoinLobbyResult(UserEntity user, LobbyEntity lobby) {
-        if (lobby == null) {
+        if (lobby == null || lobby.isStarted()) {
             return JoinLobbyResult.NOT_FOUND;
         }
 
@@ -125,7 +124,7 @@ public class LobbyService {
         var lobby = lobbyManager.getLobby(user);
         if (lobby != null && lobby.getUsers().size() >= lobby.getMinPlayers()) {
             gameService.startGame(lobby);
-            lobby.setLobbyState(LobbyState.STARTED);
+            lobby.setStarted(true);
             eventPublisher.publish(lobby, STARTED);
             return true;
         }
@@ -196,10 +195,11 @@ public class LobbyService {
     }
 
     public Boolean openLobby(LobbyEntity lobby) {
-        lobby.setLobbyState(LobbyState.PUBLIC);
+        if (lobby.isStarted()) lobby.setStarted(false);
         lobby.setClosedAt(Instant.now().plusSeconds(lobbyTimer));
         taskScheduler.schedule(() -> {
-            if(lobby.getLobbyState().equals(LobbyState.PUBLIC))
+            // FIXME: it is deleted if a fast game is played
+            if(lobby.isStarted())
                 deleteLobby(lobby.getOwner());
         }, lobby.getClosedAt());
         return true;

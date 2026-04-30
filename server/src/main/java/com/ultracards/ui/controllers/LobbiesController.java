@@ -36,7 +36,7 @@ public class LobbiesController {
             return "ui/lobbies";
         }
 
-        if (lobby.getLobbyState().equals(LobbyState.STARTED)) {
+        if (lobby.isStarted()) {
             return "redirect:/game";
         }
 

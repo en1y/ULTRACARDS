@@ -28,6 +28,7 @@ public class LobbyEntity {
     private LobbyState lobbyState;
     private LobbyCode lobbyCode;
     private Instant closedAt;
+    private boolean isStarted = false;
 
     public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, LobbyState lobbyState, int lobbyTimer) {
         id = UUID.randomUUID();
@@ -75,7 +76,7 @@ public class LobbyEntity {
 
     public GameEntity<?, ?> createGame() {
         var game = lobbyGameConfig.createGame(getId(), getName(), getOwner(), getUsers());
-        lobbyState = LobbyState.STARTED;
+        isStarted = true;
         return game;
     }
 
@@ -96,6 +97,7 @@ public class LobbyEntity {
                 getGameType(),
                 getLobbyState().equals(LobbyState.PUBLIC),
                 includeLobbyCode ? getLobbyCode().lobbyCode() : null,
+                isStarted(),
                 getGameConfig(),
                 closedAt
         );
