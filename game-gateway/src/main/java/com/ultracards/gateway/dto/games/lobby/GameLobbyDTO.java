@@ -27,6 +27,7 @@ public class GameLobbyDTO {
     @NotNull private GameTypeDTO gameType;
     private Boolean isPublic;
     private String lobbyCode;
+    private Boolean isStarted;
     @JsonTypeInfo(
             use = JsonTypeInfo.Id.NAME,
             include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
