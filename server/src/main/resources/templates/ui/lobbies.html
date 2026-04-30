@@ -57,6 +57,7 @@
                     <button id="apply-filters-button" class="btn-accent" type="button">Apply Filters</button>
                     <button id="clear-filters-button" class="btn" type="button">Show All</button>
                 </div>
+
             </aside>
 
             <section class="lobbies-content">
@@ -69,17 +70,39 @@
                     <span id="active-lobbies-count" class="chip" th:text="${#lists.size(lobbies) + ' active'}">0 active</span>
                 </div>
 
-                <div class="lobbies-list">
-                    <article id="lobbies-empty" class="card lobby-empty-state" th:if="${#lists.isEmpty(lobbies)}">
-                        <h3>No active lobbies present</h3>
-                        <p>
-                            Create a room for yet another ULTRAgame
-                        </p>
-                        <div class="lobby-empty-actions">
-                            <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                <div class="lobbies-browser">
+                    <div class="lobbies-list">
+                        <article id="lobbies-empty" class="card lobby-empty-state" th:if="${#lists.isEmpty(lobbies)}">
+                            <h3>No active lobbies present</h3>
+                            <p>
+                                Create a room for yet another ULTRAgame
+                            </p>
+                            <div class="lobby-empty-actions">
+                                <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                            </div>
+                        </article>
+                        <div id="lobbies-grid" class="lobbies-grid"></div>
+                    </div>
+
+                    <form id="join-code-form" class="card lobbies-code-join" aria-label="Join lobby by code">
+                        <div>
+                            <p class="lobbies-eyebrow">Invite code</p>
+                            <h2>Join by code</h2>
+                            <p>Use this for private lobbies or direct invites.</p>
                         </div>
-                    </article>
-                    <div id="lobbies-grid" class="lobbies-grid"></div>
+                        <div class="lobbies-code-row">
+                            <input id="join-code-input"
+                                   class="lobbies-code-input"
+                                   type="text"
+                                   inputmode="text"
+                                   maxlength="6"
+                                   autocomplete="off"
+                                   autocapitalize="characters"
+                                   placeholder="ABC123">
+                            <button id="join-code-submit" class="btn btn-accent" type="submit" disabled>Join</button>
+                        </div>
+                        <p id="join-code-status" class="lobbies-code-status" aria-live="polite">Enter a 6-character lobby code.</p>
+                    </form>
                 </div>
             </section>
         </section>

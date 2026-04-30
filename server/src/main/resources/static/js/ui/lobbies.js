@@ -115,6 +115,10 @@ const gameSettingsAnimationDurationMs = 420;
             const gameTypeSelect = document.getElementById('game-type');
             const applyFiltersButton = document.getElementById('apply-filters-button');
             const clearFiltersButton = document.getElementById('clear-filters-button');
+            const joinCodeForm = document.getElementById('join-code-form');
+            const joinCodeInput = document.getElementById('join-code-input');
+            const joinCodeSubmit = document.getElementById('join-code-submit');
+            const joinCodeStatus = document.getElementById('join-code-status');
             const toast = document.getElementById('lobbies-toast');
             const toastTitle = document.getElementById('lobbies-toast-title');
             const toastText = document.getElementById('lobbies-toast-text');
@@ -150,6 +154,35 @@ const gameSettingsAnimationDurationMs = 420;
                 if (activeFilterLabel) {
                     activeFilterLabel.textContent = getFilterSummary();
                 }
+            }
+
+            function normalizeCode(value) {
+                return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+            }
+
+            function setJoinCodeStatus(message, type = '') {
+                if (!joinCodeStatus) {
+                    return;
+                }
+
+                joinCodeStatus.textContent = message;
+                joinCodeStatus.classList.toggle('error', type === 'error');
+                joinCodeStatus.classList.toggle('success', type === 'success');
+            }
+
+            function syncJoinCodeState() {
+                if (!joinCodeInput || !joinCodeSubmit) {
+                    return;
+                }
+
+                const code = normalizeCode(joinCodeInput.value);
+                if (joinCodeInput.value !== code) {
+                    joinCodeInput.value = code;
+                }
+
+                const isReady = /^[A-Z0-9]{6}$/.test(code);
+                joinCodeSubmit.disabled = !isReady;
+                setJoinCodeStatus(isReady ? 'Ready to join.' : 'Enter a 6-character lobby code.', isReady ? 'success' : '');
             }
 
             function buildEmptyStateMarkup() {
@@ -268,15 +301,12 @@ const gameSettingsAnimationDurationMs = 420;
                         <div class="lobby-card-stats">
                             <span class="chip">${openSlots} open slot${openSlots === 1 ? '' : 's'}</span>
                             <span class="chip">Min ${escapeHtml(lobby.minPlayers ?? players.length)}</span>
+                            <span class="chip">Public</span>
                         </div>
 
                         <div class="lobby-card-settings">
                             <strong>Lobby settings</strong>
                             <p>${escapeHtml(describeLobbySettings(lobby))}</p>
-                        </div>
-
-                        <div class="lobby-card-stats">
-                            <span class="chip">Code ${escapeHtml(lobby.lobbyCode || '------')}</span>
                         </div>
 
                         <div class="lobby-card-players">
@@ -285,7 +315,7 @@ const gameSettingsAnimationDurationMs = 420;
 
                         <div class="lobby-card-footer">
                             <p>Join this room and continue in the live lobby view.</p>
-                            <button class="btn btn-accent" type="button" data-join-lobby="${escapeHtml((lobby.lobbyCode || '').toUpperCase())}">Join lobby</button>
+                            <button class="btn btn-accent" type="button" data-join-lobby-id="${escapeHtml(lobby.id || '')}">Join lobby</button>
                         </div>
                     </article>
                 `;
@@ -474,7 +504,7 @@ const gameSettingsAnimationDurationMs = 420;
                 }
 
                 const existing = grid.querySelector(`[data-id="${CSS.escape(String(lobby.id))}"]`);
-                if (type === 'DELETED' || type === 'STARTED') {
+                if (type === 'DELETED' || type === 'STARTED' || lobby.isPublic === false) {
                     existing?.remove();
                     updateLobbyCount();
                     return;
@@ -495,14 +525,14 @@ const gameSettingsAnimationDurationMs = 420;
                 updateLobbyCount();
             }
 
-            async function joinLobby(lobbyCode) {
+            async function joinLobby(joinRequest) {
                 const response = await fetch('/api/lobby/join', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     credentials: 'include',
-                    body: JSON.stringify({ lobbyCode: String(lobbyCode || '').toUpperCase() })
+                    body: JSON.stringify(joinRequest)
                 });
 
                 if (!response.ok) {
@@ -564,13 +594,13 @@ const gameSettingsAnimationDurationMs = 420;
             }
 
             grid.addEventListener('click', async (event) => {
-                const joinButton = event.target.closest('[data-join-lobby]');
+                const joinButton = event.target.closest('[data-join-lobby-id]');
                 if (!joinButton) {
                     return;
                 }
 
                 try {
-                    await joinLobby(joinButton.dataset.joinLobby);
+                    await joinLobby({lobbyId: joinButton.dataset.joinLobbyId});
                 } catch (error) {
                     if (error?.status === 409) {
                         showToast('Lobby full', error.message || 'This lobby is already full.');
@@ -578,6 +608,34 @@ const gameSettingsAnimationDurationMs = 420;
                     }
 
                     showToast('Join failed', error?.message || 'Unable to join this lobby right now.');
+                }
+            });
+
+            joinCodeInput?.addEventListener('input', syncJoinCodeState);
+            joinCodeForm?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const code = normalizeCode(joinCodeInput?.value);
+                if (!/^[A-Z0-9]{6}$/.test(code)) {
+                    setJoinCodeStatus('Enter a valid 6-character lobby code.', 'error');
+                    joinCodeInput?.focus();
+                    return;
+                }
+
+                joinCodeSubmit.disabled = true;
+                joinCodeSubmit.textContent = 'Joining...';
+                setJoinCodeStatus('Joining lobby...', 'success');
+
+                try {
+                    await joinLobby({lobbyCode: code});
+                } catch (error) {
+                    if (error?.status === 409) {
+                        setJoinCodeStatus(error.message || 'Lobby is full.', 'error');
+                    } else {
+                        setJoinCodeStatus(error?.message || 'Unable to join this lobby.', 'error');
+                    }
+                    joinCodeSubmit.textContent = 'Join';
+                    joinCodeSubmit.disabled = false;
+                    joinCodeInput?.focus();
                 }
             });
 
@@ -599,6 +657,7 @@ const gameSettingsAnimationDurationMs = 420;
                 replaceLobbies(initialLobbies);
                 syncFilterSummary();
             }
+            syncJoinCodeState();
             showPendingLobbyClosedNotice();
 
             if (!window.Stomp) {

@@ -5,6 +5,9 @@
     const form = document.getElementById('create-lobby-form');
     const lobbyNameInput = document.getElementById('create-lobby-name');
     const gameTypeSelect = document.getElementById('create-game-type');
+    const publicInput = document.getElementById('create-lobby-public');
+    const visibilityText = document.getElementById('create-lobby-visibility-text');
+    const visibilityLabel = document.getElementById('create-lobby-public-toggle-label');
     const settingsElement = document.getElementById('create-game-settings');
     const submitButton = document.getElementById('create-lobby-submit');
     const statusText = document.getElementById('create-lobby-status');
@@ -17,6 +20,26 @@
         statusText.textContent = message;
         statusText.classList.toggle('error', type === 'error');
         statusText.classList.toggle('success', type === 'success');
+    }
+
+    function setAnimatedText(element, text) {
+        if (!element || element.textContent === text) {
+            return;
+        }
+
+        element.textContent = text;
+        element.classList.remove('create-lobby-text-swap');
+        element.getBoundingClientRect();
+        element.classList.add('create-lobby-text-swap');
+    }
+
+    function syncVisibilityText() {
+        if (!publicInput) {
+            return;
+        }
+
+        setAnimatedText(visibilityText, publicInput.checked ? 'Public lobby' : 'Private lobby');
+        setAnimatedText(visibilityLabel, publicInput.checked ? 'Public' : 'Private');
     }
 
     function setSettingsContent(nodes) {
@@ -120,8 +143,12 @@
 
     function resetCreateMenu() {
         form.reset();
+        if (publicInput) {
+            publicInput.checked = true;
+        }
         setSettingsContent([]);
         submitButton.textContent = 'Create Lobby';
+        syncVisibilityText();
         syncCreateState();
     }
 
@@ -167,7 +194,7 @@
                     'Content-Type': 'application/json'
                 },
                 credentials: 'include',
-                body: buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value)
+                body: buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value, publicInput?.checked !== false)
             });
 
             if (!response.ok) {
@@ -209,10 +236,12 @@
     });
 
     gameTypeSelect.addEventListener('change', applyGameTypeSettings);
+    publicInput?.addEventListener('change', syncVisibilityText);
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         createLobby();
     });
 
+    syncVisibilityText();
     syncCreateState();
 })();

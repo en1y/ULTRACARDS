@@ -73,10 +73,22 @@
                         </div>
                     </div>
                 </div>
+                <div class="lobby-meta-row lobby-visibility-row">
+                    <div>
+                        <div class="lobby-meta-label">Visibility</div>
+                        <div id="lobby-visibility-value" class="lobby-meta-value">Public lobby</div>
+                    </div>
+                    <label id="lobby-visibility-control" class="lobby-visibility-control" for="lobby-public-toggle" hidden>
+                        <input id="lobby-public-toggle" type="checkbox">
+                        <span class="visibility-switch" aria-hidden="true"></span>
+                        <span id="lobby-public-toggle-label">Public</span>
+                    </label>
+                </div>
                 <button id="lobby-code-tile" class="lobby-meta-row lobby-code-tile" type="button">
                     <span>
-                        <span class="lobby-meta-label">Lobby code</span>
+                        <span class="lobby-meta-label">Invite code</span>
                         <span id="lobby-code" class="lobby-meta-value lobby-code-value" th:text="${lobby.lobbyCode}">KAKLONZ</span>
+                        <span class="lobby-code-help">Share this code with players who should join directly.</span>
                     </span>
                     <span class="lobby-code-copy-action">Copy</span>
                 </button>

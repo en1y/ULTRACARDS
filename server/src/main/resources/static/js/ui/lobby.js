@@ -34,6 +34,11 @@
             playerChip: document.getElementById('lobby-player-chip'),
             host: document.getElementById('lobby-host'),
             config: document.getElementById('lobby-config'),
+            visibilityValue: document.getElementById('lobby-visibility-value'),
+            visibilityHelp: document.getElementById('lobby-visibility-help'),
+            visibilityControl: document.getElementById('lobby-visibility-control'),
+            publicToggle: document.getElementById('lobby-public-toggle'),
+            publicToggleLabel: document.getElementById('lobby-public-toggle-label'),
             lobbyCodeTile: document.getElementById('lobby-code-tile'),
             lobbyCode: document.getElementById('lobby-code'),
             configEditor: document.getElementById('lobby-config-editor'),
@@ -281,6 +286,23 @@
                 }
             });
 
+            dom.publicToggle?.addEventListener('change', async () => {
+                if (!isCurrentUserHost()) {
+                    syncLobbyVisibility(state.lobby, false);
+                    return;
+                }
+
+                const nextPublic = !!dom.publicToggle.checked;
+                const previousLobby = state.lobby;
+                try {
+                    await updateLobbyVisibility(nextPublic);
+                } catch (error) {
+                    state.lobby = previousLobby;
+                    syncLobbyVisibility(state.lobby, true);
+                    showToast('Update failed', 'Unable to update lobby visibility.');
+                }
+            });
+
             dom.teamRandomize?.addEventListener('click', async () => {
                 if (!isCurrentUserHost()) {
                     return;
@@ -362,6 +384,7 @@
             if (dom.config) dom.config.textContent = describeConfig(lobby);
             if (dom.lobbyCode) dom.lobbyCode.textContent = lobby.lobbyCode || '------';
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
+            syncLobbyVisibility(lobby, !!isHost);
             renderConfigEditor(lobby, !!isHost);
             renderTeams(lobby);
             syncCloseWarning(lobby);
@@ -564,6 +587,40 @@
             return parts.join(' • ') || 'Standard rules';
         }
 
+        function isLobbyPublic(lobby) {
+            return lobby?.isPublic !== false;
+        }
+
+        function setAnimatedVisibilityText(element, text) {
+            if (!element || element.textContent === text) {
+                return;
+            }
+
+            element.textContent = text;
+            element.classList.remove('lobby-visibility-text-swap');
+            element.getBoundingClientRect();
+            element.classList.add('lobby-visibility-text-swap');
+        }
+
+        function syncLobbyVisibility(lobby, isHost) {
+            const publicLobby = isLobbyPublic(lobby);
+            setAnimatedVisibilityText(dom.visibilityValue, publicLobby ? 'Public lobby' : 'Private lobby');
+            setAnimatedVisibilityText(
+                dom.visibilityHelp,
+                publicLobby
+                    ? 'This lobby appears in the public browser.'
+                    : 'This lobby requires the invite code.'
+            );
+            if (dom.visibilityControl) {
+                dom.visibilityControl.hidden = !isHost;
+            }
+            if (dom.publicToggle) {
+                dom.publicToggle.checked = publicLobby;
+                dom.publicToggle.disabled = !isHost;
+            }
+            setAnimatedVisibilityText(dom.publicToggleLabel, publicLobby ? 'Public' : 'Private');
+        }
+
         function renderConfigEditor(lobby, isHost) {
             if (!dom.configEditor || !dom.configSelect) {
                 return;
@@ -652,6 +709,7 @@
             updatedLobby.name = state.lobby.name;
             updatedLobby.players = state.lobby.players;
             updatedLobby.host = state.lobby.host;
+            updatedLobby.isPublic = isLobbyPublic(state.lobby);
             if (gameTypeKey === 'briskula' && updatedLobby.gameConfig) {
                 updatedLobby.gameConfig.orderedUsers = resolveOrderedLobbyPlayers(state.lobby);
             }
@@ -667,6 +725,32 @@
 
             if (!response.ok) {
                 throw new Error('Failed to update lobby');
+            }
+
+            const lobby = await response.json();
+            if (lobby) {
+                const previousLobby = previousLobbySnapshot;
+                state.lobby = lobby;
+                previousLobbySnapshot = lobby;
+                renderLobby(state.lobby, buildPlayerAreaRenderOptions(previousLobby, lobby));
+            }
+        }
+
+        async function updateLobbyVisibility(nextPublic) {
+            const response = await fetch('/api/lobby/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    ...state.lobby,
+                    isPublic: nextPublic
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update lobby visibility');
             }
 
             const lobby = await response.json();

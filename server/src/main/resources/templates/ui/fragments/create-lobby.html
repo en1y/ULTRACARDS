@@ -29,6 +29,18 @@
                         </select>
                     </label>
 
+                    <label class="create-lobby-visibility-row" for="create-lobby-public">
+                        <span>
+                            <span class="create-lobby-meta-label">Visibility</span>
+                            <span id="create-lobby-visibility-text" class="create-lobby-visibility-value">Public lobby</span>
+                        </span>
+                        <span class="create-lobby-visibility-control">
+                            <input id="create-lobby-public" type="checkbox" checked>
+                            <span class="visibility-switch" aria-hidden="true"></span>
+                            <span id="create-lobby-public-toggle-label">Public</span>
+                        </span>
+                    </label>
+
                     <div id="create-game-settings" class="create-lobby-settings" hidden="hidden"></div>
                     <p id="create-lobby-status" class="create-lobby-status" aria-live="polite">Pick a game to continue.</p>
                 </div>

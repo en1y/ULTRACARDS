@@ -17,7 +17,7 @@ fetch('/api/profile')
         console.error('Failed to load profile for game types.', error);
     });
 
-function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnabled=false) {
+function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnabled=false, isPublic=true) {
     return JSON.stringify({
         id: "",
         name: lobbyName,
@@ -26,6 +26,7 @@ function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnable
         players: [{name: profile.username, id: profile.id}],
         host: {name: profile.username, id: profile.id},
         gameType: "Briskula",
+        isPublic,
         gameConfig: {
             numberOfPlayers: playerNum,
             cardsInHandNum: cardsInHandNum,
@@ -145,12 +146,14 @@ function resolveLobbyGameSettingId(lobby) {
     return getGameTypeSettingId(gameType, settingKey);
 }
 
-function buildLobbyCreatePayload(gameType, settingKey, lobbyName) {
+function buildLobbyCreatePayload(gameType, settingKey, lobbyName, isPublic=true) {
     const setting = getGameTypeSetting(gameType, settingKey);
     if (!setting || typeof setting.req !== 'function') {
         throw new Error(`Unsupported game type setting: ${gameType}/${settingKey}`);
     }
-    return setting.req(normalizeLobbyName(lobbyName));
+    const payload = JSON.parse(setting.req(normalizeLobbyName(lobbyName)));
+    payload.isPublic = isPublic;
+    return JSON.stringify(payload);
 }
 
 function supportsLobbyCreation(gameType, settingKey) {
