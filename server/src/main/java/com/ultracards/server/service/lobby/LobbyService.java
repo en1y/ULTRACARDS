@@ -1,9 +1,12 @@
 package com.ultracards.server.service.lobby;
 
+import com.ultracards.games.briskula.BriskulaGameConfig;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
+import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.UserService;
@@ -67,12 +70,25 @@ public class LobbyService {
         chatService.createChat(lobby.getId());
         openLobby(lobby);
         eventPublisher.publish(lobby, CREATED);
-        return lobby.createLobbyDTO();
+        return lobby.createLobbyDTO(true);
     }
 
     public JoinLobbyResult joinLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
-        if (lobby == null) {
+
+        if (lobby != null && lobby.getLobbyState().equals(LobbyState.PRIVATE))
+            return JoinLobbyResult.NOT_FOUND;
+
+        return getJoinLobbyResult(user, lobby);
+    }
+
+    public JoinLobbyResult joinLobby(@NotNull String lobbyCode, UserEntity user) {
+        var lobby = lobbyManager.getLobby(new LobbyCode(lobbyCode.toUpperCase()));
+        return getJoinLobbyResult(user, lobby);
+    }
+
+    private JoinLobbyResult getJoinLobbyResult(UserEntity user, LobbyEntity lobby) {
+        if (lobby == null || lobby.isStarted()) {
             return JoinLobbyResult.NOT_FOUND;
         }
 
@@ -108,7 +124,7 @@ public class LobbyService {
         var lobby = lobbyManager.getLobby(user);
         if (lobby != null && lobby.getUsers().size() >= lobby.getMinPlayers()) {
             gameService.startGame(lobby);
-            lobby.setLobbyState(LobbyState.STARTED);
+            lobby.setStarted(true);
             eventPublisher.publish(lobby, STARTED);
             return true;
         }
@@ -122,6 +138,11 @@ public class LobbyService {
             lobby.setName(lobbyDTO.getName());
             lobby.setMinPlayers(lobbyDTO.getMinPlayers());
             lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
+
+            var isPublic = lobbyDTO.getIsPublic();
+            if (isPublic != null)
+                lobby.setLobbyState(lobbyDTO.getIsPublic() ? LobbyState.PUBLIC : LobbyState.PRIVATE);
+
             try {
                 var config = lobbyDTO.getGameConfig();
                 if (config != null) {
@@ -136,7 +157,7 @@ public class LobbyService {
             }
             removeStaleLobbyCacheEntries(lobby, previousUsers);
             eventPublisher.publish(lobby, UPDATED);
-            return lobby.createLobbyDTO();
+            return lobby.createLobbyDTO(true);
         }
         return null;
     }
@@ -149,7 +170,7 @@ public class LobbyService {
                 syncLobbyConfig(lobby);
                 lobbyCache.remove(playerToKickId);
                 eventPublisher.publish(lobby, UPDATED);
-                return lobby.createLobbyDTO();
+                return lobby.createLobbyDTO(true);
             }
         }
         return null;
@@ -174,12 +195,13 @@ public class LobbyService {
     }
 
     public Boolean openLobby(LobbyEntity lobby) {
-        lobby.setLobbyState(LobbyState.OPEN);
-        lobby.setClosedAt(Instant.now().plusSeconds(lobbyTimer));
+        if (lobby.isStarted()) lobby.setStarted(false);
+        var closedAt = Instant.now().plusSeconds(lobbyTimer);
+        lobby.setClosedAt(closedAt);
         taskScheduler.schedule(() -> {
-            if(lobby.getLobbyState().equals(LobbyState.OPEN))
+            if(!lobby.isStarted() && closedAt.isBefore(Instant.now().plusSeconds(1)))
                 deleteLobby(lobby.getOwner());
-        }, lobby.getClosedAt());
+        }, closedAt);
         return true;
     }
 
@@ -187,10 +209,33 @@ public class LobbyService {
         var lobbies = lobbyManager.getLobbies();
         var res =  new ArrayList<GameLobbyDTO>(lobbies.size());
         for (var l: lobbies) {
-            if (l.getLobbyState().equals(LobbyState.OPEN))
-                res.add(l.createLobbyDTO());
+            if (l.getLobbyState().equals(LobbyState.PUBLIC))
+                res.add(l.createLobbyDTO(false));
         }
         return res;
+    }
+
+    public List<GameLobbyDTO> getLobbies(String gameType, Integer gameSettingId) {
+        return switch (gameType.toLowerCase()) {
+            case "briskula" -> {
+                var lobbies = lobbyManager.getLobbies(GameTypeDTO.Briskula);
+                var res = new ArrayList<GameLobbyDTO>();
+                var briskulaConfigs = BriskulaGameConfig.values();
+
+                if (gameSettingId == null || gameSettingId < 0 ||  gameSettingId >= briskulaConfigs.length)
+                    yield null;
+                var config = briskulaConfigs[gameSettingId];
+
+                for (var l: lobbies)
+                    if (l.getLobbyState().equals(LobbyState.PUBLIC) &&
+                        ((BriskulaLobbyGameConfig)l.getLobbyGameConfig()).getGameConfig().equals(config))
+                            res.add(l.createLobbyDTO(false));
+
+                yield res;
+            }
+            case "treseta", "durak", "poker" -> new ArrayList<>();
+            default -> null;
+        };
     }
 
     public LobbyEntity getLobbyByUser(UserEntity user) {

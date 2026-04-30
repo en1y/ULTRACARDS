@@ -26,9 +26,11 @@ public class LobbyEntity {
     private int maxPlayers;
     private GameConfig lobbyGameConfig;
     private LobbyState lobbyState;
+    private LobbyCode lobbyCode;
     private Instant closedAt;
+    private boolean isStarted = false;
 
-    public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, int lobbyTimer) {
+    public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, LobbyState lobbyState, int lobbyTimer) {
         id = UUID.randomUUID();
         this.name = name;
         this.gameType = gameType;
@@ -38,7 +40,7 @@ public class LobbyEntity {
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.lobbyGameConfig = GameConfig.from(gameType, gameConfig, users);
-        this.lobbyState = LobbyState.OPEN;
+        this.lobbyState = lobbyState;
         this.closedAt = createdAt.plusSeconds(lobbyTimer);
     }
 
@@ -74,11 +76,11 @@ public class LobbyEntity {
 
     public GameEntity<?, ?> createGame() {
         var game = lobbyGameConfig.createGame(getId(), getName(), getOwner(), getUsers());
-        lobbyState = LobbyState.STARTED;
+        isStarted = true;
         return game;
     }
 
-    public GameLobbyDTO createLobbyDTO() {
+    public GameLobbyDTO createLobbyDTO(boolean includeLobbyCode) {
         var users = new HashSet<GamePlayerDTO>();
 
         for (var u: getUsers()) {
@@ -93,6 +95,9 @@ public class LobbyEntity {
                 users,
                 new GamePlayerDTO(getOwner().getUsername(), getOwner().getId()),
                 getGameType(),
+                getLobbyState().equals(LobbyState.PUBLIC),
+                includeLobbyCode ? getLobbyCode().lobbyCode() : null,
+                isStarted(),
                 getGameConfig(),
                 closedAt
         );

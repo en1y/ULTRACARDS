@@ -4,6 +4,7 @@ import com.ultracards.server.entity.UserEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,13 +25,26 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class ErrorController {
     @GetMapping("/errors/401")
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    @ExceptionHandler(AccessDeniedException.class)
     public String error401(
             @AuthenticationPrincipal UserEntity user,
             Model model
             ) {
         populateAuthModel(user, model);
         return "ui/errors/401";
+    }
+
+    @GetMapping("/errors/403")
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler({
+            AccessDeniedException.class,
+            AuthenticationCredentialsNotFoundException.class
+    })
+    public String error403(
+            @AuthenticationPrincipal UserEntity user,
+            Model model
+    ) {
+        populateAuthModel(user, model);
+        return "ui/errors/403";
     }
 
     @GetMapping("/errors/404")

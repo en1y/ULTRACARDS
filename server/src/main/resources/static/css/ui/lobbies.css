@@ -2,19 +2,30 @@
             padding-top: 1rem;
         }
 
+        .lobbies-filter-summary,
+        .lobbies-settings-note {
+            margin: 0.45rem 0 0;
+            color: var(--color-text-muted);
+        }
+
         .lobbies-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 1rem;
         }
 
+        .lobbies-browser {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+            gap: 1rem;
+            align-items: start;
+        }
+
         .lobby-card {
             display: grid;
             gap: 1rem;
             padding: 1.1rem;
-            background:
-                linear-gradient(160deg, color-mix(in oklab, var(--color-surface) 88%, transparent), transparent 65%),
-                var(--color-bg);
+            background: var(--color-bg);
         }
 
         .lobby-card-head,
@@ -107,6 +118,62 @@
             min-width: 7rem;
         }
 
+        .lobbies-code-join {
+            position: sticky;
+            top: 5.5rem;
+            padding: 1rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .lobbies-code-join h2,
+        .lobbies-code-join p {
+            margin: 0.15rem 0 0;
+        }
+
+        .lobbies-code-join h2 {
+            font-size: 1.2rem;
+        }
+
+        .lobbies-code-join p:not(.lobbies-eyebrow) {
+            color: var(--color-text-muted);
+            font-size: 0.92rem;
+        }
+
+        .lobbies-code-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.55rem;
+            align-items: center;
+        }
+
+        .lobbies-code-input {
+            min-height: 2.8rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-weight: 800;
+        }
+
+        .lobbies-code-status {
+            margin: 0;
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        .lobbies-code-status.error {
+            color: var(--color-accent);
+        }
+
+        .lobbies-code-status.success {
+            color: var(--color-success);
+        }
+
+        #join-code-submit:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         .lobbies-toast {
             position: fixed;
             left: 50%;
@@ -159,5 +226,17 @@
             .lobby-card-head {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            .lobbies-browser {
+                grid-template-columns: 1fr;
+            }
+
+            .lobbies-code-join {
+                position: static;
+            }
+
+            .lobbies-code-row {
+                grid-template-columns: 1fr;
             }
         }

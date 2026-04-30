@@ -5,7 +5,9 @@ import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
+import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.entity.lobby.LobbyState;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,12 +25,14 @@ public class LobbyManager {
     private final List<LobbyEntity> lobbies = Collections.synchronizedList(new ArrayList<>());
 
     private final LobbyEventPublisher lobbyEventPublisher;
+    private final LobbyCodeManager lobbyCodeManager;
 
     @Value("${app.lobby.timer.duration-seconds}")
     private int lobbyTimer;
 
-    public LobbyManager(LobbyEventPublisher lobbyEventPublisher) {
+    public LobbyManager(LobbyEventPublisher lobbyEventPublisher, LobbyCodeManager lobbyCodeManager) {
         this.lobbyEventPublisher = lobbyEventPublisher;
+        this.lobbyCodeManager = lobbyCodeManager;
         for (var gt: GameTypeDTO.values()) {
             lobbiesByGameType.put(gt, Collections.synchronizedList(new ArrayList<>()));
         }
@@ -42,11 +46,20 @@ public class LobbyManager {
         return lobbiesByUser.get(owner.getId());
     }
 
+    public LobbyEntity getLobby(LobbyCode lobbyCode) {
+        return lobbyCodeManager.getLobbyByCode(lobbyCode);
+    }
+
+    public List<LobbyEntity> getLobbies(GameTypeDTO gameTypeDTO) {
+        return lobbiesByGameType.get(gameTypeDTO);
+    }
+
     public LobbyEntity getByGame(UUID gameId) {
         return lobbyByGameId.get(gameId);
     }
 
     public LobbyEntity createLobby(GameLobbyDTO gameLobbyDTO, UserEntity owner) {
+        var isPublic = gameLobbyDTO.getIsPublic();
         var lobby = new LobbyEntity(
                 gameLobbyDTO.getName(),
                 gameLobbyDTO.getGameType(),
@@ -54,6 +67,7 @@ public class LobbyManager {
                 gameLobbyDTO.getMinPlayers(),
                 gameLobbyDTO.getMaxPlayers(),
                 gameLobbyDTO.getGameConfig(),
+                isPublic != null ? (isPublic? LobbyState.PUBLIC: LobbyState.PRIVATE) : LobbyState.PUBLIC,
                 lobbyTimer
         );
         return createLobby(lobby);
@@ -75,6 +89,7 @@ public class LobbyManager {
         var l = lobbiesByUser.get(lobby.getOwner().getId());
 
         if (l != null) {
+            lobbyCodeManager.removeLobbyCode(l);
             lobbiesById.remove(l.getId());
             lobbiesByGameType.get(l.getGameType()).remove(l);
             lobbyByGameId.remove(l.getId());
@@ -89,6 +104,7 @@ public class LobbyManager {
     private void put(LobbyEntity lobby) {
         remove(lobby);
 
+        lobbyCodeManager.addLobbyCode(lobby);
         lobbiesById.put(lobby.getId(), lobby);
         lobbiesByUser.put(lobby.getOwner().getId(), lobby);
         lobbiesByGameType.get(lobby.getGameType()).add(lobby);

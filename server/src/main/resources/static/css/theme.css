@@ -470,9 +470,7 @@ textarea {
   flex-direction: column;
   justify-content: space-between;
   gap: 1rem;
-  background:
-    radial-gradient(circle at top right, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent 45%),
-    linear-gradient(180deg, color-mix(in oklab, var(--color-surface) 75%, var(--color-bg)), var(--color-bg));
+  background: var(--color-bg);
 }
 
 .lobbies-hero-stats strong {
@@ -499,7 +497,7 @@ textarea {
 
 .lobbies-sidebar,
 .lobby-empty-state {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--color-surface) 88%, var(--color-bg)), var(--color-bg));
+  background: var(--color-bg);
 }
 
 .lobbies-sidebar {

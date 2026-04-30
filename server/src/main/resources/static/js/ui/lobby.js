@@ -34,6 +34,13 @@
             playerChip: document.getElementById('lobby-player-chip'),
             host: document.getElementById('lobby-host'),
             config: document.getElementById('lobby-config'),
+            visibilityValue: document.getElementById('lobby-visibility-value'),
+            visibilityHelp: document.getElementById('lobby-visibility-help'),
+            visibilityControl: document.getElementById('lobby-visibility-control'),
+            publicToggle: document.getElementById('lobby-public-toggle'),
+            publicToggleLabel: document.getElementById('lobby-public-toggle-label'),
+            lobbyCodeTile: document.getElementById('lobby-code-tile'),
+            lobbyCode: document.getElementById('lobby-code'),
             configEditor: document.getElementById('lobby-config-editor'),
             configSelect: document.getElementById('lobby-config-select'),
             teamsSection: document.getElementById('lobby-teams-section'),
@@ -119,7 +126,7 @@
                         }
                         if (payload.type === 'DELETED') {
                             persistLobbyClosedNotice(payload.lobbyDto || state.lobby);
-                            window.location.href = '/lobbies';
+                            window.location.href = '/';
                             return;
                         }
                         if (payload.lobbyDto) {
@@ -166,6 +173,21 @@
         }
 
         function bindActions() {
+            dom.lobbyCodeTile?.addEventListener('click', async () => {
+                const lobbyCode = String(state.lobby?.lobbyCode || '').trim();
+                if (!lobbyCode) {
+                    showToast('Copy failed', 'This lobby does not have a share code yet.');
+                    return;
+                }
+
+                try {
+                    await copyToClipboard(lobbyCode);
+                    showToast('Lobby code copied', `${lobbyCode} is now in your clipboard.`);
+                } catch (error) {
+                    showToast('Copy failed', 'Unable to copy the lobby code.');
+                }
+            });
+
             dom.start?.addEventListener('click', async () => {
                 if (!isLobbyReadyToStart(state.lobby)) {
                     const message = buildStartBlockedMessage(state.lobby);
@@ -202,7 +224,7 @@
                     if (!response.ok) {
                         throw new Error('Failed to leave lobby');
                     }
-                    window.location.href = '/lobbies';
+                    window.location.href = '/';
                 } catch (error) {
                     updateStatus('Unable to leave the lobby.');
                 }
@@ -217,7 +239,7 @@
                     if (!response.ok) {
                         throw new Error('Failed to delete lobby');
                     }
-                    window.location.href = '/lobbies';
+                    window.location.href = '/';
                 } catch (error) {
                     updateStatus('Unable to delete the lobby.');
                 }
@@ -261,6 +283,23 @@
                 } catch (error) {
                     renderConfigEditor(state.lobby, true);
                     showToast('Update failed', 'Unable to update the lobby configuration.');
+                }
+            });
+
+            dom.publicToggle?.addEventListener('change', async () => {
+                if (!isCurrentUserHost()) {
+                    syncLobbyVisibility(state.lobby, false);
+                    return;
+                }
+
+                const nextPublic = !!dom.publicToggle.checked;
+                const previousLobby = state.lobby;
+                try {
+                    await updateLobbyVisibility(nextPublic);
+                } catch (error) {
+                    state.lobby = previousLobby;
+                    syncLobbyVisibility(state.lobby, true);
+                    showToast('Update failed', 'Unable to update lobby visibility.');
                 }
             });
 
@@ -334,7 +373,7 @@
                 : true;
 
             if (!isPlayer) {
-                window.location.href = '/lobbies';
+                window.location.href = '/';
                 return;
             }
 
@@ -343,7 +382,9 @@
             if (dom.playerChip) dom.playerChip.textContent = formatLobbyPlayerCounter(lobby, players.length);
             if (dom.host) dom.host.textContent = lobby.host?.name || 'Unknown';
             if (dom.config) dom.config.textContent = describeConfig(lobby);
+            if (dom.lobbyCode) dom.lobbyCode.textContent = lobby.lobbyCode || '------';
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
+            syncLobbyVisibility(lobby, !!isHost);
             renderConfigEditor(lobby, !!isHost);
             renderTeams(lobby);
             syncCloseWarning(lobby);
@@ -546,6 +587,40 @@
             return parts.join(' • ') || 'Standard rules';
         }
 
+        function isLobbyPublic(lobby) {
+            return lobby?.isPublic !== false;
+        }
+
+        function setAnimatedVisibilityText(element, text) {
+            if (!element || element.textContent === text) {
+                return;
+            }
+
+            element.textContent = text;
+            element.classList.remove('lobby-visibility-text-swap');
+            element.getBoundingClientRect();
+            element.classList.add('lobby-visibility-text-swap');
+        }
+
+        function syncLobbyVisibility(lobby, isHost) {
+            const publicLobby = isLobbyPublic(lobby);
+            setAnimatedVisibilityText(dom.visibilityValue, publicLobby ? 'Public lobby' : 'Private lobby');
+            setAnimatedVisibilityText(
+                dom.visibilityHelp,
+                publicLobby
+                    ? 'This lobby appears in the public browser.'
+                    : 'This lobby requires the invite code.'
+            );
+            if (dom.visibilityControl) {
+                dom.visibilityControl.hidden = !isHost;
+            }
+            if (dom.publicToggle) {
+                dom.publicToggle.checked = publicLobby;
+                dom.publicToggle.disabled = !isHost;
+            }
+            setAnimatedVisibilityText(dom.publicToggleLabel, publicLobby ? 'Public' : 'Private');
+        }
+
         function renderConfigEditor(lobby, isHost) {
             if (!dom.configEditor || !dom.configSelect) {
                 return;
@@ -634,6 +709,7 @@
             updatedLobby.name = state.lobby.name;
             updatedLobby.players = state.lobby.players;
             updatedLobby.host = state.lobby.host;
+            updatedLobby.isPublic = isLobbyPublic(state.lobby);
             if (gameTypeKey === 'briskula' && updatedLobby.gameConfig) {
                 updatedLobby.gameConfig.orderedUsers = resolveOrderedLobbyPlayers(state.lobby);
             }
@@ -649,6 +725,32 @@
 
             if (!response.ok) {
                 throw new Error('Failed to update lobby');
+            }
+
+            const lobby = await response.json();
+            if (lobby) {
+                const previousLobby = previousLobbySnapshot;
+                state.lobby = lobby;
+                previousLobbySnapshot = lobby;
+                renderLobby(state.lobby, buildPlayerAreaRenderOptions(previousLobby, lobby));
+            }
+        }
+
+        async function updateLobbyVisibility(nextPublic) {
+            const response = await fetch('/api/lobby/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    ...state.lobby,
+                    isPublic: nextPublic
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update lobby visibility');
             }
 
             const lobby = await response.json();
@@ -1928,6 +2030,31 @@
                     dom.toast.hidden = true;
                 }, 560);
             }, 2600);
+        }
+
+        async function copyToClipboard(value) {
+            const text = String(value || '');
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.value = text;
+            input.setAttribute('readonly', '');
+            input.style.position = 'absolute';
+            input.style.left = '-9999px';
+            document.body.appendChild(input);
+            input.select();
+            input.setSelectionRange(0, text.length);
+
+            try {
+                if (!document.execCommand('copy')) {
+                    throw new Error('Copy command failed');
+                }
+            } finally {
+                input.remove();
+            }
         }
 
         function setWsStatus(text) {

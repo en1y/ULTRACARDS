@@ -1,11 +1,11 @@
 package com.ultracards.config;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
-import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
@@ -31,7 +31,7 @@ public class DevWebResourceConfig implements WebMvcConfigurer {
     public SpringResourceTemplateResolver fileSystemTemplateResolver(ApplicationContext applicationContext) {
         var resolver = new SpringResourceTemplateResolver();
         resolver.setApplicationContext(applicationContext);
-        resolver.setPrefix(resolveResourceLocation(TEMPLATE_SOURCE_CANDIDATES));
+        resolver.setPrefix(resolveResourceLocation());
         resolver.setSuffix(".html");
         resolver.setCharacterEncoding("UTF-8");
         resolver.setCacheable(false);
@@ -52,8 +52,8 @@ public class DevWebResourceConfig implements WebMvcConfigurer {
                 .setCacheControl(CacheControl.noStore().mustRevalidate());
     }
 
-    private String resolveResourceLocation(String[] candidates) {
-        var existingLocation = resolveExistingResourceLocation(candidates);
+    private String resolveResourceLocation() {
+        var existingLocation = resolveExistingResourceLocation(DevWebResourceConfig.TEMPLATE_SOURCE_CANDIDATES);
         return existingLocation != null ? existingLocation : "classpath:/templates/";
     }
 

@@ -72,6 +72,147 @@
             text-align: left;
         }
 
+        .lobby-code-tile {
+            width: 100%;
+            font: inherit;
+            color: inherit;
+            cursor: pointer;
+            transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+        }
+
+        .lobby-code-tile:hover,
+        .lobby-code-tile:focus-visible {
+            border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+            background: color-mix(in oklab, var(--color-surface) 82%, var(--color-accent) 8%);
+        }
+
+        .lobby-code-tile:active {
+            transform: translateY(1px);
+        }
+
+        .lobby-code-tile:focus-visible {
+            outline: 2px solid color-mix(in oklab, var(--color-accent) 60%, transparent);
+            outline-offset: 2px;
+        }
+
+        .lobby-visibility-row {
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lobby-visibility-help {
+            color: var(--color-text-muted);
+            font-size: 0.88rem;
+            line-height: 1.35;
+        }
+
+        .lobby-visibility-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.35rem 0.45rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .lobby-visibility-control[hidden] {
+            display: none;
+        }
+
+        .lobby-visibility-control input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .visibility-switch {
+            position: relative;
+            width: 3.5rem;
+            height: 1.9rem;
+            flex: 0 0 auto;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: var(--color-surface-2);
+            transition: border-color 180ms ease, background 180ms ease;
+        }
+
+        .visibility-switch::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 50%;
+            background: var(--color-bg);
+            box-shadow: 0 1px 4px var(--color-shadow);
+            transition: transform 180ms ease;
+        }
+
+        .lobby-visibility-control input:checked + .visibility-switch {
+            border-color: var(--color-accent);
+            background: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-2));
+        }
+
+        .lobby-visibility-control input:checked + .visibility-switch::after {
+            transform: translateX(1.6rem);
+        }
+
+        .lobby-visibility-control:focus-within {
+            outline: 2px solid color-mix(in oklab, var(--color-accent) 60%, transparent);
+            outline-offset: 3px;
+            border-radius: 999px;
+        }
+
+        .lobby-visibility-text-swap {
+            animation: lobby-visibility-text-swap 180ms ease;
+        }
+
+        @keyframes lobby-visibility-text-swap {
+            from {
+                opacity: 0;
+                transform: translateY(0.2rem);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .lobby-code-tile > span:first-child {
+            display: grid;
+            gap: 0.35rem;
+            text-align: left;
+        }
+
+        .lobby-code-value {
+            display: block;
+            font-size: 1.45rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+        }
+
+        .lobby-code-help {
+            color: var(--color-text-muted);
+            font-size: 0.88rem;
+            line-height: 1.35;
+        }
+
+        .lobby-code-copy-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 2.2rem;
+            padding: 0.35rem 0.85rem;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+            font-size: 0.88rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
         .lobby-config-editor {
             margin-top: 0.65rem;
             min-width: min(100%, 320px);

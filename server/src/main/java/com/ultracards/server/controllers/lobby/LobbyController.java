@@ -1,6 +1,7 @@
 package com.ultracards.server.controllers.lobby;
 
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.JoinLobbyRequestDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.lobby.LobbyService;
 import jakarta.validation.Valid;
@@ -22,6 +23,14 @@ public class LobbyController {
 
     private final LobbyService lobbyService;
 
+    @GetMapping("/get")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<?> createLobby(@AuthenticationPrincipal UserEntity user) {
+        var lobby = lobbyService.getLobbyByUser(user);
+        if (lobby == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        else return ResponseEntity.ok(lobby.createLobbyDTO(true));
+    }
+
     @PostMapping("/create")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<GameLobbyDTO> createLobby(
@@ -38,13 +47,20 @@ public class LobbyController {
 
     @PostMapping("/join")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<String> joinLobby(
+    public ResponseEntity<String> joinLobbyWithCode(
             @AuthenticationPrincipal UserEntity user,
-            @RequestBody @NotNull UUID lobbyId
-    ){
-        var res = lobbyService.joinLobby(
-                lobbyId, user
-        );
+            @RequestBody @Valid JoinLobbyRequestDTO joinLobbyRequest
+            ){
+
+        LobbyService.JoinLobbyResult res;
+
+        if (joinLobbyRequest.hasLobbyCode()) {
+            res = lobbyService.joinLobby(
+                    joinLobbyRequest.lobbyCode(), user);
+        } else {
+            res = lobbyService.joinLobby(
+                    joinLobbyRequest.lobbyId(), user);
+        }
 
         if (res == LobbyService.JoinLobbyResult.JOINED)
             return ResponseEntity.ok("Joined");
@@ -123,6 +139,17 @@ public class LobbyController {
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<List<GameLobbyDTO>> getLobbies() {
         return ResponseEntity.ok(lobbyService.getLobbies());
-        // TODO: create mappings to get just one game type
+    }
+
+    @GetMapping("/get-lobbies/{gameType}/{gameSettingId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<?> getLobbiesByType(
+            @PathVariable String gameType,
+            @PathVariable Integer gameSettingId
+    ) {
+        var res = lobbyService.getLobbies(gameType, gameSettingId);
+        if (res == null)
+            return ResponseEntity.badRequest().body("The game type or the game setting ID provided are invalid.");
+        return ResponseEntity.ok(res);
     }
 }

@@ -121,7 +121,8 @@ public class GameService {
                     });
 
                     game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
-                    openLobby.apply(lobbyManager.getLobby(game.getLobbyId()));
+                    var lobby = lobbyManager.getLobby(game.getLobbyId());
+                    openLobby.apply(lobby);
                 }
             }
         }

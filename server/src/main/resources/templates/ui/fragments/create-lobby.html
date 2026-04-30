@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="createLobbyMenu">
+    <div id="create-div" class="modal-overlay create-lobby-overlay">
+        <div class="modal create-lobby-modal" role="dialog" aria-modal="true" aria-labelledby="create-lobby-title">
+            <header class="create-lobby-header">
+                <div>
+                    <strong id="create-lobby-title">Create lobby</strong>
+                </div>
+                <button class="btn create-lobby-close" data-close-create type="button" aria-label="Close">X</button>
+            </header>
+
+            <form id="create-lobby-form" class="create-lobby-form">
+                <div class="create-lobby-body">
+                    <label class="field create-lobby-field" for="create-lobby-name">
+                        <span>Lobby name</span>
+                        <input id="create-lobby-name" type="text" name="lobbyName" maxlength="36" placeholder="ULTRAlobby">
+                    </label>
+
+                    <label class="field create-lobby-field" for="create-game-type">
+                        <span>Game type</span>
+                        <select id="create-game-type">
+                            <option value="all">Choose a game</option>
+                            <option value="briskula">Briskula</option>
+                            <option value="durak">Durak</option>
+                            <option value="poker">Poker</option>
+                            <option value="treseta">Treseta</option>
+                        </select>
+                    </label>
+
+                    <label class="create-lobby-visibility-row" for="create-lobby-public">
+                        <span>
+                            <span class="create-lobby-meta-label">Visibility</span>
+                            <span id="create-lobby-visibility-text" class="create-lobby-visibility-value">Public lobby</span>
+                        </span>
+                        <span class="create-lobby-visibility-control">
+                            <input id="create-lobby-public" type="checkbox" checked>
+                            <span class="visibility-switch" aria-hidden="true"></span>
+                            <span id="create-lobby-public-toggle-label">Public</span>
+                        </span>
+                    </label>
+
+                    <div id="create-game-settings" class="create-lobby-settings" hidden="hidden"></div>
+                    <p id="create-lobby-status" class="create-lobby-status" aria-live="polite">Pick a game to continue.</p>
+                </div>
+
+                <div class="create-lobby-actions">
+                    <button class="btn" type="button" data-close-create>Cancel</button>
+                    <button id="create-lobby-submit" class="btn btn-accent" type="submit" disabled>Create Lobby</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

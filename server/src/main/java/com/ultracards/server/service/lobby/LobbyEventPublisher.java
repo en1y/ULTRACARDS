@@ -21,20 +21,18 @@ public class LobbyEventPublisher {
     private final GameManager gameManager;
 
     public void publish(LobbyEntity lobby, GameLobbyEventType type) {
-        publish(lobby.createLobbyDTO(), type);
-    }
-
-    public void publish(GameLobbyDTO lobbyDTO, GameLobbyEventType type) {
-        var event = new GameLobbyEventDTO(type, lobbyDTO);
-        messagingTemplate.convertAndSend("/topic/lobbies", event);
+        var lobbyDTO = lobby.createLobbyDTO(false);
+        var publicEvent = new GameLobbyEventDTO(type, lobbyDTO);
+        var privateEvent = new GameLobbyEventDTO(type, lobby.createLobbyDTO(true));
+        messagingTemplate.convertAndSend("/topic/lobbies", publicEvent);
         if (!type.equals(CREATED) && !type.equals(STARTED)) {
             messagingTemplate.convertAndSend(
-                    "/topic/lobbies/" + lobbyDTO.getId(), event);
+                    "/topic/lobbies/" + lobbyDTO.getId(), privateEvent);
         }
         if (type.equals(STARTED)) {
             var game = gameManager.getGameByLobbyId(lobbyDTO.getId());
             messagingTemplate.convertAndSend(
-                    "/topic/lobbies/" + lobbyDTO.getId(), event);
+                    "/topic/lobbies/" + lobbyDTO.getId(), privateEvent);
             messagingTemplate.convertAndSend(
                     "/topic/lobbies/" + lobbyDTO.getId(), (Object) Map.of("gameId", game.getId()));
         }
