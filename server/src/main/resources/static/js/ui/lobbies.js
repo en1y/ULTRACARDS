@@ -107,113 +107,6 @@ const gameSettingsAnimationDurationMs = 420;
             applyGameTypeSettings(select.value, document.getElementById('game-settings'));
         }
 
-        function handleCreateGameTypeChange(select) {
-            applyGameTypeSettings(select.value, document.getElementById('create-game-settings'));
-        }
-
-        async function createLobby(selectedGameType, selectedGameSetting, lobbyName) {
-            const gameType = selectedGameType?.value;
-            const gameSetting = selectedGameSetting?.value;
-
-            if (!gameType || gameType === 'all') {
-                window.alert('Choose a game type first.');
-                return;
-            }
-
-            if (!gameSetting) {
-                window.alert('Choose a game configuration first.');
-                return;
-            }
-
-            if (!supportsLobbyCreation(gameType, gameSetting)) {
-                window.alert('Lobby creation is not implemented for that game type yet.');
-                return;
-            }
-
-            const createLobbyReq = await fetch('/api/lobby/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: buildLobbyCreatePayload(gameType, gameSetting, lobbyName)
-            });
-
-            if (!createLobbyReq.ok) {
-                throw new Error('Failed to create new lobby');
-            }
-
-            const createdLobby = await createLobbyReq.json();
-            if (createdLobby?.id)
-                localStorage.setItem('lobbyId', createdLobby.id);
-
-            window.location.href = '/lobbies';
-        }
-
-        (() => {
-            const createOverlay = document.getElementById('create-div');
-            const createOpenButtons = document.querySelectorAll('[data-action="open-create-lobby"]');
-            const createCloseButtons = createOverlay.querySelectorAll('[data-close-create]');
-            const gameTypeSelect = document.getElementById('game-type');
-            const createGameType = document.getElementById('create-game-type');
-            const createGameSettings = document.getElementById('create-game-settings');
-            const createForm = document.getElementById('create-lobby-form');
-            const createSubmitButton = document.getElementById('create-lobby-submit');
-
-            function resetCreateModal() {
-                createGameType.value = 'all';
-                setGameSettingsContent(createGameSettings, []);
-            }
-
-            function openCreateModal() {
-                resetCreateModal();
-                createOverlay.classList.add('active');
-            }
-
-            function closeCreateModal() {
-                createOverlay.classList.remove('active');
-                resetCreateModal();
-            }
-
-            createOpenButtons.forEach((button) => {
-                button.addEventListener('click', openCreateModal);
-            });
-
-            createCloseButtons.forEach((button) => {
-                button.addEventListener('click', closeCreateModal);
-            });
-
-            gameTypeSelect?.addEventListener('change', (event) => {
-                handleGameTypeChange(event.currentTarget);
-            });
-
-            createGameType?.addEventListener('change', (event) => {
-                handleCreateGameTypeChange(event.currentTarget);
-            });
-
-            createOverlay.addEventListener('click', (event) => {
-                if (event.target === createOverlay) {
-                    closeCreateModal();
-                }
-            });
-
-            createSubmitButton?.addEventListener('click', () => {
-                createLobby(
-                    document.getElementById('create-game-type').selectedOptions[0],
-                    document.getElementById('create-properties')?.selectedOptions[0],
-                    document.getElementById('create-lobby-name').value
-                );
-            });
-
-            createForm?.addEventListener('submit', (event) => {
-                event.preventDefault();
-                createLobby(
-                    document.getElementById('create-game-type').selectedOptions[0],
-                    document.getElementById('create-properties')?.selectedOptions[0],
-                    document.getElementById('create-lobby-name').value
-                );
-            });
-        })();
-
 (() => {
             const grid = document.getElementById('lobbies-grid');
             let emptyState = document.getElementById('lobbies-empty');
@@ -382,13 +275,17 @@ const gameSettingsAnimationDurationMs = 420;
                             <p>${escapeHtml(describeLobbySettings(lobby))}</p>
                         </div>
 
+                        <div class="lobby-card-stats">
+                            <span class="chip">Code ${escapeHtml(lobby.lobbyCode || '------')}</span>
+                        </div>
+
                         <div class="lobby-card-players">
                             ${renderPlayers(players, hostId)}
                         </div>
 
                         <div class="lobby-card-footer">
                             <p>Join this room and continue in the live lobby view.</p>
-                            <button class="btn btn-accent" type="button" data-join-lobby="${escapeHtml(lobby.id)}">Join lobby</button>
+                            <button class="btn btn-accent" type="button" data-join-lobby="${escapeHtml((lobby.lobbyCode || '').toUpperCase())}">Join lobby</button>
                         </div>
                     </article>
                 `;
@@ -598,14 +495,14 @@ const gameSettingsAnimationDurationMs = 420;
                 updateLobbyCount();
             }
 
-            async function joinLobby(lobbyId) {
+            async function joinLobby(lobbyCode) {
                 const response = await fetch('/api/lobby/join', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     credentials: 'include',
-                    body: JSON.stringify(lobbyId)
+                    body: JSON.stringify({ lobbyCode: String(lobbyCode || '').toUpperCase() })
                 });
 
                 if (!response.ok) {
@@ -686,6 +583,9 @@ const gameSettingsAnimationDurationMs = 420;
 
             applyFiltersButton?.addEventListener('click', applySelectedFilters);
             clearFiltersButton?.addEventListener('click', clearFilters);
+            gameTypeSelect?.addEventListener('change', (event) => {
+                handleGameTypeChange(event.currentTarget);
+            });
 
             const savedFilter = readSavedFilter();
             if (savedFilter) {

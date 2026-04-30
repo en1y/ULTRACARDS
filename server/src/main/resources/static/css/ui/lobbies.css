@@ -18,9 +18,7 @@
             display: grid;
             gap: 1rem;
             padding: 1.1rem;
-            background:
-                linear-gradient(160deg, color-mix(in oklab, var(--color-surface) 88%, transparent), transparent 65%),
-                var(--color-bg);
+            background: var(--color-bg);
         }
 
         .lobby-card-head,

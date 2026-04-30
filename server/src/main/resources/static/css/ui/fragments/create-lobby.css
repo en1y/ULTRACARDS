@@ -1,0 +1,117 @@
+.create-lobby-overlay {
+    padding: 1rem;
+}
+
+.create-lobby-modal {
+    width: min(640px, 100%);
+    overflow: hidden;
+}
+
+.create-lobby-header {
+    align-items: flex-start;
+    gap: 1rem;
+    background: var(--color-bg);
+}
+
+.create-lobby-header > div {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.create-lobby-header strong {
+    display: block;
+    font-size: 1.45rem;
+    line-height: 1.15;
+}
+
+.create-lobby-close {
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+.create-lobby-form {
+    display: grid;
+}
+
+.create-lobby-body {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.create-lobby-field span,
+.create-lobby-settings label {
+    font-weight: 800;
+}
+
+.create-lobby-settings,
+.create-lobby-settings[hidden] {
+    display: grid;
+    overflow: hidden;
+    transition:
+        max-height 420ms ease,
+        opacity 260ms ease,
+        transform 320ms ease,
+        margin-top 320ms ease;
+}
+
+.create-lobby-settings[hidden] {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-0.35rem);
+    margin-top: -0.25rem;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.create-lobby-settings:not([hidden]) {
+    max-height: 12rem;
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+}
+
+.create-lobby-settings-title {
+    margin: 0 0 0.65rem;
+    font-size: 1rem;
+}
+
+.create-lobby-settings-note,
+.create-lobby-status {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.create-lobby-status.error {
+    color: var(--color-accent);
+}
+
+.create-lobby-status.success {
+    color: var(--color-success);
+}
+
+.create-lobby-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding: 0 1rem 1rem;
+}
+
+#create-lobby-submit:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@media (max-width: 520px) {
+    .create-lobby-actions {
+        flex-direction: column-reverse;
+    }
+
+    .create-lobby-actions .btn,
+    #create-lobby-submit {
+        width: 100%;
+    }
+}

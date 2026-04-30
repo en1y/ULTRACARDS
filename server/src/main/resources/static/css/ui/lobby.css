@@ -72,6 +72,56 @@
             text-align: left;
         }
 
+        .lobby-code-tile {
+            width: 100%;
+            font: inherit;
+            color: inherit;
+            cursor: pointer;
+            transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+        }
+
+        .lobby-code-tile:hover,
+        .lobby-code-tile:focus-visible {
+            border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+            background: color-mix(in oklab, var(--color-surface) 82%, var(--color-accent) 8%);
+        }
+
+        .lobby-code-tile:active {
+            transform: translateY(1px);
+        }
+
+        .lobby-code-tile:focus-visible {
+            outline: 2px solid color-mix(in oklab, var(--color-accent) 60%, transparent);
+            outline-offset: 2px;
+        }
+
+        .lobby-code-tile > span:first-child {
+            display: grid;
+            gap: 0.35rem;
+            text-align: left;
+        }
+
+        .lobby-code-value {
+            display: block;
+            font-size: 1.45rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+        }
+
+        .lobby-code-copy-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 2.2rem;
+            padding: 0.35rem 0.85rem;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+            font-size: 0.88rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
         .lobby-config-editor {
             margin-top: 0.65rem;
             min-width: min(100%, 320px);

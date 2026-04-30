@@ -34,6 +34,8 @@
             playerChip: document.getElementById('lobby-player-chip'),
             host: document.getElementById('lobby-host'),
             config: document.getElementById('lobby-config'),
+            lobbyCodeTile: document.getElementById('lobby-code-tile'),
+            lobbyCode: document.getElementById('lobby-code'),
             configEditor: document.getElementById('lobby-config-editor'),
             configSelect: document.getElementById('lobby-config-select'),
             teamsSection: document.getElementById('lobby-teams-section'),
@@ -119,7 +121,7 @@
                         }
                         if (payload.type === 'DELETED') {
                             persistLobbyClosedNotice(payload.lobbyDto || state.lobby);
-                            window.location.href = '/lobbies';
+                            window.location.href = '/';
                             return;
                         }
                         if (payload.lobbyDto) {
@@ -166,6 +168,21 @@
         }
 
         function bindActions() {
+            dom.lobbyCodeTile?.addEventListener('click', async () => {
+                const lobbyCode = String(state.lobby?.lobbyCode || '').trim();
+                if (!lobbyCode) {
+                    showToast('Copy failed', 'This lobby does not have a share code yet.');
+                    return;
+                }
+
+                try {
+                    await copyToClipboard(lobbyCode);
+                    showToast('Lobby code copied', `${lobbyCode} is now in your clipboard.`);
+                } catch (error) {
+                    showToast('Copy failed', 'Unable to copy the lobby code.');
+                }
+            });
+
             dom.start?.addEventListener('click', async () => {
                 if (!isLobbyReadyToStart(state.lobby)) {
                     const message = buildStartBlockedMessage(state.lobby);
@@ -202,7 +219,7 @@
                     if (!response.ok) {
                         throw new Error('Failed to leave lobby');
                     }
-                    window.location.href = '/lobbies';
+                    window.location.href = '/';
                 } catch (error) {
                     updateStatus('Unable to leave the lobby.');
                 }
@@ -217,7 +234,7 @@
                     if (!response.ok) {
                         throw new Error('Failed to delete lobby');
                     }
-                    window.location.href = '/lobbies';
+                    window.location.href = '/';
                 } catch (error) {
                     updateStatus('Unable to delete the lobby.');
                 }
@@ -334,7 +351,7 @@
                 : true;
 
             if (!isPlayer) {
-                window.location.href = '/lobbies';
+                window.location.href = '/';
                 return;
             }
 
@@ -343,6 +360,7 @@
             if (dom.playerChip) dom.playerChip.textContent = formatLobbyPlayerCounter(lobby, players.length);
             if (dom.host) dom.host.textContent = lobby.host?.name || 'Unknown';
             if (dom.config) dom.config.textContent = describeConfig(lobby);
+            if (dom.lobbyCode) dom.lobbyCode.textContent = lobby.lobbyCode || '------';
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
             renderConfigEditor(lobby, !!isHost);
             renderTeams(lobby);
@@ -1928,6 +1946,31 @@
                     dom.toast.hidden = true;
                 }, 560);
             }, 2600);
+        }
+
+        async function copyToClipboard(value) {
+            const text = String(value || '');
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.value = text;
+            input.setAttribute('readonly', '');
+            input.style.position = 'absolute';
+            input.style.left = '-9999px';
+            document.body.appendChild(input);
+            input.select();
+            input.setSelectionRange(0, text.length);
+
+            try {
+                if (!document.execCommand('copy')) {
+                    throw new Error('Copy command failed');
+                }
+            } finally {
+                input.remove();
+            }
         }
 
         function setWsStatus(text) {

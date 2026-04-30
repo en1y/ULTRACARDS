@@ -73,6 +73,13 @@
                         </div>
                     </div>
                 </div>
+                <button id="lobby-code-tile" class="lobby-meta-row lobby-code-tile" type="button">
+                    <span>
+                        <span class="lobby-meta-label">Lobby code</span>
+                        <span id="lobby-code" class="lobby-meta-value lobby-code-value" th:text="${lobby.lobbyCode}">KAKLONZ</span>
+                    </span>
+                    <span class="lobby-code-copy-action">Copy</span>
+                </button>
                 <div class="lobby-meta-row">
                     <div>
                         <div class="lobby-meta-label">Connection status:</div>

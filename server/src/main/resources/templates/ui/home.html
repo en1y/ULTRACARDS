@@ -6,27 +6,140 @@
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/fragments/create-lobby.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/home.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
 
 <main>
-    <section class="hero container">
-        <h1>ULTRACARDS</h1>
+    <section class="hero container home-hero">
+        <h1 th:if="${isAuthenticated}">ULTRACARDS</h1>
         <p th:if="${isAuthenticated}">
-            Welcome back bludisife
+            Welcome back, <span th:text="${username}">player</span>.
         </p>
-        <p th:unless="${isAuthenticated}">
-            Welcome to ULTRACARDS!
-        </p>
+        <h1 th:unless="${isAuthenticated}">Welcome to ULTRACARDS</h1>
     </section>
-    <section th:if="${isAuthenticated}" class="hero container">
-        <a th:href="@{/lobbies}"><button><h2>Go to games</h2></button></a>
+
+    <section th:if="${isAuthenticated}" class="container home-actions-section">
+        <div class="home-actions" aria-label="Lobby actions">
+            <button class="card home-action-tile home-action-link home-action-primary" type="button" data-action="open-create-lobby">
+                <span class="home-action-title">Create game</span>
+                <span class="home-action-copy">Start a new lobby.</span>
+            </button>
+
+            <form id="join-code-form" class="card home-action-tile home-code-form">
+                <label class="home-action-title" for="join-code-input">Enter code</label>
+                <div class="home-code-row">
+                    <input id="join-code-input"
+                           class="home-code-input"
+                           type="text"
+                           inputmode="text"
+                           maxlength="6"
+                           autocomplete="off"
+                           autocapitalize="characters"
+                           placeholder="KAKLONZ">
+                    <button id="join-code-submit" class="btn btn-accent home-code-submit" type="submit" disabled>Join</button>
+                </div>
+                <p id="join-code-status" class="home-code-status" aria-live="polite">Type the lobby code to join.</p>
+            </form>
+
+            <a class="card home-action-tile home-action-link" th:href="@{/lobbies}">
+                <span class="home-action-title">Find game</span>
+                <span class="home-action-copy">Browse open lobbies.</span>
+            </a>
+        </div>
+
+        <div class="home-public-toggle-row">
+            <button id="home-public-toggle"
+                    class="btn home-public-toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="home-public-auth-copy">
+                Show about ULTRACARDS
+            </button>
+        </div>
+
+        <div id="home-public-auth-copy" class="home-public home-public-auth" hidden>
+            <div class="home-public-intro">
+                <h2>Play card games online</h2>
+                <p>
+                    ULTRACARDS is a multiplayer card game platform built for quick games,
+                    having fun, and room for more games as the project grows.
+                </p>
+            </div>
+
+            <div class="home-public-grid" aria-label="ULTRACARDS overview">
+                <article class="home-public-item">
+                    <p class="home-eyebrow">Live lobbies</p>
+                    <h3>Start a game in seconds!</h3>
+                    <p>
+                        Create a game, share the lobby code, or browse open rooms when you want to join someone already waiting for your company.
+                    </p>
+                </article>
+
+                <article class="home-public-item">
+                    <p class="home-eyebrow">Briskula now</p>
+                    <h3>Built for good times</h3>
+                    <p>
+                        ULTRACARDS supports Briskula from the get-go. Log in, create a game and go have fun!
+                    </p>
+                </article>
+
+                <article class="home-public-item">
+                    <p class="home-eyebrow">More games planned</p>
+                    <h3>A platform, not one game</h3>
+                    <p>
+                        Soon&trade; many more games like Poker, Durak, Treseta and others are to be implemented in the nearest future.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section th:unless="${isAuthenticated}" class="container home-public">
+        <div class="home-public-intro">
+            <h2>Play card games online</h2>
+            <p>
+                ULTRACARDS is a multiplayer card game platform built for quick games,
+                having fun, and room for more games as the project grows.
+            </p>
+        </div>
+
+        <div class="home-public-grid" aria-label="ULTRACARDS overview">
+            <article class="home-public-item">
+                <p class="home-eyebrow">Live lobbies</p>
+                <h3>Start a game in seconds!</h3>
+                <p>
+                    Create a game, share the lobby code, or browse open rooms when you want to join someone already waiting for your company.
+                </p>
+            </article>
+
+            <article class="home-public-item">
+                <p class="home-eyebrow">Briskula now</p>
+                <h3>Built for good times</h3>
+                <p>
+                    ULTRACARDS supports Briskula from the get-go. Log in, create a game and go have fun!
+                </p>
+            </article>
+
+            <article class="home-public-item">
+                <p class="home-eyebrow">More games planned</p>
+                <h3>A platform, not one game</h3>
+                <p>
+                    Soon&trade; many more games like Poker, Durak, Treseta and others are to be implemented in the nearest future.
+                </p>
+            </article>
+        </div>
     </section>
 </main>
 
+<th:block th:if="${isAuthenticated}" th:replace="~{ui/fragments/create-lobby :: createLobbyMenu}"></th:block>
+
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
+    <script th:if="${isAuthenticated}" th:src="@{/js/gameTypes.js}"></script>
+    <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/createLobby.js}"></script>
     <script th:src="@{/js/ui/home.js}"></script>
 </body>
 </html>

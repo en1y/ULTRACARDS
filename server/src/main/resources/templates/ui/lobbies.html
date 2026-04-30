@@ -6,6 +6,7 @@
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/fragments/create-lobby.css}">
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
         <link rel="stylesheet" th:href="@{/css/ui/lobbies.css}">
@@ -82,39 +83,7 @@
                 </div>
             </section>
         </section>
-        <div id="create-div" class="modal-overlay">
-            <div class="modal create-lobby-modal" role="dialog" aria-modal="true" aria-labelledby="create-lobby-title">
-                <header>
-                    <strong id="create-lobby-title">Create lobby</strong>
-                    <button class="btn" data-close-create type="button" aria-label="Close">✕</button>
-                </header>
-                <div class="content">
-                    <form id="create-lobby-form" class="create-lobby-form">
-                        <div class="field">
-                            <label for="create-lobby-name">Lobby name</label>
-                            <input id="create-lobby-name" type="text" name="lobbyName" placeholder="ULTRA...?">
-                        </div>
-
-                        <div class="field">
-                            <label for="create-game-type">Game type</label>
-                            <select id="create-game-type">
-                                <option value="all">Choose a game</option>
-                                <option value="briskula">Briskula</option>
-                                <option value="durak">Durak</option>
-                                <option value="poker">Poker</option>
-                                <option value="treseta">Treseta</option>
-                            </select>
-                        </div>
-
-                        <div id="create-game-settings" class="lobbies-dynamic-settings" hidden="hidden"></div>
-                    </form>
-                </div>
-                <div class="actions">
-                    <button class="btn" type="button" data-close-create>Cancel</button>
-                    <button id="create-lobby-submit" class="btn btn-accent" type="button">Create Lobby</button>
-                </div>
-            </div>
-        </div>
+        <th:block th:replace="~{ui/fragments/create-lobby :: createLobbyMenu}"></th:block>
     </main>
 
     <aside id="lobbies-toast" class="lobbies-toast" aria-live="polite" aria-atomic="true" hidden>
@@ -123,6 +92,7 @@
     </aside>
 
     <script th:src="@{/js/gameTypes.js}"></script>
+    <script th:src="@{/js/ui/fragments/createLobby.js}"></script>
     <script th:inline="javascript">
         window.__INITIAL_LOBBIES__ = /*[[${lobbies}]]*/ [];
     </script>
