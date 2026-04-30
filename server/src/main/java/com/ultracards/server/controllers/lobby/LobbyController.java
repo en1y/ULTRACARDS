@@ -5,10 +5,7 @@ import com.ultracards.gateway.dto.games.lobby.JoinLobbyRequestDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.lobby.LobbyService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +22,14 @@ import java.util.UUID;
 public class LobbyController {
 
     private final LobbyService lobbyService;
+
+    @GetMapping("/get")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<?> createLobby(@AuthenticationPrincipal UserEntity user) {
+        var lobby = lobbyService.getLobbyByUser(user);
+        if (lobby == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        else return ResponseEntity.ok(lobby.createLobbyDTO(true));
+    }
 
     @PostMapping("/create")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
