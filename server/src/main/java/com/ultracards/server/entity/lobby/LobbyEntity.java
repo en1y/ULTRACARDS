@@ -39,7 +39,7 @@ public class LobbyEntity {
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.lobbyGameConfig = GameConfig.from(gameType, gameConfig, users);
-        this.lobbyState = LobbyState.OPEN;
+        this.lobbyState = LobbyState.PUBLIC;
         this.closedAt = createdAt.plusSeconds(lobbyTimer);
     }
 
@@ -79,7 +79,7 @@ public class LobbyEntity {
         return game;
     }
 
-    public GameLobbyDTO createLobbyDTO() {
+    public GameLobbyDTO createLobbyDTO(boolean includeLobbyCode) {
         var users = new HashSet<GamePlayerDTO>();
 
         for (var u: getUsers()) {
@@ -94,7 +94,7 @@ public class LobbyEntity {
                 users,
                 new GamePlayerDTO(getOwner().getUsername(), getOwner().getId()),
                 getGameType(),
-                getLobbyCode().lobbyCode(),
+                includeLobbyCode ? getLobbyCode().lobbyCode() : null,
                 getGameConfig(),
                 closedAt
         );

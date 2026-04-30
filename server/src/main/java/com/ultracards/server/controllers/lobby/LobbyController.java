@@ -42,13 +42,20 @@ public class LobbyController {
 
     @PostMapping("/join")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<String> joinLobby(
+    public ResponseEntity<String> joinLobbyWithCode(
             @AuthenticationPrincipal UserEntity user,
-            @RequestBody @Valid JoinLobbyRequestDTO lobbyCode
+            @RequestBody @Valid JoinLobbyRequestDTO joinLobbyRequest
             ){
-        var res = lobbyService.joinLobby(
-                lobbyCode.lobbyCode(), user
-        );
+
+        LobbyService.JoinLobbyResult res;
+
+        if (joinLobbyRequest.hasLobbyCode()) {
+            res = lobbyService.joinLobby(
+                    joinLobbyRequest.lobbyCode(), user);
+        } else {
+            res = lobbyService.joinLobby(
+                    joinLobbyRequest.lobbyId(), user);
+        }
 
         if (res == LobbyService.JoinLobbyResult.JOINED)
             return ResponseEntity.ok("Joined");
