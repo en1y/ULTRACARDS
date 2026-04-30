@@ -29,7 +29,7 @@ public class LobbyEntity {
     private LobbyCode lobbyCode;
     private Instant closedAt;
 
-    public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, int lobbyTimer) {
+    public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, LobbyState lobbyState, int lobbyTimer) {
         id = UUID.randomUUID();
         this.name = name;
         this.gameType = gameType;
@@ -39,7 +39,7 @@ public class LobbyEntity {
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.lobbyGameConfig = GameConfig.from(gameType, gameConfig, users);
-        this.lobbyState = LobbyState.PUBLIC;
+        this.lobbyState = lobbyState;
         this.closedAt = createdAt.plusSeconds(lobbyTimer);
     }
 

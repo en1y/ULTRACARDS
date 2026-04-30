@@ -7,6 +7,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.entity.lobby.LobbyState;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,7 @@ public class LobbyManager {
     }
 
     public LobbyEntity createLobby(GameLobbyDTO gameLobbyDTO, UserEntity owner) {
+        var isPublic = gameLobbyDTO.getIsPublic();
         var lobby = new LobbyEntity(
                 gameLobbyDTO.getName(),
                 gameLobbyDTO.getGameType(),
@@ -65,6 +67,7 @@ public class LobbyManager {
                 gameLobbyDTO.getMinPlayers(),
                 gameLobbyDTO.getMaxPlayers(),
                 gameLobbyDTO.getGameConfig(),
+                isPublic != null ? (isPublic? LobbyState.PUBLIC: LobbyState.PRIVATE) : LobbyState.PUBLIC,
                 lobbyTimer
         );
         return createLobby(lobby);
