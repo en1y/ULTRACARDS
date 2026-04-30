@@ -77,7 +77,7 @@ public class LobbyService {
     public JoinLobbyResult joinLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
 
-        if (lobby.getLobbyState().equals(LobbyState.PRIVATE))
+        if (lobby != null && lobby.getLobbyState().equals(LobbyState.PRIVATE))
             return JoinLobbyResult.NOT_FOUND;
 
         return getJoinLobbyResult(user, lobby);
