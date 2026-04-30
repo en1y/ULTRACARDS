@@ -196,12 +196,12 @@ public class LobbyService {
 
     public Boolean openLobby(LobbyEntity lobby) {
         if (lobby.isStarted()) lobby.setStarted(false);
-        lobby.setClosedAt(Instant.now().plusSeconds(lobbyTimer));
+        var closedAt = Instant.now().plusSeconds(lobbyTimer);
+        lobby.setClosedAt(closedAt);
         taskScheduler.schedule(() -> {
-            // FIXME: it is deleted if a fast game is played
-            if(lobby.isStarted())
+            if(!lobby.isStarted() && closedAt.isBefore(Instant.now().plusSeconds(1)))
                 deleteLobby(lobby.getOwner());
-        }, lobby.getClosedAt());
+        }, closedAt);
         return true;
     }
 
