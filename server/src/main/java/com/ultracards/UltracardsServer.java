@@ -1,6 +1,7 @@
 package com.ultracards;
 
 import com.ultracards.service.startup.DatabaseStartupCheckService;
+import com.ultracards.service.startup.MailStartupCheckService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -19,6 +20,7 @@ public class UltracardsServer {
     static void main(String[] args) {
         var application = new SpringApplication(UltracardsServer.class);
         application.addListeners(new DatabaseStartupCheckService());
+        application.addListeners(new MailStartupCheckService());
         application.run(args);
     }
 

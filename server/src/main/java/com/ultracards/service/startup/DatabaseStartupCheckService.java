@@ -4,37 +4,42 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationPreparedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.Ordered;
+import org.springframework.core.env.Environment;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
-import java.util.regex.Pattern;
+
+import static com.ultracards.service.startup.StartupCheckSupport.*;
 
 @Slf4j
 public final class DatabaseStartupCheckService
         implements ApplicationListener<ApplicationPreparedEvent>, Ordered {
 
-    private static final Pattern UNRESOLVED_PLACEHOLDER = Pattern.compile("^\\$\\{.+}$");
-
     @Override
     public void onApplicationEvent(ApplicationPreparedEvent event) {
         var env = event.getApplicationContext().getEnvironment();
-        var enabled = env.getProperty("app.database.startup-check.enabled", Boolean.class, true);
-        if (!enabled) {
+        if (!env.getProperty("app.database.startup-check.enabled", Boolean.class, true)) {
             return;
         }
 
+        checkDatabase(env);
+    }
+
+    private void checkDatabase(Environment env) {
         var url = trimToNull(env.getProperty("spring.datasource.url"));
         if (url == null) {
-            abort("database startup check failed: spring.datasource.url is not configured.");
+            abort("Database startup check failed: spring.datasource.url is not configured.");
             return;
         }
 
         var username = trimToNull(env.getProperty("spring.datasource.username"));
         var password = env.getProperty("spring.datasource.password");
 
-        if (isUnresolved(url) || isUnresolved(username) || isUnresolved(password)) {
-            abort("database startup check failed: datasource properties are unresolved for URL " + describe(url) + ".");
+        if (isUnresolved(url)
+                || isUnresolved(username)
+                || isUnresolved(password)) {
+            abort("Database startup check failed: datasource properties are unresolved for URL " + describe(url) + ".");
             return;
         }
 
@@ -51,9 +56,9 @@ public final class DatabaseStartupCheckService
             var ignored = DriverManager.getConnection(url, properties);
             ignored.close();
 
-            log.debug("database startup check succeeded on {}", describe(url));
+            log.debug("Database startup check succeeded on {}", describe(url));
         } catch (SQLException ex) {
-            abort("database startup check failed for " + describe(url) + ": " + summarizeError(ex));
+            abort("Database startup check failed for " + describe(url) + ": " + summarizeError(ex));
         }
     }
 
@@ -62,36 +67,8 @@ public final class DatabaseStartupCheckService
         return Ordered.HIGHEST_PRECEDENCE;
     }
 
-    private static boolean isUnresolved(String value) {
-        return value != null && UNRESOLVED_PLACEHOLDER.matcher(value).matches();
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        var trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private static String describe(String url) {
         var questionMarkIndex = url.indexOf('?');
         return questionMarkIndex >= 0 ? url.substring(0, questionMarkIndex) : url;
-    }
-
-    private static String summarizeError(SQLException ex) {
-        var message = ex.getMessage();
-        if (message == null || message.isBlank()) {
-            return ex.getClass().getSimpleName();
-        }
-
-        message = message.replace('\n', ' ').replace('\r', ' ').trim();
-        return message;
-    }
-
-    private static void abort(String message) {
-        log.error("ULTRACARDS Server startup aborted: " + message);
-        log.error("Check if your database is running and the set DB user and its password are correct.");
-        System.exit(1);
     }
 }
