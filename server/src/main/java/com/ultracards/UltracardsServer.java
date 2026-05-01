@@ -11,7 +11,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(scanBasePackages = {"com.ultracards.config", "com.ultracards.server", "com.ultracards.ui", "com.ultracards.filters", "com.ultracards.gateway.dto"})
+@SpringBootApplication(
+        scanBasePackages = {"com.ultracards.config", "com.ultracards.server", "com.ultracards.ui", "com.ultracards.filters", "com.ultracards.gateway.dto"},
+        exclude = org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration.class
+)
 @EnableScheduling
 public class UltracardsServer {
 
