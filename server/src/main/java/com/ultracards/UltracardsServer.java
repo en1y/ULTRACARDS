@@ -1,5 +1,6 @@
 package com.ultracards;
 
+import com.ultracards.service.startup.DatabaseStartupCheckService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -16,7 +17,9 @@ public class UltracardsServer {
     private static final Logger log = LoggerFactory.getLogger(UltracardsServer.class);
 
     static void main(String[] args) {
-        SpringApplication.run(UltracardsServer.class, args);
+        var application = new SpringApplication(UltracardsServer.class);
+        application.addListeners(new DatabaseStartupCheckService());
+        application.run(args);
     }
 
     @Bean
