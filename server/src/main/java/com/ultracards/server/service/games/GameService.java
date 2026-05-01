@@ -112,11 +112,12 @@ public class GameService {
                     eventPublisher.publish(game, RESULTED);
 
                     var winners = game1.getGame().determineGameWinners();
+                    var briskulaGameConfig = game1.getGameConfig().getGameConfig();
                     game.getGame().getPlayers().forEach(p -> {
                         var player = (BriskulaPlayerEntity) p;
-                        userGamesStatsService.addGamePlayed(player.getUser(), GameType.fromDTO(game.getGameType()));
+                        userGamesStatsService.addBriskulaGamePlayed(player.getUser(), briskulaGameConfig);
                         if (winners.contains(p)) {
-                            userGamesStatsService.addGameWon(player.getUser(), GameType.fromDTO(game.getGameType()));
+                            userGamesStatsService.addBriskulaGameWon(player.getUser(), briskulaGameConfig);
                         }
                     });
 

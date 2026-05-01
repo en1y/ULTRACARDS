@@ -1,7 +1,8 @@
 package com.ultracards.server.service.games;
 
+import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.games.UserGamesStats;
+import com.ultracards.server.entity.games.gamestats.UserGamesStats;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.games.UserGamesStatsRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,21 +24,21 @@ public class UserGamesStatsService {
     }
 
     @Transactional
-    public void addGameWon(UserEntity user, GameType gameType) {
+    public void addBriskulaGamePlayed(UserEntity user, BriskulaGameConfig gameConfig) {
         var stats = userGamesStatsRepository.findByUser(user).orElse(null);
         if (stats == null) {
             return;
         }
-        stats.addGameWon(gameType);
+        stats.addBriskulaGamePlayed(gameConfig);
     }
 
     @Transactional
-    public void addGamePlayed(UserEntity user, GameType gameType) {
+    public void addBriskulaGameWon(UserEntity user, BriskulaGameConfig gameConfig) {
         var stats = userGamesStatsRepository.findByUser(user).orElse(null);
         if (stats == null) {
             return;
         }
-        stats.addGamePlayed(gameType);
+        stats.addBriskulaGameWon(gameConfig);
     }
 
     public void save(UserGamesStats ugs) {

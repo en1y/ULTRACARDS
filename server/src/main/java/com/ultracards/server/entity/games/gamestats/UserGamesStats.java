@@ -1,6 +1,8 @@
-package com.ultracards.server.entity.games;
+package com.ultracards.server.entity.games.gamestats;
 
+import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.entity.games.briskula.DetailedBriskulaGameStats;
 import com.ultracards.server.enums.games.GameType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -37,9 +39,12 @@ public class UserGamesStats {
     @MapKeyColumn(name = "game_type")
     private Map<GameType, GameStats> gameStats = new EnumMap<>(GameType.class);
 
+    @Embedded
+    private DetailedBriskulaGameStats detailedBriskulaGameStats = new DetailedBriskulaGameStats();
+
     public UserGamesStats(UserEntity user) {
         this.user = user;
-        for (GameType gameType : GameType.values()) { // For some reason compiler sometimes sees it as an Object and not a GameType entity
+        for (GameType gameType : GameType.values()) {
             gameStats.put(gameType, new GameStats(0, 0));
         }
     }
@@ -65,21 +70,22 @@ public class UserGamesStats {
     public int getGamesPlayed(GameType gameType) {
         return gameStats.get(gameType).getPlayed();
     }
-}
 
-@Embeddable
-@Getter @Setter
-@AllArgsConstructor
-@NoArgsConstructor
-class GameStats {
-    @Column(name = "played")
-    private int played;
-    @Column(name = "wins")
-    private int wins;
-    void addPlayed() {
-        this.played++;
+    public void addBriskulaGamePlayed(BriskulaGameConfig gameConfig) {
+        addGamePlayed(GameType.BRISKULA);
+        detailedBriskulaGameStats.addGamePlayed(gameConfig);
     }
-    void addWon() {
-        this.wins++;
+
+    public void addBriskulaGameWon(BriskulaGameConfig gameConfig) {
+        addGameWon(GameType.BRISKULA);
+        detailedBriskulaGameStats.addGameWon(gameConfig);
+    }
+
+    public int getBriskulaGamesPlayed(BriskulaGameConfig gameConfig) {
+        return detailedBriskulaGameStats.getGamesPlayed(gameConfig);
+    }
+
+    public int getBriskulaGamesWon(BriskulaGameConfig gameConfig) {
+        return detailedBriskulaGameStats.getGamesWon(gameConfig);
     }
 }
