@@ -40,7 +40,6 @@ public class UltracardsServer {
             log.info("╠══════════════════════════════════════════════════════════╣");
             log.info("║  Local server humming gently at: {}://{}:{}   ║", protocol, host, port);
             log.info("╚══════════════════════════════════════════════════════════╝");
-
         };
     }
 }
