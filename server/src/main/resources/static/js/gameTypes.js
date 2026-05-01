@@ -1,37 +1,15 @@
-let profile = {
-    username: '',
-    id: 0
-};
-
-fetch('/api/profile')
-    .then((profileResponse) => {
-        if (!profileResponse.ok) {
-            throw new Error(`Response status: ${profileResponse.status}`);
-        }
-        return profileResponse.json();
-    })
-    .then((profilePayload) => {
-        profile = profilePayload;
-    })
-    .catch((error) => {
-        console.error('Failed to load profile for game types.', error);
-    });
-
 function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnabled=false, isPublic=true) {
     return JSON.stringify({
         id: "",
         name: lobbyName,
         minPlayers: playerNum,
         maxPlayers: playerNum,
-        players: [{name: profile.username, id: profile.id}],
-        host: {name: profile.username, id: profile.id},
         gameType: "Briskula",
         isPublic,
         gameConfig: {
             numberOfPlayers: playerNum,
             cardsInHandNum: cardsInHandNum,
-            teamsEnabled: teamsEnabled,
-            orderedUsers: [{name: profile.username, id: profile.id}]
+            teamsEnabled: teamsEnabled
         }
     })
 }

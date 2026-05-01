@@ -1,10 +1,10 @@
 package com.ultracards.config;
 
 import org.jspecify.annotations.NonNull;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -14,7 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Configuration
-@ConditionalOnProperty(name = "app.debug", havingValue = "true")
+@Profile("dev")
 public class DevWebResourceConfig implements WebMvcConfigurer {
 
     private static final String[] TEMPLATE_SOURCE_CANDIDATES = {

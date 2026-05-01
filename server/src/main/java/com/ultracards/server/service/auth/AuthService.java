@@ -13,7 +13,6 @@ import com.ultracards.server.service.EmailService;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.mail.MessagingException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -66,17 +65,30 @@ public class AuthService {
     }
 
     public void logout(HttpServletRequest request, HttpServletResponse response, String token) {
-        var cookies = request.getCookies();
         if (token != null){
             sessionService.logout(
                     sessionService.getSession(token)
             );
         }
+
+        var cookies = request.getCookies();
+        if (cookies == null) {
+            expireRefreshTokenCookie(response, "/");
+            return;
+        }
+
         for (var cookie : cookies) {
-            var delCookie = new Cookie(cookie.getName(), null);
-            delCookie.setMaxAge(0);
-            delCookie.setPath("/");
-            response.addCookie(delCookie);
+            if ("refreshToken".equals(cookie.getName())) {
+                expireRefreshTokenCookie(response, "/");
+                continue;
+            }
+
+            var expiredCookie = ResponseCookie.from(cookie.getName(), "")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
+
+            response.addHeader("Set-Cookie", expiredCookie.toString());
         }
     }
 

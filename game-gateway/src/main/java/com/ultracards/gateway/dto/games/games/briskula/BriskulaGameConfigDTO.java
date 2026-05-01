@@ -18,5 +18,5 @@ public class BriskulaGameConfigDTO implements GameConfigDTO {
     @NotNull private Integer numberOfPlayers;
     @NotNull private Integer cardsInHandNum;
     @NotNull private Boolean teamsEnabled;
-    @NotNull private List<GamePlayerDTO> orderedUsers;
+    private List<GamePlayerDTO> orderedUsers;
 }
