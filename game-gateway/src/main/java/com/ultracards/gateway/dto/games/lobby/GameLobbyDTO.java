@@ -22,8 +22,8 @@ public class GameLobbyDTO {
     @NotBlank private String name;
     @NotNull private Integer minPlayers;
     @NotNull private Integer maxPlayers;
-    @NotNull private Set<GamePlayerDTO> players;
-    @NotNull private GamePlayerDTO host;
+    private Set<GamePlayerDTO> players;
+    private GamePlayerDTO host;
     @NotNull private GameTypeDTO gameType;
     private Boolean isPublic;
     private String lobbyCode;

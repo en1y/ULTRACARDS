@@ -50,29 +50,31 @@ public class BriskulaLobbyGameConfig implements GameConfig {
         var orderedUsers = new ArrayList<UserEntity>();
         var idUserMap = users.stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
         var briskulaGameConfig = toBriskulaGameConfig(gameConfigDTO);
-        var maxPlayers = briskulaGameConfig.getNumberOfPlayers();
+        if (gameConfigDTO.getOrderedUsers() != null) {
+            var maxPlayers = briskulaGameConfig.getNumberOfPlayers();
 
-        for (var player: gameConfigDTO.getOrderedUsers()) {
-            var user = idUserMap.get(player.getId());
-            if (user != null && !orderedUsers.contains(user)) {
-                orderedUsers.add(user);
+            for (var player : gameConfigDTO.getOrderedUsers()) {
+                var user = idUserMap.get(player.getId());
+                if (user != null && !orderedUsers.contains(user)) {
+                    orderedUsers.add(user);
+                }
             }
-        }
-        for (var user: users) {
-            if (!orderedUsers.contains(user)) {
-                orderedUsers.add(user);
+            for (var user : users) {
+                if (!orderedUsers.contains(user)) {
+                    orderedUsers.add(user);
+                }
             }
-        }
-        if (!orderedUsers.contains(owner)) {
-            orderedUsers.addFirst(owner);
-        }
-        while (orderedUsers.size() > maxPlayers) {
-            var lastIndex = orderedUsers.size() - 1;
-            if (orderedUsers.get(lastIndex).equals(owner)) {
-                lastIndex--;
+            if (!orderedUsers.contains(owner)) {
+                orderedUsers.addFirst(owner);
             }
-            orderedUsers.remove(lastIndex);
-        }
+            while (orderedUsers.size() > maxPlayers) {
+                var lastIndex = orderedUsers.size() - 1;
+                if (orderedUsers.get(lastIndex).equals(owner)) {
+                    lastIndex--;
+                }
+                orderedUsers.remove(lastIndex);
+            }
+        } else orderedUsers = new ArrayList<>(users);
 
         return new BriskulaLobbyGameConfig(briskulaGameConfig, orderedUsers);
     }
