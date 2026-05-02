@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.repositories.UserRepository;
+import com.ultracards.server.service.games.UserBriskulaStatsService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -19,6 +20,7 @@ public class UserService {
     @Value("${app.max-length.email:150}")
     private Integer MAX_EMAIL_LENGTH;
 
+    private final UserBriskulaStatsService userBriskulaStatsService;
     private final UserGamesStatsService userGamesStatsService;
     private final UserRepository userRepository;
 
@@ -29,6 +31,7 @@ public class UserService {
         user.addRole(UserRole.USER);
         user = userRepository.save(user);
         userGamesStatsService.createEmptyStats(user);
+        userBriskulaStatsService.createEmptyStats(user);
         return user;
     }
 

@@ -1,10 +1,12 @@
 package com.ultracards.server.entity.games.gamestats;
 
-import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -38,19 +40,6 @@ public class UserGamesStats {
     @MapKeyColumn(name = "game_type")
     private Map<GameType, GameStats> gameStats = new EnumMap<>(GameType.class);
 
-    @ElementCollection
-    @CollectionTable(
-            name = "user_briskula_game_stats_entries",
-            joinColumns = @JoinColumn(name = "user_game_stats_id")
-    )
-    @AttributeOverrides({
-            @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
-            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
-    })
-    @MapKeyEnumerated(EnumType.STRING)
-    @MapKeyColumn(name = "briskula_game_config")
-    private Map<BriskulaGameConfig, GameStats> briskulaStats = new EnumMap<>(BriskulaGameConfig.class);
-
     public UserGamesStats(UserEntity user) {
         this.user = user;
         for (GameType gameType : GameType.values()) {
@@ -58,43 +47,19 @@ public class UserGamesStats {
         }
     }
 
-    public void addGamePlayed(GameType gameType) {
-        if (!gameStats.containsKey(gameType)) {
-            gameStats.put(gameType, new GameStats());
+    public void addGame(GameType gameType, boolean won) {
+        var stats = gameStats.computeIfAbsent(gameType, ignored -> new GameStats());
+        stats.addPlayed();
+        if (won) {
+            stats.addWon();
         }
-        gameStats.get(gameType).addPlayed();
-    }
-
-    public void addGameWon(GameType gameType) {
-        if (!gameStats.containsKey(gameType)) {
-            gameStats.put(gameType, new GameStats());
-        }
-        gameStats.get(gameType).addWon();
     }
 
     public int getGamesWon(GameType gameType) {
-        return gameStats.get(gameType).getWins();
+        return gameStats.getOrDefault(gameType, new GameStats()).getWins();
     }
 
     public int getGamesPlayed(GameType gameType) {
-        return gameStats.get(gameType).getPlayed();
-    }
-
-    public void addBriskulaGamePlayed(BriskulaGameConfig gameConfig) {
-        addGamePlayed(GameType.BRISKULA);
-        briskulaStats.computeIfAbsent(gameConfig, ignored -> new GameStats()).addPlayed();
-    }
-
-    public void addBriskulaGameWon(BriskulaGameConfig gameConfig) {
-        addGameWon(GameType.BRISKULA);
-        briskulaStats.computeIfAbsent(gameConfig, ignored -> new GameStats()).addWon();
-    }
-
-    public int getBriskulaGamesPlayed(BriskulaGameConfig gameConfig) {
-        return briskulaStats.getOrDefault(gameConfig, new GameStats()).getPlayed();
-    }
-
-    public int getBriskulaGamesWon(BriskulaGameConfig gameConfig) {
-        return briskulaStats.getOrDefault(gameConfig, new GameStats()).getWins();
+        return gameStats.getOrDefault(gameType, new GameStats()).getPlayed();
     }
 }
