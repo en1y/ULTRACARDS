@@ -515,7 +515,7 @@ async function refresh() {
     }
 }
 
-async function refreshSessions() {
+async function refreshSessions({ clearStatus = true } = {}) {
     try {
         const response = await fetch('/api/profile/sessions', { credentials: 'include' });
         if (!response.ok) {
@@ -523,10 +523,14 @@ async function refreshSessions() {
         }
 
         renderSessions(await response.json());
-        clearSessionsStatus();
+        if (clearStatus) {
+            clearSessionsStatus();
+        }
+        return true;
     } catch (error) {
         setSessionsStatus('Could not load sessions. Please refresh the page.', 'error');
         console.error(error.message);
+        return false;
     }
 }
 
@@ -582,8 +586,9 @@ async function deleteSession(sessionId, isCurrentSession, { allowRetry = true } 
 
         clearPendingSessionDeletion();
         await animateSessionRemoval(sessionId);
-        setSessionsStatus('Session removed.', 'success');
-        await refreshSessions();
+        if (await refreshSessions({ clearStatus: false })) {
+            setSessionsStatus('Session removed.', 'success');
+        }
     } catch (error) {
         if (error.message === 'Verification was cancelled.') {
             clearPendingSessionDeletion();
