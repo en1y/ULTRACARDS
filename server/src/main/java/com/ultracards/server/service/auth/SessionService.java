@@ -43,10 +43,13 @@ public class SessionService {
     @Transactional
     public UserSession recreateTokenForSession(String token) {
         var session = getSession(token);
+        var oldToken = session.getToken();
         var newToken = tokenService.createToken(session.getToken().getUser());
         session.setToken(newToken);
         session.setLastAuthenticatedAt(Instant.now());
-        return sessionRepository.save(session);
+        session = sessionRepository.saveAndFlush(session);
+        tokenService.deleteToken(oldToken);
+        return session;
     }
 
     @Transactional
@@ -77,7 +80,10 @@ public class SessionService {
         session.setToken(token);
         session.setLastSeenAt(Instant.now());
         updateSessionByRequest(session, request);
-        session = sessionRepository.save(session);
+        session = sessionRepository.saveAndFlush(session);
+        if (!currentToken.getId().equals(token.getId())) {
+            tokenService.deleteToken(currentToken);
+        }
         session.setCurrentSession(true);
         return session;
     }

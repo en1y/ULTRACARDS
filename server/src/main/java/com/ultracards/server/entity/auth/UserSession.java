@@ -15,7 +15,7 @@ public class UserSession {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private Long userId;
-    @OneToOne(fetch = FetchType.EAGER, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false, cascade = CascadeType.REMOVE)
     @JoinColumn(name = "token_id", nullable = false)
     private TokenEntity token;
     @Column private String deviceId;

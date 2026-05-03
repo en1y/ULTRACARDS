@@ -62,13 +62,12 @@ public class TokenService {
             return ValidationResult.proceed(tokenEntity);
         }
 
-        var user = tokenEntity.getUser();
-        var isTokenActive = tokenEntity.isActive();
-        tokenRepository.delete(tokenEntity);
-
-        if (isTokenActive) {
+        if (tokenEntity.isActive()) {
+            var user = tokenEntity.getUser();
             return ValidationResult.rotated(createToken(user));
         }
+
+        tokenRepository.delete(tokenEntity);
         return ValidationResult.logout();
     }
 
@@ -94,6 +93,7 @@ public class TokenService {
         throw new UnsupportedOperationException("Invalid token status: " + tokenValidationStatus);
     }
 
+    @Transactional
     public void deleteTokenIfExists(String token) {
         var tokenEntity = tokenRepository.findByToken(token).orElse(null);
         if (tokenEntity == null) return;
@@ -101,6 +101,12 @@ public class TokenService {
         tokenRepository.delete(
                 tokenEntity
         );
+    }
+
+    @Transactional
+    public void deleteToken(TokenEntity token) {
+        if (token == null) return;
+        tokenRepository.delete(token);
     }
 
     public boolean tokenExists(String token) {

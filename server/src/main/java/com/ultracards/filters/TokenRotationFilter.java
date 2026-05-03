@@ -93,6 +93,7 @@ public class TokenRotationFilter extends OncePerRequestFilter {
         } catch (AccessDeniedException ex) {
             // rotation/validation failed -> unauthenticated
             log.error("Error while validating with token.", ex);
+            tokenService.deleteTokenIfExists(token);
             SecurityContextHolder.clearContext();
             handleUnauthorized(req, res);
         }
