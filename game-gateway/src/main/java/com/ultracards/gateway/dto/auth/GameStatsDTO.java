@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -12,4 +14,9 @@ import lombok.Setter;
 public class GameStatsDTO {
     private int played;
     private int wins;
+    private Instant lastPlayedAt;
+
+    public GameStatsDTO(int played, int wins) {
+        this(played, wins, null);
+    }
 }

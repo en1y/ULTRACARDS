@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,4 +17,5 @@ public class BriskulaMatchupStatsDTO {
     private String relatedUsername;
     private int played;
     private int wins;
+    private Instant lastPlayedAt;
 }
