@@ -5,7 +5,7 @@ public enum BriskulaGameConfig {
     TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH(2, 4, false),
     THREE_PLAYERS(3, 3, false),
     FOUR_PLAYERS_NO_TEAMS(4, 3, false),
-    FOUR_PLAYERS_WITH_TEAMS(4, 3, true),;
+    FOUR_PLAYERS_WITH_TEAMS(4, 3, true);
 
     private final int numberOfPlayers;
     private final int cardsInHandNum;

@@ -1,8 +1,10 @@
 package com.ultracards.server.service.auth;
 
 import com.ultracards.gateway.dto.EmailDTO;
+import com.ultracards.gateway.dto.auth.GameStatsDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UserSessionDTO;
+import com.ultracards.gateway.dto.auth.UserGamesStatsDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
@@ -24,7 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -159,19 +161,29 @@ public class AuthService {
         if (gameStats == null) {
             return profile;
         }
-        var games = new HashMap<String, Integer[]>();
-        games.put(GameType.BRISKULA.name(), new Integer[]{gameStats.getGamesPlayed(GameType.BRISKULA), gameStats.getGamesWon(GameType.BRISKULA)});
-        games.put(GameType.DURAK.name(), new Integer[]{gameStats.getGamesPlayed(GameType.DURAK), gameStats.getGamesWon(GameType.DURAK)});
-        games.put(GameType.TRESETA.name(), new Integer[]{gameStats.getGamesPlayed(GameType.TRESETA), gameStats.getGamesWon(GameType.TRESETA)});
-        games.put(GameType.POKER.name(), new Integer[]{gameStats.getGamesPlayed(GameType.POKER), gameStats.getGamesWon(GameType.POKER)});
+        var games = new LinkedHashMap<String, GameStatsDTO>();
+        for (var gameType : GameType.values()) {
+            games.put(
+                    gameType.name(),
+                    new GameStatsDTO(
+                            gameStats.getGamesPlayed(gameType),
+                            gameStats.getGamesWon(gameType),
+                            gameStats.getLastPlayedAt(gameType)
+                    )
+            );
+        }
 
-        profile.setPlayedAndWonGames(games);
+        profile.setUserGamesStats(new UserGamesStatsDTO(
+                gameStats.getId(),
+                user.getId(),
+                games
+        ));
 
         var gamesPlayed = 0;
         var gamesWon = 0;
-        for (var arr: games.values()) {
-            gamesPlayed += arr[0];
-            gamesWon += arr[1];
+        for (var stats: games.values()) {
+            gamesPlayed += stats.getPlayed();
+            gamesWon += stats.getWins();
         }
         profile.setGamesPlayed(gamesPlayed);
         profile.setGamesWon(gamesWon);

@@ -1,13 +1,17 @@
-package com.ultracards.server.entity.games;
+package com.ultracards.server.entity.games.gamestats;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "user_game_stats")
@@ -31,7 +35,8 @@ public class UserGamesStats {
     )
     @AttributeOverrides({
             @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
-            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false)),
+            @AttributeOverride(name = "lastPlayedAt", column = @Column(name = "last_played_at"))
     })
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "game_type")
@@ -39,47 +44,28 @@ public class UserGamesStats {
 
     public UserGamesStats(UserEntity user) {
         this.user = user;
-        for (GameType gameType : GameType.values()) { // For some reason compiler sometimes sees it as an Object and not a GameType entity
+        for (GameType gameType : GameType.values()) {
             gameStats.put(gameType, new GameStats(0, 0));
         }
     }
 
-    public void addGamePlayed(GameType gameType) {
-        if (!gameStats.containsKey(gameType)) {
-            gameStats.put(gameType, new GameStats());
+    public void addGame(GameType gameType, boolean won) {
+        var stats = gameStats.computeIfAbsent(gameType, ignored -> new GameStats());
+        stats.addPlayed();
+        if (won) {
+            stats.addWon();
         }
-        gameStats.get(gameType).addPlayed();
-    }
-
-    public void addGameWon(GameType gameType) {
-        if (!gameStats.containsKey(gameType)) {
-            gameStats.put(gameType, new GameStats());
-        }
-        gameStats.get(gameType).addWon();
     }
 
     public int getGamesWon(GameType gameType) {
-        return gameStats.get(gameType).getWins();
+        return gameStats.getOrDefault(gameType, new GameStats()).getWins();
     }
 
     public int getGamesPlayed(GameType gameType) {
-        return gameStats.get(gameType).getPlayed();
+        return gameStats.getOrDefault(gameType, new GameStats()).getPlayed();
     }
-}
 
-@Embeddable
-@Getter @Setter
-@AllArgsConstructor
-@NoArgsConstructor
-class GameStats {
-    @Column(name = "played")
-    private int played;
-    @Column(name = "wins")
-    private int wins;
-    void addPlayed() {
-        this.played++;
-    }
-    void addWon() {
-        this.wins++;
+    public Instant getLastPlayedAt(GameType gameType) {
+        return gameStats.getOrDefault(gameType, new GameStats()).getLastPlayedAt();
     }
 }

@@ -1,7 +1,7 @@
 package com.ultracards.server.repositories.games;
 
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.games.UserGamesStats;
+import com.ultracards.server.entity.games.gamestats.UserGamesStats;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 

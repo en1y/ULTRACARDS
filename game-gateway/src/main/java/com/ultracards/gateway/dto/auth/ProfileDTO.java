@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -25,6 +24,5 @@ public class ProfileDTO {
     private Long id;
     private Integer gamesPlayed;
     private Integer gamesWon;
-    // Contains an array with 2 elements per game type where the 1st element is how many games are played and the 2nd element is how many games the user won
-    private Map<String, Integer[]> playedAndWonGames;
+    private UserGamesStatsDTO userGamesStats;
 }

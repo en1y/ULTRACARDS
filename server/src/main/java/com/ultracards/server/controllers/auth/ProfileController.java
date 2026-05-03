@@ -1,11 +1,13 @@
 package com.ultracards.server.controllers.auth;
 
+import com.ultracards.gateway.dto.auth.DetailedProfileStatsDTO;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.gateway.dto.auth.UserSessionDTO;
 import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.auth.AuthService;
 import com.ultracards.server.service.auth.SessionService;
+import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +31,7 @@ public class ProfileController {
     private Integer MAX_USERNAME_LENGTH;
     private final AuthService authService;
     private final SessionService sessionService;
+    private final UserGamesStatsService userGamesStatsService;
     @Value("${app.token.update-privilege-duration-minutes:4}")
     private long updateDuration;
 
@@ -75,6 +78,14 @@ public class ProfileController {
     ) {
         var res = authService.getProfile(user);
         return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<DetailedProfileStatsDTO> getDetailedProfileStats(
+            @AuthenticationPrincipal UserEntity user
+    ) {
+        return ResponseEntity.ok(userGamesStatsService.getDetailedStatsByUser(user));
     }
 
     @PostMapping
