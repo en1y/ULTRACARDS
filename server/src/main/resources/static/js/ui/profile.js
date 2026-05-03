@@ -12,6 +12,12 @@ let profileStatusTimer = null;
 let sessionsStatusTimer = null;
 let sessionToastTimer = null;
 let cachedSessions = [];
+let cachedDetailedStats = null;
+let detailedStatsFilters = {
+    gameConfig: '',
+    sort: 'recent',
+    user: ''
+};
 let pendingSessionDeletion = null;
 let sessionConfirmResolver = null;
 let currentProfileSnapshot = {
@@ -249,8 +255,12 @@ function formatInstant(value) {
     }
 
     return new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short'
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
     }).format(date);
 }
 
@@ -268,9 +278,23 @@ function formatSessionCardInstant(value) {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
     }).format(date);
+}
+
+function formatLastPlayedAt(value) {
+    return value ? formatSessionCardInstant(value) : 'Never played';
+}
+
+function lastPlayedTime(value) {
+    if (!value) {
+        return 0;
+    }
+
+    const time = new Date(value).getTime();
+    return Number.isNaN(time) ? 0 : time;
 }
 
 function sessionLabel(session) {
@@ -350,6 +374,8 @@ function initialiseTabs() {
 
             if (selected === 'sessions') {
                 refreshSessions();
+            } else if (selected === 'stats') {
+                refreshDetailedStats();
             }
 
             if (currentPanel && currentPanel !== nextPanel) {
@@ -378,6 +404,8 @@ function initialiseTabs() {
         setActiveTabState(initialTab);
         if (initialTab === 'sessions') {
             refreshSessions();
+        } else if (initialTab === 'stats') {
+            refreshDetailedStats();
         }
     } else {
         updateHash(getActiveProfileTab());
@@ -397,6 +425,8 @@ function initialiseTabs() {
         setActiveTabState(hashTab);
         if (hashTab === 'sessions') {
             refreshSessions();
+        } else if (hashTab === 'stats') {
+            refreshDetailedStats();
         }
     });
 }
@@ -508,10 +538,32 @@ async function refresh() {
 
         await updateProfile(await profileResponse.json());
         renderSessions(await sessionsResponse.json());
+        if (getActiveProfileTab() === 'stats') {
+            await refreshDetailedStats({ clearStatus: false });
+        }
         clearProfileStatus();
         clearSessionsStatus();
     } catch (error) {
         console.error(error.message);
+    }
+}
+
+async function refreshDetailedStats({ clearStatus = true } = {}) {
+    try {
+        const response = await fetch('/api/profile/stats', { credentials: 'include' });
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        renderDetailedStats(await response.json());
+        if (clearStatus) {
+            clearSessionsStatus();
+        }
+        return true;
+    } catch (error) {
+        setSessionsStatus('Could not load detailed game stats. Please refresh the page.', 'error');
+        console.error(error.message);
+        return false;
     }
 }
 
@@ -532,6 +584,315 @@ async function refreshSessions({ clearStatus = true } = {}) {
         console.error(error.message);
         return false;
     }
+}
+
+function gameDisplayName(gameType) {
+    return String(gameType || '')
+        .toLowerCase()
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ') || 'Unknown game';
+}
+
+function normalizeGameStats(stats) {
+    const rawPlayed = Number(stats?.played ?? 0);
+    const rawWins = Number(stats?.wins ?? 0);
+    const played = Number.isFinite(rawPlayed) ? rawPlayed : 0;
+    const wins = Number.isFinite(rawWins) ? rawWins : 0;
+    const losses = Math.max(played - wins, 0);
+    const winRate = played > 0 ? Math.round((wins / played) * 100) : 0;
+    return { played, wins, losses, winRate };
+}
+
+function compareStatsEntries(a, b, sortKey = detailedStatsFilters.sort) {
+    const [aType, aStats] = Array.isArray(a) ? a : [a.gameConfig, a];
+    const [bType, bStats] = Array.isArray(b) ? b : [b.gameConfig, b];
+    const aNormalized = normalizeGameStats(aStats);
+    const bNormalized = normalizeGameStats(bStats);
+
+    switch (sortKey) {
+        case 'user':
+            return matchupLabel(aStats).localeCompare(matchupLabel(bStats));
+        case 'gametype':
+            return gameDisplayName(aType).localeCompare(gameDisplayName(bType));
+        case 'played':
+            return bNormalized.played - aNormalized.played || lastPlayedTime(bStats.lastPlayedAt) - lastPlayedTime(aStats.lastPlayedAt);
+        case 'wins':
+            return bNormalized.wins - aNormalized.wins || lastPlayedTime(bStats.lastPlayedAt) - lastPlayedTime(aStats.lastPlayedAt);
+        case 'losses':
+            return bNormalized.losses - aNormalized.losses || lastPlayedTime(bStats.lastPlayedAt) - lastPlayedTime(aStats.lastPlayedAt);
+        case 'winRate':
+            return bNormalized.winRate - aNormalized.winRate || bNormalized.played - aNormalized.played;
+        case 'recent':
+        default:
+            return lastPlayedTime(bStats.lastPlayedAt) - lastPlayedTime(aStats.lastPlayedAt)
+                || bNormalized.played - aNormalized.played;
+    }
+}
+
+function renderGameStatsCard(gameType, stats, extraClass = '') {
+    const normalized = normalizeGameStats(stats);
+    return `
+        <article class="profile-game-card ${escapeHtml(extraClass)}">
+            <span>${escapeHtml(gameDisplayName(gameType))}</span>
+            <div class="profile-stat-line">
+                <strong>${normalized.played}</strong>
+                <small>played</small>
+            </div>
+            <div class="profile-stat-line">
+                <strong>${normalized.wins}</strong>
+                <small>won</small>
+            </div>
+            <div class="profile-stat-line">
+                <strong>${normalized.losses}</strong>
+                <small>lost</small>
+            </div>
+            <div class="profile-win-rate" aria-label="${normalized.winRate}% win rate">
+                <span style="width: ${normalized.winRate}%"></span>
+            </div>
+            <p>${normalized.winRate}% win rate</p>
+            <small class="profile-last-played">Last played: ${escapeHtml(formatLastPlayedAt(stats?.lastPlayedAt))}</small>
+        </article>
+    `;
+}
+
+function matchupLabel(matchup) {
+    if (matchup.relatedUsername) {
+        return matchup.relatedUsername;
+    }
+    if (matchup.relatedUserId) {
+        return `User ${matchup.relatedUserId}`;
+    }
+    return 'Unknown user';
+}
+
+function renderMatchupRows(matchups, emptyText) {
+    if (!Array.isArray(matchups) || matchups.length === 0) {
+        return `
+            <tr>
+                <td colspan="7">${escapeHtml(emptyText)}</td>
+            </tr>
+        `;
+    }
+
+    return matchups
+        .slice()
+        .sort(compareStatsEntries)
+        .map((matchup) => {
+            const stats = normalizeGameStats(matchup);
+            return `
+                <tr>
+                    <td>${escapeHtml(matchupLabel(matchup))}</td>
+                    <td>${escapeHtml(gameDisplayName(matchup.gameConfig))}</td>
+                    <td>${stats.played}</td>
+                    <td>${stats.wins}</td>
+                    <td>${stats.losses}</td>
+                    <td>${stats.winRate}%</td>
+                    <td>${escapeHtml(formatLastPlayedAt(matchup.lastPlayedAt))}</td>
+                </tr>
+            `;
+        })
+        .join('');
+}
+
+function renderMatchupTable(title, matchups, emptyText) {
+    return `
+        <article class="profile-stats-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">User matchups</p>
+                    <h2>${escapeHtml(title)}</h2>
+                </div>
+            </div>
+            <div class="profile-table-wrap">
+                <table class="profile-stat-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Config</th>
+                            <th>Played</th>
+                            <th>Won</th>
+                            <th>Lost</th>
+                            <th>Win rate</th>
+                            <th>Last played</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${renderMatchupRows(matchups, emptyText)}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    `;
+}
+
+function collectBriskulaModes(briskulaStats, configStats) {
+    const modeMap = new Map();
+
+    Object.entries(configStats || {}).forEach(([gameConfig, stats]) => {
+        modeMap.set(gameConfig, stats?.lastPlayedAt || null);
+    });
+
+    [...(briskulaStats.winsAgainstUser || []), ...(briskulaStats.winsWithTeammate || [])].forEach((matchup) => {
+        if (!matchup.gameConfig) {
+            return;
+        }
+
+        const current = lastPlayedTime(modeMap.get(matchup.gameConfig));
+        if (lastPlayedTime(matchup.lastPlayedAt) > current) {
+            modeMap.set(matchup.gameConfig, matchup.lastPlayedAt || null);
+        } else if (!modeMap.has(matchup.gameConfig)) {
+            modeMap.set(matchup.gameConfig, matchup.lastPlayedAt || null);
+        }
+    });
+
+    return Array.from(modeMap.entries())
+        .sort((a, b) => lastPlayedTime(b[1]) - lastPlayedTime(a[1]) || gameDisplayName(a[0]).localeCompare(gameDisplayName(b[0])))
+        .map(([mode]) => mode);
+}
+
+function selectDefaultBriskulaMode(modes) {
+    if (!modes.length) {
+        detailedStatsFilters.gameConfig = '';
+        return;
+    }
+
+    if (!modes.includes(detailedStatsFilters.gameConfig)) {
+        detailedStatsFilters.gameConfig = modes[0];
+    }
+}
+
+function renderMatchupControls(modes) {
+    const modeOptions = modes.length
+        ? modes.map((mode) => `
+            <option value="${escapeHtml(mode)}" ${mode === detailedStatsFilters.gameConfig ? 'selected' : ''}>
+                ${escapeHtml(gameDisplayName(mode))}
+            </option>
+        `).join('')
+        : '<option value="">No Briskula modes</option>';
+
+    return `
+        <div class="profile-stats-controls" aria-label="User matchup filters">
+            <label class="profile-filter-field" for="stats-mode-filter">
+                <span>Mode</span>
+                <select id="stats-mode-filter" ${modes.length ? '' : 'disabled'}>
+                    ${modeOptions}
+                </select>
+            </label>
+            <label class="profile-filter-field" for="stats-sort">
+                <span>Sort</span>
+                <select id="stats-sort">
+                    <option value="recent" ${detailedStatsFilters.sort === 'recent' ? 'selected' : ''}>Most recent</option>
+                    <option value="user" ${detailedStatsFilters.sort === 'user' ? 'selected' : ''}>User</option>
+                    <option value="gametype" ${detailedStatsFilters.sort === 'gametype' ? 'selected' : ''}>Game type</option>
+                    <option value="played" ${detailedStatsFilters.sort === 'played' ? 'selected' : ''}>Played</option>
+                    <option value="wins" ${detailedStatsFilters.sort === 'wins' ? 'selected' : ''}>Wins</option>
+                    <option value="losses" ${detailedStatsFilters.sort === 'losses' ? 'selected' : ''}>Losses</option>
+                    <option value="winRate" ${detailedStatsFilters.sort === 'winRate' ? 'selected' : ''}>Win rate</option>
+                </select>
+            </label>
+            <label class="profile-filter-field" for="stats-user-filter">
+                <span>User</span>
+                <input id="stats-user-filter" type="search" placeholder="Enter player username" value="${escapeHtml(detailedStatsFilters.user)}">
+            </label>
+        </div>
+    `;
+}
+
+function bindMatchupControls(container) {
+    const modeSelect = container.querySelector('#stats-mode-filter');
+    const sortSelect = container.querySelector('#stats-sort');
+    const userInput = container.querySelector('#stats-user-filter');
+
+    modeSelect?.addEventListener('change', () => {
+        detailedStatsFilters.gameConfig = modeSelect.value;
+        renderDetailedStats(cachedDetailedStats);
+    });
+
+    sortSelect?.addEventListener('change', () => {
+        detailedStatsFilters.sort = sortSelect.value || 'recent';
+        renderDetailedStats(cachedDetailedStats);
+    });
+
+    userInput?.addEventListener('input', () => {
+        detailedStatsFilters.user = userInput.value || '';
+        renderDetailedStats(cachedDetailedStats);
+        const nextInput = document.getElementById('stats-user-filter');
+        nextInput?.focus();
+        nextInput?.setSelectionRange(nextInput.value.length, nextInput.value.length);
+    });
+}
+
+function filterMatchupsByControls(matchups) {
+    const userFilter = detailedStatsFilters.user.trim().toLowerCase();
+    return (Array.isArray(matchups) ? matchups : [])
+        .filter((matchup) => !detailedStatsFilters.gameConfig || matchup.gameConfig === detailedStatsFilters.gameConfig)
+        .filter((matchup) => !userFilter || matchupLabel(matchup).toLowerCase().includes(userFilter));
+}
+
+function renderDetailedStats(data) {
+    cachedDetailedStats = data || null;
+
+    const container = document.getElementById('detailed-game-stats');
+    if (!container) {
+        return;
+    }
+
+    const gameStats = cachedDetailedStats?.userGamesStats?.gameStats || {};
+    const briskulaStats = cachedDetailedStats?.userBriskulaStats || {};
+    const configStats = briskulaStats.configStats || {};
+    const modes = collectBriskulaModes(briskulaStats, configStats);
+    selectDefaultBriskulaMode(modes);
+
+    const gameEntries = Object.entries(gameStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
+    const configEntries = Object.entries(configStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
+    const selectedModeName = detailedStatsFilters.gameConfig
+        ? gameDisplayName(detailedStatsFilters.gameConfig)
+        : 'No mode selected';
+    const winsAgainstUser = filterMatchupsByControls(briskulaStats.winsAgainstUser);
+    const winsWithTeammate = filterMatchupsByControls(briskulaStats.winsWithTeammate);
+    const teammateTable = winsWithTeammate.length
+        ? renderMatchupTable(`With teammates - ${selectedModeName}`, winsWithTeammate, 'No teammate stats for this mode.')
+        : '';
+
+    container.innerHTML = `
+        <article class="profile-stats-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">All games</p>
+                    <h2>Game statistics</h2>
+                </div>
+            </div>
+            <div class="profile-game-grid">
+                ${gameEntries.map(([gameType, stats]) => renderGameStatsCard(gameType, stats)).join('') || `
+                    <article class="profile-session-card profile-session-card--empty">
+                        <p>No game stats found for this account.</p>
+                    </article>
+                `}
+            </div>
+        </article>
+        <article class="profile-stats-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Briskula</p>
+                    <h2>By game setting</h2>
+                </div>
+            </div>
+            <div class="profile-game-grid">
+                ${configEntries.map(([gameType, stats]) => renderGameStatsCard(gameType, stats, 'profile-game-card--config')).join('') || `
+                    <article class="profile-session-card profile-session-card--empty">
+                        <p>No Briskula configuration stats yet.</p>
+                    </article>
+                `}
+            </div>
+        </article>
+        ${renderMatchupControls(modes)}
+        ${renderMatchupTable(`Against users - ${selectedModeName}`, winsAgainstUser, 'No opponent stats for this mode.')}
+        ${teammateTable}
+    `;
+
+    bindMatchupControls(container);
 }
 
 async function animateSessionRemoval(sessionId) {
@@ -698,7 +1059,10 @@ async function updateProfile(data) {
     const perGameType = document.getElementById('per-game-type');
     perGameType.innerText = '';
 
-    Object.entries(data.playedAndWonGames || {}).forEach(([gameType, arr]) => {
+    Object.entries(data.userGamesStats?.gameStats || {})
+        .sort((a, b) => compareStatsEntries(a, b, 'recent'))
+        .forEach(([gameType, stats]) => {
+        const normalized = normalizeGameStats(stats);
         const gameCard = document.createElement('div');
         gameCard.className = 'profile-game-card';
 
@@ -708,12 +1072,16 @@ async function updateProfile(data) {
         const br1 = document.createElement('br');
 
         const playedGames = document.createElement('span');
-        playedGames.textContent = `${arr[0]}`;
+        playedGames.textContent = `${normalized.played}`;
 
         const br2 = document.createElement('br');
 
         const wonGames = document.createElement('span');
-        wonGames.textContent = `${arr[1]}`;
+        wonGames.textContent = `${normalized.wins}`;
+
+        const lastPlayed = document.createElement('small');
+        lastPlayed.className = 'profile-last-played';
+        lastPlayed.textContent = `Last played: ${formatLastPlayedAt(stats.lastPlayedAt)}`;
 
         gameCard.appendChild(title);
         gameCard.appendChild(br1);
@@ -722,6 +1090,7 @@ async function updateProfile(data) {
         gameCard.appendChild(br2);
         gameCard.append('Games won: ');
         gameCard.appendChild(wonGames);
+        gameCard.appendChild(lastPlayed);
 
         perGameType.appendChild(gameCard);
     });
@@ -746,4 +1115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('save-profile')?.addEventListener('click', () => save());
     await refreshSessions();
+    if (getActiveProfileTab() === 'stats') {
+        await refreshDetailedStats();
+    }
 });

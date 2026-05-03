@@ -24,6 +24,7 @@
 
     <nav class="profile-tabs" aria-label="Profile sections">
         <button class="profile-tab is-active" type="button" data-profile-tab="overview">Overview</button>
+        <button class="profile-tab" type="button" data-profile-tab="stats">Game stats</button>
         <button class="profile-tab" type="button" data-profile-tab="sessions">Sessions</button>
     </nav>
 
@@ -93,11 +94,28 @@
                 </div>
             </div>
             <div id="per-game-type" class="profile-game-grid">
-                <div class="profile-game-card" th:each="game: ${profile.getPlayedAndWonGames()}">
+                <div class="profile-game-card" th:each="game: ${profile.getUserGamesStats() != null ? profile.getUserGamesStats().getGameStats() : null}">
                     <span th:text="${game.getKey()}"></span> <br>
-                    Games played: <span th:text="${game.getValue()[0]}"></span> <br>
-                    Games won: <span th:text="${game.getValue()[1]}"></span>
+                    Games played: <span th:text="${game.getValue().getPlayed()}"></span> <br>
+                    Games won: <span th:text="${game.getValue().getWins()}"></span>
+                    <small class="profile-last-played" th:text="${game.getValue().getLastPlayedAt() != null ? 'Last played: ' + game.getValue().getLastPlayedAt() : 'Last played: Never played'}"></small>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-panel" data-profile-panel="stats">
+        <div class="profile-history">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Detailed stats</p>
+                    <h2>Games</h2>
+                </div>
+            </div>
+            <div id="detailed-game-stats" class="profile-detailed-stats">
+                <article class="profile-session-card profile-session-card--placeholder">
+                    <p>Loading detailed stats...</p>
+                </article>
             </div>
         </div>
     </section>
