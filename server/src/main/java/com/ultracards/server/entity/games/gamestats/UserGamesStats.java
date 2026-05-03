@@ -11,6 +11,7 @@ import lombok.Setter;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "user_game_stats")
@@ -34,7 +35,8 @@ public class UserGamesStats {
     )
     @AttributeOverrides({
             @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
-            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false)),
+            @AttributeOverride(name = "lastPlayedAt", column = @Column(name = "last_played_at"))
     })
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "game_type")
@@ -61,5 +63,9 @@ public class UserGamesStats {
 
     public int getGamesPlayed(GameType gameType) {
         return gameStats.getOrDefault(gameType, new GameStats()).getPlayed();
+    }
+
+    public Instant getLastPlayedAt(GameType gameType) {
+        return gameStats.getOrDefault(gameType, new GameStats()).getLastPlayedAt();
     }
 }

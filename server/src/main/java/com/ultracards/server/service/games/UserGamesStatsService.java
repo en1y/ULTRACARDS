@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+
 @Service
 @RequiredArgsConstructor
 public class UserGamesStatsService {
@@ -43,7 +45,7 @@ public class UserGamesStatsService {
     }
 
     @Transactional(readOnly = true)
-    public DetailedProfileStatsDTO createDetailedProfileStatsDTO(UserEntity user) {
+    public DetailedProfileStatsDTO getDetailedStatsByUser(UserEntity user) {
         var gameStats = userGamesStatsRepository.findByUser(user).orElse(null);
         var briskulaStats = userBriskulaStatsService.getByUser(user);
 
@@ -62,9 +64,16 @@ public class UserGamesStatsService {
             return null;
         }
 
-        var gameStats = new java.util.LinkedHashMap<String, GameStatsDTO>();
-        for (var entry : stats.getGameStats().entrySet()) {
-            gameStats.put(entry.getKey().name(), toGameStatsDTO(entry.getValue()));
+        var gameStats = new LinkedHashMap<String, GameStatsDTO>();
+        for (var gameType : GameType.values()) {
+            gameStats.put(
+                    gameType.name(),
+                    new GameStatsDTO(
+                            stats.getGamesPlayed(gameType),
+                            stats.getGamesWon(gameType),
+                            stats.getLastPlayedAt(gameType)
+                    )
+            );
         }
 
         return new UserGamesStatsDTO(
@@ -101,7 +110,7 @@ public class UserGamesStatsService {
     }
 
     private GameStatsDTO toGameStatsDTO(GameStats stats) {
-        return new GameStatsDTO(stats.getPlayed(), stats.getWins());
+        return new GameStatsDTO(stats.getPlayed(), stats.getWins(), stats.getLastPlayedAt());
     }
 
     private BriskulaMatchupStatsDTO toBriskulaMatchupStatsDTO(BriskulaMatchupStats stats) {
@@ -111,7 +120,8 @@ public class UserGamesStatsService {
                 stats.getRelatedUserId(),
                 relatedUser != null ? relatedUser.getUsername() : null,
                 stats.getPlayed(),
-                stats.getWins()
+                stats.getWins(),
+                stats.getLastPlayedAt()
         );
     }
 }

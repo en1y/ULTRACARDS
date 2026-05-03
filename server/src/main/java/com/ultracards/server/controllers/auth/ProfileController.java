@@ -85,7 +85,7 @@ public class ProfileController {
     public ResponseEntity<DetailedProfileStatsDTO> getDetailedProfileStats(
             @AuthenticationPrincipal UserEntity user
     ) {
-        return ResponseEntity.ok(userGamesStatsService.createDetailedProfileStatsDTO(user));
+        return ResponseEntity.ok(userGamesStatsService.getDetailedStatsByUser(user));
     }
 
     @PostMapping

@@ -51,7 +51,8 @@ public class UserBriskulaStats implements DetailedGameStats {
     )
     @AttributeOverrides({
             @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
-            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false)),
+            @AttributeOverride(name = "lastPlayedAt", column = @Column(name = "last_played_at"))
     })
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "briskula_game_config")
@@ -70,7 +71,8 @@ public class UserBriskulaStats implements DetailedGameStats {
             @AttributeOverride(name = "gameConfig", column = @Column(name = "game_config", nullable = false)),
             @AttributeOverride(name = "relatedUserId", column = @Column(name = "related_user_id", nullable = false)),
             @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
-            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false)),
+            @AttributeOverride(name = "lastPlayedAt", column = @Column(name = "last_played_at"))
     })
     private Set<BriskulaMatchupStats> winsAgainstUser = new HashSet<>();
 
@@ -87,7 +89,8 @@ public class UserBriskulaStats implements DetailedGameStats {
             @AttributeOverride(name = "gameConfig", column = @Column(name = "game_config", nullable = false)),
             @AttributeOverride(name = "relatedUserId", column = @Column(name = "related_user_id", nullable = false)),
             @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
-            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false)),
+            @AttributeOverride(name = "lastPlayedAt", column = @Column(name = "last_played_at"))
     })
     private Set<BriskulaMatchupStats> winsWithTeammate = new HashSet<>();
 

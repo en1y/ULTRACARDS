@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Embeddable
 @Getter
 @Setter
@@ -19,6 +21,11 @@ public class BriskulaMatchupStats {
     private Long relatedUserId;
     private int played;
     private int wins;
+    private Instant lastPlayedAt;
+
+    public BriskulaMatchupStats(String gameConfig, Long relatedUserId, int played, int wins) {
+        this(gameConfig, relatedUserId, played, wins, null);
+    }
 
     public boolean matches(String gameConfig, Long relatedUserId) {
         return this.gameConfig.equals(gameConfig)
@@ -27,6 +34,7 @@ public class BriskulaMatchupStats {
 
     public void addPlayed() {
         played++;
+        lastPlayedAt = Instant.now();
     }
 
     public void addWin() {
