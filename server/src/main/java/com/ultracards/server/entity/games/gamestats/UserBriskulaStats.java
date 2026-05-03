@@ -66,6 +66,12 @@ public class UserBriskulaStats implements DetailedGameStats {
                     columnNames = {"user_briskula_stats_id", "game_config", "related_user_id"}
             )
     )
+    @AttributeOverrides({
+            @AttributeOverride(name = "gameConfig", column = @Column(name = "game_config", nullable = false)),
+            @AttributeOverride(name = "relatedUserId", column = @Column(name = "related_user_id", nullable = false)),
+            @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+    })
     private Set<BriskulaMatchupStats> winsAgainstUser = new HashSet<>();
 
     @ElementCollection
@@ -77,6 +83,12 @@ public class UserBriskulaStats implements DetailedGameStats {
                     columnNames = {"user_briskula_stats_id", "game_config", "related_user_id"}
             )
     )
+    @AttributeOverrides({
+            @AttributeOverride(name = "gameConfig", column = @Column(name = "game_config", nullable = false)),
+            @AttributeOverride(name = "relatedUserId", column = @Column(name = "related_user_id", nullable = false)),
+            @AttributeOverride(name = "played", column = @Column(name = "played", nullable = false)),
+            @AttributeOverride(name = "wins", column = @Column(name = "wins", nullable = false))
+    })
     private Set<BriskulaMatchupStats> winsWithTeammate = new HashSet<>();
 
     public UserBriskulaStats(UserEntity user) {
