@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
+      th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Replay | ULTRACARDS</title>
+
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game-history.css}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{ui/fragments/header :: header}"></div>
+
+<main class="container history-replay-layout">
+    <section class="history-replay-stage"
+             th:attr="data-game-id=${gameEntityId}">
+        <div class="briskula-shell history-briskula-shell">
+            <div class="table-wrap">
+                <div class="table-surface">
+                    <div class="table-rim"></div>
+                    <div class="table-felt"></div>
+                    <div id="replay-player-ring" class="player-ring"></div>
+                    <div id="replay-state-label" class="drop-zone history-replay-state">Loading</div>
+                    <div class="table-center">
+                        <div id="replay-trick-area" class="trick-area"></div>
+                    </div>
+                    <div class="deck-stack" id="replay-deck-stack">
+                        <div class="deck-cluster">
+                            <div class="deck-tower" id="replay-deck-tower"></div>
+                            <img id="replay-trump-card" class="trump-card" alt="Trump card">
+                        </div>
+                        <div class="deck-count">Deck: <span id="replay-deck-left">0</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <aside class="card history-replay-panel">
+        <div>
+            <p class="history-replay-eyebrow">Controls</p>
+            <h2 id="replay-step-title">Round</h2>
+        </div>
+
+        <div class="history-replay-controls" aria-label="Replay controls">
+            <div class="history-replay-head">
+                <div>
+                    <p class="history-replay-eyebrow">Game replay</p>
+                    <h1 id="replay-title">Briskula</h1>
+                    <div id="replay-meta" class="history-replay-meta">
+                        <p>Loading replay.</p>
+                    </div>
+                </div>
+                <a class="btn" th:href="@{/history}">Back to History</a>
+            </div>
+
+            <button id="replay-prev" class="btn" type="button">Previous</button>
+            <button id="replay-next" class="btn btn-accent" type="button">Next</button>
+        </div>
+
+        <input id="replay-step-range" class="history-replay-range" type="range" min="0" max="0" value="0">
+
+        <div>
+            <p class="history-replay-eyebrow">Score</p>
+            <div id="replay-score-list" class="history-replay-score-list"></div>
+        </div>
+
+        <div id="replay-team-list" class="history-replay-team-list"></div>
+    </aside>
+</main>
+
+<script th:inline="javascript">
+    window.__HISTORY_GAME_ID__ = /*[[${gameEntityId}]]*/ null;
+</script>
+<script th:src="@{/js/ui/game-history.js}"></script>
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+</body>
+</html>

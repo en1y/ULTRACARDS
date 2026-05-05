@@ -20,6 +20,7 @@
               <img class="avatar" data-avatar th:src="@{/pics/profile_icon_dark.svg}" alt="Profile" />
             </button>
             <div class="profile-dropdown" role="menu" aria-hidden="true">
+              <a class="menu-item" th:href="@{/history}" role="menuitem">History</a>
               <a class="menu-item" th:href="@{/profile}" role="menuitem">Profile</a>
               <button class="menu-item danger" type="button" role="menuitem" data-action="logout">Log out</button>
             </div>

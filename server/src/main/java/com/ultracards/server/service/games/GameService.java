@@ -10,6 +10,7 @@ import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.enums.games.GameType;
+import com.ultracards.server.repositories.games.BriskulaGameRepository;
 import com.ultracards.server.service.lobby.LobbyManager;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,7 @@ public class GameService {
     private final HashMap<Long, GameEntity<?, ?>> gameCache = new HashMap<>();
     private final UserBriskulaStatsService userBriskulaStatsService;
     private final UserGamesStatsService userGamesStatsService;
+    private final BriskulaGameRepository briskulaGameRepository;
     private final TaskScheduler taskScheduler;
     private final Function<LobbyEntity, Boolean> openLobby;
 
@@ -49,6 +51,7 @@ public class GameService {
             LobbyManager lobbyManager,
             UserBriskulaStatsService userBriskulaStatsService,
             UserGamesStatsService userGamesStatsService,
+            BriskulaGameRepository briskulaGameRepository,
             @Qualifier("timer")
             TaskScheduler taskScheduler,
             @Qualifier("openLobby") @Lazy Function<LobbyEntity, Boolean> openLobby) {
@@ -57,6 +60,7 @@ public class GameService {
         this.lobbyManager = lobbyManager;
         this.userBriskulaStatsService = userBriskulaStatsService;
         this.userGamesStatsService = userGamesStatsService;
+        this.briskulaGameRepository = briskulaGameRepository;
         this.taskScheduler = taskScheduler;
         this.openLobby = openLobby;
     }
@@ -129,6 +133,8 @@ public class GameService {
                         userBriskulaStatsService.addBriskulaGame(player.getUser(), briskulaGameConfig, won);
                     });
                     updateBriskulaRelationshipStats(game.getPlayers(), winnerUsers, briskulaGameConfig);
+                    game1.markEnded();
+                    briskulaGameRepository.save(game1);
 
                     game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
                     var lobby = lobbyManager.getLobby(game.getLobbyId());

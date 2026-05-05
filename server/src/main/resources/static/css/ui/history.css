@@ -1,0 +1,221 @@
+.history-page {
+    padding: 1rem 0 2rem;
+}
+
+.history-shell {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.history-sidebar {
+    position: sticky;
+    top: 5.5rem;
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.history-sidebar h1,
+.history-head h2,
+.history-sidebar p,
+.history-head p {
+    margin: 0;
+}
+
+.history-sidebar h1 {
+    font-size: 1.55rem;
+}
+
+.history-head h2 {
+    font-size: 1.8rem;
+}
+
+.history-eyebrow {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.history-filters {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.history-content {
+    display: grid;
+    gap: 1rem;
+}
+
+.history-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-end;
+    padding: 0.1rem 0.1rem 0.35rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+#history-refresh {
+    flex: 0 0 auto;
+}
+
+#history-summary {
+    margin-top: 0.3rem;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.history-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.history-card {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem;
+}
+
+.history-card-head,
+.history-card-footer,
+.history-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.history-card-head {
+    align-items: flex-start;
+}
+
+.history-card-title {
+    display: grid;
+    gap: 0.3rem;
+    min-width: min(100%, 16rem);
+}
+
+.history-card-title h3,
+.history-card-title p,
+.history-card-footer p {
+    margin: 0;
+}
+
+.history-card-title h3 {
+    font-size: 1.12rem;
+}
+
+.history-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.history-card-title p,
+.history-card-footer p,
+.history-empty,
+.history-error {
+    color: var(--color-text-muted);
+}
+
+.history-card-row {
+    padding: 0.75rem 0;
+    border-block: 1px solid var(--color-border);
+}
+
+.history-card-row + .history-card-row {
+    border-top: 0;
+}
+
+.history-card-row strong {
+    font-size: 0.82rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.history-player-list,
+.history-score-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.history-player,
+.history-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.9rem;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-surface) 82%, transparent);
+    font-size: 0.88rem;
+}
+
+.history-score.is-winner,
+.history-player.is-winner {
+    border-color: var(--color-success);
+    background: color-mix(in oklab, var(--color-success) 12%, var(--color-bg));
+}
+
+.history-score strong {
+    color: var(--color-text);
+}
+
+.history-result {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.86rem;
+}
+
+.history-result.win {
+    color: var(--color-success);
+    border-color: color-mix(in oklab, var(--color-success) 70%, var(--color-border));
+}
+
+.history-result.loss {
+    color: var(--color-accent);
+    border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
+}
+
+.history-actions {
+    display: flex;
+    justify-content: center;
+}
+
+#history-load-more[hidden] {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    .history-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .history-sidebar {
+        position: static;
+    }
+
+    .history-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #history-refresh {
+        width: 100%;
+    }
+}
