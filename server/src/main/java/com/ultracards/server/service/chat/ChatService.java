@@ -6,6 +6,7 @@ import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.StringJoiner;
 import java.util.UUID;
 
 @Service
@@ -26,7 +27,11 @@ public class ChatService{
         eventPublisher.publish(messageObj.toDto(), lobbyId);
         var levelNumbersInMessage = ultrakillLevelService.findLevelNumbers(messageObj.getMessage());
         if (levelNumbersInMessage.length > 0) {
-            sendServerMessage(chat, ultrakillLevelService.createMessage(levelNumbersInMessage));
+            var serverMssg = new StringJoiner("\n");
+            for (var s: ultrakillLevelService.createMessages(levelNumbersInMessage)) {
+                serverMssg.add(s);
+            }
+            sendServerMessage(chat, serverMssg.toString());
         }
     }
 

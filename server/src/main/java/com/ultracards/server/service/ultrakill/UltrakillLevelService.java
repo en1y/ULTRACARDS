@@ -40,14 +40,37 @@ public class UltrakillLevelService {
         return res.toArray(new String[0]);
     }
 
-    public String createMessage(String[] levelNumbersInMessage) {
-        var res = new StringJoiner("\n");
-        for (var levelNum: levelNumbersInMessage) {
-            res.add(formatLevelTitle(levelNum));
-            res.add(allLevels.get(levelNum));
-            res.add("\n");
+    public String[] findLevelNumbers(String message, int limit) {
+        if (message == null || message.isEmpty()) return new String[0];
+
+        var matcher = LEVEL_PATTERN.matcher(message.toUpperCase());
+        var res = new LinkedHashSet<String>();
+        while (matcher.find() && res.size() < limit) {
+            var level = matcher.group();
+            if (levels.contains(level)) {
+                res.add(level);
+            }
         }
-        return res.toString();
+        return res.toArray(new String[0]);
+    }
+
+    public List<String> createMessages(String[] levelNumbersInMessage) {
+        var res = new ArrayList<String>(levelNumbersInMessage.length);
+        for (var levelNum: levelNumbersInMessage) {
+            res.add(getLevelTitle(levelNum));
+        }
+        return res;
+    }
+
+    public String getLevelTitle(String levelNum) {
+        var levelTitle = new StringJoiner("\n");
+        levelTitle.add(formatLevelTitle(levelNum));
+        levelTitle.add(allLevels.get(levelNum));
+        return levelTitle.toString();
+    }
+
+    public String getLevelName(String levelNum) {
+        return allLevels.get(levelNum);
     }
 
     public String formatLevelTitle(String levelNum) {

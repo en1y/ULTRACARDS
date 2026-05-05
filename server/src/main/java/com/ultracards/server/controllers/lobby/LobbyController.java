@@ -25,7 +25,7 @@ public class LobbyController {
 
     @GetMapping("/get")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<?> createLobby(@AuthenticationPrincipal UserEntity user) {
+    public ResponseEntity<?> getLobby(@AuthenticationPrincipal UserEntity user) {
         var lobby = lobbyService.getLobbyByUser(user);
         if (lobby == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         else return ResponseEntity.ok(lobby.createLobbyDTO(true));

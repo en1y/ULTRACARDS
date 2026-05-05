@@ -12,6 +12,7 @@ import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.UserService;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
+import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,8 @@ public class LobbyService {
     private final UserService userService;
     private final GameService gameService;
     private final ChatService chatService;
+    private final UltrakillLevelService ultrakillLevelService;
+
     private final TaskScheduler taskScheduler;
     private final HashMap<Long, LobbyEntity> lobbyCache = new HashMap<>();
     private final LobbyEventPublisher eventPublisher;
@@ -52,6 +55,7 @@ public class LobbyService {
             UserService userService,
             GameService gameService,
             ChatService chatService,
+            UltrakillLevelService ultrakillLevelService,
             LobbyEventPublisher eventPublisher,
             @Qualifier("timer") TaskScheduler taskScheduler
     ) {
@@ -59,11 +63,17 @@ public class LobbyService {
         this.userService = userService;
         this.gameService = gameService;
         this.chatService = chatService;
+        this.ultrakillLevelService = ultrakillLevelService;
         this.eventPublisher = eventPublisher;
         this.taskScheduler = taskScheduler;
     }
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
+        var levelNumbers = ultrakillLevelService.findLevelNumbers(gameLobbyDTO.getName(), 1);
+        if (levelNumbers.length > 0)
+            gameLobbyDTO.setName(String.format("%s: %s", levelNumbers[0],
+                    ultrakillLevelService.getLevelName(levelNumbers[0])));
+
         var lobby = lobbyManager.createLobby(gameLobbyDTO, owner);
         syncLobbyConfig(lobby);
         lobbyCache.put(owner.getId(), lobby);
