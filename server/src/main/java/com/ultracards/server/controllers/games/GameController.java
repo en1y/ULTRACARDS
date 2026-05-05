@@ -33,7 +33,6 @@ public class GameController {
 
     private final GameManager gameManager;
     private final GameService gameService;
-    private final LobbyService lobbyService;
     private final BriskulaGameHistoryService briskulaGameHistoryService;
 
     @GetMapping("/{gameId}")

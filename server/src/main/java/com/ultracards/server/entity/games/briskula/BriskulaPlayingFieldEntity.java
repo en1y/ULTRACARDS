@@ -1,7 +1,6 @@
 package com.ultracards.server.entity.games.briskula;
 
 import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.ItalianCardValue;
 import com.ultracards.games.briskula.BriskulaCard;
 import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.games.briskula.BriskulaPlayer;
@@ -40,17 +39,17 @@ public class BriskulaPlayingFieldEntity {
     @Column(name = "played_cards", nullable = false, length = 32)
     private String playedCards = "";
 
-    @Column(name = "played_player_ids", nullable = false, length = 255)
+    @Column(name = "played_player_ids", nullable = false)
     private String playedPlayerIds = "";
 
     @Column(name = "player_hands", nullable = false, length = 512)
     private String playerHands = "";
 
     @Transient
-    private List<BriskulaCard> playedCardValues = new ArrayList<>();
+    private final List<BriskulaCard> playedCardValues = new ArrayList<>();
 
     @Transient
-    private List<UserEntity> playedCardPlayers = new ArrayList<>();
+    private final List<UserEntity> playedCardPlayers = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "winner_user_id")

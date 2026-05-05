@@ -37,7 +37,7 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame, BriskulaLobbyGa
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("fieldOrder ASC")
-    private List<BriskulaPlayingFieldEntity> briskulaPlayingFields = new ArrayList<>();
+    private final List<BriskulaPlayingFieldEntity> briskulaPlayingFields = new ArrayList<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -46,7 +46,7 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame, BriskulaLobbyGa
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     @OrderColumn(name = "player_order")
-    private List<UserEntity> teamPlayers = new ArrayList<>();
+    private final List<UserEntity> teamPlayers = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "game_config", nullable = false, length = 80)
