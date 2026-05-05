@@ -3,9 +3,12 @@ package com.ultracards.server.controllers.games;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
+import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.service.games.BriskulaGameHistoryService;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.lobby.LobbyService;
@@ -31,6 +34,7 @@ public class GameController {
     private final GameManager gameManager;
     private final GameService gameService;
     private final LobbyService lobbyService;
+    private final BriskulaGameHistoryService briskulaGameHistoryService;
 
     @GetMapping("/{gameId}")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -104,5 +108,26 @@ public class GameController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+    }
+
+    @GetMapping("/history")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<List<ShortGameHistoryDTO>> getPastGames(
+            @AuthenticationPrincipal UserEntity user,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "both") String result,
+            @RequestParam(defaultValue = "latest") String timeSort
+    ) {
+        return ResponseEntity.ok(briskulaGameHistoryService.getPastGames(user, offset, result, timeSort));
+    }
+
+    @GetMapping("/history/{gameId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<BriskulaGameHistoryDTO> getGameHistory(
+            @PathVariable String gameId
+    ) {
+        var history = briskulaGameHistoryService.getGameHistory(UUID.fromString(gameId));
+        if (history == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(history);
     }
 }
