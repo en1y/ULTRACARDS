@@ -17,15 +17,6 @@
 <main class="container history-replay-layout">
     <section class="history-replay-stage"
              th:attr="data-game-id=${gameEntityId}">
-        <div class="history-replay-head">
-            <div>
-                <p class="history-replay-eyebrow">Game replay</p>
-                <h1 id="replay-title">Briskula</h1>
-                <p id="replay-meta">Loading replay.</p>
-            </div>
-            <a class="btn" th:href="@{/history}">Back to History</a>
-        </div>
-
         <div class="briskula-shell history-briskula-shell">
             <div class="table-wrap">
                 <div class="table-surface">
@@ -55,6 +46,17 @@
         </div>
 
         <div class="history-replay-controls" aria-label="Replay controls">
+            <div class="history-replay-head">
+                <div>
+                    <p class="history-replay-eyebrow">Game replay</p>
+                    <h1 id="replay-title">Briskula</h1>
+                    <div id="replay-meta" class="history-replay-meta">
+                        <p>Loading replay.</p>
+                    </div>
+                </div>
+                <a class="btn" th:href="@{/history}">Back to History</a>
+            </div>
+
             <button id="replay-prev" class="btn" type="button">Previous</button>
             <button id="replay-next" class="btn btn-accent" type="button">Next</button>
         </div>

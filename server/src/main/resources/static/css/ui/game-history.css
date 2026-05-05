@@ -57,13 +57,15 @@
     text-transform: uppercase;
 }
 
-#replay-meta {
+.history-replay-meta {
+    display: grid;
+    gap: 0.18rem;
     margin-top: 0.3rem;
     color: var(--color-text-muted);
 }
 
 .history-briskula-shell {
-    margin-top: 1.5rem;
+    margin-top: 0;
 }
 
 .history-replay-layout .table-wrap {
@@ -109,6 +111,12 @@
     transform: translateY(-18px) rotate(0deg) scale(2.4) !important;
     box-shadow: 0 24px 42px rgba(0, 0, 0, 0.48);
     filter: saturate(1.05);
+}
+
+.history-replay-layout .seat-card.replay-seat-card.is-replay-moving-card {
+    position: relative;
+    z-index: 18;
+    pointer-events: none;
 }
 
 .history-replay-layout .is-replay-hidden {
@@ -157,19 +165,13 @@
 
 .history-replay-fly-card {
     position: fixed;
-    left: var(--from-x);
-    top: var(--from-y);
-    width: var(--from-width);
+    left: 0;
+    top: 0;
     border-radius: 10px;
     box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
     pointer-events: none;
     z-index: 1500;
-    transform: translate(-50%, -50%);
-    animation: history-replay-card-forward 420ms cubic-bezier(.18, .84, .24, 1) forwards;
-}
-
-.history-replay-fly-card.is-reverse {
-    animation-name: history-replay-card-back;
+    will-change: transform, width;
 }
 
 .history-replay-deal-card {
@@ -250,6 +252,10 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.55rem;
+}
+
+.history-replay-controls .history-replay-head {
+    grid-column: 1 / -1;
 }
 
 .history-replay-range {
@@ -369,54 +375,6 @@
     .history-replay-measure .seat-card.replay-seat-card {
         width: 30px;
         margin-left: -13px;
-    }
-}
-
-@keyframes history-replay-card-forward {
-    0% {
-        left: var(--from-x);
-        top: var(--from-y);
-        width: var(--from-width);
-        opacity: 0.96;
-        transform: translate(-50%, -50%) rotate(var(--from-rot, -8deg)) scale(0.9);
-    }
-    72% {
-        left: var(--to-x);
-        top: var(--to-y);
-        width: var(--to-width);
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(var(--to-rot, 0deg)) scale(1.04);
-    }
-    100% {
-        left: var(--to-x);
-        top: var(--to-y);
-        width: var(--to-width);
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(var(--to-rot, 0deg)) scale(1);
-    }
-}
-
-@keyframes history-replay-card-back {
-    0% {
-        left: var(--from-x);
-        top: var(--from-y);
-        width: var(--from-width);
-        opacity: 0.96;
-        transform: translate(-50%, -50%) rotate(var(--from-rot, 4deg)) scale(1);
-    }
-    72% {
-        left: var(--to-x);
-        top: var(--to-y);
-        width: var(--to-width);
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(var(--to-rot, -6deg)) scale(0.94);
-    }
-    100% {
-        left: var(--to-x);
-        top: var(--to-y);
-        width: var(--to-width);
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(var(--to-rot, -6deg)) scale(1);
     }
 }
 

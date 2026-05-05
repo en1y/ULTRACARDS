@@ -459,19 +459,34 @@
     state.animating = true;
     renderControls();
     let cleanupAnimation = null;
+    let hideAnimationTarget = false;
     if (dealAnimation) {
       await animateDealCards(dealAnimation);
     } else if (animation) {
-      prepareHandTransition(animation);
-      prepareTrickTransition(animation);
-      cleanupAnimation = await animatePlayedCard(animation);
+      const flight = animation.direction === 'backward'
+        ? prepareReturningCardFlight(animation)
+        : preparePlayedCardFlight(animation);
+      if (flight) {
+        prepareHandTransition(animation);
+        prepareTrickTransition(animation);
+        const flightResult = await flight.start();
+        if (typeof flightResult === 'function') {
+          cleanupAnimation = flightResult;
+          hideAnimationTarget = true;
+        } else if (flightResult?.cleanup) {
+          cleanupAnimation = flightResult.cleanup;
+          hideAnimationTarget = flightResult.hideTargetOnRender !== false;
+        }
+      }
     }
     state.stepIndex = boundedIndex;
     state.animating = false;
     render();
     if (cleanupAnimation) {
+      const targetEl = findAnimationTarget(animation);
+      if (hideAnimationTarget) targetEl?.classList.add('is-replay-hidden');
       requestAnimationFrame(() => {
-        requestAnimationFrame(cleanupAnimation);
+        requestAnimationFrame(() => window.setTimeout(() => cleanupAnimation(targetEl), 45));
       });
     }
   };
@@ -543,10 +558,10 @@
     return null;
   };
 
-  const animatePlayedCard = (animation) => {
+  const preparePlayedCardFlight = (animation) => {
     const cardCode = animation.play?.card?.card;
     const src = italianCardUrl(cardCode);
-    if (!src) return Promise.resolve();
+    if (!src) return null;
 
     const playerSeat = state.seats.get(playerKey(animation.play.player));
     const handCard = findSeatCard(playerSeat, animation.play.card);
@@ -567,39 +582,139 @@
 
     const fromRect = animation.direction === 'forward' ? sourceHandRect : sourceTrickRect;
     const toRect = animation.direction === 'forward' ? targetTrickRect : targetHandRect;
-    if (!fromRect || !toRect) return Promise.resolve();
+    if (!fromRect || !toRect) return null;
 
     const sourceEl = animation.direction === 'forward' ? handCard : trickCard;
     sourceEl?.classList.add('is-replay-hidden');
+
+    const fromX = fromRect.left + fromRect.width / 2;
+    const fromY = fromRect.top + fromRect.height / 2;
+    const toX = toRect.left + toRect.width / 2;
+    const toY = toRect.top + toRect.height / 2;
+    const fromWidth = animation.direction === 'forward'
+      ? cardVisualWidth(handCard, fromRect)
+      : cardVisualWidth(trickCard, fromRect);
+    const toWidth = animation.direction === 'forward'
+      ? cardVisualWidth(null, targetTrickRect)
+      : cardVisualWidth(null, targetHandRect);
+    const fromRot = sourceRotation(animation);
+    const toRot = targetRotation(animation);
+    const peakScale = animation.direction === 'forward' ? 1.04 : 0.94;
+    const fromTransform = `translate3d(${fromX}px, ${fromY}px, 0) translate(-50%, -50%) rotate(${fromRot}) scale(1)`;
+    const toTransform = `translate3d(${toX}px, ${toY}px, 0) translate(-50%, -50%) rotate(${toRot}) scale(1)`;
 
     const img = document.createElement('img');
     img.className = `history-replay-fly-card ${animation.direction === 'backward' ? 'is-reverse' : ''}`;
     img.alt = 'Replay card animation';
     img.src = src;
-    img.style.width = `${Math.max(fromRect.width, 42)}px`;
-    img.style.setProperty('--from-x', `${fromRect.left + fromRect.width / 2}px`);
-    img.style.setProperty('--from-y', `${fromRect.top + fromRect.height / 2}px`);
-    img.style.setProperty('--from-width', `${Math.max(fromRect.width, 42)}px`);
-    img.style.setProperty('--from-rot', sourceRotation(animation));
-    img.style.setProperty('--to-x', `${toRect.left + toRect.width / 2}px`);
-    img.style.setProperty('--to-y', `${toRect.top + toRect.height / 2}px`);
-    img.style.setProperty('--to-width', `${Math.max(toRect.width, 42)}px`);
-    img.style.setProperty('--to-rot', targetRotation(animation));
+    img.style.left = '0';
+    img.style.top = '0';
+    img.style.width = `${fromWidth}px`;
+    img.style.transform = fromTransform;
     document.body.appendChild(img);
 
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        resolve(() => {
-          sourceEl?.classList.remove('is-replay-hidden');
-          img.remove();
+    return {
+      start: () => new Promise((resolve) => {
+        let done = false;
+        const keyframes = [
+          {
+            width: `${fromWidth}px`,
+            transform: fromTransform,
+            opacity: 0.98
+          },
+          {
+            offset: 0.72,
+            width: `${toWidth}px`,
+            transform: `translate3d(${toX}px, ${toY}px, 0) translate(-50%, -50%) rotate(${toRot}) scale(${peakScale})`,
+            opacity: 1
+          },
+          {
+            width: `${toWidth}px`,
+            transform: toTransform,
+            opacity: 1
+          }
+        ];
+        const motion = img.animate(keyframes, {
+          duration: 420,
+          easing: 'cubic-bezier(.18, .84, .24, 1)',
+          fill: 'forwards'
         });
-      };
-      img.addEventListener('animationend', finish, { once: true });
-      window.setTimeout(finish, 520);
-    });
+        const finish = () => {
+          if (done) return;
+          done = true;
+          img.style.width = `${toWidth}px`;
+          img.style.transform = toTransform;
+          resolve((targetEl) => {
+            motion.cancel();
+            sourceEl?.classList.remove('is-replay-hidden');
+            targetEl?.classList.remove('is-replay-hidden');
+            img.remove();
+          });
+        };
+        motion.finished.then(finish).catch(finish);
+        window.setTimeout(finish, 520);
+      })
+    };
+  };
+
+  const prepareReturningCardFlight = (animation) => {
+    const trickCard = dom.trick?.querySelector(`[data-play-index="${animation.playIndex}"]`);
+    const sourceRect = trickCard?.getBoundingClientRect()
+      || measureTrickCardRect(animation.playIndex, animation.fromStep)
+      || dom.trick?.getBoundingClientRect();
+    if (!sourceRect) return null;
+
+    trickCard?.classList.add('is-replay-hidden');
+    const sourceWidth = cardVisualWidth(trickCard, sourceRect);
+    const sourceRot = rotationDegrees(sourceRotation(animation));
+    const targetRot = rotationDegrees(targetRotation(animation));
+
+    return {
+      start: () => new Promise((resolve) => {
+        const targetCard = findAnimationTarget(animation);
+        if (!targetCard) {
+          trickCard?.classList.remove('is-replay-hidden');
+          resolve(null);
+          return;
+        }
+
+        const targetRect = targetCard.getBoundingClientRect();
+        const targetWidth = cardVisualWidth(targetCard, targetRect);
+        const sourceX = sourceRect.left + sourceRect.width / 2;
+        const sourceY = sourceRect.top + sourceRect.height / 2;
+        const targetX = targetRect.left + targetRect.width / 2;
+        const targetY = targetRect.top + targetRect.height / 2;
+        const deltaX = sourceX - targetX;
+        const deltaY = sourceY - targetY;
+        const scale = Math.max(sourceWidth / targetWidth, 0.1);
+        const baseTransform = targetCard.style.transform || '';
+        const rotateDelta = sourceRot - targetRot;
+        let done = false;
+
+        targetCard.classList.add('is-replay-moving-card');
+        targetCard.style.transition = 'none';
+        targetCard.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(${rotateDelta}deg) scale(${scale}) ${baseTransform}`;
+        targetCard.classList.remove('is-replay-hidden');
+        targetCard.getBoundingClientRect();
+
+        requestAnimationFrame(() => {
+          targetCard.style.transition = 'transform 420ms cubic-bezier(.18, .84, .24, 1), box-shadow 150ms ease';
+          targetCard.style.transform = baseTransform;
+        });
+
+        const finish = () => {
+          if (done) return;
+          done = true;
+          trickCard?.classList.remove('is-replay-hidden');
+          targetCard.classList.remove('is-replay-moving-card');
+          targetCard.style.transition = '';
+          targetCard.style.transform = baseTransform;
+          resolve(null);
+        };
+        targetCard.addEventListener('transitionend', finish, { once: true });
+        window.setTimeout(finish, 520);
+      })
+    };
   };
 
   const animateDealCards = async (animation) => {
@@ -721,6 +836,35 @@
     const wantedKey = cardKey(card);
     return Array.from(seat.querySelectorAll('.replay-seat-card'))
       .find((img) => img.dataset.cardKey === wantedKey) || null;
+  };
+
+  const findAnimationTarget = (animation) => {
+    if (!animation) return null;
+    if (animation.direction === 'forward') {
+      return dom.trick?.querySelector(`[data-play-index="${animation.playIndex}"]`) || null;
+    }
+    const seat = state.seats.get(playerKey(animation.play.player));
+    return findSeatCard(seat, animation.play.card);
+  };
+
+  const cardVisualWidth = (element, rect) => {
+    const styleWidth = element ? Number.parseFloat(window.getComputedStyle(element).width) : 0;
+    return Math.max(styleWidth || rect?.cardWidth || rect?.width || 42, 42);
+  };
+
+  const rotationDegrees = (value) => Number.parseFloat(String(value || '0')) || 0;
+
+  const rectWithCardWidth = (element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+      cardWidth: cardVisualWidth(element, rect)
+    };
   };
 
   const prepareTrickTransition = (animation) => {
@@ -865,7 +1009,8 @@
     });
 
     document.body.appendChild(measure);
-    const cardRect = measure.querySelector(`[data-play-index="${playIndex}"]`)?.getBoundingClientRect() || null;
+    const card = measure.querySelector(`[data-play-index="${playIndex}"]`);
+    const cardRect = card ? rectWithCardWidth(card) : null;
     measure.remove();
     return cardRect;
   };
@@ -897,9 +1042,9 @@
     });
 
     document.body.appendChild(measure);
-    const cardRect = Array.from(measure.querySelectorAll('.replay-seat-card'))
-      .find((img) => img.dataset.cardKey === wantedKey)
-      ?.getBoundingClientRect() || null;
+    const measuredCard = Array.from(measure.querySelectorAll('.replay-seat-card'))
+      .find((img) => img.dataset.cardKey === wantedKey);
+    const cardRect = measuredCard ? rectWithCardWidth(measuredCard) : null;
     measure.remove();
     return cardRect;
   };
@@ -915,7 +1060,12 @@
     state.stepIndex = 0;
 
     if (dom.title) dom.title.textContent = game.name || 'Briskula';
-    if (dom.meta) dom.meta.textContent = `${formatDate(game.endedAt || game.createdAt)} - ${settingsText(game.gameConfig)}`;
+    if (dom.meta) {
+      dom.meta.innerHTML = `
+        <p>${escapeHtml(formatDate(game.endedAt || game.createdAt))}</p>
+        <p>${escapeHtml(settingsText(game.gameConfig))}</p>
+      `;
+    }
     renderTrump();
     renderDeckTower();
     initializeSeats();
@@ -929,7 +1079,7 @@
 
   loadReplay().catch(() => {
     if (dom.title) dom.title.textContent = 'Replay unavailable';
-    if (dom.meta) dom.meta.textContent = 'The game history could not be loaded.';
+    if (dom.meta) dom.meta.innerHTML = '<p>The game history could not be loaded.</p>';
     if (dom.stateLabel) dom.stateLabel.textContent = 'Error';
   });
 })();
