@@ -14,26 +14,26 @@
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting…
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting...</div>
+<div id="game-status-toast" class="game-status-toast" role="status" aria-live="polite" hidden>
+    <p id="game-status-toast-title" class="game-status-toast-title">Game update</p>
+    <p id="game-status-toast-text" class="game-status-toast-text">Unable to update the game.</p>
 </div>
 
 <main class="container game-layout">
     <div id="game-container"
          th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username}">
         <div class="briskula-shell">
-            <div class="table-wrap">
-                <div class="table-surface">
-                    <div class="table-rim"></div>
-                    <div class="table-felt"></div>
-                    <div id="player-ring" class="player-ring"></div>
-                    <div class="drop-zone" id="drop-zone">Drag a card to play</div>
-                    <div id="table-turn-overlay" class="table-turn-overlay">
-                        <div id="table-turn-message" class="table-turn-message">Waiting for the next move</div>
-                    </div>
-                    <div class="table-center">
+            <div id="player-ring" class="player-ring opponents-row"></div>
+
+            <div class="table-surface">
+                <div class="table-play-row">
+                    <section class="played-panel" aria-label="Played cards">
+                        <div class="drop-zone" id="drop-zone">Drag a card to play</div>
                         <div id="trick-area" class="trick-area"></div>
-                    </div>
-                    <div class="deck-stack" id="deck-stack">
+                    </section>
+                    <section class="deck-panel" aria-label="Deck">
+                        <div class="deck-stack" id="deck-stack">
                         <div class="deck-cluster">
                             <div class="deck-tower" id="deck-tower"></div>
                             <img id="trump-card" class="trump-card" alt="Trump card">
@@ -41,13 +41,20 @@
                         <div class="deck-count">Deck: <span id="deck-left" th:text="${game.cardsLeftInDeck}">0</span>
                         </div>
                     </div>
+                    </section>
                 </div>
             </div>
 
-            <div class="hand-row">
-                <div class="hand-zone">
+            <div class="player-control-row">
+                <div class="hand-stack">
+                    <div id="table-turn-overlay" class="table-turn-overlay">
+                        <div id="table-turn-message" class="table-turn-message">Waiting for the next move</div>
+                    </div>
+                    <div class="hand-zone">
                     <div id="hand-cards" class="hand-cards"></div>
+                    </div>
                 </div>
+                <div id="self-seat-row" class="self-seat-row"></div>
             </div>
         </div>
     </div>
@@ -60,6 +67,7 @@
 <script th:src="@{/js/chat.js}"></script>
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
+    window.__INITIAL_HAND__ = /*[[${initialHand}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
 </script>
 <script th:src="@{/js/ui/game.js}"></script>
