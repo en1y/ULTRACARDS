@@ -33,3 +33,11 @@ export MAIL_PASSWORD="your-app-password"
 - The credentials, port and database type can be changed in the relevant profile file under `src/main/resources/`.
 - A Dockerfile to spin up the Postgres instance with the expected database/user/password lives at `docker/postgres/Dockerfile`.
 - Build the image: `docker build -t ultracards-db -f docker/postgres/Dockerfile docker/postgres`.
+- If the migrations break, you can fix it by running:
+```bash
+mvn flyway:repair \
+  -Dflyway.url=jdbc:postgresql://localhost:5432/ultracards \
+  -Dflyway.user=ultracards_user \
+  -Dflyway.password=ultracards123 \
+  -Dflyway.locations=filesystem:src/main/resources/db/migration
+```
