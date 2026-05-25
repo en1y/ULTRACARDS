@@ -8,6 +8,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.auth.AuthService;
 import com.ultracards.server.service.auth.SessionService;
 import com.ultracards.server.service.games.UserGamesStatsService;
+import com.ultracards.server.service.users.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,7 @@ public class ProfileController {
     @Value("${app.max-length.username}")
     private Integer MAX_USERNAME_LENGTH;
     private final AuthService authService;
+    private final ProfileService profileService;
     private final SessionService sessionService;
     private final UserGamesStatsService userGamesStatsService;
     @Value("${app.token.update-privilege-duration-minutes:4}")
@@ -76,7 +78,7 @@ public class ProfileController {
     public ResponseEntity<ProfileDTO> getProfile(
             @AuthenticationPrincipal UserEntity user
     ) {
-        var res = authService.getProfile(user);
+        var res = profileService.getProfile(user);
         return ResponseEntity.ok(res);
     }
 
@@ -99,12 +101,12 @@ public class ProfileController {
         if (errors.hasErrors())
             return ResponseEntity.badRequest().build();
 
-        var res = authService.updateProfile(user, profileDTO, token);
+        var res = profileService.updateProfile(user, profileDTO, token);
         if (!res)
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body("Profile can only be updated within " + updateDuration + " minutes of login");
 
-        return ResponseEntity.ok(authService.getProfile(user));
+        return ResponseEntity.ok(profileService.getProfile(user));
     }
 
     @GetMapping("sessions")

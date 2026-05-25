@@ -9,7 +9,7 @@ import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
 import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
-import com.ultracards.server.service.UserService;
+import com.ultracards.server.service.users.UserService;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;

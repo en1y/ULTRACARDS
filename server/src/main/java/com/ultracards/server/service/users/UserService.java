@@ -1,4 +1,4 @@
-package com.ultracards.server.service;
+package com.ultracards.server.service.users;
 
 import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;

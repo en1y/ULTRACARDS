@@ -4,7 +4,7 @@ import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.auth.VerificationCode;
 import com.ultracards.server.repositories.VerificationCodeRepository;
-import com.ultracards.server.service.UserService;
+import com.ultracards.server.service.users.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
