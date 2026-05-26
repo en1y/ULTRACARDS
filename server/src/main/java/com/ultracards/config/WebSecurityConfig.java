@@ -67,6 +67,11 @@ public class WebSecurityConfig {
                                 "/lobbies/**",
                                 "/game/**"
                         ).authenticated()
+                        // Public user search endpoints
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/users/search/username/**",
+                                "/api/users/search/id/**"
+                        ).permitAll()
                         // backend API
                         // TODO: check whether i should to make any more of the api calls public
                         .requestMatchers("/api/**").authenticated()

@@ -50,6 +50,5 @@ public class UserSearchController {
         return new SearchBounds(lower, higher);
     }
 
-    private record SearchBounds(int lower, int higher) {
-    }
+    private record SearchBounds(int lower, int higher) {}
 }
