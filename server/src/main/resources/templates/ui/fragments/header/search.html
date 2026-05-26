@@ -1,0 +1,20 @@
+<th:block th:fragment="search" xmlns:th="http://www.thymeleaf.org">
+  <form class="header-search" data-header-search role="search" autocomplete="off">
+    <label class="sr-only" for="header-user-search">Search users</label>
+    <input
+      id="header-user-search"
+      class="header-search-input"
+      type="search"
+      placeholder="Search users"
+      aria-label="Search users"
+      aria-controls="header-search-results"
+      aria-expanded="false"
+      data-header-search-input />
+    <div
+      id="header-search-results"
+      class="header-search-dropdown"
+      role="list"
+      aria-hidden="true"
+      data-header-search-results></div>
+  </form>
+</th:block>
