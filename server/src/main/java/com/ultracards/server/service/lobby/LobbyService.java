@@ -9,9 +9,11 @@ import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
 import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
+import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.users.UserService;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
+import com.ultracards.server.service.notifications.NotificationService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -19,8 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
@@ -42,6 +46,8 @@ public class LobbyService {
     private final GameService gameService;
     private final ChatService chatService;
     private final UltrakillLevelService ultrakillLevelService;
+    private final NotificationService notificationService;
+    private final FriendService friendService;
 
     private final TaskScheduler taskScheduler;
     private final HashMap<Long, LobbyEntity> lobbyCache = new HashMap<>();
@@ -56,6 +62,8 @@ public class LobbyService {
             GameService gameService,
             ChatService chatService,
             UltrakillLevelService ultrakillLevelService,
+            NotificationService notificationService,
+            FriendService friendService,
             LobbyEventPublisher eventPublisher,
             @Qualifier("timer") TaskScheduler taskScheduler
     ) {
@@ -64,6 +72,8 @@ public class LobbyService {
         this.gameService = gameService;
         this.chatService = chatService;
         this.ultrakillLevelService = ultrakillLevelService;
+        this.notificationService = notificationService;
+        this.friendService = friendService;
         this.eventPublisher = eventPublisher;
         this.taskScheduler = taskScheduler;
     }
@@ -86,7 +96,10 @@ public class LobbyService {
     public JoinLobbyResult joinLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
 
-        if (lobby != null && lobby.getLobbyState().equals(LobbyState.PRIVATE))
+        if (lobby != null
+                && lobby.getLobbyState().equals(LobbyState.PRIVATE)
+                && !lobby.containsUser(user)
+                && !notificationService.hasGameInvite(user, lobbyId))
             return JoinLobbyResult.NOT_FOUND;
 
         return getJoinLobbyResult(user, lobby);
@@ -139,6 +152,19 @@ public class LobbyService {
             return true;
         }
         return false;
+    }
+
+    public void inviteFriendToLobby(UserEntity user, Long friendUserId) {
+        var friend = friendService.getActiveFriend(user, friendUserId);
+
+        if (friendService.isBlocked(friend, user))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"This user is not accepting invites from you");
+
+        var lobby = getLobbyByUser(user);
+        if (lobby == null)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"You must be in a lobby to invite a friend");
+
+        notificationService.createGameInviteNotification(user, friend, lobby.getId());
     }
 
     public GameLobbyDTO updateLobby(@Valid GameLobbyDTO lobbyDTO, UserEntity user) {
