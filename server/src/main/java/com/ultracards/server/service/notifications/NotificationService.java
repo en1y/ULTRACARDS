@@ -1,6 +1,5 @@
 package com.ultracards.server.service.notifications;
 
-import com.ultracards.gateway.dto.notifications.CreateNotificationDTO;
 import com.ultracards.gateway.dto.notifications.NotificationDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.notifications.NotificationEntity;
@@ -37,23 +36,82 @@ public class NotificationService {
         return toDtos(notificationRepository.findByRecipientIdAndReadFalseOrderByCreatedAtDesc(user.getId()));
     }
 
-    public NotificationDTO createNotification(UserEntity sender, CreateNotificationDTO request) {
-        var recipient = userRepository.findById(request.getRecipientUserId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient user not found"));
+    public NotificationDTO createTextNotification(Long recipientUserId, String message) {
+        return createTextNotification(null, recipientUserId, message);
+    }
 
-        var type = NotificationType.from(request.getType());
-        var message = sanitizeMessage(request.getMessage());
-        validate(type, message, request.getLobbyId());
+    public NotificationDTO createTextNotification(UserEntity sender, Long recipientUserId, String message) {
+        var recipient = userRepository.findById(recipientUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient user not found"));
+        var sanitizedMessage = sanitizeMessage(message);
+        validate(NotificationType.TEXT, sanitizedMessage, null, null);
 
         var notification = new NotificationEntity(
                 recipient,
                 sender,
-                type,
-                message,
-                request.getLobbyId()
+                NotificationType.TEXT,
+                sanitizedMessage,
+                null
         );
 
         return notificationRepository.save(notification).toDto();
+    }
+
+    public List<NotificationDTO> createTextNotificationToAll(UserEntity sender, String message) {
+        var sanitizedMessage = sanitizeMessage(message);
+        validate(NotificationType.TEXT, sanitizedMessage, null, null);
+
+        var notifications = new ArrayList<NotificationEntity>();
+        for (var recipient : userRepository.findAll()) {
+            notifications.add(new NotificationEntity(
+                    recipient,
+                    sender,
+                    NotificationType.TEXT,
+                    sanitizedMessage,
+                    null
+            ));
+        }
+
+        return toDtos(notificationRepository.saveAll(notifications));
+    }
+
+    public NotificationDTO createFriendInviteNotification(UserEntity sender, UserEntity recipient, UUID friendRequestId) {
+        if (friendRequestId == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "FRIEND_INVITE notifications require friendRequestId");
+
+        var notification = new NotificationEntity(
+                recipient,
+                sender,
+                NotificationType.FRIEND_INVITE,
+                sender.getUsername() + " sent you a friend request.",
+                null,
+                friendRequestId
+        );
+
+        return notificationRepository.save(notification).toDto();
+    }
+
+    public NotificationDTO createGameInviteNotification(UserEntity sender, UserEntity recipient, UUID lobbyId) {
+        if (lobbyId == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GAME_INVITE notifications require lobbyId");
+
+        var notification = new NotificationEntity(
+                recipient,
+                sender,
+                NotificationType.GAME_INVITE,
+                sender.getUsername() + " invited you to a lobby.",
+                lobbyId
+        );
+
+        return notificationRepository.save(notification).toDto();
+    }
+
+    public boolean hasGameInvite(UserEntity recipient, UUID lobbyId) {
+        return notificationRepository.existsByRecipientIdAndTypeAndLobbyId(
+                recipient.getId(),
+                NotificationType.GAME_INVITE,
+                lobbyId
+        );
     }
 
     public NotificationDTO markRead(UserEntity user, UUID notificationId) {
@@ -79,8 +137,7 @@ public class NotificationService {
     }
 
     private String sanitizeMessage(String message) {
-        if (message == null)
-            return null;
+        if (message == null) return null;
 
         var sanitized = NO_HTML_POLICY.sanitize(message).trim();
         if (sanitized.length() > MAX_MESSAGE_LENGTH)
@@ -89,9 +146,12 @@ public class NotificationService {
         return sanitized;
     }
 
-    private void validate(NotificationType type, String message, UUID lobbyId) {
+    private void validate(NotificationType type, String message, UUID lobbyId, UUID friendRequestId) {
         if (type == NotificationType.GAME_INVITE && lobbyId == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GAME_INVITE notifications require lobbyId");
+
+        if (type == NotificationType.FRIEND_INVITE && friendRequestId == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "FRIEND_INVITE notifications require friendRequestId");
 
         if (type == NotificationType.TEXT && !StringUtils.hasText(message))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TEXT notifications require a message");
@@ -99,9 +159,10 @@ public class NotificationService {
 
     private List<NotificationDTO> toDtos(List<NotificationEntity> notifications) {
         var dtos = new ArrayList<NotificationDTO>();
-        for (var notification : notifications) {
+        for (var notification : notifications)
             dtos.add(notification.toDto());
-        }
+
         return dtos;
     }
+
 }

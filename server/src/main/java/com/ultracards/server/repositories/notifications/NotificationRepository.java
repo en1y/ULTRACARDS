@@ -1,6 +1,7 @@
 package com.ultracards.server.repositories.notifications;
 
 import com.ultracards.server.entity.notifications.NotificationEntity;
+import com.ultracards.server.enums.NotificationType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -18,4 +19,6 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
 
     @EntityGraph(attributePaths = {"sender", "recipient"})
     Optional<NotificationEntity> findByIdAndRecipientId(UUID id, Long recipientId);
+
+    boolean existsByRecipientIdAndTypeAndLobbyId(Long recipientId, NotificationType type, UUID lobbyId);
 }

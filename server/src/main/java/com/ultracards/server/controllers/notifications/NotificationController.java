@@ -1,10 +1,9 @@
 package com.ultracards.server.controllers.notifications;
 
-import com.ultracards.gateway.dto.notifications.CreateNotificationDTO;
 import com.ultracards.gateway.dto.notifications.NotificationDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.notifications.NotificationService;
-import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,15 +44,27 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getUnreadNotifications(user));
     }
 
-    @PostMapping
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
-    public ResponseEntity<NotificationDTO> createNotification(
-            @AuthenticationPrincipal UserEntity user,
-            @RequestBody @Valid CreateNotificationDTO notification
+    @PostMapping("/text/users/{recipientUserId}")
+    @PreAuthorize("hasAnyRole(T(com.ultracards.server.enums.UserRole).MODERATOR.name(), T(com.ultracards.server.enums.UserRole).ADMIN.name())")
+    public ResponseEntity<NotificationDTO> sendTextNotificationToUser(
+            @AuthenticationPrincipal UserEntity sender,
+            @PathVariable Long recipientUserId,
+            @RequestBody @NotBlank String message
     ) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(notificationService.createNotification(user, notification));
+                .body(notificationService.createTextNotification(sender, recipientUserId, message));
+    }
+
+    @PostMapping("/text/all")
+    @PreAuthorize("hasAnyRole(T(com.ultracards.server.enums.UserRole).MODERATOR.name(), T(com.ultracards.server.enums.UserRole).ADMIN.name())")
+    public ResponseEntity<List<NotificationDTO>> sendTextNotificationToAll(
+            @AuthenticationPrincipal UserEntity sender,
+            @RequestBody @NotBlank String message
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(notificationService.createTextNotificationToAll(sender, message));
     }
 
     @PatchMapping("/{id}/read")

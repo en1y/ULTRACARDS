@@ -60,6 +60,9 @@ public class NotificationEntity {
     @Column(name = "lobby_id")
     private UUID lobbyId;
 
+    @Column(name = "friend_request_id")
+    private UUID friendRequestId;
+
     @Column(name = "is_read", nullable = false)
     private boolean read;
 
@@ -77,11 +80,23 @@ public class NotificationEntity {
             String message,
             UUID lobbyId
     ) {
+        this(recipient, sender, type, message, lobbyId, null);
+    }
+
+    public NotificationEntity(
+            UserEntity recipient,
+            UserEntity sender,
+            NotificationType type,
+            String message,
+            UUID lobbyId,
+            UUID friendRequestId
+    ) {
         this.recipient = recipient;
         this.sender = sender;
         this.type = type;
         this.message = message;
         this.lobbyId = lobbyId;
+        this.friendRequestId = friendRequestId;
     }
 
     public void markRead() {
@@ -100,6 +115,7 @@ public class NotificationEntity {
                 type.toDto(),
                 message,
                 lobbyId,
+                friendRequestId,
                 toUserDto(sender),
                 toUserDto(recipient),
                 read,
