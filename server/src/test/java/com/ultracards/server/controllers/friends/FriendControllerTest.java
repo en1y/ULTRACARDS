@@ -5,6 +5,7 @@ import com.ultracards.gateway.dto.friends.FriendPlayCountDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestStatusDTO;
 import com.ultracards.gateway.dto.friends.FriendRelationStatusDTO;
+import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.server.controllers.errors.ApiExceptionHandler;
@@ -58,6 +59,7 @@ class FriendControllerTest {
                 friendRelationId,
                 new GamePlayerDTO("Friend", 2L),
                 FriendRelationStatusDTO.FRIENDS,
+                UserPresenceStatusDTO.IN_LOBBY,
                 3,
                 List.of(new FriendPlayCountDTO(GameTypeDTO.Briskula, 3)),
                 Instant.parse("2026-05-26T10:00:00Z"),
@@ -69,6 +71,7 @@ class FriendControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].friendRelationId").value(friendRelationId.toString()))
                 .andExpect(jsonPath("$[0].user.id").value(2))
+                .andExpect(jsonPath("$[0].presenceStatus").value("IN_LOBBY"))
                 .andExpect(jsonPath("$[0].totalPlayedTogether").value(3))
                 .andExpect(jsonPath("$[0].playedTogetherByGameType[0].gameType").value("Briskula"));
 

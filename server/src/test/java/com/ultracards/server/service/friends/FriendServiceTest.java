@@ -1,5 +1,6 @@
 package com.ultracards.server.service.friends;
 
+import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.friends.FriendBlockEntity;
 import com.ultracards.server.entity.friends.FriendRequestEntity;
@@ -15,6 +16,7 @@ import com.ultracards.server.repositories.friends.FriendRelationRepository;
 import com.ultracards.server.repositories.games.UserBriskulaStatsRepository;
 import com.ultracards.server.service.lobby.LobbyService;
 import com.ultracards.server.service.notifications.NotificationService;
+import com.ultracards.server.service.presence.UserPresenceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -58,6 +60,9 @@ class FriendServiceTest {
 
     @Mock
     private LobbyService lobbyService;
+
+    @Mock
+    private UserPresenceService userPresenceService;
 
     @InjectMocks
     private FriendService friendService;
@@ -172,12 +177,15 @@ class FriendServiceTest {
         when(friendRelationRepository.findByUserIdAndStatus(1L, FriendRelationStatus.FRIENDS))
                 .thenReturn(List.of(lesserFriendRelation, greaterFriendRelation));
         when(userBriskulaStatsRepository.findByUser(user)).thenReturn(Optional.of(stats));
+        when(userPresenceService.getStatus(lesserFriend)).thenReturn(UserPresenceStatusDTO.ONLINE);
+        when(userPresenceService.getStatus(greaterFriend)).thenReturn(UserPresenceStatusDTO.IN_GAME);
 
         var friends = friendService.getFriends(user);
 
         assertThat(friends).extracting(friend -> friend.getUser().getId())
                 .containsExactly(3L, 2L);
         assertThat(friends.getFirst().getTotalPlayedTogether()).isEqualTo(4);
+        assertThat(friends.getFirst().getPresenceStatus()).isEqualTo(UserPresenceStatusDTO.IN_GAME);
     }
 
     private UserEntity user(Long id, String username) {

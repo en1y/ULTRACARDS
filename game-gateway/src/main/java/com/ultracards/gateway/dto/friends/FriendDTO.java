@@ -16,6 +16,7 @@ public class FriendDTO {
     private UUID friendRelationId;
     private GamePlayerDTO user;
     private FriendRelationStatusDTO status;
+    private UserPresenceStatusDTO presenceStatus;
     private int totalPlayedTogether;
     private List<FriendPlayCountDTO> playedTogetherByGameType;
     private Instant friendsSince;

@@ -268,6 +268,22 @@ class NotificationServiceTest {
         verify(notificationRepository).delete(notification);
     }
 
+    @Test
+    void deletesGameInviteNotificationsForLobby() {
+        var lobbyId = UUID.randomUUID();
+
+        notificationService.deleteGameInviteNotifications(lobbyId);
+
+        verify(notificationRepository).deleteByTypeAndLobbyId(NotificationType.GAME_INVITE, lobbyId);
+    }
+
+    @Test
+    void ignoresDeleteGameInviteNotificationsWithoutLobbyId() {
+        notificationService.deleteGameInviteNotifications(null);
+
+        verifyNoInteractions(notificationRepository);
+    }
+
     private UserEntity user(Long id, String username) {
         var user = new UserEntity(username + "@example.com", username);
         user.setId(id);

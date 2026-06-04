@@ -17,6 +17,7 @@ import com.ultracards.server.repositories.friends.FriendRequestRepository;
 import com.ultracards.server.repositories.friends.FriendRelationRepository;
 import com.ultracards.server.repositories.games.UserBriskulaStatsRepository;
 import com.ultracards.server.service.notifications.NotificationService;
+import com.ultracards.server.service.presence.UserPresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,7 @@ public class FriendService {
     private final FriendBlockRepository friendBlockRepository;
     private final UserBriskulaStatsRepository userBriskulaStatsRepository;
     private final NotificationService notificationService;
+    private final UserPresenceService userPresenceService;
 
     @Transactional(readOnly = true)
     public List<FriendDTO> getFriends(UserEntity user) {
@@ -231,6 +233,7 @@ public class FriendService {
                 friendRelation.getId(),
                 new GamePlayerDTO(friend.getUsername(), friend.getId()),
                 friendRelation.getStatus().toDto(),
+                userPresenceService.getStatus(friend),
                 total,
                 counts,
                 friendRelation.getCreatedAt(),

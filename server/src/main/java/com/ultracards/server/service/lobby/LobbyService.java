@@ -224,7 +224,10 @@ public class LobbyService {
             chatService.deleteChat(lobby.getId());
             lobby.setLobbyState(LobbyState.CLOSED);
             var res = lobbyManager.deleteLobby(lobby);
-            if (res) eventPublisher.publish(lobby, DELETED);
+            if (res) {
+                notificationService.deleteGameInviteNotifications(lobby.getId());
+                eventPublisher.publish(lobby, DELETED);
+            }
             return res;
         }
         return false;

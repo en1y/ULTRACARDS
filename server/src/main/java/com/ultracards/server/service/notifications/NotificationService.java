@@ -11,6 +11,7 @@ import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -117,6 +118,14 @@ public class NotificationService {
                 NotificationType.GAME_INVITE,
                 lobbyId
         );
+    }
+
+    @Transactional
+    public void deleteGameInviteNotifications(UUID lobbyId) {
+        if (lobbyId == null)
+            return;
+
+        notificationRepository.deleteByTypeAndLobbyId(NotificationType.GAME_INVITE, lobbyId);
     }
 
     public NotificationDTO markRead(UserEntity user, UUID notificationId) {
