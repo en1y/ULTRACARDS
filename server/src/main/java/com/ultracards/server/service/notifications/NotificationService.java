@@ -27,6 +27,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final NotificationEventPublisher eventPublisher;
 
     public List<NotificationDTO> getNotifications(UserEntity user) {
         return toDtos(notificationRepository.findByRecipientIdOrderByCreatedAtDesc(user.getId()));
@@ -54,7 +55,7 @@ public class NotificationService {
                 null
         );
 
-        return notificationRepository.save(notification).toDto();
+        return createNotification(notification);
     }
 
     public List<NotificationDTO> createTextNotificationToAll(UserEntity sender, String message) {
@@ -72,7 +73,11 @@ public class NotificationService {
             ));
         }
 
-        return toDtos(notificationRepository.saveAll(notifications));
+        var dtos = new ArrayList<NotificationDTO>();
+        for (var notification : notifications)
+            dtos.add(createNotification(notification));
+
+        return dtos;
     }
 
     public NotificationDTO createFriendInviteNotification(UserEntity sender, UserEntity recipient, UUID friendRequestId) {
@@ -88,7 +93,7 @@ public class NotificationService {
                 friendRequestId
         );
 
-        return notificationRepository.save(notification).toDto();
+        return createNotification(notification);
     }
 
     public NotificationDTO createGameInviteNotification(UserEntity sender, UserEntity recipient, UUID lobbyId) {
@@ -103,7 +108,7 @@ public class NotificationService {
                 lobbyId
         );
 
-        return notificationRepository.save(notification).toDto();
+        return createNotification(notification);
     }
 
     public boolean hasGameInvite(UserEntity recipient, UUID lobbyId) {
@@ -129,6 +134,12 @@ public class NotificationService {
     public void deleteNotification(UserEntity user, UUID notificationId) {
         var notification = getOwnedNotification(user, notificationId);
         notificationRepository.delete(notification);
+    }
+
+    private NotificationDTO createNotification(NotificationEntity notification) {
+        var savedNotification = notificationRepository.save(notification);
+        eventPublisher.publish(savedNotification);
+        return savedNotification.toDto();
     }
 
     private NotificationEntity getOwnedNotification(UserEntity user, UUID notificationId) {

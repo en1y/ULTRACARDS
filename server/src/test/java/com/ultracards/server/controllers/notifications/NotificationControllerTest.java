@@ -1,9 +1,6 @@
 package com.ultracards.server.controllers.notifications;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
-import com.ultracards.gateway.dto.notifications.CreateNotificationDTO;
 import com.ultracards.gateway.dto.notifications.NotificationDTO;
 import com.ultracards.gateway.dto.notifications.NotificationTypeDTO;
 import com.ultracards.server.controllers.errors.ApiExceptionHandler;
@@ -26,7 +23,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,7 +36,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class NotificationControllerTest {
 
     private final NotificationService notificationService = mock(NotificationService.class);
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -82,35 +77,37 @@ class NotificationControllerTest {
     }
 
     @Test
-    void createsNotification() throws Exception {
-        var user = user(1L, "Sender");
-        var request = new CreateNotificationDTO(2L, NotificationTypeDTO.TEXT, "Hello", null);
+    void sendsTextNotificationToUser() throws Exception {
+        var sender = user(1L, "Moderator");
         var response = notification(UUID.randomUUID(), NotificationTypeDTO.TEXT, "Hello", null, false);
-        when(notificationService.createNotification(eq(user), eq(request))).thenReturn(response);
+        when(notificationService.createTextNotification(sender, 2L, "Hello")).thenReturn(response);
 
-        mockMvc.perform(post("/api/notifications")
-                        .with(authentication(user))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post("/api/notifications/text/users/{recipientUserId}", 2L)
+                        .with(authentication(sender))
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("Hello"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.type").value("TEXT"))
                 .andExpect(jsonPath("$.message").value("Hello"));
 
-        verify(notificationService).createNotification(user, request);
+        verify(notificationService).createTextNotification(sender, 2L, "Hello");
     }
 
     @Test
-    void invalidCreateRequestReturnsBadRequest() throws Exception {
-        var user = user(1L, "Sender");
-        var request = new CreateNotificationDTO(null, NotificationTypeDTO.TEXT, "Hello", null);
+    void sendsTextNotificationToAllUsers() throws Exception {
+        var sender = user(1L, "Admin");
+        var response = notification(UUID.randomUUID(), NotificationTypeDTO.TEXT, "Hello all", null, false);
+        when(notificationService.createTextNotificationToAll(sender, "Hello all")).thenReturn(List.of(response));
 
-        mockMvc.perform(post("/api/notifications")
-                        .with(authentication(user))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.message").value("Validation failure"));
+        mockMvc.perform(post("/api/notifications/text/all")
+                        .with(authentication(sender))
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("Hello all"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$[0].type").value("TEXT"))
+                .andExpect(jsonPath("$[0].message").value("Hello all"));
+
+        verify(notificationService).createTextNotificationToAll(sender, "Hello all");
     }
 
     @Test

@@ -1,6 +1,5 @@
 package com.ultracards.server.service.notifications;
 
-import com.ultracards.gateway.dto.notifications.CreateNotificationDTO;
 import com.ultracards.gateway.dto.notifications.NotificationTypeDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.notifications.NotificationEntity;
@@ -24,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -37,6 +37,9 @@ class NotificationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NotificationEventPublisher eventPublisher;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -45,13 +48,17 @@ class NotificationServiceTest {
         var sender = user(1L, "Sender");
         var recipient = user(2L, "Recipient");
         var lobbyId = UUID.randomUUID();
-        var request = new CreateNotificationDTO(2L, NotificationTypeDTO.GAME_INVITE, "Join me", lobbyId);
-        var savedNotification = notification(recipient, sender, NotificationType.GAME_INVITE, "Join me", lobbyId);
+        var savedNotification = notification(
+                recipient,
+                sender,
+                NotificationType.GAME_INVITE,
+                "Sender invited you to a lobby.",
+                lobbyId
+        );
 
-        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
         when(notificationRepository.save(any(NotificationEntity.class))).thenReturn(savedNotification);
 
-        var result = notificationService.createNotification(sender, request);
+        var result = notificationService.createGameInviteNotification(sender, recipient, lobbyId);
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEntity.class);
         verify(notificationRepository).save(notificationCaptor.capture());
@@ -59,7 +66,7 @@ class NotificationServiceTest {
         assertThat(saved.getRecipient()).isEqualTo(recipient);
         assertThat(saved.getSender()).isEqualTo(sender);
         assertThat(saved.getType()).isEqualTo(NotificationType.GAME_INVITE);
-        assertThat(saved.getMessage()).isEqualTo("Join me");
+        assertThat(saved.getMessage()).isEqualTo("Sender invited you to a lobby.");
         assertThat(saved.getLobbyId()).isEqualTo(lobbyId);
 
         assertThat(result.getType()).isEqualTo(NotificationTypeDTO.GAME_INVITE);
@@ -67,15 +74,14 @@ class NotificationServiceTest {
         assertThat(result.getSender().getId()).isEqualTo(1L);
         assertThat(result.getSender().getName()).isEqualTo("Sender");
         assertThat(result.getRecipient().getId()).isEqualTo(2L);
+        verify(eventPublisher).publish(savedNotification);
     }
 
     @Test
-    void rejectsMissingRecipient() {
-        var sender = user(1L, "Sender");
-        var request = new CreateNotificationDTO(2L, NotificationTypeDTO.TEXT, "Hello", null);
+    void rejectsMissingRecipientForServerTextNotification() {
         when(userRepository.findById(2L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> notificationService.createNotification(sender, request))
+        assertThatThrownBy(() -> notificationService.createTextNotification(2L, "Hello"))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -87,10 +93,8 @@ class NotificationServiceTest {
     void rejectsGameInviteWithoutLobbyId() {
         var sender = user(1L, "Sender");
         var recipient = user(2L, "Recipient");
-        var request = new CreateNotificationDTO(2L, NotificationTypeDTO.GAME_INVITE, "Join me", null);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
 
-        assertThatThrownBy(() -> notificationService.createNotification(sender, request))
+        assertThatThrownBy(() -> notificationService.createGameInviteNotification(sender, recipient, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -99,13 +103,11 @@ class NotificationServiceTest {
     }
 
     @Test
-    void rejectsTextNotificationWithoutMessage() {
+    void rejectsFriendInviteWithoutRequestId() {
         var sender = user(1L, "Sender");
         var recipient = user(2L, "Recipient");
-        var request = new CreateNotificationDTO(2L, NotificationTypeDTO.TEXT, "   ", null);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
 
-        assertThatThrownBy(() -> notificationService.createNotification(sender, request))
+        assertThatThrownBy(() -> notificationService.createFriendInviteNotification(sender, recipient, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -114,20 +116,82 @@ class NotificationServiceTest {
     }
 
     @Test
-    void sanitizesNotificationMessage() {
-        var sender = user(1L, "Sender");
+    void rejectsServerTextNotificationWithoutMessage() {
         var recipient = user(2L, "Recipient");
-        var request = new CreateNotificationDTO(2L, NotificationTypeDTO.TEXT, "<b>Hello</b>", null);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+
+        assertThatThrownBy(() -> notificationService.createTextNotification(2L, "   "))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        verifyNoInteractions(notificationRepository);
+    }
+
+    @Test
+    void serverCreatesAndSanitizesTextNotification() {
+        var recipient = user(2L, "Recipient");
+        var savedNotification = notification(recipient, null, NotificationType.TEXT, "Hello", null);
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(notificationRepository.save(any(NotificationEntity.class))).thenReturn(savedNotification);
+
+        notificationService.createTextNotification(2L, "<b>Hello</b>");
+
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEntity.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        var saved = notificationCaptor.getValue();
+        assertThat(saved.getType()).isEqualTo(NotificationType.TEXT);
+        assertThat(saved.getSender()).isNull();
+        assertThat(saved.getRecipient()).isEqualTo(recipient);
+        assertThat(saved.getMessage()).isEqualTo("Hello");
+        verify(eventPublisher).publish(savedNotification);
+    }
+
+    @Test
+    void senderCreatesAndSanitizesTextNotification() {
+        var sender = user(1L, "Moderator");
+        var recipient = user(2L, "Recipient");
         var savedNotification = notification(recipient, sender, NotificationType.TEXT, "Hello", null);
 
         when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
         when(notificationRepository.save(any(NotificationEntity.class))).thenReturn(savedNotification);
 
-        notificationService.createNotification(sender, request);
+        notificationService.createTextNotification(sender, 2L, "<b>Hello</b>");
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEntity.class);
         verify(notificationRepository).save(notificationCaptor.capture());
-        assertThat(notificationCaptor.getValue().getMessage()).isEqualTo("Hello");
+        var saved = notificationCaptor.getValue();
+        assertThat(saved.getType()).isEqualTo(NotificationType.TEXT);
+        assertThat(saved.getSender()).isEqualTo(sender);
+        assertThat(saved.getRecipient()).isEqualTo(recipient);
+        assertThat(saved.getMessage()).isEqualTo("Hello");
+        verify(eventPublisher).publish(savedNotification);
+    }
+
+    @Test
+    void createsTextNotificationForAllUsers() {
+        var sender = user(1L, "Admin");
+        var firstRecipient = user(2L, "First");
+        var secondRecipient = user(3L, "Second");
+
+        when(userRepository.findAll()).thenReturn(List.of(firstRecipient, secondRecipient));
+        when(notificationRepository.save(any(NotificationEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var results = notificationService.createTextNotificationToAll(sender, "<b>Hello all</b>");
+
+        assertThat(results).hasSize(2);
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEntity.class);
+        verify(notificationRepository, times(2)).save(notificationCaptor.capture());
+
+        assertThat(notificationCaptor.getAllValues()).extracting(NotificationEntity::getRecipient)
+                .containsExactly(firstRecipient, secondRecipient);
+        assertThat(notificationCaptor.getAllValues()).allSatisfy(notification -> {
+            assertThat(notification.getSender()).isEqualTo(sender);
+            assertThat(notification.getType()).isEqualTo(NotificationType.TEXT);
+            assertThat(notification.getMessage()).isEqualTo("Hello all");
+        });
+        verify(eventPublisher, times(2)).publish(any(NotificationEntity.class));
     }
 
     @Test
