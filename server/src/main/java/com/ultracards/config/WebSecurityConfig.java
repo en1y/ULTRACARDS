@@ -49,11 +49,14 @@ public class WebSecurityConfig {
                                 "/pics/**",
                                 "/js/**"
                         ).permitAll()
-                        // Public app routes
+                        // Authenticated websocket endpoint
                         .requestMatchers(
-                                "/active",
                                 "/ws",
                                 "/ws/**"
+                        ).authenticated()
+                        // Public app routes
+                        .requestMatchers(
+                                "/active"
                         ).permitAll()
                         // Public auth endpoints
                         .requestMatchers(HttpMethod.POST,
