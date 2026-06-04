@@ -14,6 +14,8 @@ import com.ultracards.server.repositories.friends.FriendBlockRepository;
 import com.ultracards.server.repositories.friends.FriendRequestRepository;
 import com.ultracards.server.repositories.friends.FriendRelationRepository;
 import com.ultracards.server.repositories.games.UserBriskulaStatsRepository;
+import com.ultracards.server.entity.chat.ChatEntity;
+import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.lobby.LobbyService;
 import com.ultracards.server.service.notifications.NotificationService;
 import com.ultracards.server.service.presence.UserPresenceService;
@@ -63,6 +65,9 @@ class FriendServiceTest {
 
     @Mock
     private UserPresenceService userPresenceService;
+
+    @Mock
+    private ChatService chatService;
 
     @InjectMocks
     private FriendService friendService;
@@ -115,6 +120,7 @@ class FriendServiceTest {
 
         when(friendRequestRepository.findByIdAndRecipientId(requestId, 2L)).thenReturn(Optional.of(request));
         when(friendRelationRepository.findByNormalizedPair(1L, 2L)).thenReturn(Optional.empty());
+        when(friendRelationRepository.save(any(FriendRelationEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(friendRequestRepository.save(request)).thenReturn(request);
 
         var result = friendService.acceptRequest(recipient, requestId);
@@ -123,6 +129,7 @@ class FriendServiceTest {
         verify(friendRelationRepository).save(friendRelationCaptor.capture());
         assertThat(friendRelationCaptor.getValue().getStatus()).isEqualTo(FriendRelationStatus.FRIENDS);
         assertThat(result.getStatus().name()).isEqualTo(FriendRequestStatus.ACCEPTED.name());
+        verify(chatService).openFriendChat(friendRelationCaptor.getValue());
     }
 
     @Test
@@ -161,6 +168,7 @@ class FriendServiceTest {
         assertThat(friendRelation.getRemovedBy()).isEqualTo(user);
         assertThat(friendRelation.getRemovedAt()).isNotNull();
         verify(friendRelationRepository).save(friendRelation);
+        verify(chatService).closeFriendChat(friendRelation);
     }
 
     @Test
@@ -179,12 +187,15 @@ class FriendServiceTest {
         when(userBriskulaStatsRepository.findByUser(user)).thenReturn(Optional.of(stats));
         when(userPresenceService.getStatus(lesserFriend)).thenReturn(UserPresenceStatusDTO.ONLINE);
         when(userPresenceService.getStatus(greaterFriend)).thenReturn(UserPresenceStatusDTO.IN_GAME);
+        when(chatService.createFriendChat(lesserFriendRelation)).thenReturn(chat(UUID.randomUUID(), lesserFriendRelation));
+        when(chatService.createFriendChat(greaterFriendRelation)).thenReturn(chat(UUID.randomUUID(), greaterFriendRelation));
 
         var friends = friendService.getFriends(user);
 
         assertThat(friends).extracting(friend -> friend.getUser().getId())
                 .containsExactly(3L, 2L);
         assertThat(friends.getFirst().getTotalPlayedTogether()).isEqualTo(4);
+        assertThat(friends.getFirst().getChatId()).isNotNull();
         assertThat(friends.getFirst().getPresenceStatus()).isEqualTo(UserPresenceStatusDTO.IN_GAME);
     }
 
@@ -204,5 +215,11 @@ class FriendServiceTest {
         var friendRelation = new FriendRelationEntity(user, friend);
         friendRelation.setId(id);
         return friendRelation;
+    }
+
+    private ChatEntity chat(UUID id, FriendRelationEntity friendRelation) {
+        var chat = new ChatEntity(friendRelation);
+        chat.setId(id);
+        return chat;
     }
 }

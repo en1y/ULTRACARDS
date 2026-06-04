@@ -16,6 +16,7 @@ import com.ultracards.server.repositories.friends.FriendBlockRepository;
 import com.ultracards.server.repositories.friends.FriendRequestRepository;
 import com.ultracards.server.repositories.friends.FriendRelationRepository;
 import com.ultracards.server.repositories.games.UserBriskulaStatsRepository;
+import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.notifications.NotificationService;
 import com.ultracards.server.service.presence.UserPresenceService;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +49,9 @@ public class FriendService {
     private final UserBriskulaStatsRepository userBriskulaStatsRepository;
     private final NotificationService notificationService;
     private final UserPresenceService userPresenceService;
+    private final ChatService chatService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<FriendDTO> getFriends(UserEntity user) {
         var friends = getFriendDtos(user, FRIENDS);
         sortFriends(friends, false);
@@ -108,7 +110,8 @@ public class FriendService {
         var friendRelation = findFriendRelation(recipient, requester)
                 .orElseGet(() -> new FriendRelationEntity(recipient, requester));
         friendRelation.activate();
-        friendRelationRepository.save(friendRelation);
+        friendRelation = friendRelationRepository.save(friendRelation);
+        chatService.openFriendChat(friendRelation);
 
         request.accept();
         return friendRequestRepository.save(request).toDto();
@@ -141,6 +144,7 @@ public class FriendService {
         var friendRelation = getActiveFriendRelation(user, friendUserId);
         friendRelation.remove(user);
         friendRelationRepository.save(friendRelation);
+        chatService.closeFriendChat(friendRelation);
     }
 
     @Transactional
@@ -228,9 +232,14 @@ public class FriendService {
             counts.add(new FriendPlayCountDTO(entry.getKey(), entry.getValue()));
             total += entry.getValue();
         }
+        UUID chatId = null;
+        if (friendRelation.getStatus().equals(FRIENDS)) {
+            chatId = chatService.createFriendChat(friendRelation).getId();
+        }
 
         return new FriendDTO(
                 friendRelation.getId(),
+                chatId,
                 new GamePlayerDTO(friend.getUsername(), friend.getId()),
                 friendRelation.getStatus().toDto(),
                 userPresenceService.getStatus(friend),

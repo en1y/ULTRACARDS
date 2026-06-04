@@ -55,8 +55,10 @@ class FriendControllerTest {
     void returnsFriendsForCurrentUser() throws Exception {
         var user = user(1L, "User");
         var friendRelationId = UUID.randomUUID();
+        var chatId = UUID.randomUUID();
         var friend = new FriendDTO(
                 friendRelationId,
+                chatId,
                 new GamePlayerDTO("Friend", 2L),
                 FriendRelationStatusDTO.FRIENDS,
                 UserPresenceStatusDTO.IN_LOBBY,
@@ -70,6 +72,7 @@ class FriendControllerTest {
         mockMvc.perform(get("/api/friends").with(authentication(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].friendRelationId").value(friendRelationId.toString()))
+                .andExpect(jsonPath("$[0].chatId").value(chatId.toString()))
                 .andExpect(jsonPath("$[0].user.id").value(2))
                 .andExpect(jsonPath("$[0].presenceStatus").value("IN_LOBBY"))
                 .andExpect(jsonPath("$[0].totalPlayedTogether").value(3))

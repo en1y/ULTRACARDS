@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class FriendDTO {
     private UUID friendRelationId;
+    private UUID chatId;
     private GamePlayerDTO user;
     private FriendRelationStatusDTO status;
     private UserPresenceStatusDTO presenceStatus;

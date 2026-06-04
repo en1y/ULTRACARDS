@@ -1,5 +1,6 @@
 package com.ultracards.server.controllers;
 
+import com.ultracards.gateway.dto.games.chat.ChatDTO;
 import com.ultracards.gateway.dto.games.chat.ChatMessageDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.chat.ChatService;
@@ -49,5 +50,33 @@ public class ChatController {
         }
         chatService.sendMessage(lobby.getId(), user, messageDTO.getMessage());
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/friends/{friendUserId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<ChatDTO> getFriendChat(
+            @AuthenticationPrincipal UserEntity user,
+            @PathVariable Long friendUserId
+    ) {
+        return ResponseEntity.ok(chatService.getFriendChat(user, friendUserId).toDto());
+    }
+
+    @PostMapping("/friends/{friendUserId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<ChatDTO> sendFriendMessage(
+            @AuthenticationPrincipal UserEntity user,
+            @PathVariable Long friendUserId,
+            @RequestBody @Valid ChatMessageDTO message
+    ) {
+        return ResponseEntity.ok(chatService.sendFriendMessage(user, friendUserId, message.getMessage()).toDto());
+    }
+
+    @PostMapping("/friends/{friendUserId}/read-all")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<ChatDTO> readAllFriendMessages(
+            @AuthenticationPrincipal UserEntity user,
+            @PathVariable Long friendUserId
+    ) {
+        return ResponseEntity.ok(chatService.readAllFriendMessages(user, friendUserId).toDto());
     }
 }
