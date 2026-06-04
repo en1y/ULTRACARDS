@@ -9,6 +9,7 @@ import com.ultracards.server.repositories.chat.ChatMessageRepository;
 import com.ultracards.server.repositories.chat.ChatReadStateRepository;
 import com.ultracards.server.repositories.chat.ChatRepository;
 import com.ultracards.server.repositories.friends.FriendRelationRepository;
+import com.ultracards.server.service.notifications.NotificationService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import lombok.RequiredArgsConstructor;
 import org.owasp.html.HtmlPolicyBuilder;
@@ -16,6 +17,7 @@ import org.owasp.html.PolicyFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.StringJoiner;
@@ -31,6 +33,7 @@ public class ChatService{
     private final ChatMessageRepository chatMessageRepository;
     private final ChatReadStateRepository chatReadStateRepository;
     private final FriendRelationRepository friendRelationRepository;
+    private final NotificationService notificationService;
     private final ChatEventPublisher eventPublisher;
     private final UltrakillLevelService ultrakillLevelService;
     private final UserEntity serverUser = new UserEntity("", "Server");
@@ -118,6 +121,7 @@ public class ChatService{
                 friendRelation.getUserOne(),
                 friendRelation.getUserTwo()
         );
+        notificationService.createTextNotification(user, friendRelation.getOtherUser(user).getId(), sanitizedMessage);
         return chat;
     }
 
@@ -150,6 +154,10 @@ public class ChatService{
             return null;
         }
 
-        return NO_HTML_POLICY.sanitize(message).trim();
+        var sanitizedMessage = NO_HTML_POLICY.sanitize(message).trim();
+        if (!StringUtils.hasText(sanitizedMessage)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chat message must not be blank");
+        }
+        return sanitizedMessage;
     }
 }
