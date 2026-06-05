@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -152,12 +153,12 @@ class NotificationServiceTest {
     void senderCreatesAndSanitizesTextNotification() {
         var sender = user(1L, "Moderator");
         var recipient = user(2L, "Recipient");
-        var savedNotification = notification(recipient, sender, NotificationType.TEXT, "Hello", null);
+        var savedNotification = notification(recipient, sender, NotificationType.TEXT, "I'm \"ready\" & waiting now", null);
 
         when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
         when(notificationRepository.save(any(NotificationEntity.class))).thenReturn(savedNotification);
 
-        notificationService.createTextNotification(sender, 2L, "<b>Hello</b>");
+        notificationService.createTextNotification(sender, 2L, "I'm \"ready\" & waiting <b>now</b>");
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEntity.class);
         verify(notificationRepository).save(notificationCaptor.capture());
@@ -165,7 +166,7 @@ class NotificationServiceTest {
         assertThat(saved.getType()).isEqualTo(NotificationType.TEXT);
         assertThat(saved.getSender()).isEqualTo(sender);
         assertThat(saved.getRecipient()).isEqualTo(recipient);
-        assertThat(saved.getMessage()).isEqualTo("Hello");
+        assertThat(saved.getMessage()).isEqualTo("I'm \"ready\" & waiting now");
         verify(eventPublisher).publish(savedNotification);
     }
 
@@ -217,13 +218,32 @@ class NotificationServiceTest {
         notification.setId(notificationId);
 
         when(notificationRepository.findByIdAndRecipientId(notificationId, 1L)).thenReturn(Optional.of(notification));
-        when(notificationRepository.save(notification)).thenReturn(notification);
 
         var result = notificationService.markRead(user, notificationId);
 
         assertThat(result.isRead()).isTrue();
         assertThat(result.getReadAt()).isNotNull();
-        verify(notificationRepository).save(notification);
+        verify(notificationRepository).findByIdAndRecipientId(notificationId, 1L);
+        verifyNoMoreInteractions(notificationRepository);
+    }
+
+    @Test
+    void marksTextNotificationWithSenderRead() {
+        var user = user(1L, "Recipient");
+        var sender = user(2L, "Sender");
+        var notificationId = UUID.randomUUID();
+        var notification = notification(user, sender, NotificationType.TEXT, "Hello", null);
+        notification.setId(notificationId);
+
+        when(notificationRepository.findByIdAndRecipientId(notificationId, 1L)).thenReturn(Optional.of(notification));
+
+        var result = notificationService.markRead(user, notificationId);
+
+        assertThat(result.isRead()).isTrue();
+        assertThat(result.getSender().getId()).isEqualTo(2L);
+        assertThat(result.getRecipient().getId()).isEqualTo(1L);
+        verify(notificationRepository).findByIdAndRecipientId(notificationId, 1L);
+        verifyNoMoreInteractions(notificationRepository);
     }
 
     @Test
@@ -235,13 +255,13 @@ class NotificationServiceTest {
         notification.markRead();
 
         when(notificationRepository.findByIdAndRecipientId(notificationId, 1L)).thenReturn(Optional.of(notification));
-        when(notificationRepository.save(notification)).thenReturn(notification);
 
         var result = notificationService.markUnread(user, notificationId);
 
         assertThat(result.isRead()).isFalse();
         assertThat(result.getReadAt()).isNull();
-        verify(notificationRepository).save(notification);
+        verify(notificationRepository).findByIdAndRecipientId(notificationId, 1L);
+        verifyNoMoreInteractions(notificationRepository);
     }
 
     @Test

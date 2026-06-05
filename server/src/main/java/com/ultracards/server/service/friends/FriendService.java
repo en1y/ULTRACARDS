@@ -92,7 +92,7 @@ public class FriendService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot send a friend request to yourself");
 
         if (isBlocked(recipient, requester))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This user is not accepting friend requests from you");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This user has blocked you.");
 
         if (isBlocked(requester, recipient))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Unblock this user before sending a friend request");

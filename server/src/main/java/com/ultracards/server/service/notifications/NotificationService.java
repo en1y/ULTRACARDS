@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -128,18 +129,21 @@ public class NotificationService {
         notificationRepository.deleteByTypeAndLobbyId(NotificationType.GAME_INVITE, lobbyId);
     }
 
+    @Transactional
     public NotificationDTO markRead(UserEntity user, UUID notificationId) {
         var notification = getOwnedNotification(user, notificationId);
         notification.markRead();
-        return notificationRepository.save(notification).toDto();
+        return notification.toDto();
     }
 
+    @Transactional
     public NotificationDTO markUnread(UserEntity user, UUID notificationId) {
         var notification = getOwnedNotification(user, notificationId);
         notification.markUnread();
-        return notificationRepository.save(notification).toDto();
+        return notification.toDto();
     }
 
+    @Transactional
     public void deleteNotification(UserEntity user, UUID notificationId) {
         var notification = getOwnedNotification(user, notificationId);
         notificationRepository.delete(notification);
@@ -159,7 +163,7 @@ public class NotificationService {
     private String sanitizeMessage(String message) {
         if (message == null) return null;
 
-        var sanitized = NO_HTML_POLICY.sanitize(message).trim();
+        var sanitized = HtmlUtils.htmlUnescape(NO_HTML_POLICY.sanitize(message)).trim();
         if (sanitized.length() > MAX_MESSAGE_LENGTH)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message cannot exceed 512 characters");
 

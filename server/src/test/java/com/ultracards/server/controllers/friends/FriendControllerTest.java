@@ -13,6 +13,7 @@ import com.ultracards.server.service.friends.FriendService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -88,6 +90,20 @@ class FriendControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.recipient.id").value(2));
+
+        verify(friendService).sendFriendRequest(user, 2L);
+    }
+
+    @Test
+    void returnsMessageWhenRecipientBlockedRequester() throws Exception {
+        var user = user(1L, "Requester");
+        when(friendService.sendFriendRequest(eq(user), eq(2L)))
+                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "This user has blocked you."));
+
+        mockMvc.perform(post("/api/friends/requests/send/{id}", 2L)
+                        .with(authentication(user)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("This user has blocked you."));
 
         verify(friendService).sendFriendRequest(user, 2L);
     }

@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.StringJoiner;
@@ -157,7 +158,7 @@ public class ChatService{
             return null;
         }
 
-        var sanitizedMessage = NO_HTML_POLICY.sanitize(message).trim();
+        var sanitizedMessage = HtmlUtils.htmlUnescape(NO_HTML_POLICY.sanitize(message)).trim();
         if (!StringUtils.hasText(sanitizedMessage)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chat message must not be blank");
         }
