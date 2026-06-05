@@ -4,7 +4,6 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.chat.ChatEntity;
 import com.ultracards.server.entity.chat.ChatReadStateEntity;
 import com.ultracards.server.entity.friends.FriendRelationEntity;
-import com.ultracards.server.enums.friends.FriendRelationStatus;
 import com.ultracards.server.repositories.chat.ChatMessageRepository;
 import com.ultracards.server.repositories.chat.ChatReadStateRepository;
 import com.ultracards.server.repositories.chat.ChatRepository;
@@ -96,6 +95,11 @@ public class ChatService{
     }
 
     @Transactional
+    public void deleteFriendChat(FriendRelationEntity friendRelation) {
+        chatRepository.findByFriendRelationId(friendRelation.getId()).ifPresent(chatRepository::delete);
+    }
+
+    @Transactional
     public ChatEntity getFriendChat(UserEntity user, Long friendUserId) {
         var friendRelation = getActiveFriendRelation(user, friendUserId);
         return chatRepository.findByFriendRelationId(friendRelation.getId())
@@ -141,7 +145,6 @@ public class ChatService{
         var userOneId = Math.min(user.getId(), friendUserId);
         var userTwoId = Math.max(user.getId(), friendUserId);
         var friendRelation = friendRelationRepository.findByNormalizedPair(userOneId, userTwoId)
-                .filter(relation -> relation.getStatus().equals(FriendRelationStatus.FRIENDS))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Active friend relation not found"));
         if (!friendRelation.contains(user)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Active friend relation not found");

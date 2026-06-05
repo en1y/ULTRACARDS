@@ -8,7 +8,6 @@ import com.ultracards.server.entity.friends.FriendRelationEntity;
 import com.ultracards.server.entity.games.gamestats.BriskulaMatchupStats;
 import com.ultracards.server.entity.games.gamestats.UserBriskulaStats;
 import com.ultracards.server.enums.friends.FriendRequestStatus;
-import com.ultracards.server.enums.friends.FriendRelationStatus;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.friends.FriendBlockRepository;
 import com.ultracards.server.repositories.friends.FriendRequestRepository;
@@ -28,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -127,7 +127,8 @@ class FriendServiceTest {
 
         var friendRelationCaptor = ArgumentCaptor.forClass(FriendRelationEntity.class);
         verify(friendRelationRepository).save(friendRelationCaptor.capture());
-        assertThat(friendRelationCaptor.getValue().getStatus()).isEqualTo(FriendRelationStatus.FRIENDS);
+        assertThat(friendRelationCaptor.getValue().getUserOne()).isEqualTo(requester);
+        assertThat(friendRelationCaptor.getValue().getUserTwo()).isEqualTo(recipient);
         assertThat(result.getStatus().name()).isEqualTo(FriendRequestStatus.ACCEPTED.name());
         verify(chatService).openFriendChat(friendRelationCaptor.getValue());
     }
@@ -164,11 +165,8 @@ class FriendServiceTest {
 
         friendService.removeFriend(user, 2L);
 
-        assertThat(friendRelation.getStatus()).isEqualTo(FriendRelationStatus.BLOCKED);
-        assertThat(friendRelation.getRemovedBy()).isEqualTo(user);
-        assertThat(friendRelation.getRemovedAt()).isNotNull();
-        verify(friendRelationRepository).save(friendRelation);
-        verify(chatService).closeFriendChat(friendRelation);
+        verify(chatService).deleteFriendChat(friendRelation);
+        verify(friendRelationRepository).delete(friendRelation);
     }
 
     @Test
@@ -182,7 +180,7 @@ class FriendServiceTest {
         stats.getWinsAgainstUser().add(new BriskulaMatchupStats("TWO_PLAYER", 2L, 1, 0));
         stats.getWinsAgainstUser().add(new BriskulaMatchupStats("TWO_PLAYER", 3L, 4, 0));
 
-        when(friendRelationRepository.findByUserIdAndStatus(1L, FriendRelationStatus.FRIENDS))
+        when(friendRelationRepository.findByUserId(1L))
                 .thenReturn(List.of(lesserFriendRelation, greaterFriendRelation));
         when(userBriskulaStatsRepository.findByUser(user)).thenReturn(Optional.of(stats));
         when(userPresenceService.getStatus(lesserFriend)).thenReturn(UserPresenceStatusDTO.ONLINE);
@@ -197,6 +195,26 @@ class FriendServiceTest {
         assertThat(friends.getFirst().getTotalPlayedTogether()).isEqualTo(4);
         assertThat(friends.getFirst().getChatId()).isNotNull();
         assertThat(friends.getFirst().getPresenceStatus()).isEqualTo(UserPresenceStatusDTO.IN_GAME);
+    }
+
+    @Test
+    void returnsBlockedUsersFromBlockRows() {
+        var user = user(1L, "User");
+        var blocked = user(2L, "Blocked");
+        var block = new FriendBlockEntity(user, blocked);
+        block.setId(UUID.randomUUID());
+        block.setCreatedAt(Instant.parse("2026-06-01T10:00:00Z"));
+
+        when(friendBlockRepository.findByBlockerIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(block));
+
+        var blockedUsers = friendService.getBlockedUsers(user);
+
+        assertThat(blockedUsers).hasSize(1);
+        assertThat(blockedUsers.getFirst().getUser().getId()).isEqualTo(2L);
+        assertThat(blockedUsers.getFirst().getFriendRelationId()).isNull();
+        assertThat(blockedUsers.getFirst().getChatId()).isNull();
+        verify(friendBlockRepository).findByBlockerIdOrderByCreatedAtDesc(1L);
+        verifyNoInteractions(userPresenceService, chatService);
     }
 
     private UserEntity user(Long id, String username) {

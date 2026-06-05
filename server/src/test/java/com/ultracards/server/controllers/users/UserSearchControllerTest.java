@@ -2,6 +2,7 @@ package com.ultracards.server.controllers.users;
 
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.server.controllers.errors.ApiExceptionHandler;
+import com.ultracards.server.service.users.ProfileService;
 import com.ultracards.server.service.users.UserSearchService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserSearchControllerTest {
 
     private final UserSearchService userSearchService = mock(UserSearchService.class);
+    private final ProfileService profileService = mock(ProfileService.class);
     private final MockMvc mockMvc = MockMvcBuilders
-            .standaloneSetup(new UserSearchController(userSearchService))
+            .standaloneSetup(new UserSearchController(userSearchService, profileService))
             .setControllerAdvice(new ApiExceptionHandler())
             .build();
 
@@ -76,6 +78,28 @@ class UserSearchControllerTest {
                 .andExpect(status().isOk());
 
         verify(userSearchService).searchUsersById("1", 0, 50);
+    }
+
+    @Test
+    void userProfileRequestReturnsPublicProfile() throws Exception {
+        var profile = new ProfileDTO();
+        profile.setId(1L);
+        profile.setUsername("Alice");
+        profile.setRoles(List.of("USER"));
+        profile.setGamesPlayed(4);
+        profile.setGamesWon(2);
+
+        when(profileService.getPublicProfile(1L)).thenReturn(profile);
+
+        mockMvc.perform(get("/api/users/{id}/profile", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("Alice"))
+                .andExpect(jsonPath("$.email").isEmpty())
+                .andExpect(jsonPath("$.gamesPlayed").value(4))
+                .andExpect(jsonPath("$.gamesWon").value(2));
+
+        verify(profileService).getPublicProfile(1L);
     }
 
     @Test

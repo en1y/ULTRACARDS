@@ -3,6 +3,7 @@ package com.ultracards.server.service.friends;
 import com.ultracards.gateway.dto.friends.FriendDTO;
 import com.ultracards.gateway.dto.friends.FriendPlayCountDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
+import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.server.entity.UserEntity;
@@ -10,7 +11,6 @@ import com.ultracards.server.entity.friends.FriendBlockEntity;
 import com.ultracards.server.entity.friends.FriendRequestEntity;
 import com.ultracards.server.entity.friends.FriendRelationEntity;
 import com.ultracards.server.entity.games.gamestats.BriskulaMatchupStats;
-import com.ultracards.server.enums.friends.FriendRelationStatus;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.friends.FriendBlockRepository;
 import com.ultracards.server.repositories.friends.FriendRequestRepository;
@@ -35,8 +35,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.ultracards.server.enums.friends.FriendRequestStatus.PENDING;
-import static com.ultracards.server.enums.friends.FriendRelationStatus.BLOCKED;
-import static com.ultracards.server.enums.friends.FriendRelationStatus.FRIENDS;
 
 @Service
 @RequiredArgsConstructor
@@ -53,16 +51,27 @@ public class FriendService {
 
     @Transactional
     public List<FriendDTO> getFriends(UserEntity user) {
-        var friends = getFriendDtos(user, FRIENDS);
-        sortFriends(friends, false);
+        var friends = getFriendDtos(user);
+        sortFriends(friends);
         return friends;
     }
 
     @Transactional(readOnly = true)
     public List<FriendDTO> getBlockedUsers(UserEntity user) {
-        var friends = getFriendDtos(user, BLOCKED);
-        sortFriends(friends, true);
-        return friends;
+        var blocks = friendBlockRepository.findByBlockerIdOrderByCreatedAtDesc(user.getId());
+        var dtos = new ArrayList<FriendDTO>();
+        for (var block : blocks) {
+            var blocked = block.getBlocked();
+            dtos.add(new FriendDTO(
+                    null,
+                    null,
+                    new GamePlayerDTO(blocked.getUsername(), blocked.getId()),
+                    UserPresenceStatusDTO.OFFLINE,
+                    0,
+                    List.of()
+            ));
+        }
+        return dtos;
     }
 
     @Transactional(readOnly = true)
@@ -88,7 +97,7 @@ public class FriendService {
         if (isBlocked(requester, recipient))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Unblock this user before sending a friend request");
 
-        if (findFriendRelation(requester, recipient, FRIENDS).isPresent())
+        if (findFriendRelation(requester, recipient).isPresent())
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Users are already friends");
 
         if (friendRequestRepository.findBetweenUsersWithStatus(requester.getId(), recipient.getId(), PENDING).isPresent())
@@ -109,7 +118,6 @@ public class FriendService {
 
         var friendRelation = findFriendRelation(recipient, requester)
                 .orElseGet(() -> new FriendRelationEntity(recipient, requester));
-        friendRelation.activate();
         friendRelation = friendRelationRepository.save(friendRelation);
         chatService.openFriendChat(friendRelation);
 
@@ -132,8 +140,7 @@ public class FriendService {
         if (!isBlocked(recipient, requester))
             friendBlockRepository.save(new FriendBlockEntity(recipient, requester));
 
-        findFriendRelation(recipient, requester, FRIENDS)
-                .ifPresent(friendRelation -> friendRelation.remove(recipient));
+        findFriendRelation(recipient, requester).ifPresent(this::deleteFriendRelation);
 
         request.block();
         return friendRequestRepository.save(request).toDto();
@@ -142,9 +149,7 @@ public class FriendService {
     @Transactional
     public void removeFriend(UserEntity user, Long friendUserId) {
         var friendRelation = getActiveFriendRelation(user, friendUserId);
-        friendRelation.remove(user);
-        friendRelationRepository.save(friendRelation);
-        chatService.closeFriendChat(friendRelation);
+        deleteFriendRelation(friendRelation);
     }
 
     @Transactional
@@ -170,7 +175,7 @@ public class FriendService {
     }
 
     private FriendRelationEntity getActiveFriendRelation(UserEntity user, Long friendUserId) {
-        var relation = findFriendRelation(user, findUser(friendUserId, "Friend user not found"), FRIENDS)
+        var relation = findFriendRelation(user, findUser(friendUserId, "Friend user not found"))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Active friend relation not found"));
         if (!relation.contains(user))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Active friend relation not found");
@@ -183,18 +188,18 @@ public class FriendService {
         return friendRelationRepository.findByNormalizedPair(userOneId, userTwoId);
     }
 
-    private Optional<FriendRelationEntity> findFriendRelation(UserEntity user, UserEntity friend, FriendRelationStatus status) {
-        return findFriendRelation(user, friend)
-                .filter(friendRelation -> friendRelation.getStatus() == status);
-    }
-
     @Transactional(readOnly = true)
     public boolean isBlocked(UserEntity blocker, UserEntity blocked) {
         return friendBlockRepository.existsByBlockerIdAndBlockedId(blocker.getId(), blocked.getId());
     }
 
-    private List<FriendDTO> getFriendDtos(UserEntity user, FriendRelationStatus status) {
-        var friendRelations = friendRelationRepository.findByUserIdAndStatus(user.getId(), status);
+    private void deleteFriendRelation(FriendRelationEntity friendRelation) {
+        chatService.deleteFriendChat(friendRelation);
+        friendRelationRepository.delete(friendRelation);
+    }
+
+    private List<FriendDTO> getFriendDtos(UserEntity user) {
+        var friendRelations = friendRelationRepository.findByUserId(user.getId());
         return toFriendDtos(user, friendRelations, loadPlayCounts(user));
     }
 
@@ -208,21 +213,14 @@ public class FriendService {
         return dtos;
     }
 
-    private void sortFriends(List<FriendDTO> friends, boolean blockedFriends) {
-        friends.sort(blockedFriends ? this::compareBlockedFriends : this::compareFriends);
+    private void sortFriends(List<FriendDTO> friends) {
+        friends.sort(this::compareFriends);
     }
 
     private int compareFriends(FriendDTO left, FriendDTO right) {
         var byPlayed = Integer.compare(right.getTotalPlayedTogether(), left.getTotalPlayedTogether());
         if (byPlayed != 0) return byPlayed;
         return left.getUser().getName().compareToIgnoreCase(right.getUser().getName());
-    }
-
-    private int compareBlockedFriends(FriendDTO left, FriendDTO right) {
-        if (left.getRemovedAt() == null && right.getRemovedAt() == null) return 0;
-        if (left.getRemovedAt() == null) return 1;
-        if (right.getRemovedAt() == null) return -1;
-        return right.getRemovedAt().compareTo(left.getRemovedAt());
     }
 
     private FriendDTO toFriendDto(FriendRelationEntity friendRelation, UserEntity friend, Map<GameTypeDTO, Integer> playCounts) {
@@ -232,21 +230,15 @@ public class FriendService {
             counts.add(new FriendPlayCountDTO(entry.getKey(), entry.getValue()));
             total += entry.getValue();
         }
-        UUID chatId = null;
-        if (friendRelation.getStatus().equals(FRIENDS)) {
-            chatId = chatService.createFriendChat(friendRelation).getId();
-        }
+        var chatId = chatService.createFriendChat(friendRelation).getId();
 
         return new FriendDTO(
                 friendRelation.getId(),
                 chatId,
                 new GamePlayerDTO(friend.getUsername(), friend.getId()),
-                friendRelation.getStatus().toDto(),
                 userPresenceService.getStatus(friend),
                 total,
-                counts,
-                friendRelation.getCreatedAt(),
-                friendRelation.getRemovedAt()
+                counts
         );
     }
 

@@ -73,7 +73,8 @@ public class WebSecurityConfig {
                         // Public user search endpoints
                         .requestMatchers(HttpMethod.GET,
                                 "/api/users/search/username/**",
-                                "/api/users/search/id/**"
+                                "/api/users/search/id/**",
+                                "/api/users/*/profile"
                         ).permitAll()
                         // backend API
                         // TODO: check whether i should to make any more of the api calls public

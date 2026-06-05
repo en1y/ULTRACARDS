@@ -4,7 +4,6 @@ import com.ultracards.gateway.dto.friends.FriendDTO;
 import com.ultracards.gateway.dto.friends.FriendPlayCountDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestStatusDTO;
-import com.ultracards.gateway.dto.friends.FriendRelationStatusDTO;
 import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
@@ -60,12 +59,9 @@ class FriendControllerTest {
                 friendRelationId,
                 chatId,
                 new GamePlayerDTO("Friend", 2L),
-                FriendRelationStatusDTO.FRIENDS,
                 UserPresenceStatusDTO.IN_LOBBY,
                 3,
-                List.of(new FriendPlayCountDTO(GameTypeDTO.Briskula, 3)),
-                Instant.parse("2026-05-26T10:00:00Z"),
-                null
+                List.of(new FriendPlayCountDTO(GameTypeDTO.Briskula, 3))
         );
         when(friendService.getFriends(user)).thenReturn(List.of(friend));
 
@@ -119,6 +115,26 @@ class FriendControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(friendService).removeFriend(user, 2L);
+    }
+
+    @Test
+    void returnsBlockedUsersForCurrentUser() throws Exception {
+        var user = user(1L, "User");
+        var blocked = new FriendDTO(
+                null,
+                null,
+                new GamePlayerDTO("Blocked", 2L),
+                UserPresenceStatusDTO.OFFLINE,
+                0,
+                List.of()
+        );
+        when(friendService.getBlockedUsers(user)).thenReturn(List.of(blocked));
+
+        mockMvc.perform(get("/api/friends/blocked").with(authentication(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].user.id").value(2));
+
+        verify(friendService).getBlockedUsers(user);
     }
 
     private RequestPostProcessor authentication(UserEntity user) {

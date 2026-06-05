@@ -1,6 +1,7 @@
 package com.ultracards.server.controllers.users;
 
 import com.ultracards.gateway.dto.auth.ProfileDTO;
+import com.ultracards.server.service.users.ProfileService;
 import com.ultracards.server.service.users.UserSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.util.List;
 public class UserSearchController {
 
     private final UserSearchService userSearchService;
+    private final ProfileService profileService;
 
     @GetMapping("/search/username/{username}")
     public List<ProfileDTO> searchUsersByUsername(
@@ -38,6 +40,13 @@ public class UserSearchController {
     ) {
         var bounds = resolveBounds(lower, higher);
         return userSearchService.searchUsersById(id, bounds.lower(), bounds.higher());
+    }
+
+    @GetMapping("/{id}/profile")
+    public ProfileDTO getUserProfile(
+            @PathVariable Long id
+    ) {
+        return profileService.getPublicProfile(id);
     }
 
     private SearchBounds resolveBounds(Integer lower, Integer higher) {

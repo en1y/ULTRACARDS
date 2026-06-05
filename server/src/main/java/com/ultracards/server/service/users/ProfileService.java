@@ -11,7 +11,9 @@ import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -30,6 +32,14 @@ public class ProfileService {
 
     public ProfileDTO getProfile(UserEntity user) {
         return createProfileByUser(user);
+    }
+
+    public ProfileDTO getPublicProfile(Long userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        var profile = createProfileByUser(user);
+        profile.setEmail(null);
+        return profile;
     }
 
     public Boolean updateProfile(

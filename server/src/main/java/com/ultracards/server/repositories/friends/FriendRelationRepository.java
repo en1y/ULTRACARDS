@@ -1,7 +1,6 @@
 package com.ultracards.server.repositories.friends;
 
 import com.ultracards.server.entity.friends.FriendRelationEntity;
-import com.ultracards.server.enums.friends.FriendRelationStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,19 +12,15 @@ import java.util.UUID;
 
 public interface FriendRelationRepository extends JpaRepository<FriendRelationEntity, UUID> {
 
-    @EntityGraph(attributePaths = {"userOne", "userTwo", "removedBy"})
+    @EntityGraph(attributePaths = {"userOne", "userTwo"})
     @Query("""
             select relation
             from FriendRelationEntity relation
-            where relation.status = :status
-                and (relation.userOne.id = :userId or relation.userTwo.id = :userId)
+            where relation.userOne.id = :userId or relation.userTwo.id = :userId
             """)
-    List<FriendRelationEntity> findByUserIdAndStatus(
-            @Param("userId") Long userId,
-            @Param("status") FriendRelationStatus status
-    );
+    List<FriendRelationEntity> findByUserId(@Param("userId") Long userId);
 
-    @EntityGraph(attributePaths = {"userOne", "userTwo", "removedBy"})
+    @EntityGraph(attributePaths = {"userOne", "userTwo"})
     @Query("""
             select relation
             from FriendRelationEntity relation

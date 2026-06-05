@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,10 +15,7 @@ public class FriendDTO {
     private UUID friendRelationId;
     private UUID chatId;
     private GamePlayerDTO user;
-    private FriendRelationStatusDTO status;
     private UserPresenceStatusDTO presenceStatus;
     private int totalPlayedTogether;
     private List<FriendPlayCountDTO> playedTogetherByGameType;
-    private Instant friendsSince;
-    private Instant removedAt;
 }
