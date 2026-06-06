@@ -14,10 +14,14 @@
   </header>
 
   <th:block th:replace="~{ui/fragments/header/auth-modal :: authModal}"></th:block>
+  <script th:if="${isAuthenticated}" th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
+  <script th:if="${isAuthenticated}" th:src="@{/js/chat.js}"></script>
   <script th:src="@{/js/ui/fragments/header/utils.js}"></script>
   <script th:src="@{/js/ui/fragments/header/layout.js}"></script>
   <script th:src="@{/js/ui/fragments/header/search.js}"></script>
   <script th:src="@{/js/ui/fragments/header/profile-menu.js}"></script>
+  <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/notifications.js}"></script>
+  <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/friends.js}"></script>
   <script th:src="@{/js/ui/fragments/header/auth-modal.js}"></script>
   <script th:src="@{/js/ui/fragments/header.js}"></script>
 </th:block>

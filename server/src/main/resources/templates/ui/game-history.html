@@ -54,7 +54,10 @@
                         <p>Loading replay.</p>
                     </div>
                 </div>
-                <a class="btn" th:href="@{/history}">Back to History</a>
+                <a class="btn" th:href="@{/history}">
+                    <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
+                    <span>Back to History</span>
+                </a>
             </div>
 
             <button id="replay-prev" class="btn" type="button">Previous</button>

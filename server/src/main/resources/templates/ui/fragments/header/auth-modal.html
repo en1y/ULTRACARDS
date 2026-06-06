@@ -6,7 +6,9 @@
           <strong id="login-title">Welcome to ULTRACARDS</strong>
           <div id="login-subtitle" class="modal-subtitle">Use your email to sign in or finish setting up your account.</div>
         </div>
-        <button class="btn" data-close type="button" aria-label="Close">✕</button>
+        <button class="btn" data-close type="button" aria-label="Close">
+          <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+        </button>
       </header>
       <div class="content">
         <section data-step="email">
@@ -20,7 +22,10 @@
               <small id="email-error" class="error"></small>
             </div>
             <div class="actions">
-              <button class="btn btn-accent" type="submit">Send Code</button>
+              <button class="btn btn-accent" type="submit">
+                <img class="uc-icon" data-icon="mail" th:src="@{/pics/light/mail.svg}" alt="" aria-hidden="true" />
+                <span>Send Code</span>
+              </button>
             </div>
           </form>
         </section>

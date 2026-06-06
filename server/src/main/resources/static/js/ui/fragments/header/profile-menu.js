@@ -12,6 +12,7 @@
     const logoutButton = menu.querySelector('[data-action="logout"]');
 
     const openMenu = () => {
+      document.dispatchEvent(new CustomEvent('uc:profile-menu-open'));
       menu.classList.add('open');
       trigger?.setAttribute('aria-expanded', 'true');
       panel?.setAttribute('aria-hidden', 'false');
@@ -45,6 +46,8 @@
             closeMenu();
           }
         });
+
+        document.addEventListener('uc:notifications-open', closeMenu);
 
         logoutButton?.addEventListener('click', async () => {
           closeMenu();

@@ -1,28 +1,110 @@
 <th:block th:fragment="actions" xmlns:th="http://www.thymeleaf.org">
   <div class="uc-actions">
     <button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme">
-      <span class="thumb" aria-hidden="true">
-        <span class="ico sun">☀️</span>
-        <span class="ico moon">🌙</span>
+      <span class="theme-toggle-track" aria-hidden="true">
+        <span class="theme-toggle-thumb">
+          <img class="uc-icon theme-toggle-icon" data-icon="light_mode" data-theme-toggle-icon="true"
+               th:src="@{/pics/light/light_mode.svg}" alt="" aria-hidden="true" />
+        </span>
       </span>
     </button>
 
-    <div th:if="${isAuthenticated}">
-      <div class="profile-menu" data-profile-menu>
-        <button class="profile-chip" type="button" data-profile-menu-trigger aria-haspopup="true" aria-expanded="false">
-          <span class="username" th:text="${username} ?: 'John ULTRACARD.'" id="username-header">John ULTRACARD</span>
-          <img class="avatar" data-avatar th:src="@{/pics/profile_icon_dark.svg}" alt="Profile" />
-        </button>
-        <div class="profile-dropdown" role="menu" aria-hidden="true">
-          <a class="menu-item" th:href="@{/history}" role="menuitem">History</a>
-          <a class="menu-item" th:href="@{/profile}" role="menuitem">Profile</a>
-          <button class="menu-item danger" type="button" role="menuitem" data-action="logout">Log out</button>
+    <div class="notification-menu" th:if="${isAuthenticated}" data-notifications>
+      <button class="header-icon-button notification-bell" type="button" aria-label="Notifications"
+              aria-haspopup="true" aria-expanded="false" data-notification-trigger>
+        <img class="uc-icon" data-icon="notifications" th:src="@{/pics/light/notifications.svg}" alt="" aria-hidden="true" />
+        <span class="notification-badge" data-notification-badge hidden>0</span>
+      </button>
+      <div class="notification-tray" role="menu" aria-hidden="true" data-notification-tray>
+        <div class="notification-tray-head">
+          <h2>Notifications</h2>
+          <div class="notification-tray-actions">
+            <button class="theme-toggle notification-popup-toggle" type="button" aria-label="Turn off notification popups"
+                    aria-pressed="true" data-notification-toggle>
+              <span class="theme-toggle-track" aria-hidden="true">
+                <span class="theme-toggle-thumb">
+                  <img class="uc-icon theme-toggle-icon" data-icon="notifications_on" th:src="@{/pics/light/notifications_on.svg}" alt="" aria-hidden="true" />
+                </span>
+              </span>
+            </button>
+            <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close notifications"
+                    data-notification-close>
+              <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <div class="notification-list" data-notification-list>
+          <p class="notification-empty">No unread notifications.</p>
         </div>
       </div>
     </div>
 
-    <div th:unless="${isAuthenticated}">
-      <button class="btn btn-accent" type="button" data-action="open-login">Log In / Sign Up</button>
+    <div class="profile-action" th:if="${isAuthenticated}">
+      <div class="profile-menu" data-profile-menu>
+        <button class="profile-chip" type="button" data-profile-menu-trigger aria-haspopup="true" aria-expanded="false">
+          <span class="username" th:text="${username} ?: 'John ULTRACARD.'" id="username-header">John ULTRACARD</span>
+          <img class="avatar" data-avatar th:src="@{/pics/dark/profile_icon.svg}" alt="Profile" />
+        </button>
+        <div class="profile-dropdown" role="menu" aria-hidden="true">
+          <a class="menu-item" th:href="@{/history}" role="menuitem">
+            <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
+            <span>History</span>
+          </a>
+          <a class="menu-item" th:href="@{/profile}" role="menuitem">
+            <img class="uc-icon" data-icon="profile_icon" th:src="@{/pics/light/profile_icon.svg}" alt="" aria-hidden="true" />
+            <span>Profile</span>
+          </a>
+          <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
+            <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />
+            <span>Log out</span>
+          </button>
+        </div>
+      </div>
     </div>
+
+    <div class="friends-shell" th:if="${isAuthenticated}" data-friends>
+      <button class="header-icon-button friends-trigger" type="button" aria-label="Friends"
+              aria-controls="friends-drawer" aria-expanded="false" data-friends-trigger>
+        <img class="uc-icon" data-icon="sandwich_menu" th:src="@{/pics/light/sandwich_menu.svg}" alt="" aria-hidden="true" />
+      </button>
+      <aside id="friends-drawer" class="friends-drawer" aria-hidden="true" data-friends-drawer>
+        <div class="friends-drawer-head">
+          <div>
+            <h2>Friends</h2>
+            <p data-friends-summary>Loading</p>
+          </div>
+          <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close friends"
+                  data-friends-close>
+            <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div class="friends-status" data-friends-status aria-live="polite"></div>
+        <div class="friends-groups" data-friends-groups></div>
+
+        <section class="friend-chat-shell" data-friend-chat hidden>
+          <div class="friend-chat-title-row">
+            <div>
+              <h3 data-friend-chat-title>Friend chat</h3>
+            </div>
+            <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close chat"
+                    data-friend-chat-close>
+              <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+            </button>
+          </div>
+          <th:block th:replace="~{ui/fragments/chat :: chatPanel('friend-chat-panel', 'friend-chat-header', 'Friend chat', 'No messages yet.', null, false, ${username}, null, 'friend-chat')}"></th:block>
+        </section>
+      </aside>
+    </div>
+
+    <div th:unless="${isAuthenticated}">
+      <button class="btn btn-accent" type="button" data-action="open-login">
+        <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
+        <span>Log In / Sign Up</span>
+      </button>
+    </div>
+
+    <div class="notification-toast-stack" th:if="${isAuthenticated}" data-notification-toasts
+         aria-live="polite" aria-atomic="false"></div>
   </div>
 </th:block>

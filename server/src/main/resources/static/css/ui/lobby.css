@@ -629,7 +629,7 @@
         }
 
         .chat-bubble {
-            max-width: min(100%, 22rem);
+            max-width: min(100%, 18rem);
             padding: 0.7rem 0.85rem;
             border-radius: 1rem;
             border: 1px solid var(--color-border);

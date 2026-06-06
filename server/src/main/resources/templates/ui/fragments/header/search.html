@@ -1,6 +1,8 @@
 <th:block th:fragment="search" xmlns:th="http://www.thymeleaf.org">
-  <form class="header-search" data-header-search role="search" autocomplete="off">
+  <form class="header-search" data-header-search role="search" autocomplete="off"
+        th:attr="data-authenticated=${isAuthenticated}">
     <label class="sr-only" for="header-user-search">Search users</label>
+    <img class="uc-icon header-search-icon" data-icon="search" th:src="@{/pics/light/search.svg}" alt="" aria-hidden="true" />
     <input
       id="header-user-search"
       class="header-search-input"
@@ -13,7 +15,7 @@
     <div
       id="header-search-results"
       class="header-search-dropdown"
-      role="list"
+      role="listbox"
       aria-hidden="true"
       data-header-search-results></div>
   </form>

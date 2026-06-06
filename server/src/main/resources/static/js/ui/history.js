@@ -110,7 +110,10 @@
         </div>
         <div class="history-card-footer">
           <p>${winnerLabel}: ${playerList(game.winners, game) || 'No winner recorded'}</p>
-          <a class="btn history-details-button" href="/history/${encodeURIComponent(game.id)}" data-history-details="${escapeHtml(game.id)}">Replay</a>
+          <a class="btn history-details-button" href="/history/${encodeURIComponent(game.id)}" data-history-details="${escapeHtml(game.id)}">
+            <img class="uc-icon" data-icon="history" src="/pics/light/history.svg" alt="" aria-hidden="true">
+            <span>Replay</span>
+          </a>
         </div>
       </article>
     `;
@@ -140,6 +143,7 @@
 
     games.forEach((game) => gamesById.set(String(game.id), game));
     list.insertAdjacentHTML('beforeend', games.map(renderGame).join(''));
+    window.syncThemeUi?.();
     offset += 20;
     loadMoreButton.hidden = games.length < 20;
   };
@@ -150,6 +154,10 @@
     loadMoreButton.disabled = isLoading;
     refreshButton.disabled = isLoading;
     loadMoreButton.textContent = isLoading ? 'Loading' : 'Load More';
+    const refreshLabel = refreshButton.querySelector('span');
+    if (refreshLabel) {
+      refreshLabel.textContent = isLoading ? 'Refreshing' : 'Refresh';
+    }
   };
 
   const loadHistory = async (reset = false) => {
