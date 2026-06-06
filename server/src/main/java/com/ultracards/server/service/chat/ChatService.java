@@ -139,6 +139,7 @@ public class ChatService{
 
         readState.setLastReadMessage(lastMessage);
         chatReadStateRepository.save(readState);
+        notificationService.markUnreadTextNotificationsFromSenderRead(user, friendUserId);
         return chat;
     }
 

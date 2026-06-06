@@ -20,6 +20,13 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     @EntityGraph(attributePaths = {"sender", "recipient"})
     Optional<NotificationEntity> findByIdAndRecipientId(UUID id, Long recipientId);
 
+    @EntityGraph(attributePaths = {"sender", "recipient"})
+    List<NotificationEntity> findByRecipientIdAndSenderIdAndTypeAndReadFalse(
+            Long recipientId,
+            Long senderId,
+            NotificationType type
+    );
+
     boolean existsByRecipientIdAndTypeAndLobbyId(Long recipientId, NotificationType type, UUID lobbyId);
 
     void deleteByTypeAndLobbyId(NotificationType type, UUID lobbyId);

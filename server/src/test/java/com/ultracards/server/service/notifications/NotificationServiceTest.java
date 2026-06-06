@@ -289,6 +289,34 @@ class NotificationServiceTest {
     }
 
     @Test
+    void marksUnreadTextNotificationsFromSenderRead() {
+        var recipient = user(1L, "Recipient");
+        var sender = user(2L, "Sender");
+        var first = notification(recipient, sender, NotificationType.TEXT, "First", null);
+        var second = notification(recipient, sender, NotificationType.TEXT, "Second", null);
+        when(notificationRepository.findByRecipientIdAndSenderIdAndTypeAndReadFalse(1L, 2L, NotificationType.TEXT))
+                .thenReturn(List.of(first, second));
+
+        notificationService.markUnreadTextNotificationsFromSenderRead(recipient, 2L);
+
+        assertThat(first.isRead()).isTrue();
+        assertThat(second.isRead()).isTrue();
+        assertThat(first.getReadAt()).isNotNull();
+        assertThat(second.getReadAt()).isNotNull();
+    }
+
+    @Test
+    void ignoresMarkUnreadTextNotificationsFromSenderReadWithoutIds() {
+        var recipient = user(null, "Recipient");
+
+        notificationService.markUnreadTextNotificationsFromSenderRead(recipient, 2L);
+        notificationService.markUnreadTextNotificationsFromSenderRead(user(1L, "Recipient"), null);
+        notificationService.markUnreadTextNotificationsFromSenderRead(null, 2L);
+
+        verifyNoInteractions(notificationRepository);
+    }
+
+    @Test
     void deletesGameInviteNotificationsForLobby() {
         var lobbyId = UUID.randomUUID();
 

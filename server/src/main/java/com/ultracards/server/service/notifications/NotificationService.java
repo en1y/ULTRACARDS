@@ -130,6 +130,21 @@ public class NotificationService {
     }
 
     @Transactional
+    public void markUnreadTextNotificationsFromSenderRead(UserEntity recipient, Long senderUserId) {
+        if (recipient == null || recipient.getId() == null || senderUserId == null)
+            return;
+
+        var notifications = notificationRepository.findByRecipientIdAndSenderIdAndTypeAndReadFalse(
+                recipient.getId(),
+                senderUserId,
+                NotificationType.TEXT
+        );
+        for (var notification : notifications) {
+            notification.markRead();
+        }
+    }
+
+    @Transactional
     public NotificationDTO markRead(UserEntity user, UUID notificationId) {
         var notification = getOwnedNotification(user, notificationId);
         notification.markRead();
