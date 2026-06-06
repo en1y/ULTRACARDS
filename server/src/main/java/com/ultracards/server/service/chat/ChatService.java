@@ -20,6 +20,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.UUID;
 
@@ -77,7 +78,9 @@ public class ChatService{
     @Transactional
     public ChatEntity createFriendChat(FriendRelationEntity friendRelation) {
         return chatRepository.findByFriendRelationId(friendRelation.getId())
-                .orElseGet(() -> chatRepository.save(new ChatEntity(friendRelation)));
+                .orElseGet(() -> findFriendChatByPair(friendRelation)
+                        .map(chat -> attachFriendRelation(chat, friendRelation))
+                        .orElseGet(() -> chatRepository.save(new ChatEntity(friendRelation))));
     }
 
     @Transactional
@@ -96,22 +99,24 @@ public class ChatService{
     }
 
     @Transactional
-    public void deleteFriendChat(FriendRelationEntity friendRelation) {
-        chatRepository.findByFriendRelationId(friendRelation.getId()).ifPresent(chatRepository::delete);
+    public void detachFriendChat(FriendRelationEntity friendRelation) {
+        chatRepository.findByFriendRelationId(friendRelation.getId()).ifPresent(chat -> {
+            chat.close();
+            chat.detachFriendRelation();
+            chatRepository.save(chat);
+        });
     }
 
     @Transactional
     public ChatEntity getFriendChat(UserEntity user, Long friendUserId) {
         var friendRelation = getActiveFriendRelation(user, friendUserId);
-        return chatRepository.findByFriendRelationId(friendRelation.getId())
-                .orElseGet(() -> chatRepository.save(new ChatEntity(friendRelation)));
+        return createFriendChat(friendRelation);
     }
 
     @Transactional
     public ChatEntity sendFriendMessage(UserEntity user, Long friendUserId, String message) {
         var friendRelation = getActiveFriendRelation(user, friendUserId);
-        var chat = chatRepository.findByFriendRelationId(friendRelation.getId())
-                .orElseGet(() -> new ChatEntity(friendRelation));
+        var chat = createFriendChat(friendRelation);
         var sanitizedMessage = sanitizeMessage(message);
 
         if (!chat.isOpen()) {
@@ -152,6 +157,18 @@ public class ChatService{
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Active friend relation not found");
         }
         return friendRelation;
+    }
+
+    private Optional<ChatEntity> findFriendChatByPair(FriendRelationEntity friendRelation) {
+        return chatRepository.findByUserOneIdAndUserTwoId(
+                friendRelation.getUserOne().getId(),
+                friendRelation.getUserTwo().getId()
+        );
+    }
+
+    private ChatEntity attachFriendRelation(ChatEntity chat, FriendRelationEntity friendRelation) {
+        chat.attachFriendRelation(friendRelation);
+        return chatRepository.save(chat);
     }
 
     private String sanitizeMessage(String message) {

@@ -165,7 +165,7 @@ class FriendServiceTest {
 
         friendService.removeFriend(user, 2L);
 
-        verify(chatService).deleteFriendChat(friendRelation);
+        verify(chatService).detachFriendChat(friendRelation);
         verify(friendRelationRepository).delete(friendRelation);
     }
 

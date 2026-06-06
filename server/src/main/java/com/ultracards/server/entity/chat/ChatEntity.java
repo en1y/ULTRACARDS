@@ -11,11 +11,13 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,7 +27,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "chats")
+@Table(
+        name = "chats",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_chats_user_pair",
+                columnNames = {"user_one_id", "user_two_id"}
+        )
+)
 @NoArgsConstructor
 @Getter
 @Setter
@@ -40,6 +48,20 @@ public class ChatEntity {
 
     @Transient
     private UUID lobbyId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "user_one_id",
+            foreignKey = @ForeignKey(name = "fk_chats_user_one")
+    )
+    private UserEntity userOne;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "user_two_id",
+            foreignKey = @ForeignKey(name = "fk_chats_user_two")
+    )
+    private UserEntity userTwo;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -57,7 +79,7 @@ public class ChatEntity {
     }
 
     public ChatEntity(FriendRelationEntity friendRelation) {
-        this.friendRelation = friendRelation;
+        attachFriendRelation(friendRelation);
     }
 
     public ChatMessageEntity sendMessage(UserEntity user, String message) {
@@ -71,6 +93,16 @@ public class ChatEntity {
         for (var m: messages)
             res.add(m.toDto());
         return new ChatDTO(res, isOpen);
+    }
+
+    public void attachFriendRelation(FriendRelationEntity friendRelation) {
+        this.friendRelation = friendRelation;
+        this.userOne = friendRelation.getUserOne();
+        this.userTwo = friendRelation.getUserTwo();
+    }
+
+    public void detachFriendRelation() {
+        this.friendRelation = null;
     }
 
     public void open() {isOpen = true;}

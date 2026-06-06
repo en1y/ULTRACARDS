@@ -194,7 +194,7 @@ public class FriendService {
     }
 
     private void deleteFriendRelation(FriendRelationEntity friendRelation) {
-        chatService.deleteFriendChat(friendRelation);
+        chatService.detachFriendChat(friendRelation);
         friendRelationRepository.delete(friendRelation);
     }
 

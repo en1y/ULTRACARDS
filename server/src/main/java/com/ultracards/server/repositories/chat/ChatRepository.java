@@ -8,6 +8,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ChatRepository extends JpaRepository<ChatEntity, UUID> {
-    @EntityGraph(attributePaths = {"messages", "messages.sender", "friendRelation"})
+    @EntityGraph(attributePaths = {"messages", "messages.sender", "friendRelation", "userOne", "userTwo"})
     Optional<ChatEntity> findByFriendRelationId(UUID friendRelationId);
+
+    @EntityGraph(attributePaths = {"messages", "messages.sender", "friendRelation", "userOne", "userTwo"})
+    Optional<ChatEntity> findByUserOneIdAndUserTwoId(Long userOneId, Long userTwoId);
 }
