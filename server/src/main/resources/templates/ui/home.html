@@ -141,7 +141,6 @@
 <th:block th:if="${isAuthenticated}" th:replace="~{ui/fragments/create-lobby :: createLobbyMenu}"></th:block>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-    <script th:if="${isAuthenticated}" th:src="@{/js/gameTypes.js}"></script>
     <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/createLobby.js}"></script>
     <script th:src="@{/js/ui/home.js}"></script>
 </body>

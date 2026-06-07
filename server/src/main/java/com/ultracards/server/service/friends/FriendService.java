@@ -1,11 +1,15 @@
 package com.ultracards.server.service.friends;
 
+import com.ultracards.games.briskula.BriskulaGameConfig;
+import com.ultracards.gateway.dto.friends.DetailedFriendDTO;
 import com.ultracards.gateway.dto.friends.FriendDTO;
+import com.ultracards.gateway.dto.friends.FriendPersistedStatsDTO;
 import com.ultracards.gateway.dto.friends.FriendPlayCountDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
 import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.friends.FriendBlockEntity;
 import com.ultracards.server.entity.friends.FriendRequestEntity;
@@ -27,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -72,6 +77,17 @@ public class FriendService {
             ));
         }
         return dtos;
+    }
+
+    @Transactional
+    public DetailedFriendDTO getDetailedFriend(UserEntity user, Long friendUserId) {
+        var friendRelation = getActiveFriendRelation(user, friendUserId);
+        var friend = friendRelation.getOtherUser(user);
+        var playCounts = loadPlayCounts(user).getOrDefault(friend.getId(), Map.of());
+        return new DetailedFriendDTO(
+                toFriendDto(friendRelation, friend, playCounts),
+                loadPersistedStats(user, friend)
+        );
     }
 
     @Transactional(readOnly = true)
@@ -261,6 +277,75 @@ public class FriendService {
     private void addPlayCount(Map<Long, Map<GameTypeDTO, Integer>> countsByUser, Long userId, GameTypeDTO gameType, int played) {
         var countsByType = countsByUser.computeIfAbsent(userId, ignored -> new EnumMap<>(GameTypeDTO.class));
         countsByType.merge(gameType, played, Integer::sum);
+    }
+
+    private Map<GameTypeDTO, List<FriendPersistedStatsDTO>> loadPersistedStats(UserEntity user, UserEntity friend) {
+        var statsByGameType = new EnumMap<GameTypeDTO, List<FriendPersistedStatsDTO>>(GameTypeDTO.class);
+        var briskulaStats = userBriskulaStatsRepository.findByUser(user).orElse(null);
+        if (briskulaStats == null)
+            return statsByGameType;
+
+        addPersistedStats(
+                statsByGameType,
+                briskulaStats.getWinsAgainstUser(),
+                friend,
+                "AGAINST_USER"
+        );
+        addPersistedStats(
+                statsByGameType,
+                briskulaStats.getWinsWithTeammate(),
+                friend,
+                "WITH_TEAMMATE"
+        );
+
+        for (var stats : statsByGameType.values()) {
+            stats.sort(Comparator
+                    .comparing(FriendPersistedStatsDTO::getLastPlayedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(this::gameConfigSortKey)
+                    .thenComparing(FriendPersistedStatsDTO::getMatchupType));
+        }
+        return statsByGameType;
+    }
+
+    private void addPersistedStats(
+            Map<GameTypeDTO, List<FriendPersistedStatsDTO>> statsByGameType,
+            Collection<BriskulaMatchupStats> stats,
+            UserEntity friend,
+            String matchupType
+    ) {
+        for (var stat : stats) {
+            if (!friend.getId().equals(stat.getRelatedUserId()))
+                continue;
+
+            var gameStats = statsByGameType.computeIfAbsent(GameTypeDTO.Briskula, ignored -> new ArrayList<>());
+            gameStats.add(new FriendPersistedStatsDTO(
+                    GameTypeDTO.Briskula,
+                    toBriskulaGameConfigDTO(stat.getGameConfig()),
+                    matchupType,
+                    stat.getRelatedUserId(),
+                    friend.getUsername(),
+                    stat.getPlayed(),
+                    stat.getWins(),
+                    stat.getLastPlayedAt()
+            ));
+        }
+    }
+
+    private String gameConfigSortKey(FriendPersistedStatsDTO stats) {
+        if (stats.getGameConfig() instanceof BriskulaGameConfigDTO config) {
+            return config.getNumberOfPlayers() + ":" + config.getCardsInHandNum() + ":" + config.getTeamsEnabled();
+        }
+        return "";
+    }
+
+    private BriskulaGameConfigDTO toBriskulaGameConfigDTO(String gameConfig) {
+        var config = BriskulaGameConfig.valueOf(gameConfig);
+        return new BriskulaGameConfigDTO(
+                config.getNumberOfPlayers(),
+                config.getCardsInHandNum(),
+                config.areTeamsEnabled(),
+                null
+        );
     }
 
     private List<FriendRequestDTO> toRequestDtos(List<FriendRequestEntity> requests) {

@@ -1,5 +1,6 @@
 package com.ultracards.server.controllers.friends;
 
+import com.ultracards.gateway.dto.friends.DetailedFriendDTO;
 import com.ultracards.gateway.dto.friends.FriendDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
 import com.ultracards.server.entity.UserEntity;
@@ -56,6 +57,15 @@ public class FriendController {
             @AuthenticationPrincipal UserEntity user
     ) {
         return ResponseEntity.ok(friendService.getOutgoingRequests(user));
+    }
+
+    @GetMapping("/{friendUserId}/details")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<DetailedFriendDTO> getDetailedFriend(
+            @AuthenticationPrincipal UserEntity user,
+            @PathVariable Long friendUserId
+    ) {
+        return ResponseEntity.ok(friendService.getDetailedFriend(user, friendUserId));
     }
 
     @PostMapping("/requests/send/{id}")

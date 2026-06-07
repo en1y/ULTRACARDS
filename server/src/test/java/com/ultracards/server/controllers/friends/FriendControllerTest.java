@@ -1,12 +1,15 @@
 package com.ultracards.server.controllers.friends;
 
+import com.ultracards.gateway.dto.friends.DetailedFriendDTO;
 import com.ultracards.gateway.dto.friends.FriendDTO;
+import com.ultracards.gateway.dto.friends.FriendPersistedStatsDTO;
 import com.ultracards.gateway.dto.friends.FriendPlayCountDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestStatusDTO;
 import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.server.controllers.errors.ApiExceptionHandler;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.friends.FriendService;
@@ -26,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -77,6 +81,47 @@ class FriendControllerTest {
                 .andExpect(jsonPath("$[0].playedTogetherByGameType[0].gameType").value("Briskula"));
 
         verify(friendService).getFriends(user);
+    }
+
+    @Test
+    void returnsDetailedFriendForCurrentUser() throws Exception {
+        var user = user(1L, "User");
+        var friendRelationId = UUID.randomUUID();
+        var chatId = UUID.randomUUID();
+        var friend = new FriendDTO(
+                friendRelationId,
+                chatId,
+                new GamePlayerDTO("Friend", 2L),
+                UserPresenceStatusDTO.ONLINE,
+                7,
+                List.of(new FriendPlayCountDTO(GameTypeDTO.Briskula, 7))
+        );
+        var stats = new FriendPersistedStatsDTO(
+                GameTypeDTO.Briskula,
+                new BriskulaGameConfigDTO(4, 3, true, null),
+                "WITH_TEAMMATE",
+                2L,
+                "Friend",
+                3,
+                2,
+                Instant.parse("2026-06-02T10:00:00Z")
+        );
+        when(friendService.getDetailedFriend(user, 2L))
+                .thenReturn(new DetailedFriendDTO(friend, Map.of(GameTypeDTO.Briskula, List.of(stats))));
+
+        mockMvc.perform(get("/api/friends/{friendUserId}/details", 2L).with(authentication(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.friend.user.id").value(2))
+                .andExpect(jsonPath("$.friend.chatId").value(chatId.toString()))
+                .andExpect(jsonPath("$.friend.totalPlayedTogether").value(7))
+                .andExpect(jsonPath("$.persistedStatsByGameType.Briskula[0].gameType").value("Briskula"))
+                .andExpect(jsonPath("$.persistedStatsByGameType.Briskula[0].gameConfig.numberOfPlayers").value(4))
+                .andExpect(jsonPath("$.persistedStatsByGameType.Briskula[0].gameConfig.cardsInHandNum").value(3))
+                .andExpect(jsonPath("$.persistedStatsByGameType.Briskula[0].gameConfig.teamsEnabled").value(true))
+                .andExpect(jsonPath("$.persistedStatsByGameType.Briskula[0].matchupType").value("WITH_TEAMMATE"))
+                .andExpect(jsonPath("$.persistedStatsByGameType.Briskula[0].played").value(3));
+
+        verify(friendService).getDetailedFriend(user, 2L);
     }
 
     @Test

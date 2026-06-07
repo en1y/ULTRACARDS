@@ -662,12 +662,49 @@ async function refreshSessions({ clearStatus = true } = {}) {
 }
 
 function gameDisplayName(gameType) {
+    if (typeof window.getGameTypeDisplayName === 'function') {
+        return window.getGameTypeDisplayName(gameType);
+    }
     return String(gameType || '')
         .toLowerCase()
         .split('_')
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ') || 'Unknown game';
+}
+
+function gameConfigKey(config, gameType = 'Briskula') {
+    if (typeof window.resolveGameConfigKey === 'function') {
+        return window.resolveGameConfigKey(gameType, config);
+    }
+    if (!config) {
+        return '';
+    }
+    if (typeof config === 'string') {
+        return config;
+    }
+    return '';
+}
+
+function gameConfigDisplayName(config, gameType = 'Briskula') {
+    if (typeof window.getGameConfigDisplayName === 'function') {
+        return window.getGameConfigDisplayName(gameType, config);
+    }
+    if (!config || typeof config === 'string') {
+        return gameDisplayName(config);
+    }
+
+    const key = gameConfigKey(config, gameType);
+    if (key) {
+        return gameDisplayName(key);
+    }
+
+    const players = Number(config.numberOfPlayers);
+    const cards = Number(config.cardsInHandNum);
+    if (Number.isFinite(players) && Number.isFinite(cards)) {
+        return `${players} players, ${cards} cards${config.teamsEnabled ? ', teams' : ''}`;
+    }
+    return 'Game config';
 }
 
 function normalizeGameStats(stats) {
@@ -681,8 +718,8 @@ function normalizeGameStats(stats) {
 }
 
 function compareStatsEntries(a, b, sortKey = detailedStatsFilters.sort) {
-    const [aType, aStats] = Array.isArray(a) ? a : [a.gameConfig, a];
-    const [bType, bStats] = Array.isArray(b) ? b : [b.gameConfig, b];
+    const [aType, aStats] = Array.isArray(a) ? a : [gameConfigKey(a.gameConfig), a];
+    const [bType, bStats] = Array.isArray(b) ? b : [gameConfigKey(b.gameConfig), b];
     const aNormalized = normalizeGameStats(aStats);
     const bNormalized = normalizeGameStats(bStats);
 
@@ -759,7 +796,7 @@ function renderMatchupRows(matchups, emptyText) {
             return `
                 <tr>
                     <td>${escapeHtml(matchupLabel(matchup))}</td>
-                    <td>${escapeHtml(gameDisplayName(matchup.gameConfig))}</td>
+                    <td>${escapeHtml(gameConfigDisplayName(matchup.gameConfig))}</td>
                     <td>${stats.played}</td>
                     <td>${stats.wins}</td>
                     <td>${stats.losses}</td>
@@ -810,15 +847,16 @@ function collectBriskulaModes(briskulaStats, configStats) {
     });
 
     [...(briskulaStats.winsAgainstUser || []), ...(briskulaStats.winsWithTeammate || [])].forEach((matchup) => {
-        if (!matchup.gameConfig) {
+        const configKey = gameConfigKey(matchup.gameConfig);
+        if (!configKey) {
             return;
         }
 
-        const current = lastPlayedTime(modeMap.get(matchup.gameConfig));
+        const current = lastPlayedTime(modeMap.get(configKey));
         if (lastPlayedTime(matchup.lastPlayedAt) > current) {
-            modeMap.set(matchup.gameConfig, matchup.lastPlayedAt || null);
-        } else if (!modeMap.has(matchup.gameConfig)) {
-            modeMap.set(matchup.gameConfig, matchup.lastPlayedAt || null);
+            modeMap.set(configKey, matchup.lastPlayedAt || null);
+        } else if (!modeMap.has(configKey)) {
+            modeMap.set(configKey, matchup.lastPlayedAt || null);
         }
     });
 
@@ -902,7 +940,7 @@ function bindMatchupControls(container) {
 function filterMatchupsByControls(matchups) {
     const userFilter = detailedStatsFilters.user.trim().toLowerCase();
     return (Array.isArray(matchups) ? matchups : [])
-        .filter((matchup) => !detailedStatsFilters.gameConfig || matchup.gameConfig === detailedStatsFilters.gameConfig)
+        .filter((matchup) => !detailedStatsFilters.gameConfig || gameConfigKey(matchup.gameConfig) === detailedStatsFilters.gameConfig)
         .filter((matchup) => !userFilter || matchupLabel(matchup).toLowerCase().includes(userFilter));
 }
 
@@ -1006,6 +1044,77 @@ function renderFriendPlayCounts(friend) {
             ${escapeHtml(gameDisplayName(item.gameType || item.gameConfig || 'Game'))}: ${escapeHtml(item.playedTogether ?? item.played ?? item.count ?? 0)}
         </span>
     `).join('');
+}
+
+function friendMatchupTypeLabel(value) {
+    if (value === 'WITH_TEAMMATE') {
+        return 'With teammate';
+    }
+    if (value === 'AGAINST_USER') {
+        return 'Against user';
+    }
+    return String(value || 'Matchup');
+}
+
+function renderDetailedFriendStats(detailedFriend) {
+    const statsByGameType = detailedFriend?.persistedStatsByGameType || {};
+    const entries = Object.entries(statsByGameType)
+        .flatMap(([gameType, stats]) => (Array.isArray(stats) ? stats : []).map((stat) => ({ gameType, stat })))
+        .sort((left, right) => compareStatsEntries(left.stat, right.stat, 'recent'));
+
+    if (!entries.length) {
+        return `
+            <section class="profile-friends-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="section-kicker">Together</p>
+                        <h2>Persisted stats</h2>
+                    </div>
+                </div>
+                <article class="profile-session-card profile-session-card--empty">
+                    <p>No persisted friend matchup stats yet.</p>
+                </article>
+            </section>
+        `;
+    }
+
+    return `
+        <section class="profile-friends-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Together</p>
+                    <h2>Persisted stats</h2>
+                </div>
+            </div>
+            <div class="profile-game-grid">
+                ${entries.map(({ gameType, stat }) => {
+                    const normalized = normalizeGameStats(stat);
+                    return `
+                        <article class="profile-game-card profile-game-card--config">
+                            <span>${escapeHtml(gameDisplayName(gameType))} - ${escapeHtml(gameConfigDisplayName(stat.gameConfig, stat.gameType || gameType))}</span>
+                            <div class="profile-stat-line">
+                                <strong>${normalized.played}</strong>
+                                <small>played</small>
+                            </div>
+                            <div class="profile-stat-line">
+                                <strong>${normalized.wins}</strong>
+                                <small>won</small>
+                            </div>
+                            <div class="profile-stat-line">
+                                <strong>${normalized.losses}</strong>
+                                <small>lost</small>
+                            </div>
+                            <div class="profile-win-rate" aria-label="${normalized.winRate}% win rate">
+                                <span style="width: ${normalized.winRate}%"></span>
+                            </div>
+                            <p>${normalized.winRate}% win rate - ${escapeHtml(friendMatchupTypeLabel(stat.matchupType))}</p>
+                            <small class="profile-last-played">${escapeHtml(formatLastPlayedLabel(stat.lastPlayedAt))}</small>
+                        </article>
+                    `;
+                }).join('')}
+            </div>
+        </section>
+    `;
 }
 
 function renderFriendSection(title, friends, emptyText, blocked = false) {
@@ -1212,7 +1321,7 @@ function initialiseFriendProfileModal() {
     });
 }
 
-function renderFriendProfile(profile) {
+function renderFriendProfile(profile, detailedFriend = null) {
     const title = document.getElementById('friend-profile-title');
     const content = document.getElementById('friend-profile-content');
     if (!content) {
@@ -1265,6 +1374,7 @@ function renderFriendProfile(profile) {
                 `}
             </div>
         </section>
+        ${renderDetailedFriendStats(detailedFriend)}
     `;
 }
 
@@ -1283,17 +1393,25 @@ async function openFriendProfile(friendId) {
     overlay.classList.add('active');
 
     try {
-        const response = await fetch(`/api/users/${encodeURIComponent(friendId)}/profile`, {
-            method: 'GET',
-            credentials: 'include',
-            cache: 'no-store'
-        });
+        const [profileResponse, detailsResponse] = await Promise.all([
+            fetch(`/api/users/${encodeURIComponent(friendId)}/profile`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store'
+            }),
+            fetch(`/api/friends/${encodeURIComponent(friendId)}/details`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store'
+            }).catch(() => null)
+        ]);
 
-        if (!response.ok) {
-            throw new Error(`Friend profile failed: ${response.status}`);
+        if (!profileResponse.ok) {
+            throw new Error(`Friend profile failed: ${profileResponse.status}`);
         }
 
-        renderFriendProfile(await response.json());
+        const detailedFriend = detailsResponse?.ok ? await detailsResponse.json() : null;
+        renderFriendProfile(await profileResponse.json(), detailedFriend);
     } catch (error) {
         console.error(error.message);
         content.innerHTML = '<p class="section-copy">Unable to load this profile.</p>';

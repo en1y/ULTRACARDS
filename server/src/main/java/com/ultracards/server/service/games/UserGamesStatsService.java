@@ -1,10 +1,13 @@
 package com.ultracards.server.service.games;
 
+import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.gateway.dto.auth.BriskulaMatchupStatsDTO;
 import com.ultracards.gateway.dto.auth.DetailedProfileStatsDTO;
 import com.ultracards.gateway.dto.auth.GameStatsDTO;
 import com.ultracards.gateway.dto.auth.UserBriskulaStatsDTO;
 import com.ultracards.gateway.dto.auth.UserGamesStatsDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.gamestats.BriskulaMatchupStats;
 import com.ultracards.server.entity.games.gamestats.GameStats;
@@ -116,12 +119,23 @@ public class UserGamesStatsService {
     private BriskulaMatchupStatsDTO toBriskulaMatchupStatsDTO(BriskulaMatchupStats stats) {
         var relatedUser = userRepository.findById(stats.getRelatedUserId()).orElse(null);
         return new BriskulaMatchupStatsDTO(
-                stats.getGameConfig(),
+                GameTypeDTO.Briskula,
+                toBriskulaGameConfigDTO(stats.getGameConfig()),
                 stats.getRelatedUserId(),
                 relatedUser != null ? relatedUser.getUsername() : null,
                 stats.getPlayed(),
                 stats.getWins(),
                 stats.getLastPlayedAt()
+        );
+    }
+
+    private BriskulaGameConfigDTO toBriskulaGameConfigDTO(String gameConfig) {
+        var config = BriskulaGameConfig.valueOf(gameConfig);
+        return new BriskulaGameConfigDTO(
+                config.getNumberOfPlayers(),
+                config.getCardsInHandNum(),
+                config.areTeamsEnabled(),
+                null
         );
     }
 }

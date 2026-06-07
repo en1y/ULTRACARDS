@@ -86,6 +86,98 @@ function getGameTypeSettingId(gameType, settingKey) {
     return Number.isInteger(setting?.settingId) ? setting.settingId : null;
 }
 
+function titleCaseGameName(value) {
+    return String(value || '')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ') || 'Unknown game';
+}
+
+function getGameTypeDisplayName(gameType) {
+    return titleCaseGameName(gameType);
+}
+
+function resolveBriskulaGameConfigKey(config) {
+    if (!config) {
+        return '';
+    }
+    if (typeof config === 'string') {
+        return config;
+    }
+
+    const players = Number(config.numberOfPlayers);
+    const cards = Number(config.cardsInHandNum);
+    const teams = Boolean(config.teamsEnabled);
+    if (players === 2 && cards === 3 && !teams) {
+        return 'TWO_PLAYERS';
+    }
+    if (players === 2 && cards === 4 && !teams) {
+        return 'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH';
+    }
+    if (players === 3 && cards === 3 && !teams) {
+        return 'THREE_PLAYERS';
+    }
+    if (players === 4 && cards === 3 && teams) {
+        return 'FOUR_PLAYERS_WITH_TEAMS';
+    }
+    if (players === 4 && cards === 3 && !teams) {
+        return 'FOUR_PLAYERS_NO_TEAMS';
+    }
+    return '';
+}
+
+function resolveBriskulaGameSettingKey(config) {
+    switch (resolveBriskulaGameConfigKey(config)) {
+        case 'TWO_PLAYERS':
+            return 'p2';
+        case 'TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH':
+            return 'p2c4';
+        case 'THREE_PLAYERS':
+            return 'p3';
+        case 'FOUR_PLAYERS_WITH_TEAMS':
+            return 'p4teams';
+        case 'FOUR_PLAYERS_NO_TEAMS':
+            return 'p4';
+        default:
+            return '';
+    }
+}
+
+function resolveGameConfigKey(gameType, config) {
+    if (String(gameType || '').toLowerCase() === 'briskula') {
+        return resolveBriskulaGameConfigKey(config);
+    }
+    return typeof config === 'string' ? config : '';
+}
+
+function getGameConfigDisplayName(gameType, config) {
+    const normalizedGameType = String(gameType || '').toLowerCase();
+    if (normalizedGameType === 'briskula') {
+        const settingKey = resolveBriskulaGameSettingKey(config);
+        const setting = getGameTypeSetting('briskula', settingKey);
+        if (setting?.ui_text) {
+            return setting.ui_text;
+        }
+    }
+
+    const configKey = resolveGameConfigKey(gameType, config);
+    if (configKey) {
+        return titleCaseGameName(configKey);
+    }
+
+    if (config && typeof config === 'object') {
+        const players = Number(config.numberOfPlayers);
+        const cards = Number(config.cardsInHandNum);
+        if (Number.isFinite(players) && Number.isFinite(cards)) {
+            return `${players} players, ${cards} cards${config.teamsEnabled ? ', teams' : ''}`;
+        }
+    }
+    return 'Game config';
+}
+
 function resolveLobbyGameSettingKey(lobby) {
     if (!lobby) {
         return '';

@@ -1,6 +1,8 @@
 package com.ultracards.server.service.friends;
 
 import com.ultracards.gateway.dto.friends.UserPresenceStatusDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.friends.FriendBlockEntity;
 import com.ultracards.server.entity.friends.FriendRequestEntity;
@@ -195,6 +197,81 @@ class FriendServiceTest {
         assertThat(friends.getFirst().getTotalPlayedTogether()).isEqualTo(4);
         assertThat(friends.getFirst().getChatId()).isNotNull();
         assertThat(friends.getFirst().getPresenceStatus()).isEqualTo(UserPresenceStatusDTO.IN_GAME);
+    }
+
+    @Test
+    void returnsDetailedFriendWithPersistedStatsByGameType() {
+        var user = user(1L, "User");
+        var friend = user(2L, "Friend");
+        var otherUser = user(3L, "Other");
+        var friendRelation = friendRelation(UUID.randomUUID(), user, friend);
+        var chat = chat(UUID.randomUUID(), friendRelation);
+        var stats = new UserBriskulaStats(user);
+        stats.getWinsAgainstUser().add(new BriskulaMatchupStats(
+                "TWO_PLAYERS",
+                friend.getId(),
+                4,
+                2,
+                Instant.parse("2026-06-01T10:00:00Z")
+        ));
+        stats.getWinsWithTeammate().add(new BriskulaMatchupStats(
+                "FOUR_PLAYERS_WITH_TEAMS",
+                friend.getId(),
+                3,
+                3,
+                Instant.parse("2026-06-02T10:00:00Z")
+        ));
+        stats.getWinsAgainstUser().add(new BriskulaMatchupStats(
+                "TWO_PLAYER",
+                otherUser.getId(),
+                9,
+                1,
+                Instant.parse("2026-06-03T10:00:00Z")
+        ));
+
+        when(userRepository.findById(friend.getId())).thenReturn(Optional.of(friend));
+        when(friendRelationRepository.findByNormalizedPair(user.getId(), friend.getId())).thenReturn(Optional.of(friendRelation));
+        when(userBriskulaStatsRepository.findByUser(user)).thenReturn(Optional.of(stats));
+        when(userPresenceService.getStatus(friend)).thenReturn(UserPresenceStatusDTO.ONLINE);
+        when(chatService.createFriendChat(friendRelation)).thenReturn(chat);
+
+        var detailedFriend = friendService.getDetailedFriend(user, friend.getId());
+
+        assertThat(detailedFriend.getFriend().getUser().getId()).isEqualTo(friend.getId());
+        assertThat(detailedFriend.getFriend().getChatId()).isEqualTo(chat.getId());
+        assertThat(detailedFriend.getFriend().getTotalPlayedTogether()).isEqualTo(7);
+        assertThat(detailedFriend.getFriend().getPlayedTogetherByGameType())
+                .singleElement()
+                .satisfies(count -> {
+                    assertThat(count.getGameType()).isEqualTo(GameTypeDTO.Briskula);
+                    assertThat(count.getPlayedTogether()).isEqualTo(7);
+                });
+        assertThat(detailedFriend.getPersistedStatsByGameType()).containsOnlyKeys(GameTypeDTO.Briskula);
+        assertThat(detailedFriend.getPersistedStatsByGameType().get(GameTypeDTO.Briskula))
+                .hasSize(2)
+                .satisfies(persistedStats -> {
+                    var teammateStats = persistedStats.getFirst();
+                    assertThat(teammateStats.getGameType()).isEqualTo(GameTypeDTO.Briskula);
+                    assertThat(teammateStats.getGameConfig()).isInstanceOf(BriskulaGameConfigDTO.class);
+                    var teammateConfig = (BriskulaGameConfigDTO) teammateStats.getGameConfig();
+                    assertThat(teammateConfig.getNumberOfPlayers()).isEqualTo(4);
+                    assertThat(teammateConfig.getCardsInHandNum()).isEqualTo(3);
+                    assertThat(teammateConfig.getTeamsEnabled()).isTrue();
+                    assertThat(teammateStats.getMatchupType()).isEqualTo("WITH_TEAMMATE");
+                    assertThat(teammateStats.getPlayed()).isEqualTo(3);
+                    assertThat(teammateStats.getWins()).isEqualTo(3);
+
+                    var opponentStats = persistedStats.get(1);
+                    assertThat(opponentStats.getGameType()).isEqualTo(GameTypeDTO.Briskula);
+                    assertThat(opponentStats.getGameConfig()).isInstanceOf(BriskulaGameConfigDTO.class);
+                    var opponentConfig = (BriskulaGameConfigDTO) opponentStats.getGameConfig();
+                    assertThat(opponentConfig.getNumberOfPlayers()).isEqualTo(2);
+                    assertThat(opponentConfig.getCardsInHandNum()).isEqualTo(3);
+                    assertThat(opponentConfig.getTeamsEnabled()).isFalse();
+                    assertThat(opponentStats.getMatchupType()).isEqualTo("AGAINST_USER");
+                    assertThat(opponentStats.getPlayed()).isEqualTo(4);
+                    assertThat(opponentStats.getWins()).isEqualTo(2);
+                });
     }
 
     @Test

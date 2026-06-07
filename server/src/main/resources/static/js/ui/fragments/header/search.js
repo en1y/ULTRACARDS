@@ -368,7 +368,40 @@
       return { played: safePlayed, wins: safeWins, losses, winRate };
     };
 
-    const gameDisplayName = (gameType) => String(gameType || 'Game');
+    const fallbackDisplayName = (value) => String(value || 'Game')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ') || 'Game';
+
+    const gameDisplayName = (gameType) => {
+      if (typeof window.getGameTypeDisplayName === 'function') {
+        return window.getGameTypeDisplayName(gameType);
+      }
+      return fallbackDisplayName(gameType);
+    };
+
+    const gameConfigDisplayName = (gameType, config) => {
+      if (typeof window.getGameConfigDisplayName === 'function') {
+        return window.getGameConfigDisplayName(gameType, config);
+      }
+      if (!config || typeof config === 'string') {
+        return fallbackDisplayName(config);
+      }
+      return 'Game config';
+    };
+
+    const friendMatchupTypeLabel = (value) => {
+      if (value === 'WITH_TEAMMATE') {
+        return 'With teammate';
+      }
+      if (value === 'AGAINST_USER') {
+        return 'Against user';
+      }
+      return String(value || 'Matchup');
+    };
 
     const createProfileModal = () => {
       const overlay = document.createElement('div');
@@ -510,7 +543,74 @@
       return card;
     };
 
-    const renderProfile = async (profile) => {
+    const createDetailedFriendStatsSection = (detailedFriend) => {
+      const section = document.createElement('section');
+      section.className = 'header-user-profile-games';
+
+      const title = document.createElement('h3');
+      title.textContent = 'Together';
+      section.append(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'header-user-game-grid';
+
+      const statsByGameType = detailedFriend?.persistedStatsByGameType || {};
+      const entries = [];
+      for (const [gameType, stats] of Object.entries(statsByGameType)) {
+        if (!Array.isArray(stats)) {
+          continue;
+        }
+        for (const stat of stats) {
+          entries.push({ gameType, stat });
+        }
+      }
+
+      entries.sort((left, right) => {
+        const leftTime = left.stat?.lastPlayedAt ? new Date(left.stat.lastPlayedAt).getTime() : 0;
+        const rightTime = right.stat?.lastPlayedAt ? new Date(right.stat.lastPlayedAt).getTime() : 0;
+        return rightTime - leftTime || Number(right.stat?.played ?? 0) - Number(left.stat?.played ?? 0);
+      });
+
+      if (!entries.length) {
+        grid.append(createProfileState('No persisted friend matchup stats yet.'));
+      } else {
+        for (const { gameType, stat } of entries) {
+          const normalized = normalizeGameStats(stat);
+          const card = document.createElement('article');
+          card.className = 'header-user-game-card';
+
+          const cardTitle = document.createElement('strong');
+          cardTitle.textContent = `${gameDisplayName(gameType)} - ${gameConfigDisplayName(stat?.gameType || gameType, stat?.gameConfig)}`;
+
+          const statsLine = document.createElement('div');
+          statsLine.className = 'header-user-game-stats';
+          statsLine.append(
+              createStatTile('played', normalized.played),
+              createStatTile('won', normalized.wins),
+              createStatTile('lost', normalized.losses)
+          );
+
+          const rate = document.createElement('div');
+          rate.className = 'header-user-win-rate';
+          rate.setAttribute('aria-label', `${normalized.winRate}% win rate`);
+
+          const bar = document.createElement('span');
+          bar.style.width = `${normalized.winRate}%`;
+          rate.append(bar);
+
+          const footer = document.createElement('small');
+          footer.textContent = `${normalized.winRate}% win rate - ${friendMatchupTypeLabel(stat?.matchupType)} - ${formatLastPlayedLabel(stat?.lastPlayedAt)}`;
+
+          card.append(cardTitle, statsLine, rate, footer);
+          grid.append(card);
+        }
+      }
+
+      section.append(grid);
+      return section;
+    };
+
+    const renderProfile = async (profile, detailedFriend = null, loadedProfileFriendAction = null) => {
       const modal = ensureProfileModal();
       modal.title.textContent = profile?.username || 'User profile';
 
@@ -540,7 +640,7 @@
 
       summary.append(avatar, identity);
 
-      const profileFriendAction = await getProfileFriendAction(profile);
+      const profileFriendAction = loadedProfileFriendAction ?? await getProfileFriendAction(profile);
       if (profileFriendAction) {
         const actionStatus = document.createElement('small');
         actionStatus.className = 'header-search-action-status';
@@ -592,7 +692,31 @@
 
       games.append(grid);
       root.append(summary, totals, games);
+      if (detailedFriend) {
+        root.append(createDetailedFriendStatsSection(detailedFriend));
+      }
       setProfileModalContent(root);
+    };
+
+    const loadDetailedFriendProfile = async (profile, profileFriendAction) => {
+      if (profileFriendAction !== 'remove' || !profile?.id) {
+        return null;
+      }
+
+      try {
+        const response = await fetch(`/api/friends/${encodeURIComponent(profile.id)}/details`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        if (!response.ok) {
+          throw new Error(`Detailed friend failed: ${response.status}`);
+        }
+        return response.json();
+      } catch (error) {
+        console.warn('Unable to load detailed friend stats for search profile', error);
+        return null;
+      }
     };
 
     const openUserProfile = async (user) => {
@@ -615,7 +739,10 @@
           throw new Error(`Profile failed: ${response.status}`);
         }
 
-        await renderProfile(await response.json());
+        const profile = await response.json();
+        const profileFriendAction = await getProfileFriendAction(profile);
+        const detailedFriend = await loadDetailedFriendProfile(profile, profileFriendAction);
+        await renderProfile(profile, detailedFriend, profileFriendAction);
       } catch (error) {
         console.error('Unable to load user profile', error);
         setProfileModalContent(createProfileState('Unable to load this profile.', 'error'));

@@ -1,21 +1,20 @@
-package com.ultracards.gateway.dto.auth;
+package com.ultracards.gateway.dto.friends;
 
 import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.Instant;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@Data
 @AllArgsConstructor
-public class BriskulaMatchupStatsDTO {
+@NoArgsConstructor
+public class FriendPersistedStatsDTO {
     private GameTypeDTO gameType;
     private GameConfigDTO gameConfig;
+    private String matchupType;
     private Long relatedUserId;
     private String relatedUsername;
     private int played;

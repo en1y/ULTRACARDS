@@ -1,5 +1,6 @@
 package com.ultracards.gateway.service;
 
+import com.ultracards.gateway.dto.friends.DetailedFriendDTO;
 import com.ultracards.gateway.dto.friends.FriendDTO;
 import com.ultracards.gateway.dto.friends.FriendRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,17 @@ public class FriendService {
                 HttpMethod.GET,
                 new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
                 new ParameterizedTypeReference<List<FriendDTO>>() {}
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
+    }
+
+    public DetailedFriendDTO getDetailedFriend(Long friendUserId) {
+        var response = restTemplate.exchange(
+                serverUrl + "api/friends/" + friendUserId + "/details",
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                DetailedFriendDTO.class
         );
         tokenManager.updateToken(tokenHolder, response);
         return response.getBody();
