@@ -347,6 +347,23 @@ function formatLastPlayedLabel(value) {
     return value ? `Last played on ${formatLastPlayedAt(value)}` : 'Never played';
 }
 
+function formatHistoryDate(value) {
+    if (!value) {
+        return 'Unknown time';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return 'Unknown time';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        hour12: false
+    }).format(date);
+}
+
 function formatInitialLastPlayedLabels() {
     document.querySelectorAll('[data-last-played-at]').forEach((element) => {
         element.textContent = formatLastPlayedLabel(element.dataset.lastPlayedAt);
@@ -391,6 +408,11 @@ function escapeHtml(value) {
 
 function iconHtml(icon) {
     return `<img class="uc-icon" data-icon="${escapeHtml(icon)}" src="/pics/light/${escapeHtml(icon)}.svg" alt="" aria-hidden="true">`;
+}
+
+function isTypingTarget(target) {
+    return target instanceof HTMLElement
+        && (target.matches('input, textarea, select') || target.isContentEditable);
 }
 
 function initialiseTabs() {
@@ -468,6 +490,42 @@ function initialiseTabs() {
                 switching = false;
             }, 280);
         });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isTypingTarget(event.target)) {
+            event.target.blur();
+            return;
+        }
+
+        if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || isTypingTarget(event.target)) {
+            return;
+        }
+        if (document.getElementById('friend-profile-modal')?.classList.contains('active')) {
+            return;
+        }
+        if (window.ucHeader?.isUserProfilePopupOpen?.()) {
+            return;
+        }
+
+        const activeIndex = tabs.findIndex((tab) => tab.classList.contains('is-active'));
+        if (activeIndex < 0) {
+            return;
+        }
+
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (activeIndex + direction + tabs.length) % tabs.length;
+        const selected = tabs[nextIndex].getAttribute('data-profile-tab');
+        updateHash(selected);
+        setActiveTabState(selected);
+        if (selected === 'sessions') {
+            refreshSessions();
+        } else if (selected === 'stats') {
+            refreshDetailedStats();
+        } else if (selected === 'friends') {
+            refreshFriends();
+        }
     });
 
     const initialTab = getHashTab();
@@ -1117,6 +1175,199 @@ function renderDetailedFriendStats(detailedFriend) {
     `;
 }
 
+function normalizeHistoryPlayer(value) {
+    if (!value) {
+        return { name: 'Unknown player', id: 0 };
+    }
+    if (typeof value === 'object') {
+        return value;
+    }
+
+    try {
+        return JSON.parse(value);
+    } catch {
+        const text = String(value);
+        const nameMatch = text.match(/name=([^,\)]*)/i);
+        const idMatch = text.match(/id=([^,\)]*)/i) || text.match(/(\d+)/);
+        return {
+            name: nameMatch ? nameMatch[1].trim() : text,
+            id: idMatch ? idMatch[1].trim() : 0
+        };
+    }
+}
+
+function historyPlayerId(player) {
+    return Number(normalizeHistoryPlayer(player).id);
+}
+
+function historyPlayerName(player) {
+    return normalizeHistoryPlayer(player).name || 'Unknown player';
+}
+
+function historyGameIncludesUser(game, userId) {
+    const normalizedUserId = Number(userId);
+    if (!Number.isFinite(normalizedUserId)) {
+        return false;
+    }
+    return (game?.playersOrder || []).some((player) => historyPlayerId(player) === normalizedUserId);
+}
+
+function historyUserWonGame(game, userId) {
+    const normalizedUserId = Number(userId);
+    if (!Number.isFinite(normalizedUserId)) {
+        return false;
+    }
+    return (game?.winners || []).some((winner) => historyPlayerId(winner) === normalizedUserId);
+}
+
+function renderFriendHistoryPlayers(players, game) {
+    return (players || []).map((player) => {
+        const winner = historyUserWonGame(game, historyPlayerId(player));
+        return `<span class="profile-friend-history-player ${winner ? 'is-winner' : ''}">${escapeHtml(historyPlayerName(player))}</span>`;
+    }).join('');
+}
+
+function renderFriendHistoryCard(game, profile) {
+    const won = historyUserWonGame(game, profile?.id);
+    return `
+        <article class="profile-friend-history-card">
+            <div class="profile-friend-history-head">
+                <div>
+                    <strong>${escapeHtml(game?.name || gameDisplayName(game?.gameType || 'Briskula'))}</strong>
+                    <small>${escapeHtml(formatHistoryDate(game?.endedAt || game?.createdAt))} - ${escapeHtml(gameConfigDisplayName(game?.gameConfig, game?.gameType || 'Briskula'))}</small>
+                </div>
+                <span class="profile-friend-history-result ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span>
+            </div>
+            <div class="profile-friend-history-row">
+                <span>Players</span>
+                <div class="profile-friend-history-players">${renderFriendHistoryPlayers(game?.playersOrder || [], game)}</div>
+            </div>
+            <div class="profile-friend-history-footer">
+                <p>Winners: ${escapeHtml((game?.winners || []).map(historyPlayerName).join(', ') || 'No winner recorded')}</p>
+                <a class="btn" href="/history/${encodeURIComponent(game?.id || '')}">
+                    ${iconHtml('history')}
+                    <span>Replay</span>
+                </a>
+            </div>
+        </article>
+    `;
+}
+
+async function loadFriendProfileHistory(profile) {
+    const panel = document.querySelector('[data-friend-profile-history-panel]');
+    if (!panel) {
+        return;
+    }
+
+    panel.innerHTML = '<p class="section-copy">Loading history...</p>';
+    try {
+        const sharedGames = [];
+        let offset = 0;
+        for (let page = 0; page < 5; page += 1) {
+            const params = new URLSearchParams({
+                offset: String(offset),
+                result: 'both',
+                timeSort: 'latest'
+            });
+            const response = await fetch(`/api/games/history?${params}`, {
+                credentials: 'include',
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                throw new Error(`History failed: ${response.status}`);
+            }
+
+            const games = await response.json();
+            if (!Array.isArray(games) || games.length === 0) {
+                break;
+            }
+            for (const game of games) {
+                if (historyGameIncludesUser(game, profile?.id)) {
+                    sharedGames.push(game);
+                }
+            }
+            if (games.length < 20 || sharedGames.length >= 20) {
+                break;
+            }
+            offset += 20;
+        }
+
+        panel.innerHTML = `
+            <section class="profile-friend-history-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="section-kicker">Past games</p>
+                        <h2>History</h2>
+                    </div>
+                </div>
+                <div class="profile-friend-history-list">
+                    ${sharedGames.length ? sharedGames.slice(0, 20).map((game) => renderFriendHistoryCard(game, profile)).join('') : `
+                        <article class="profile-session-card profile-session-card--empty">
+                            <p>No shared past games found.</p>
+                        </article>
+                    `}
+                </div>
+            </section>
+        `;
+        window.syncThemeUi?.();
+    } catch (error) {
+        console.error(error.message);
+        panel.innerHTML = '<p class="section-copy">History could not be loaded.</p>';
+    }
+}
+
+function bindFriendProfileTabs(profile) {
+    const content = document.getElementById('friend-profile-content');
+    if (!content) {
+        return;
+    }
+
+    const tabs = content.querySelectorAll('[data-friend-profile-tab]');
+    const statsPanel = content.querySelector('[data-friend-profile-stats-panel]');
+    const historyPanel = content.querySelector('[data-friend-profile-history-panel]');
+    let historyLoaded = false;
+
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const target = tab.getAttribute('data-friend-profile-tab');
+            const showHistory = target === 'history';
+            tabs.forEach((item) => {
+                const active = item === tab;
+                item.classList.toggle('is-active', active);
+                item.setAttribute('aria-selected', String(active));
+            });
+            if (statsPanel) {
+                statsPanel.hidden = showHistory;
+            }
+            if (historyPanel) {
+                historyPanel.hidden = !showHistory;
+            }
+            if (showHistory && !historyLoaded) {
+                historyLoaded = true;
+                loadFriendProfileHistory(profile);
+            }
+        });
+    });
+
+    content.addEventListener('keydown', (event) => {
+        if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || isTypingTarget(event.target)) {
+            return;
+        }
+
+        const tabList = Array.from(tabs);
+        const activeIndex = tabList.findIndex((tab) => tab.classList.contains('is-active'));
+        if (activeIndex < 0) {
+            return;
+        }
+
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (activeIndex + direction + tabList.length) % tabList.length;
+        tabList[nextIndex].click();
+        tabList[nextIndex].focus({ preventScroll: true });
+    });
+}
+
 function renderFriendSection(title, friends, emptyText, blocked = false) {
     const content = friends.length
         ? friends.map((friend) => {
@@ -1349,33 +1600,42 @@ function renderFriendProfile(profile, detailedFriend = null) {
                 <p class="section-copy">Roles: ${escapeHtml((profile?.roles || ['USER']).join(', '))}</p>
             </div>
         </section>
-        <section class="profile-history-stats">
-            <div class="profile-summary-card profile-summary-stack">
-                <span class="summary-label">Games played</span>
-                <span class="summary-value">${escapeHtml(profile?.gamesPlayed ?? 0)}</span>
-            </div>
-            <div class="profile-summary-card profile-summary-stack">
-                <span class="summary-label">Games won</span>
-                <span class="summary-value">${escapeHtml(profile?.gamesWon ?? 0)}</span>
-            </div>
-        </section>
-        <section class="profile-friends-section">
-            <div class="section-heading">
-                <div>
-                    <p class="section-kicker">Game stats</p>
-                    <h2>History</h2>
+        <div class="profile-friend-profile-tabs" role="tablist" aria-label="Friend profile sections">
+            <button class="profile-friend-profile-tab is-active" type="button" role="tab" aria-selected="true" data-friend-profile-tab="stats">Stats</button>
+            <button class="profile-friend-profile-tab" type="button" role="tab" aria-selected="false" data-friend-profile-tab="history">History</button>
+        </div>
+        <div class="profile-friend-profile-panel" data-friend-profile-stats-panel>
+            <section class="profile-history-stats">
+                <div class="profile-summary-card profile-summary-stack">
+                    <span class="summary-label">Games played</span>
+                    <span class="summary-value">${escapeHtml(profile?.gamesPlayed ?? 0)}</span>
                 </div>
-            </div>
-            <div class="profile-game-grid">
-                ${gameCards || `
-                    <article class="profile-session-card profile-session-card--empty">
-                        <p>No game stats found for this user.</p>
-                    </article>
-                `}
-            </div>
-        </section>
-        ${renderDetailedFriendStats(detailedFriend)}
+                <div class="profile-summary-card profile-summary-stack">
+                    <span class="summary-label">Games won</span>
+                    <span class="summary-value">${escapeHtml(profile?.gamesWon ?? 0)}</span>
+                </div>
+            </section>
+            <section class="profile-friends-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="section-kicker">Game stats</p>
+                        <h2>Stats</h2>
+                    </div>
+                </div>
+                <div class="profile-game-grid">
+                    ${gameCards || `
+                        <article class="profile-session-card profile-session-card--empty">
+                            <p>No game stats found for this user.</p>
+                        </article>
+                    `}
+                </div>
+            </section>
+            ${renderDetailedFriendStats(detailedFriend)}
+        </div>
+        <div class="profile-friend-profile-panel" data-friend-profile-history-panel hidden></div>
     `;
+    bindFriendProfileTabs(profile);
+    content.focus({ preventScroll: true });
 }
 
 async function openFriendProfile(friendId) {
@@ -1592,7 +1852,7 @@ async function updateProfile(data) {
         gameCard.className = 'profile-game-card';
 
         const title = document.createElement('span');
-        title.textContent = gameType;
+        title.textContent = gameDisplayName(gameType);
 
         const br1 = document.createElement('br');
 

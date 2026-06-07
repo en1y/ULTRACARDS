@@ -80,15 +80,16 @@ body.friends-drawer-open .uc-header.hidden {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  padding: 0.25rem 0.6rem;
+  padding: 0.35rem 0.7rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  background: transparent;
   color: var(--color-accent);
   font-size: 1.8rem;
   font-weight: 800;
   letter-spacing: 0.03em;
   text-overflow: ellipsis;
+  transition: border-color 0.2s ease, transform 0.04s ease;
   white-space: nowrap;
 }
 
@@ -120,6 +121,15 @@ body.friends-drawer-open .uc-header.hidden {
   border-radius: 6px;
   background: color-mix(in oklab, var(--color-surface) 70%, var(--color-bg));
   box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-bg) 70%, transparent);
+}
+
+.header-search-input:focus {
+  outline: none;
+}
+
+.header-search-input:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 70%, transparent);
+  outline-offset: 2px;
 }
 
 .header-search-dropdown {
@@ -246,8 +256,8 @@ body.friends-drawer-open .uc-header.hidden {
   inset: 0;
   z-index: 2300;
   display: grid;
-  place-items: start center;
-  padding: calc(var(--header-height) + 1rem) 1rem 1rem;
+  place-items: center;
+  padding: 1rem;
   background: color-mix(in oklab, var(--color-bg) 55%, rgba(0, 0, 0, 0.35));
   backdrop-filter: blur(4px);
   opacity: 0;
@@ -267,9 +277,10 @@ body.friends-drawer-open .uc-header.hidden {
 }
 
 .header-user-profile-dialog {
-  width: min(680px, 100%);
-  height: min(760px, calc(100vh - var(--header-height) - 2rem));
-  max-height: calc(100vh - var(--header-height) - 2rem);
+  width: min(920px, 100%);
+  height: min(760px, calc(100vh - 2rem));
+  max-height: calc(100vh - 2rem);
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -312,9 +323,51 @@ body.friends-drawer-open .uc-header.hidden {
   padding: 1rem;
 }
 
+.header-user-profile-content:focus {
+  outline: none;
+}
+
 .header-user-profile-view {
   display: grid;
   gap: 1rem;
+  min-height: 0;
+}
+
+.header-user-profile-tabs {
+  display: inline-flex;
+  gap: 0.45rem;
+  padding: 0.4rem;
+}
+
+.header-user-profile-tab {
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+}
+
+.header-user-profile-tab:focus {
+  outline: none;
+}
+
+.header-user-profile-tab.is-active {
+  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface));
+  color: var(--color-accent);
+  box-shadow: none;
+}
+
+.header-user-profile-panel {
+  display: grid;
+  gap: 1rem;
+  min-height: 0;
+}
+
+.header-user-profile-panel[hidden] {
+  display: none;
 }
 
 .header-user-profile-view.is-entering > * {
@@ -379,11 +432,13 @@ body.friends-drawer-open .uc-header.hidden {
 
 .header-user-profile-stat {
   display: grid;
+  place-items: center;
   gap: 0.1rem;
   padding: 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-bg);
+  text-align: center;
 }
 
 .header-user-profile-stat strong {
@@ -399,6 +454,98 @@ body.friends-drawer-open .uc-header.hidden {
 .header-user-profile-games {
   display: grid;
   gap: 0.65rem;
+}
+
+.header-user-profile-history {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.header-user-history-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.header-user-history-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--color-surface) 58%, var(--color-bg));
+}
+
+.header-user-history-head,
+.header-user-history-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.header-user-history-head > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.header-user-history-head small,
+.header-user-history-footer p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.header-user-history-result {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.header-user-history-result.win {
+  border-color: color-mix(in oklab, var(--color-success) 42%, var(--color-border));
+  color: var(--color-success);
+}
+
+.header-user-history-row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.header-user-history-row > span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.header-user-history-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.header-user-history-player {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.header-user-history-player.is-winner {
+  border-color: color-mix(in oklab, var(--color-success) 42%, var(--color-border));
+}
+
+.header-user-history-link {
+  flex: 0 0 auto;
+  min-height: 2rem;
+  padding: 0.3rem 0.55rem;
 }
 
 .header-user-game-grid {
@@ -499,7 +646,14 @@ body.friends-drawer-open .uc-header.hidden {
 }
 
 .uc-actions .btn {
+  border-color: var(--color-border);
+  background: transparent;
+  padding: 0.6rem 0.9rem;
   white-space: nowrap;
+}
+
+.uc-actions .btn:hover {
+  border-color: var(--color-accent);
 }
 
 .header-icon-button {
@@ -508,14 +662,16 @@ body.friends-drawer-open .uc-header.hidden {
   place-items: center;
   width: 40px;
   height: 40px;
-  padding: 0;
+  padding: 4px;
   border-radius: 50%;
+  background: transparent;
   line-height: 1;
 }
 
 .header-icon-button-small {
   width: 30px;
   height: 30px;
+  padding: 3px;
   font-size: 0.85rem;
 }
 
@@ -539,8 +695,14 @@ body.friends-drawer-open .uc-header.hidden {
   flex: 0 1 14rem;
 }
 
-.notification-bell {
-  border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+.notification-bell,
+.friends-trigger {
+  border-color: var(--color-border);
+}
+
+.notification-bell:hover,
+.friends-trigger:hover {
+  border-color: var(--color-accent);
 }
 
 .notification-badge {
@@ -738,7 +900,7 @@ body.friends-drawer-open .uc-header.hidden {
 }
 
 .friends-trigger {
-  border-color: color-mix(in oklab, var(--color-success) 38%, var(--color-border));
+  border-color: var(--color-border);
 }
 
 .friends-trigger span {
@@ -985,12 +1147,14 @@ body.friends-drawer-open .uc-header.hidden {
     0 0 0 3px color-mix(in oklab, var(--color-success) 18%, transparent);
 }
 
+.friend-profile-button,
 .friend-chat-button {
   color: var(--color-text-muted);
   font-size: 1rem;
   font-weight: 900;
 }
 
+.friend-profile-button:hover,
 .friend-chat-button:hover {
   color: var(--color-text);
 }
@@ -1215,12 +1379,16 @@ body.friends-drawer-open .uc-header.hidden {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
+  padding: 0.45rem 0.7rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-surface);
+  background: transparent;
   line-height: 1;
   white-space: nowrap;
+}
+
+.profile-chip:hover {
+  border-color: var(--color-accent);
 }
 
 .profile-chip .username {
@@ -1280,6 +1448,12 @@ body.friends-drawer-open .uc-header.hidden {
 
 .menu-item.danger:hover {
   background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
+}
+
+.uc-header button:hover,
+.uc-header .btn:hover,
+.uc-header .uc-brand:hover {
+  border-color: var(--color-accent);
 }
 
 @media (max-width: 880px) {
@@ -1346,12 +1520,12 @@ body.friends-drawer-open .uc-header.hidden {
   }
 
   .header-user-profile-overlay {
-    padding: calc(var(--header-height) + 0.75rem) 0.75rem 0.75rem;
+    padding: 0.75rem;
   }
 
   .header-user-profile-dialog {
-    height: calc(100vh - var(--header-height) - 1.5rem);
-    max-height: calc(100vh - var(--header-height) - 1.5rem);
+    height: calc(100vh - 1.5rem);
+    max-height: calc(100vh - 1.5rem);
   }
 
   .header-user-profile-summary {

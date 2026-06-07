@@ -430,7 +430,22 @@
         openFriendChat(friend);
       });
 
-      actions.append(presence, chatButton);
+      const profileButton = document.createElement('button');
+      profileButton.className = 'header-icon-button header-icon-button-small friend-profile-button';
+      profileButton.type = 'button';
+      profileButton.setAttribute('aria-label', `View stats for ${friendName(friend)}`);
+      profileButton.append(createIcon('profile_icon'));
+      profileButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+          detail: {
+            id,
+            username: friendName(friend)
+          }
+        }));
+      });
+
+      actions.append(presence, profileButton, chatButton);
       row.append(main, actions);
       return row;
     };

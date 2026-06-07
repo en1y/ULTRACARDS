@@ -236,6 +236,9 @@
       }
     };
 
+    const isTypingTarget = (target) => target instanceof HTMLElement
+        && (target.matches('input, textarea, select') || target.isContentEditable);
+
     const loadFriendIds = async (force = false) => {
       if (!force && friendIdsCache) {
         return friendIdsCache;
@@ -358,6 +361,21 @@
         ? `Last played on ${formatLastPlayedAt(value)}`
         : 'Never played';
 
+    const formatHistoryDate = (value) => {
+      if (!value) {
+        return 'Unknown time';
+      }
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return 'Unknown time';
+      }
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        hour12: false
+      }).format(date);
+    };
+
     const normalizeGameStats = (stats) => {
       const played = Number(stats?.played ?? 0);
       const wins = Number(stats?.wins ?? 0);
@@ -391,6 +409,101 @@
         return fallbackDisplayName(config);
       }
       return 'Game config';
+    };
+
+    const normalizePlayer = (value) => {
+      if (!value) {
+        return { name: 'Unknown player', id: 0 };
+      }
+      if (typeof value === 'object') {
+        return value;
+      }
+
+      try {
+        return JSON.parse(value);
+      } catch {
+        const text = String(value);
+        const nameMatch = text.match(/name=([^,\)]*)/i);
+        const idMatch = text.match(/id=([^,\)]*)/i) || text.match(/(\d+)/);
+        return {
+          name: nameMatch ? nameMatch[1].trim() : text,
+          id: idMatch ? idMatch[1].trim() : 0
+        };
+      }
+    };
+
+    const playerId = (player) => Number(normalizePlayer(player).id);
+    const playerName = (player) => normalizePlayer(player).name || 'Unknown player';
+    const gameIncludesUser = (game, userId) => {
+      const normalizedUserId = Number(userId);
+      if (!Number.isFinite(normalizedUserId)) {
+        return false;
+      }
+      return (game?.playersOrder || []).some((player) => playerId(player) === normalizedUserId);
+    };
+
+    const userWonGame = (game, userId) => {
+      const normalizedUserId = Number(userId);
+      if (!Number.isFinite(normalizedUserId)) {
+        return false;
+      }
+      return (game?.winners || []).some((winner) => playerId(winner) === normalizedUserId);
+    };
+
+    const createPlayerList = (players, game = null) => {
+      const list = document.createElement('div');
+      list.className = 'header-user-history-players';
+      for (const player of players || []) {
+        const item = document.createElement('span');
+        item.className = 'header-user-history-player';
+        if (game && userWonGame(game, playerId(player))) {
+          item.classList.add('is-winner');
+        }
+        item.textContent = playerName(player);
+        list.append(item);
+      }
+      return list;
+    };
+
+    const createHistoryCard = (game, profile) => {
+      const card = document.createElement('article');
+      card.className = 'header-user-history-card';
+
+      const head = document.createElement('div');
+      head.className = 'header-user-history-head';
+
+      const titleWrap = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = game?.name || gameDisplayName(game?.gameType || 'Briskula');
+      const meta = document.createElement('small');
+      meta.textContent = `${formatHistoryDate(game?.endedAt || game?.createdAt)} - ${gameConfigDisplayName(game?.gameType || 'Briskula', game?.gameConfig)}`;
+      titleWrap.append(title, meta);
+
+      const result = document.createElement('span');
+      result.className = `header-user-history-result ${userWonGame(game, profile?.id) ? 'win' : 'loss'}`;
+      result.textContent = userWonGame(game, profile?.id) ? 'Win' : 'Loss';
+
+      head.append(titleWrap, result);
+
+      const playersRow = document.createElement('div');
+      playersRow.className = 'header-user-history-row';
+      const playersLabel = document.createElement('span');
+      playersLabel.textContent = 'Players';
+      playersRow.append(playersLabel, createPlayerList(game?.playersOrder || [], game));
+
+      const footer = document.createElement('div');
+      footer.className = 'header-user-history-footer';
+      const winners = document.createElement('p');
+      winners.textContent = `Winners: ${(game?.winners || []).map(playerName).join(', ') || 'No winner recorded'}`;
+      const replay = document.createElement('a');
+      replay.className = 'btn header-user-history-link';
+      replay.href = `/history/${encodeURIComponent(game?.id || '')}`;
+      replay.append(createIcon('history'), document.createElement('span'));
+      setButtonLabel(replay, 'Replay');
+      footer.append(winners, replay);
+
+      card.append(head, playersRow, footer);
+      return card;
     };
 
     const friendMatchupTypeLabel = (value) => {
@@ -435,12 +548,15 @@
       close.type = 'button';
       close.setAttribute('aria-label', 'Close profile');
       close.append(createIcon('close'));
-      close.addEventListener('click', closeProfileModal);
+      close.addEventListener('click', () => {
+        window.ucHeader.closeUserProfilePopup?.() || closeProfileModal();
+      });
 
       header.append(titleWrap, close);
 
       const content = document.createElement('div');
       content.className = 'header-user-profile-content';
+      content.tabIndex = -1;
       content.dataset.userProfileContent = 'true';
 
       dialog.append(header, content);
@@ -448,7 +564,7 @@
 
       overlay.addEventListener('click', (event) => {
         if (event.target === overlay) {
-          closeProfileModal();
+          window.ucHeader.closeUserProfilePopup?.() || closeProfileModal();
         }
       });
 
@@ -482,12 +598,13 @@
     const setProfileModalContent = (node) => {
       const modal = ensureProfileModal();
       modal.content.replaceChildren(node);
+      modal.content.scrollTop = 0;
       modal.overlay.hidden = false;
       modal.overlay.classList.remove('is-leaving');
       window.syncThemeUi?.();
       window.requestAnimationFrame(() => {
         modal.overlay.classList.add('is-visible');
-        modal.dialog.focus({ preventScroll: true });
+        modal.content.focus({ preventScroll: true });
       });
     };
 
@@ -610,6 +727,141 @@
       return section;
     };
 
+    const switchOpenProfileTab = (direction) => {
+      if (!profileModal || profileModal.overlay.hidden) {
+        return false;
+      }
+
+      const tabs = Array.from(profileModal.content.querySelectorAll('.header-user-profile-tab'));
+      const activeIndex = tabs.findIndex((tab) => tab.classList.contains('is-active'));
+      if (tabs.length < 2 || activeIndex < 0) {
+        return false;
+      }
+
+      const nextIndex = (activeIndex + direction + tabs.length) % tabs.length;
+      tabs[nextIndex].click();
+      tabs[nextIndex].focus({ preventScroll: true });
+      return true;
+    };
+
+    const createProfileTabs = (statsPanel, historyPanel, profile) => {
+      const tabs = document.createElement('div');
+      tabs.className = 'header-user-profile-tabs';
+      tabs.setAttribute('role', 'tablist');
+      tabs.setAttribute('aria-label', 'Profile sections');
+
+      const statsButton = document.createElement('button');
+      statsButton.className = 'header-user-profile-tab is-active';
+      statsButton.type = 'button';
+      statsButton.setAttribute('role', 'tab');
+      statsButton.setAttribute('aria-selected', 'true');
+      statsButton.textContent = 'Stats';
+
+      const historyButton = document.createElement('button');
+      historyButton.className = 'header-user-profile-tab';
+      historyButton.type = 'button';
+      historyButton.setAttribute('role', 'tab');
+      historyButton.setAttribute('aria-selected', 'false');
+      historyButton.textContent = 'History';
+
+      let historyLoaded = false;
+      const activate = (tab) => {
+        const showHistory = tab === 'history';
+        statsButton.classList.toggle('is-active', !showHistory);
+        historyButton.classList.toggle('is-active', showHistory);
+        statsButton.setAttribute('aria-selected', String(!showHistory));
+        historyButton.setAttribute('aria-selected', String(showHistory));
+        statsPanel.hidden = showHistory;
+        historyPanel.hidden = !showHistory;
+        profileModal?.content.focus({ preventScroll: true });
+
+        if (showHistory && !historyLoaded) {
+          historyLoaded = true;
+          loadProfileHistory(profile, historyPanel);
+        }
+      };
+
+      statsButton.addEventListener('click', () => activate('stats'));
+      historyButton.addEventListener('click', () => activate('history'));
+      tabs.append(statsButton, historyButton);
+      tabs.addEventListener('keydown', (event) => {
+        if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || isTypingTarget(event.target)) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        switchOpenProfileTab(event.key === 'ArrowRight' ? 1 : -1);
+      });
+      return tabs;
+    };
+
+    const loadProfileHistory = async (profile, panel) => {
+      panel.replaceChildren(createProfileState('Loading history...'));
+      try {
+        const sharedGames = [];
+        let offset = 0;
+        for (let page = 0; page < 5; page += 1) {
+          const params = new URLSearchParams({
+            offset: String(offset),
+            result: 'both',
+            timeSort: 'latest'
+          });
+          const response = await fetch(`/api/games/history?${params}`, {
+            credentials: 'include',
+            cache: 'no-store'
+          });
+          if (!response.ok) {
+            throw new Error(`History failed: ${response.status}`);
+          }
+
+          const games = await response.json();
+          if (!Array.isArray(games) || games.length === 0) {
+            break;
+          }
+
+          for (const game of games) {
+            if (gameIncludesUser(game, profile?.id)) {
+              sharedGames.push(game);
+            }
+          }
+
+          if (games.length < 20 || sharedGames.length >= 20) {
+            break;
+          }
+          offset += 20;
+        }
+        renderProfileHistory(profile, panel, sharedGames.slice(0, 20));
+      } catch (error) {
+        console.warn('Unable to load profile history', error);
+        panel.replaceChildren(createProfileState('History could not be loaded.', 'error'));
+      }
+    };
+
+    const renderProfileHistory = (profile, panel, games) => {
+      panel.replaceChildren();
+      const section = document.createElement('section');
+      section.className = 'header-user-profile-history';
+
+      const title = document.createElement('h3');
+      title.textContent = 'Past games';
+      section.append(title);
+
+      const list = document.createElement('div');
+      list.className = 'header-user-history-list';
+      if (!Array.isArray(games) || !games.length) {
+        list.append(createProfileState('No shared past games found.'));
+      } else {
+        for (const game of games) {
+          list.append(createHistoryCard(game, profile));
+        }
+      }
+
+      section.append(list);
+      panel.append(section);
+      window.syncThemeUi?.();
+    };
+
     const renderProfile = async (profile, detailedFriend = null, loadedProfileFriendAction = null) => {
       const modal = ensureProfileModal();
       modal.title.textContent = profile?.username || 'User profile';
@@ -661,6 +913,13 @@
         activeProfileAction = { action: profileFriendAction, profile, button: addButton, statusElement: actionStatus };
       }
 
+      const statsPanel = document.createElement('div');
+      statsPanel.className = 'header-user-profile-panel';
+
+      const historyPanel = document.createElement('div');
+      historyPanel.className = 'header-user-profile-panel';
+      historyPanel.hidden = true;
+
       const totals = document.createElement('section');
       totals.className = 'header-user-profile-stats';
       totals.append(
@@ -691,10 +950,11 @@
       }
 
       games.append(grid);
-      root.append(summary, totals, games);
+      statsPanel.append(totals, games);
       if (detailedFriend) {
-        root.append(createDetailedFriendStatsSection(detailedFriend));
+        statsPanel.append(createDetailedFriendStatsSection(detailedFriend));
       }
+      root.append(summary, createProfileTabs(statsPanel, historyPanel, profile), statsPanel, historyPanel);
       setProfileModalContent(root);
     };
 
@@ -749,12 +1009,25 @@
       }
     };
 
+    window.ucHeader.registerUserProfilePopup?.({
+      open: (user) => {
+        setDropdownOpen(false);
+        openUserProfile(user);
+      },
+      close: closeProfileModal,
+      isOpen: () => !!profileModal && !profileModal.overlay.hidden,
+      switchTab: switchOpenProfileTab
+    });
+
     const openSelectedUser = () => {
       if (selectedIndex < 0 || selectedIndex >= currentUsers.length) {
         return;
       }
 
-      openUserProfile(currentUsers[selectedIndex]);
+      window.ucHeader.openUserProfilePopup?.(currentUsers[selectedIndex], {
+        source: 'search',
+        refocusElement: input
+      });
     };
 
     const createResultRow = (user, index) => {
@@ -782,7 +1055,10 @@
         event.stopPropagation();
         selectedIndex = index;
         syncSelectedRow();
-        openUserProfile(user);
+        window.ucHeader.openUserProfilePopup?.(user, {
+          source: 'search',
+          refocusElement: input
+        });
       });
 
       row.append(username, id, button);
@@ -994,10 +1270,21 @@
         });
 
         document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && isTypingTarget(event.target)) {
+            event.target.blur();
+            return;
+          }
+
+          if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && profileModal && !profileModal.overlay.hidden) {
+            if (!isTypingTarget(event.target) && switchOpenProfileTab(event.key === 'ArrowRight' ? 1 : -1)) {
+              event.preventDefault();
+            }
+            return;
+          }
+
           if (event.key === 'Escape') {
             if (profileModal && !profileModal.overlay.hidden) {
-              closeProfileModal();
-              input.focus({ preventScroll: true });
+              window.ucHeader.closeUserProfilePopup?.();
               return;
             }
             setDropdownOpen(false);
@@ -1010,9 +1297,7 @@
           }
 
           const target = event.target;
-          const isTextField = target instanceof HTMLElement
-              && (target.matches('input, textarea, select') || target.isContentEditable);
-          if (isTextField && target !== activeProfileAction?.button) {
+          if (isTypingTarget(target) && target !== activeProfileAction?.button) {
             return;
           }
 
