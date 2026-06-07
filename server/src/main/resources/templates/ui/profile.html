@@ -19,12 +19,16 @@
             <p class="profile-eyebrow">Account management</p>
             <h1>Profile</h1>
         </div>
-        <button class="btn profile-refresh-button" id="page-refresh" type="button">Refresh</button>
+        <button class="btn profile-refresh-button" id="page-refresh" type="button">
+            <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+            <span>Refresh</span>
+        </button>
     </section>
 
     <nav class="profile-tabs" aria-label="Profile sections">
         <button class="profile-tab is-active" type="button" data-profile-tab="overview">Overview</button>
         <button class="profile-tab" type="button" data-profile-tab="stats">Game stats</button>
+        <button class="profile-tab" type="button" data-profile-tab="friends">Friends</button>
         <button class="profile-tab" type="button" data-profile-tab="sessions">Sessions</button>
     </nav>
 
@@ -50,7 +54,9 @@
                 <div class="profile-field-card">
                     <label for="email">Email</label>
                     <div class="profile-input-shell">
-                        <span class="profile-input-icon" aria-hidden="true">✉</span>
+                        <span class="profile-input-icon" aria-hidden="true">
+                            <img class="uc-icon" th:src="@{/pics/red/mail.svg}" alt="" aria-hidden="true" />
+                        </span>
                         <input
                                 class="profile-input"
                                 id="email"
@@ -62,7 +68,9 @@
                 </div>
             </div>
             <div class="profile-actions">
-                <button class="btn btn-accent" id="save-profile" type="button">Save</button>
+                    <button class="btn btn-accent" id="save-profile" type="button">
+                        <span>Save</span>
+                    </button>
             </div>
             <div class="profile-meta-grid">
                 <div class="profile-summary-card profile-summary-stack profile-summary-inline">
@@ -98,7 +106,9 @@
                     <span th:text="${game.getKey()}"></span> <br>
                     Games played: <span th:text="${game.getValue().getPlayed()}"></span> <br>
                     Games won: <span th:text="${game.getValue().getWins()}"></span>
-                    <small class="profile-last-played" th:text="${game.getValue().getLastPlayedAt() != null ? 'Last played: ' + game.getValue().getLastPlayedAt() : 'Last played: Never played'}"></small>
+                    <small class="profile-last-played"
+                           th:attr="data-last-played-at=${game.getValue().getLastPlayedAt()}"
+                           th:text="${game.getValue().getLastPlayedAt() != null ? 'Last played: Loading...' : 'Never played'}"></small>
                 </div>
             </div>
         </div>
@@ -137,6 +147,23 @@
             </div>
         </div>
     </section>
+
+    <section class="profile-panel" data-profile-panel="friends">
+        <div class="profile-history">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Social</p>
+                    <h2>Friends</h2>
+                    <p class="section-copy">Manage your friends and blocked users</p>
+                </div>
+            </div>
+            <div id="friends-management" class="profile-friends-management">
+                <article class="profile-session-card profile-session-card--placeholder">
+                    <p>Loading friends...</p>
+                </article>
+            </div>
+        </div>
+    </section>
 </main>
 
 <div id="session-confirm-modal" class="modal-overlay">
@@ -145,7 +172,9 @@
             <div>
                 <strong id="session-confirm-title">Confirm session action</strong>
             </div>
-            <button class="btn" id="session-confirm-close" type="button" aria-label="Close">✕</button>
+            <button class="btn" id="session-confirm-close" type="button" aria-label="Close">
+                <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+            </button>
         </header>
         <div class="content">
             <p id="session-confirm-text" class="section-copy">Are you sure?</p>
@@ -153,6 +182,22 @@
         <div class="actions">
             <button class="btn" id="session-confirm-cancel" type="button">Cancel</button>
             <button class="btn btn-accent" id="session-confirm-submit" type="button">Continue</button>
+        </div>
+    </div>
+</div>
+
+<div id="friend-profile-modal" class="modal-overlay">
+    <div class="modal profile-friend-profile-modal" role="dialog" aria-modal="true" aria-labelledby="friend-profile-title">
+        <header>
+            <div>
+                <strong id="friend-profile-title">Friend profile</strong>
+            </div>
+            <button class="btn" id="friend-profile-close" type="button" aria-label="Close">
+                <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+            </button>
+        </header>
+        <div id="friend-profile-content" class="content profile-friend-profile-content" tabindex="-1">
+            <p class="section-copy">Loading profile...</p>
         </div>
     </div>
 </div>

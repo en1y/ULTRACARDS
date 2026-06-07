@@ -1,5 +1,7 @@
 package com.ultracards.gateway.dto.auth;
 
+import com.ultracards.gateway.dto.games.GameConfigDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +14,8 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BriskulaMatchupStatsDTO {
-    private String gameConfig;
+    private GameTypeDTO gameType;
+    private GameConfigDTO gameConfig;
     private Long relatedUserId;
     private String relatedUsername;
     private int played;

@@ -96,6 +96,16 @@ public class LobbyController {
                 ResponseEntity.status(HttpStatus.NO_CONTENT).body(false);
     }
 
+    @PostMapping("/invite/{friendUserId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<Void> inviteFriendToLobby(
+            @AuthenticationPrincipal UserEntity user,
+            @PathVariable Long friendUserId
+    ) {
+        lobbyService.inviteFriendToLobby(user, friendUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
     @PutMapping("/update")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<GameLobbyDTO> updateLobby(

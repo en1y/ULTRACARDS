@@ -8,7 +8,6 @@
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
-    <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
     <!--suppress CssUnusedSymbol -->
         <link rel="stylesheet" th:href="@{/css/ui/game.css}">
 </head>
@@ -52,12 +51,11 @@
         </div>
     </div>
 
-    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId})}"></th:block>
+    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <!--suppress JSUnresolvedVariable, RegExpRedundantEscape, CheckTagEmptyBody -->
-<script th:src="@{/js/chat.js}"></script>
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;

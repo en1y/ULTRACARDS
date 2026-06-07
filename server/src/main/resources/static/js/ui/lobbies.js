@@ -6,6 +6,15 @@
             document.documentElement.setAttribute('data-theme', theme);
         })();
 
+function setButtonLabel(button, label) {
+    const text = button?.querySelector('span');
+    if (text) {
+        text.textContent = label;
+    } else if (button) {
+        button.textContent = label;
+    }
+}
+
 const initialLobbies = Array.isArray(window.__INITIAL_LOBBIES__) ? window.__INITIAL_LOBBIES__ : [];
 
 const gameSettingsAnimationDurationMs = 420;
@@ -315,7 +324,10 @@ const gameSettingsAnimationDurationMs = 420;
 
                         <div class="lobby-card-footer">
                             <p>Join this room and continue in the live lobby view.</p>
-                            <button class="btn btn-accent" type="button" data-join-lobby-id="${escapeHtml(lobby.id || '')}">Join lobby</button>
+                            <button class="btn btn-accent" type="button" data-join-lobby-id="${escapeHtml(lobby.id || '')}">
+                                <img class="uc-icon" data-icon="login" src="/pics/light/login.svg" alt="" aria-hidden="true">
+                                <span>Join lobby</span>
+                            </button>
                         </div>
                     </article>
                 `;
@@ -431,6 +443,7 @@ const gameSettingsAnimationDurationMs = 420;
                 for (const lobby of lobbies) {
                     grid.insertAdjacentHTML('beforeend', renderCard(lobby));
                 }
+                window.syncThemeUi?.();
                 updateLobbyCount();
             }
 
@@ -622,7 +635,7 @@ const gameSettingsAnimationDurationMs = 420;
                 }
 
                 joinCodeSubmit.disabled = true;
-                joinCodeSubmit.textContent = 'Joining...';
+                setButtonLabel(joinCodeSubmit, 'Joining...');
                 setJoinCodeStatus('Joining lobby...', 'success');
 
                 try {
@@ -633,7 +646,7 @@ const gameSettingsAnimationDurationMs = 420;
                     } else {
                         setJoinCodeStatus(error?.message || 'Unable to join this lobby.', 'error');
                     }
-                    joinCodeSubmit.textContent = 'Join';
+                    setButtonLabel(joinCodeSubmit, 'Join');
                     joinCodeSubmit.disabled = false;
                     joinCodeInput?.focus();
                 }

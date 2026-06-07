@@ -1,6 +1,7 @@
 package com.ultracards.gateway.service;
 
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.JoinLobbyRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -48,11 +49,30 @@ public class LobbyService {
     public boolean joinLobby(UUID lobbyId) {
         var res = restTemplate.postForEntity(
                 serverUrl + "api/lobby/join",
-                new HttpEntity<>(lobbyId, tokenManager.jsonHeaders(tokenHolder)),
-                Boolean.class
+                new HttpEntity<>(new JoinLobbyRequestDTO(null, lobbyId), tokenManager.jsonHeaders(tokenHolder)),
+                String.class
         );
         tokenManager.updateToken(tokenHolder, res);
-        return Boolean.TRUE.equals(res.getBody());
+        return res.getStatusCode().is2xxSuccessful();
+    }
+
+    public boolean joinLobby(String lobbyCode) {
+        var res = restTemplate.postForEntity(
+                serverUrl + "api/lobby/join",
+                new HttpEntity<>(new JoinLobbyRequestDTO(lobbyCode, null), tokenManager.jsonHeaders(tokenHolder)),
+                String.class
+        );
+        tokenManager.updateToken(tokenHolder, res);
+        return res.getStatusCode().is2xxSuccessful();
+    }
+
+    public void inviteFriendToLobby(Long friendUserId) {
+        var response = restTemplate.postForEntity(
+                serverUrl + "api/lobby/invite/" + friendUserId,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                Void.class
+        );
+        tokenManager.updateToken(tokenHolder, response);
     }
 
     public boolean leaveLobby(UUID lobbyId) {

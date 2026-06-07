@@ -7,7 +7,6 @@
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
-    <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
         <link rel="stylesheet" th:href="@{/css/ui/lobby.css}">
 </head>
 <body>
@@ -105,7 +104,10 @@
                                 <div class="lobby-meta-label">Teams</div>
                                 <div id="lobby-teams-summary" class="lobby-meta-value">Teams will appear here.</div>
                             </div>
-                            <button id="lobby-team-randomize" class="btn" type="button" hidden>Randomize</button>
+                            <button id="lobby-team-randomize" class="btn" type="button" hidden>
+                                <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+                                <span>Randomize</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -124,7 +126,7 @@
             </div>
         </article>
 
-        <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel lobby-chat-panel', 'chat-header', 'Lobby chat', 'Too scared to send a message?', ${chat}, true, ${username}, null)}"></th:block>
+        <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel lobby-chat-panel', 'chat-header', 'Lobby chat', 'Too scared to send a message?', ${chat}, true, ${username}, null, 'chat')}"></th:block>
     </section>
     <aside id="lobby-toast" class="lobby-toast" aria-live="polite" aria-atomic="true" hidden>
     <p id="lobby-toast-title" class="lobby-toast-title">Lobby update</p>
@@ -132,8 +134,6 @@
     </aside>
 </main>
 
-<script th:src="@{/js/gameTypes.js}"></script>
-<script th:src="@{/js/chat.js}"></script>
 <script th:inline="javascript">
     window.__INITIAL_LOBBY__ = /*[[${lobby}]]*/ null;
     window.__INITIAL_LOBBY_CHAT__ = /*[[${chat}]]*/ null;

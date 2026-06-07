@@ -49,11 +49,14 @@ public class WebSecurityConfig {
                                 "/pics/**",
                                 "/js/**"
                         ).permitAll()
-                        // Public app routes
+                        // Authenticated websocket endpoint
                         .requestMatchers(
-                                "/active",
                                 "/ws",
                                 "/ws/**"
+                        ).authenticated()
+                        // Public app routes
+                        .requestMatchers(
+                                "/active"
                         ).permitAll()
                         // Public auth endpoints
                         .requestMatchers(HttpMethod.POST,
@@ -67,6 +70,12 @@ public class WebSecurityConfig {
                                 "/lobbies/**",
                                 "/game/**"
                         ).authenticated()
+                        // Public user search endpoints
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/users/search/username/**",
+                                "/api/users/search/id/**",
+                                "/api/users/*/profile"
+                        ).permitAll()
                         // backend API
                         // TODO: check whether i should to make any more of the api calls public
                         .requestMatchers("/api/**").authenticated()

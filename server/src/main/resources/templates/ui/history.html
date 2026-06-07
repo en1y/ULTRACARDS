@@ -54,7 +54,10 @@
                         <h2>Past games</h2>
                         <p id="history-summary">Showing latest games.</p>
                     </div>
-                    <button id="history-refresh" class="btn" type="button">Refresh</button>
+                    <button id="history-refresh" class="btn" type="button">
+                        <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+                        <span>Refresh</span>
+                    </button>
                 </div>
 
                 <div id="history-list" class="history-list" aria-live="polite"></div>

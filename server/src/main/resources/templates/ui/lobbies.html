@@ -8,7 +8,6 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/fragments/create-lobby.css}">
     <script th:src="@{/js/theme.js}" defer></script>
-    <script th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
         <link rel="stylesheet" th:href="@{/css/ui/lobbies.css}">
 </head>
 <body>
@@ -54,7 +53,10 @@
                 <div id="game-settings" class="lobbies-dynamic-settings" hidden="hidden"></div>
 
                 <div class="lobbies-sidebar-actions">
-                    <button id="apply-filters-button" class="btn-accent" type="button">Apply Filters</button>
+                    <button id="apply-filters-button" class="btn-accent" type="button">
+                        <img class="uc-icon" data-icon="search" th:src="@{/pics/light/search.svg}" alt="" aria-hidden="true" />
+                        <span>Apply Filters</span>
+                    </button>
                     <button id="clear-filters-button" class="btn" type="button">Show All</button>
                 </div>
 
@@ -99,7 +101,10 @@
                                    autocomplete="off"
                                    autocapitalize="characters"
                                    placeholder="ABC123">
-                            <button id="join-code-submit" class="btn btn-accent" type="submit" disabled>Join</button>
+                            <button id="join-code-submit" class="btn btn-accent" type="submit" disabled>
+                                <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
+                                <span>Join</span>
+                            </button>
                         </div>
                         <p id="join-code-status" class="lobbies-code-status" aria-live="polite">Enter a 6-character lobby code.</p>
                     </form>
@@ -114,7 +119,6 @@
         <p id="lobbies-toast-text" class="lobbies-toast-text">This lobby is already full.</p>
     </aside>
 
-    <script th:src="@{/js/gameTypes.js}"></script>
     <script th:src="@{/js/ui/fragments/createLobby.js}"></script>
     <script th:inline="javascript">
         window.__INITIAL_LOBBIES__ = /*[[${lobbies}]]*/ [];

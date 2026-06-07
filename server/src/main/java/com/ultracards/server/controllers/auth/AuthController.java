@@ -1,14 +1,11 @@
 package com.ultracards.server.controllers.auth;
 
 import com.ultracards.gateway.dto.EmailDTO;
-import com.ultracards.gateway.dto.auth.ProfileDTO;
-import com.ultracards.gateway.dto.auth.UsernameDTO;
 import com.ultracards.gateway.dto.auth.VerificationCodeDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.auth.UserSession;
 import com.ultracards.server.service.EmailService;
 import com.ultracards.server.service.auth.AuthService;
-import com.ultracards.server.service.UserService;
+import com.ultracards.server.service.users.UserService;
 import com.ultracards.server.service.auth.SessionService;
 import com.ultracards.server.service.auth.TokenService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,12 +16,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.Instant;
 
 @Slf4j
 @RestController

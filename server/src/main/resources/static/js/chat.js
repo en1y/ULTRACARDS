@@ -38,6 +38,35 @@
         ].join('|');
     }
 
+    function isTextEntryTarget(target) {
+        if (!(target instanceof Element)) {
+            return false;
+        }
+        if (target.isContentEditable || target.closest('[contenteditable="true"]')) {
+            return true;
+        }
+        if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+            return true;
+        }
+        if (!(target instanceof HTMLInputElement)) {
+            return false;
+        }
+
+        const nonTextTypes = new Set([
+            'button',
+            'checkbox',
+            'color',
+            'file',
+            'hidden',
+            'image',
+            'radio',
+            'range',
+            'reset',
+            'submit'
+        ]);
+        return !nonTextTypes.has(target.type);
+    }
+
     function create(config) {
         const state = {
             chat: config.initialChat || {messages: [], isOpen: true},
@@ -60,6 +89,13 @@
             return null;
         }
 
+        const resolveSendUrl = () => {
+            if (typeof config.sendUrl === 'function') {
+                return config.sendUrl();
+            }
+            return config.sendUrl || '/api/chat';
+        };
+
         function isNearBottom() {
             const remaining = dom.messages.scrollHeight - dom.messages.scrollTop - dom.messages.clientHeight;
             return remaining < 48;
@@ -79,6 +115,22 @@
 
         function clearMessageValidity() {
             dom.input.setCustomValidity('');
+        }
+
+        function isChatVisible() {
+            return !dom.form.closest('[hidden]') && dom.form.getClientRects().length > 0;
+        }
+
+        function shouldCaptureTyping(event) {
+            return state.chat?.isOpen
+                && !state.sending
+                && !dom.input.disabled
+                && isChatVisible()
+                && event.key.length === 1
+                && !event.altKey
+                && !event.ctrlKey
+                && !event.metaKey
+                && !isTextEntryTarget(event.target);
         }
 
         function scrollToBottom() {
@@ -113,6 +165,7 @@
 
         function scrollToBottomInstant() {
             const applyScroll = () => {
+                dom.messages.scrollTop = dom.messages.scrollHeight;
                 dom.messages.scrollTo({
                     top: dom.messages.scrollHeight,
                     left: 0,
@@ -165,7 +218,7 @@
                 if (state.initialAutoScroll) {
                     scrollToBottomInstant();
                 } else {
-                    scrollToBottom();
+                    scrollToBottomInstant();
                 }
             }
             state.animateMessageKey = null;
@@ -188,7 +241,7 @@
             state.sending = true;
             syncComposer();
             try {
-                const response = await fetch('/api/chat', {
+                const response = await fetch(resolveSendUrl(), {
                     method: 'POST',
                     credentials: 'include',
                     headers: {'Content-Type': 'application/json'},
@@ -198,6 +251,11 @@
                     throw new Error(`chat failed: ${response.status}`);
                 }
                 dom.input.value = '';
+                const contentType = response.headers.get('Content-Type') || '';
+                if (contentType.includes('application/json')) {
+                    state.chat = await response.json();
+                    render(true);
+                }
                 shouldRefocus = true;
             } finally {
                 state.sending = false;
@@ -232,6 +290,12 @@
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 await sendMessage();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (shouldCaptureTyping(event)) {
+                dom.input.focus();
             }
         });
 
@@ -273,6 +337,7 @@
             },
             setChat(chat) {
                 state.chat = chat || {messages: [], isOpen: true};
+                state.initialAutoScroll = true;
                 render(true);
             }
         };

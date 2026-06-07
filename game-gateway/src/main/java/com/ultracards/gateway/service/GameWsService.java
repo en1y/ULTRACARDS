@@ -1,7 +1,7 @@
 package com.ultracards.gateway.service;
 
 import com.ultracards.gateway.dto.games.games.GameEventDTO;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -43,7 +43,7 @@ public class GameWsService {
         var scheduler = new ThreadPoolTaskScheduler();
         scheduler.initialize();
         this.stompClient.setTaskScheduler(scheduler);
-        this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        this.stompClient.setMessageConverter(new JacksonJsonMessageConverter());
     }
 
     /**

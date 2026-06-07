@@ -1,4 +1,13 @@
 (() => {
+    function setButtonLabel(button, label) {
+        const text = button?.querySelector('span');
+        if (text) {
+            text.textContent = label;
+        } else if (button) {
+            button.textContent = label;
+        }
+    }
+
     const toggleButton = document.getElementById('home-public-toggle');
     const publicCopy = document.getElementById('home-public-auth-copy');
 
@@ -101,7 +110,7 @@
         }
 
         submitButton.disabled = true;
-        submitButton.textContent = 'Joining...';
+        setButtonLabel(submitButton, 'Joining...');
         setStatus('Joining lobby...', 'success');
 
         try {
@@ -122,7 +131,7 @@
             window.location.href = '/lobbies';
         } catch (error) {
             setStatus(error?.message || 'Unable to join this lobby.', 'error');
-            submitButton.textContent = 'Join';
+            setButtonLabel(submitButton, 'Join');
             submitButton.disabled = false;
             joinInput.focus();
         }

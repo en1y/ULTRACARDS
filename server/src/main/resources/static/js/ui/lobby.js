@@ -12,6 +12,7 @@
         const initialChat = window.__INITIAL_LOBBY_CHAT__ ?? null;
         const username = lobbyPage?.dataset.username || '';
         const lobbyClosedNoticeKey = 'uc-lobby-closed-notice';
+        const reconnectDisconnectDelayMs = 20000;
         if (!lobbyPage || !initialLobby || !initialLobby.id) {
             return;
         }
@@ -21,6 +22,7 @@
             currentUser: null,
             wsConnected: false,
             redirectingToGame: false,
+            disconnectingForReconnectTimeout: false,
             closeWarningVisible: false,
             teamModeActive: false,
             dragSession: null,
@@ -61,6 +63,7 @@
         let toastHideTimer = null;
         let toastCleanupTimer = null;
         let closeWarningTimer = null;
+        let reconnectDisconnectTimer = null;
         let previousLobbySnapshot = state.lobby;
         const chat = window.UltracardsChat?.create({
             initialChat,
@@ -112,6 +115,7 @@
 
             client.connect({}, () => {
                 state.wsConnected = true;
+                clearReconnectDisconnectTimer();
                 setWsStatus('Connected');
                 client.subscribe(`/topic/lobbies/${state.lobby.id}`, (message) => {
                     try {
@@ -169,6 +173,7 @@
             }, () => {
                 state.wsConnected = false;
                 setWsStatus('Reconnecting…');
+                startReconnectDisconnectTimer();
             });
         }
 
@@ -213,17 +218,7 @@
 
             dom.leave?.addEventListener('click', async () => {
                 try {
-                    const response = await fetch('/api/lobby/leave', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify(state.lobby.id)
-                    });
-                    if (!response.ok) {
-                        throw new Error('Failed to leave lobby');
-                    }
+                    await leaveCurrentLobby();
                     window.location.href = '/';
                 } catch (error) {
                     updateStatus('Unable to leave the lobby.');
@@ -2061,6 +2056,70 @@
             if (dom.wsStatus) {
                 dom.wsStatus.textContent = text;
             }
+        }
+
+        function startReconnectDisconnectTimer() {
+            clearReconnectDisconnectTimer();
+            reconnectDisconnectTimer = window.setTimeout(() => {
+                if (state.wsConnected || state.disconnectingForReconnectTimeout) {
+                    return;
+                }
+
+                disconnectForReconnectTimeout();
+            }, reconnectDisconnectDelayMs);
+        }
+
+        function clearReconnectDisconnectTimer() {
+            if (!reconnectDisconnectTimer) {
+                return;
+            }
+
+            window.clearTimeout(reconnectDisconnectTimer);
+            reconnectDisconnectTimer = null;
+        }
+
+        async function disconnectForReconnectTimeout() {
+            state.disconnectingForReconnectTimeout = true;
+            setWsStatus('Disconnected');
+            updateStatus('Connection did not recover. Leaving the lobby...');
+
+            try {
+                await leaveCurrentLobby();
+            } catch (error) {
+                console.error('Unable to leave lobby after reconnect timeout', error);
+            } finally {
+                navigateToPreviousUiPage();
+            }
+        }
+
+        async function leaveCurrentLobby() {
+            const response = await fetch('/api/lobby/leave', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(state.lobby.id)
+            });
+            if (!response.ok) {
+                throw new Error('Failed to leave lobby');
+            }
+        }
+
+        function navigateToPreviousUiPage() {
+            if (document.referrer) {
+                try {
+                    const referrer = new URL(document.referrer);
+                    if (referrer.origin === window.location.origin && referrer.pathname !== window.location.pathname) {
+                        window.history.back();
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Unable to inspect previous page', error);
+                }
+            }
+
+            window.location.href = '/';
         }
 
         function escapeHtml(value) {
