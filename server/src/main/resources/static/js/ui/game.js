@@ -1,1466 +1,788 @@
 (() => {
-            const storageKey = 'uc-theme';
-            const savedTheme = localStorage.getItem(storageKey);
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (systemDark ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
+    const storageKey = 'uc-theme';
+    const savedTheme = localStorage.getItem(storageKey);
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme || (systemDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+})();
 
 (function () {
-        /**
-         * @typedef {{ cardType: string, card: string }} GameCard
-         * @typedef {{ name: string, id: (string|null), cards: (number|undefined), points: (number|undefined) }} UiPlayer
-         * @typedef {{ gameWinners?: Array<{name: string}>, winnerPointsNum?: number }} GameResult
-         * @typedef {{
-         *   id: string,
-         *   lobbyId: string,
-         *   name: string,
-         *   playersCardsMap: Object<string, number>,
-         *   playedCards: GameCard[],
-         *   cardsLeftInDeck: number,
-         *   pointsPerPerson?: Object<string, number>,
-         *   playersTurn?: {name: string, id: (string|null)}|null,
-         *   turnEndTime?: (string|null),
-         *   turnDurationSeconds?: (number|null),
-         *   trumpCard?: GameCard|null,
-         *   gameConfig?: Object|null
-         * }} GameState
-         */
-        const gameEl = document.getElementById('game-container');
-        if (!gameEl || !gameEl.dataset.gameId) return;
+    const MOTION = {
+        quickMs: 160,
+        standardMs: 300,
+        dealMs: 520,
+        ease: 'out(3)',
+        snapEase: 'out(4)'
+    };
+    const VIEWPORT_DRAG_PADDING = 14;
+    const ITALIAN_SUIT_MAP = {C: 'COPPE', D: 'DENARI', S: 'SPADE', B: 'BASTONI'};
+    const ITALIAN_VALUE_MAP = {
+        '1': 'ACE',
+        '2': 'TWO',
+        '3': 'THREE',
+        '4': 'FOUR',
+        '5': 'FIVE',
+        '6': 'SIX',
+        '7': 'SEVEN',
+        '11': 'JACK',
+        '12': 'KNIGHT',
+        '13': 'KING'
+    };
+    const POKER_SUIT_MAP = {H: 'HEARTS', D: 'DIAMONDS', C: 'CLUBS', S: 'SPADES'};
+    const POKER_VALUE_MAP = {
+        '2': 'TWO',
+        '3': 'THREE',
+        '4': 'FOUR',
+        '5': 'FIVE',
+        '6': 'SIX',
+        '7': 'SEVEN',
+        '8': 'EIGHT',
+        '9': 'NINE',
+        '10': 'TEN',
+        '11': 'JACK',
+        '12': 'QUEEN',
+        '13': 'KING',
+        '14': 'ACE'
+    };
 
-        const gameId = gameEl.dataset.gameId;
-        const currentUserId = gameEl.dataset.currentUserId ? String(gameEl.dataset.currentUserId) : null;
-        const currentUsername = gameEl.dataset.username ? String(gameEl.dataset.username) : '';
-        const initialGame = window.__INITIAL_GAME__ ?? null;
-        const initialChat = window.__INITIAL_GAME_CHAT__ ?? null;
-        const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
-        const gameLayout = document.querySelector('.game-layout');
+    const animeApi = window.anime || {};
+    const interactApi = window.interact;
 
-        const dom = {
-            ring: document.getElementById('player-ring'),
-            trick: document.getElementById('trick-area'),
-            trump: document.getElementById('trump-card'),
-            deckLeft: document.getElementById('deck-left'),
-            deckTower: document.getElementById('deck-tower'),
-            deckStack: document.getElementById('deck-stack'),
-            dropZone: document.getElementById('drop-zone'),
-            hand: document.getElementById('hand-cards'),
-            connectionToast: document.getElementById('connection-toast'),
-            tableTurnOverlay: document.getElementById('table-turn-overlay'),
-            tableTurnMessage: document.getElementById('table-turn-message'),
-            playerSummary: document.getElementById('player-summary'),
-            playerSummaryPoints: document.getElementById('player-summary-points'),
-            playerSummaryAvatar: document.getElementById('player-summary-avatar'),
-            playerSummaryName: document.getElementById('player-summary-name')
-        };
+    function prefersReducedMotion() {
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
 
-        const state = {
-            game: null,
-            hand: [],
-            wsConnected: false,
-            playing: false,
-            deckLeft: null,
-            pending: new Set(),
-            autoPlayedPending: new Set(),
-            handEls: new Map(),
-            justDealtKeys: new Set(),
-            finalTrumpDraw: false,
-            deckExhausting: false,
-            dragSession: null,
-            turnIndicatorFrame: null,
-            turnIndicatorTargetKey: null,
-            turnIndicatorEndsAt: null,
-            turnDurationMs: Number(initialGame?.turnDurationSeconds) > 0 ? Number(initialGame.turnDurationSeconds) * 1000 : 15000,
-            delayedTableUpdateTimer: null,
-            delayedTableCommitTimer: null,
-            delayedTablePayload: null,
-            delayedTablePending: false,
-            endState: null,
-            endRedirectTimer: null,
-            endRedirectInterval: null
-        };
-        let refreshTimer = null;
-        let refreshAttempts = 0;
-        const chat = window.UltracardsChat?.create({
-            initialChat,
-            currentUserId,
-            currentUsername,
-            messagesId: 'chat-messages',
-            formId: 'chat-form',
-            inputId: 'chat-input',
-            sendId: 'chat-send',
-            messageClass: 'chat-message',
-            metaClass: 'chat-meta',
-            bubbleClass: 'chat-bubble',
-            timeClass: 'chat-time',
-            emptyClass: 'chat-empty',
-            emptyText: 'Why so scared to talk?'
-        });
+    function normalizeCardType(cardType) {
+        return String(cardType || 'ITALIAN').toUpperCase();
+    }
 
-        if (dom.dropZone) setupDropZone(dom.dropZone);
-        window.addEventListener('resize', () => positionSeats(dom.ring));
+    function cardUrl(card) {
+        const cardType = normalizeCardType(typeof card === 'object' ? card?.cardType : null);
+        const code = typeof card === 'object' ? card?.card : card;
+        if (!code) return cardBackUrl(cardType);
+        if (cardType === 'POKER') return pokerCardUrl(code);
+        return italianCardUrl(code);
+    }
 
-        if (initialGame != null) {
-            applyGame(initialGame, 'UPDATED', null);
-        }
-        refreshHand();
-        loadGame();
-        connectWs();
+    function italianCardUrl(code) {
+        if (!code) return '';
+        const suitLetter = String(code).charAt(0).toUpperCase();
+        const valueNum = String(code).slice(1);
+        const suit = ITALIAN_SUIT_MAP[suitLetter];
+        const value = ITALIAN_VALUE_MAP[valueNum];
+        return suit && value ? `/api/cards/italian/${suit}/${value}` : '';
+    }
 
-        function connectWs() {
-            if (!window.Stomp) {
-                setConnectionStatus(false, 'Live connection unavailable.');
-                return;
-            }
-            const client = Stomp.client(wsUrl);
-            client.reconnect_delay = 3000;
-            client.debug = null;
-            client.connect({}, () => {
-                state.wsConnected = true;
-                setConnectionStatus(true);
-                client.subscribe(`/topic/game/${gameId}`, (msg) => {
-                    try {
-                        const payload = JSON.parse(msg.body);
-                        if (!payload || !payload.gameEntity) return;
-                        applyGame(payload.gameEntity, payload.gameEvent, payload.result);
-                    } catch (err) {
-                        console.error('Game event error', err);
-                    }
-                });
-                if (initialGame?.lobbyId) {
-                    client.subscribe(`/topic/lobbies/${initialGame.lobbyId}/chat`, (msg) => {
-                        try {
-                            const payload = JSON.parse(msg.body);
-                            if (!payload || !payload.message) return;
-                            chat?.addMessage(payload);
-                        } catch (err) {
-                            console.error('Game chat event error', err);
-                        }
-                    });
-                }
-            }, () => {
-                state.wsConnected = false;
-                setConnectionStatus(false, 'Connection lost. Reconnecting...');
-            });
-        }
+    function pokerCardUrl(code) {
+        if (!code) return '';
+        const suitLetter = String(code).charAt(0).toUpperCase();
+        const valueNum = String(code).slice(1);
+        const suit = POKER_SUIT_MAP[suitLetter];
+        const value = POKER_VALUE_MAP[valueNum];
+        return suit && value ? `/api/cards/poker/${suit}/${value}` : '';
+    }
 
-        function setConnectionStatus(isConnected, text) {
-            if (!dom.connectionToast) return;
-            dom.connectionToast.classList.toggle('is-visible', !isConnected);
-            if (!isConnected && text) {
-                dom.connectionToast.textContent = text;
-            }
-        }
+    function cardBackUrl(cardType) {
+        return normalizeCardType(cardType) === 'POKER'
+            ? '/api/cards/poker/back'
+            : '/api/cards/italian/back';
+    }
 
-        function loadGame() {
-            fetch(`/api/games/${gameId}`, {credentials: 'include'})
-                .then((res) => res.ok ? res.json() : Promise.reject(res.status))
-                .then((game) => {
-                    if (game) applyGame(game, 'UPDATED', null);
-                })
-        }
+    function cardKey(card) {
+        if (!card) return '';
+        return `${normalizeCardType(card.cardType)}:${card.card || ''}`;
+    }
 
-        function refreshHand() {
-            if (!dom.hand) return;
-            fetch('/api/games', {credentials: 'include'})
-                .then((res) => res.ok ? res.json() : Promise.reject(res.status))
-                .then((cards) => {
-                    const list = Array.isArray(cards) ? cards : [];
-                    const prevKeys = new Set(state.hand.map(cardKey));
-                    const serverKeys = new Set(list.map(cardKey));
-                    const newCards = [];
-                    state.pending.forEach((key) => {
-                        if (!serverKeys.has(key)) {
-                            state.pending.delete(key);
-                        }
-                    });
-                    state.autoPlayedPending.forEach((key) => {
-                        if (!serverKeys.has(key)) {
-                            state.autoPlayedPending.delete(key);
-                        }
-                    });
-                    list.forEach((card) => {
-                        const key = cardKey(card);
-                        if (!prevKeys.has(key)) {
-                            state.justDealtKeys.add(key);
-                            newCards.push(card);
-                        }
-                    });
-                    state.hand = list.filter((card) => !state.pending.has(cardKey(card)));
-                    syncHand();
-                    if (newCards.length) {
-                        animateIncomingHandCards(newCards, state.finalTrumpDraw);
-                        state.finalTrumpDraw = false;
-                    }
-                    if (!state.pending.size && refreshTimer) {
-                        clearTimeout(refreshTimer);
-                        refreshTimer = null;
-                        refreshAttempts = 0;
-                    }
-                })
-                .catch(() => {
-                    if (refreshTimer) {
-                        clearTimeout(refreshTimer);
-                        refreshTimer = null;
-                        refreshAttempts = 0;
-                    }
-                });
-        }
-
-        function scheduleHandRefresh(attempts) {
-            if (attempts && attempts > refreshAttempts) refreshAttempts = attempts;
-            if (refreshTimer) return;
-            const run = () => {
-                if (refreshAttempts <= 0) {
-                    refreshTimer = null;
-                    return;
-                }
-                refreshAttempts -= 1;
-                refreshHand();
-                refreshTimer = setTimeout(run, 900);
-            };
-            refreshTimer = setTimeout(run, 350);
-        }
-
-        /**
-         * @param {GameState} game
-         * @param {string|null} gameEvent
-         * @param {GameResult|null} result
-         */
-        function applyGame(game, gameEvent, result, skipTableDelay = false) {
-            game.playersTurn = normalizePlayer(game.playersTurn);
-            if (Number(game.turnDurationSeconds) > 0) {
-                state.turnDurationMs = Number(game.turnDurationSeconds) * 1000;
-            }
-            const previousPlayedCards = Array.isArray(state.game?.playedCards) ? state.game.playedCards : [];
-            const nextPlayedCards = Array.isArray(game.playedCards) ? game.playedCards : [];
-            const prevDeckLeft = state.deckLeft;
-            const nextDeckLeft = game.cardsLeftInDeck ?? 0;
-            const shouldDelayTableUpdate = !skipTableDelay && previousPlayedCards.length > 0 && nextPlayedCards.length === 0;
-            if (shouldDelayTableUpdate) {
-                if (!state.delayedTablePayload || isHigherPriorityGameEvent(gameEvent, state.delayedTablePayload.gameEvent)) {
-                    state.delayedTablePayload = {game, gameEvent, result};
-                } else if (gameEvent === state.delayedTablePayload.gameEvent) {
-                    state.delayedTablePayload = {game, gameEvent, result};
-                }
-                state.game = {
-                    ...game,
-                    playedCards: previousPlayedCards
-                };
-                state.deckLeft = nextDeckLeft;
-                if (dom.deckLeft) dom.deckLeft.textContent = String(nextDeckLeft);
-                renderDeckTower(nextDeckLeft);
-                renderTrump(game.trumpCard, nextDeckLeft);
-                renderPlayers(game);
-                updateTurnIndicator(game);
-                renderCurrentPlayer(game);
-                if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
-                    animateDeckDraw(prevDeckLeft - nextDeckLeft);
-                    if (currentUserId) scheduleHandRefresh(4);
-                }
-                updateTurn(game.playersTurn);
-                if (state.pending.size) scheduleHandRefresh(4);
-                if (state.delayedTablePending) {
-                    return;
-                }
-                state.delayedTablePending = true;
-                state.delayedTableUpdateTimer = setTimeout(() => {
-                    state.delayedTableUpdateTimer = null;
-                    animateTrickClear();
-                    state.delayedTableCommitTimer = setTimeout(() => {
-                        state.delayedTableCommitTimer = null;
-                        const delayedPayload = state.delayedTablePayload;
-                        state.delayedTablePayload = null;
-                        state.delayedTablePending = false;
-                        if (delayedPayload) {
-                            applyGame(delayedPayload.game, delayedPayload.gameEvent, delayedPayload.result, true);
-                        }
-                    }, 320);
-                }, 1100);
-                return;
-            }
-            if (state.delayedTableUpdateTimer) {
-                clearTimeout(state.delayedTableUpdateTimer);
-                state.delayedTableUpdateTimer = null;
-            }
-            if (state.delayedTableCommitTimer) {
-                clearTimeout(state.delayedTableCommitTimer);
-                state.delayedTableCommitTimer = null;
-            }
-            state.delayedTablePayload = null;
-            state.delayedTablePending = false;
-            state.game = game;
-            state.finalTrumpDraw = prevDeckLeft != null && prevDeckLeft > nextDeckLeft && nextDeckLeft === 0;
-            if (state.finalTrumpDraw) {
-                state.deckExhausting = true;
-            }
-            if (nextDeckLeft <= 0 || gameEvent === 'RESULTED' || gameEvent === 'CLOSED') {
-                state.deckExhausting = false;
-            }
-            state.deckLeft = nextDeckLeft;
-            if (dom.deckLeft) dom.deckLeft.textContent = String(nextDeckLeft);
-            renderDeckTower(nextDeckLeft);
-            renderTrump(game.trumpCard, nextDeckLeft);
-            const autoplayedCard = detectAutoPlayedCard(previousPlayedCards, nextPlayedCards);
-            if (autoplayedCard) {
-                animateAutoPlayedHandRemoval(autoplayedCard);
-                scheduleHandRefresh(4);
-            }
-            renderTrick(nextPlayedCards, previousPlayedCards);
-            renderPlayers(game);
-            updateTurnIndicator(game);
-            renderCurrentPlayer(game);
-            if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
-                animateDeckDraw(prevDeckLeft - nextDeckLeft);
-                if (currentUserId) scheduleHandRefresh(4);
-            }
-            updateTurn(game.playersTurn);
-            if (state.pending.size) scheduleHandRefresh(4);
-            if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
-                const winners = formatWinnerText(result.gameWinners, game);
-                state.endState = {
-                    title: 'Match Result',
-                    winnersText: winners,
-                    metaText: buildResultMetaText(result.gameWinners, game)
-                };
-                renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
-                startLobbyReturnCountdown();
-            } else if (gameEvent === 'CLOSED') {
-                state.endState = {
-                    title: 'Match Result',
-                    winnersText: 'Game closed',
-                    metaText: 'Returning to lobby'
-                };
-                renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
-                startLobbyReturnCountdown();
-            } else if (state.endState) {
-                renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
-            } else {
-                clearCenterResult();
-            }
-        }
-
-        function isHigherPriorityGameEvent(nextEvent, currentEvent) {
-            const priority = {
-                UPDATED: 1,
-                STARTED: 1,
-                CLOSED: 2,
-                RESULTED: 3
-            };
-            return (priority[nextEvent] || 0) > (priority[currentEvent] || 0);
-        }
-
-        function renderTrump(card, deckLeft) {
-            if (!dom.trump) return;
-            if (!card || ((deckLeft != null && deckLeft <= 0) && !state.deckExhausting)) {
-                dom.trump.removeAttribute('src');
-                dom.trump.style.display = 'none';
-                dom.deckStack?.classList.remove('has-trump');
-                return;
-            }
-            dom.trump.src = italianCardUrl(card.card);
-            dom.trump.style.display = '';
-            dom.deckStack?.classList.add('has-trump');
-            setupTrumpZoom(dom.trump);
-        }
-
-        function renderCenterResult(title, winnersText, metaText) {
-            if (!dom.dropZone) return;
-            dom.dropZone.classList.remove('ready');
-            dom.dropZone.classList.add('is-result');
-            dom.dropZone.innerHTML = `
-                <div class="drop-zone-title">${title || 'Match Result'}</div>
-                <div class="drop-zone-winner">${winnersText || 'No winner recorded'}</div>
-                <div class="drop-zone-meta">${metaText || ''}</div>
-            `;
-        }
-
-        function clearCenterResult() {
-            if (!dom.dropZone || !dom.dropZone.classList.contains('is-result')) return;
-            dom.dropZone.classList.remove('is-result');
-            dom.dropZone.textContent = 'Drag a card to play';
-            stopLobbyReturnCountdown();
-        }
-
-        function startLobbyReturnCountdown() {
-            if (state.endRedirectTimer || state.endRedirectInterval) return;
-            let secondsLeft = 6;
-            updateLobbyReturnCountdown(secondsLeft);
-            state.endRedirectInterval = setInterval(() => {
-                secondsLeft -= 1;
-                if (secondsLeft <= 0) {
-                    stopLobbyReturnCountdown();
-                    window.location.href = '/lobbies';
-                    return;
-                }
-                updateLobbyReturnCountdown(secondsLeft);
-            }, 1000);
-            state.endRedirectTimer = setTimeout(() => {
-                stopLobbyReturnCountdown();
-                window.location.href = '/lobbies';
-            }, 6000);
-        }
-
-        function stopLobbyReturnCountdown() {
-            if (state.endRedirectInterval) {
-                clearInterval(state.endRedirectInterval);
-                state.endRedirectInterval = null;
-            }
-            if (state.endRedirectTimer) {
-                clearTimeout(state.endRedirectTimer);
-                state.endRedirectTimer = null;
-            }
-        }
-
-        function updateLobbyReturnCountdown(secondsLeft) {
-            if (!dom.dropZone || !dom.dropZone.classList.contains('is-result')) return;
-            const meta = dom.dropZone.querySelector('.drop-zone-meta');
-            if (meta) {
-                meta.textContent = `Returning to lobby in ${secondsLeft}s`;
-            }
-        }
-
-        /**
-         * @param {GameCard[]} cards
-         */
-        function renderTrick(cards, previousCards = []) {
-            if (!dom.trick) return;
-            dom.trick.classList.remove('is-clearing');
-            dom.trick.innerHTML = '';
-            if (!cards || !cards.length) return;
-            const enteringKeys = collectEnteringCardKeys(previousCards, cards);
-            cards.forEach((card, idx) => {
-                const img = document.createElement('img');
-                img.className = 'trick-card';
-                img.style.setProperty('--spin', `${(idx * 4) - 6}deg`);
-                img.alt = 'Played card';
-                img.src = italianCardUrl(card.card);
-                if (enteringKeys.has(cardKey(card))) {
-                    img.classList.add('is-entering');
-                }
-                dom.trick.appendChild(img);
-            });
-        }
-
-        function animateTrickClear() {
-            if (!dom.trick) return;
-            if (!dom.trick.querySelector('.trick-card')) return;
-            dom.trick.classList.remove('is-clearing');
-            void dom.trick.offsetWidth;
-            requestAnimationFrame(() => {
-                dom.trick.classList.add('is-clearing');
-            });
-        }
-
-        /**
-         * @param {GameState} game
-         */
-        function renderPlayers(game) {
-            if (!dom.ring) return;
-            const players = buildPlayers(game);
-            const teamState = resolveTeams(game);
-            gameLayout?.classList.toggle('is-two-player', players.length === 2);
-            gameLayout?.classList.toggle('is-four-player', players.length === 4);
-            gameLayout?.classList.toggle('is-team-game', !!teamState);
-            const existingSeats = new Map();
-            Array.from(dom.ring.children).forEach((seat) => {
-                const key = seat.dataset.playerKey;
-                if (key) {
-                    existingSeats.set(key, seat);
-                }
-            });
-
-            players.forEach((player, index) => {
-                const key = playerSeatKey(player);
-                let seat = existingSeats.get(key);
-                if (!seat) {
-                    seat = document.createElement('div');
-                    seat.className = 'player-seat';
-                    seat.dataset.playerKey = key;
-
-                    const avatar = document.createElement('div');
-                    avatar.className = 'seat-avatar';
-                    seat.appendChild(avatar);
-
-                    const name = document.createElement('div');
-                    name.className = 'seat-name';
-                    seat.appendChild(name);
-
-                    const badge = document.createElement('div');
-                    badge.className = 'seat-team-badge';
-                    badge.hidden = true;
-                    seat.appendChild(badge);
-
-                    const cards = document.createElement('div');
-                    cards.className = 'seat-cards';
-                    seat.appendChild(cards);
-
-                    const points = document.createElement('div');
-                    points.className = 'seat-points';
-                    seat.appendChild(points);
-                }
-                existingSeats.delete(key);
-
-                const isSelf = isCurrentUser(player);
-                const teamNumber = getPlayerTeamNumber(teamState, player);
-                const teamTone = resolvePlayerTeamTone(teamState, player);
-                if (player.id) seat.dataset.playerId = String(player.id);
-                seat.classList.toggle('is-turn', isSamePlayer(player, game.playersTurn));
-                seat.classList.toggle('is-self', isSelf);
-                seat.classList.remove('team-seat-ally', 'team-seat-enemy', 'team-seat-neutral');
-                seat.classList.remove('team-seat-1', 'team-seat-2');
-                seat.classList.add(`team-seat-${teamTone}`);
-                if (teamNumber != null) {
-                    seat.classList.add(`team-seat-${teamNumber}`);
-                }
-                if (isSelf) {
-                    seat.dataset.isSelf = '1';
-                } else {
-                    delete seat.dataset.isSelf;
-                }
-                if (teamNumber != null) {
-                    seat.dataset.teamNumber = String(teamNumber);
-                } else {
-                    delete seat.dataset.teamNumber;
-                }
-                seat.dataset.seatIndex = String(index);
-                seat.dataset.seatTotal = String(players.length || 1);
-
-                const avatar = seat.querySelector('.seat-avatar');
-                if (avatar) {
-                    avatar.textContent = (player.name || 'P').charAt(0).toUpperCase();
-                }
-
-                const name = seat.querySelector('.seat-name');
-                if (name) {
-                    name.textContent = player.name || 'Player';
-                }
-
-                const badge = seat.querySelector('.seat-team-badge');
-                if (badge) {
-                    const badgeText = formatSeatTeamBadge(teamState, player);
-                    badge.textContent = badgeText;
-                    badge.hidden = !badgeText;
-                }
-
-                const cardsCount = player.cards != null ? player.cards : (player.points ?? 0);
-                const cards = seat.querySelector('.seat-cards');
-                if (cards) {
-                    syncSeatCards(cards, cardsCount, seat.dataset.seatSide || 'center');
-                }
-
-                const points = seat.querySelector('.seat-points');
-                if (points) {
-                    points.textContent = `Points: ${player.points ?? 0}`;
-                }
-
-                if (seat.parentElement !== dom.ring) {
-                    dom.ring.appendChild(seat);
-                }
-            });
-
-            existingSeats.forEach((seat) => seat.remove());
-            positionSeats(dom.ring);
-        }
-
-        function updateTurn(playersTurn) {
-            const isTurn = !playersTurn || isCurrentUser(playersTurn);
-            if (dom.dropZone) {
-                if (dom.dropZone.classList.contains('is-result')) return;
-                dom.dropZone.textContent = isTurn ? 'Play here' : 'Wait a moment';
-            }
-            if (dom.tableTurnOverlay) {
-                dom.tableTurnOverlay.classList.toggle('is-visible', !!playersTurn);
-            }
-            if (dom.tableTurnMessage) {
-                dom.tableTurnMessage.textContent = isTurn
-                    ? 'Your turn'
-                    : `Waiting for ${playersTurn && playersTurn.name ? playersTurn.name : 'the next player'}`;
-            }
-            syncHand();
-        }
-
-        function syncHand() {
-            if (!dom.hand) return;
-            const isTurn = state.game && state.game.playersTurn
-                && isCurrentUser(state.game.playersTurn);
-            const visibleHand = state.hand.filter((card) => {
-                const key = cardKey(card);
-                return !state.pending.has(key) && !state.autoPlayedPending.has(key);
-            });
-            const nextKeys = new Set(visibleHand.map(cardKey));
-
-            state.handEls.forEach((el, key) => {
-                if (!nextKeys.has(key)) {
-                    el.remove();
-                    state.handEls.delete(key);
-                }
-            });
-
-            const ordered = [];
-            visibleHand.forEach((card) => {
-                const key = cardKey(card);
-                let el = state.handEls.get(key);
-                if (!el) {
-                    el = createHandCard(card, isTurn);
-                    state.handEls.set(key, el);
-                    if (state.justDealtKeys.has(key)) {
-                        el.classList.add('is-entering');
-                        el.addEventListener('animationend', () => {
-                            el.classList.remove('is-entering');
-                        }, {once: true});
-                        state.justDealtKeys.delete(key);
-                    }
-                } else {
-                    updateHandCardState(el, card, isTurn);
-                }
-                ordered.push(el);
-            });
-
-            applyHandFan(ordered);
-            ordered.forEach((el) => dom.hand.appendChild(el));
-        }
-
-        function applyHandFan(cards) {
-            const total = cards.length;
-            if (!total) return;
-            const spread = Math.min(6, total <= 2 ? 4 : total <= 4 ? 5 : 6);
-            cards.forEach((el, index) => {
-                const centeredIndex = index - ((total - 1) / 2);
-                el.style.setProperty('--tilt', `${centeredIndex * spread}deg`);
-            });
-        }
-
-        function createHandCard(card, isTurn) {
-            const img = document.createElement('img');
-            img.className = 'hand-card';
+    function renderCardImage(options) {
+        const img = document.createElement('img');
+        const card = options?.card || null;
+        const cardType = normalizeCardType(card?.cardType || options?.cardType);
+        img.className = options?.className || 'game-card';
+        img.alt = options?.alt || (card ? 'Card' : 'Card back');
+        img.src = card ? cardUrl(card) : cardBackUrl(cardType);
+        img.dataset.cardType = cardType;
+        img.dataset.cardFace = card ? 'true' : 'false';
+        if (card) {
+            img.dataset.cardCode = card.card || '';
             img.dataset.cardKey = cardKey(card);
-            img.alt = 'Card';
-            img.src = italianCardUrl(card.card);
-            updateHandCardState(img, card, isTurn);
-            return img;
+        }
+        return img;
+    }
+
+    function hydrateCardImages(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-card-code][data-card-face="true"]').forEach((img) => {
+            const src = cardUrl({
+                cardType: img.dataset.cardType || 'ITALIAN',
+                card: img.dataset.cardCode
+            });
+            if (src) img.src = src;
+        });
+        scope.querySelectorAll('[data-card-face="false"]').forEach((img) => {
+            img.src = cardBackUrl(img.dataset.cardType || 'ITALIAN');
+        });
+    }
+
+    function ensureOverlayLayer() {
+        let layer = document.getElementById('game-animation-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.id = 'game-animation-layer';
+            layer.className = 'game-animation-layer';
+            document.body.appendChild(layer);
+        }
+        return layer;
+    }
+
+    function playAnimation(target, parameters) {
+        if (!target) return Promise.resolve();
+        if (prefersReducedMotion()) {
+            applyFinalAnimationState(target, parameters);
+            return Promise.resolve();
+        }
+        const duration = Number(parameters?.duration) || MOTION.standardMs;
+        const delay = Number(parameters?.delay) || 0;
+        const animate = animeApi.animate;
+        if (typeof animate === 'function') {
+            try {
+                const animation = animate(target, parameters);
+                if (animation?.finished?.then) {
+                    return animation.finished.catch(() => undefined);
+                }
+                if (animation?.then) {
+                    return animation.then(() => undefined).catch(() => undefined);
+                }
+                return new Promise((resolve) => window.setTimeout(resolve, duration + delay + 24))
+                    .then(() => {
+                        applyFinalAnimationState(target, parameters);
+                    });
+            } catch (err) {
+                console.warn('Anime.js animation failed, falling back to Web Animations API.', err);
+            }
+        }
+        return playWebAnimationFallback(target, parameters);
+    }
+
+    function applyFinalAnimationState(target, parameters) {
+        if (Array.isArray(parameters?.transform)) {
+            target.style.transform = parameters.transform[parameters.transform.length - 1] || '';
+        } else if (parameters?.transform != null) {
+            target.style.transform = parameters.transform;
+        }
+        if (Array.isArray(parameters?.opacity)) {
+            target.style.opacity = parameters.opacity[parameters.opacity.length - 1];
+        } else if (parameters?.opacity != null) {
+            target.style.opacity = parameters.opacity;
+        }
+    }
+
+    function playWebAnimationFallback(target, parameters) {
+        const from = {};
+        const to = {};
+        if (Array.isArray(parameters?.transform)) {
+            from.transform = parameters.transform[0];
+            to.transform = parameters.transform[parameters.transform.length - 1];
+        }
+        if (Array.isArray(parameters?.opacity)) {
+            from.opacity = parameters.opacity[0];
+            to.opacity = parameters.opacity[parameters.opacity.length - 1];
+        }
+        if (!Object.keys(from).length) {
+            applyFinalAnimationState(target, parameters);
+            return Promise.resolve();
+        }
+        const animation = target.animate([from, to], {
+            duration: parameters.duration || MOTION.standardMs,
+            easing: 'cubic-bezier(.22,.9,.3,1)',
+            fill: 'both'
+        });
+        return animation.finished.catch(() => undefined).then(() => {
+            applyFinalAnimationState(target, parameters);
+        });
+    }
+
+    function registerZone(element, options) {
+        if (!element) return null;
+        const zone = {
+            element,
+            options: {...(options || {})},
+            reservedIndex: null,
+            placeholder: null
+        };
+        element.classList.add('game-hand', 'game-zone');
+        if (zone.options.type) element.dataset.zoneType = zone.options.type;
+        if (zone.options.zoneId) element.dataset.zoneId = zone.options.zoneId;
+        element.__ucGameZone = zone;
+        layoutZone(zone);
+        return zone;
+    }
+
+    function getZone(zoneOrElement) {
+        if (!zoneOrElement) return null;
+        if (zoneOrElement.element) return zoneOrElement;
+        return zoneOrElement.__ucGameZone || registerZone(zoneOrElement, {});
+    }
+
+    function getZoneCards(zone) {
+        const resolved = getZone(zone);
+        if (!resolved) return [];
+        return Array.from(resolved.element.children)
+            .filter((el) => el.nodeType === 1)
+            .filter((el) => !el.classList.contains('game-hand-placeholder'))
+            .filter((el) => !el.hidden);
+    }
+
+    function ensurePlaceholder(zone) {
+        const resolved = getZone(zone);
+        if (!resolved) return null;
+        if (!resolved.placeholder) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'game-hand-placeholder';
+            placeholder.setAttribute('aria-hidden', 'true');
+            resolved.placeholder = placeholder;
+        }
+        return resolved.placeholder;
+    }
+
+    function reserveSlot(zone, index) {
+        const resolved = getZone(zone);
+        if (!resolved) return null;
+        const cards = getZoneCards(resolved);
+        resolved.reservedIndex = Math.max(0, Math.min(index ?? cards.length, cards.length));
+        const placeholder = ensurePlaceholder(resolved);
+        animateZoneChange(resolved, () => {
+            const currentCards = getZoneCards(resolved);
+            const before = currentCards[resolved.reservedIndex] || null;
+            resolved.element.insertBefore(placeholder, before);
+        });
+        return placeholder;
+    }
+
+    function clearReservedSlot(zone) {
+        const resolved = getZone(zone);
+        if (!resolved) return;
+        resolved.reservedIndex = null;
+        const placeholder = resolved.placeholder;
+        if (!placeholder || !placeholder.parentElement) return;
+        animateZoneChange(resolved, () => placeholder.remove());
+    }
+
+    function layoutZone(zone, cards, options) {
+        const resolved = getZone(zone);
+        if (!resolved) return [];
+        if (options) resolved.options = {...resolved.options, ...options};
+        const element = resolved.element;
+        const list = cards ? Array.from(cards) : getZoneCards(resolved);
+        const placeholder = resolved.placeholder?.parentElement === element ? resolved.placeholder : null;
+        const layoutItems = [];
+        list.forEach((card) => {
+            if (!card.classList.contains('is-dragging')) layoutItems.push({el: card, placeholder: false});
+        });
+        if (placeholder) {
+            const index = Math.max(0, Math.min(resolved.reservedIndex ?? layoutItems.length, layoutItems.length));
+            layoutItems.splice(index, 0, {el: placeholder, placeholder: true});
         }
 
-        function updateHandCardState(img, card, isTurn) {
-            img.draggable = false;
-            img.onpointerdown = null;
-            img.ondblclick = null;
-            img.classList.toggle('is-disabled', !isTurn || state.playing);
-            if (!isTurn || state.playing) {
-                return;
-            }
-            img.onpointerdown = (evt) => {
-                evt.preventDefault();
-                armDrag(card, img, evt);
-            };
-            img.ondblclick = () => {
-                playCard(card);
-            };
+        const total = layoutItems.length;
+        const rect = element.getBoundingClientRect();
+        const sample = layoutItems.find((item) => !item.placeholder)?.el;
+        const sampleRect = sample?.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        const baseWidth = resolved.options.cardWidth
+            || sampleRect?.width
+            || Number.parseFloat(style.getPropertyValue('--hand-card-width'))
+            || 100;
+        const baseHeight = resolved.options.cardHeight || sampleRect?.height || baseWidth * 1.38;
+        const available = Math.max(rect.width - baseWidth, baseWidth);
+        const zoneType = resolved.options.type || resolved.options.zoneType || element.dataset.zoneType;
+        const spacingScale = resolved.options.spacingScale ?? (zoneType === 'center' ? 0.72 : 0.52);
+        const naturalSpacing = baseWidth * spacingScale;
+        const spacing = total > 1 ? Math.min(naturalSpacing, available / (total - 1)) : 0;
+        const maxTilt = resolved.options.maxTilt ?? (zoneType === 'center' ? 8 : 18);
+        const yArc = resolved.options.yArc ?? (zoneType === 'center' ? 4 : 16);
+        const baseOffsetY = Number(resolved.options.baseOffsetY) || 0;
+
+        if (zoneType !== 'mini') {
+            const minWidth = Math.ceil(baseWidth + (total > 1 ? spacing * (total - 1) : 0) + 28);
+            const minHeight = Math.ceil(baseHeight + yArc + Math.abs(baseOffsetY) + 28);
+            element.style.minWidth = `${minWidth}px`;
+            element.style.minHeight = `${minHeight}px`;
         }
 
-        function playCard(card) {
-            if (state.playing) return;
-            const isTurn = state.game && state.game.playersTurn
-                && isCurrentUser(state.game.playersTurn);
-            if (state.game && state.game.playersTurn && !isTurn) {
+        layoutItems.forEach((item, index) => {
+            const centered = index - ((total - 1) / 2);
+            const normalized = total > 1 ? centered / ((total - 1) / 2) : 0;
+            const x = centered * spacing;
+            const y = Math.abs(normalized) * yArc + baseOffsetY;
+            const rotation = normalized * maxTilt;
+            const el = item.el;
+            el.classList.add('game-hand-card');
+            el.style.width = item.placeholder ? `${Math.round(baseWidth)}px` : '';
+            el.style.setProperty('--slot-x', `${x.toFixed(2)}px`);
+            el.style.setProperty('--slot-y', `${y.toFixed(2)}px`);
+            el.style.setProperty('--slot-rot', `${rotation.toFixed(2)}deg`);
+            el.style.setProperty('--tilt', `${rotation.toFixed(2)}deg`);
+            el.style.setProperty('--slot-scale', item.placeholder ? '0.96' : '1');
+            el.style.zIndex = String(index + 1);
+        });
+        return layoutItems.map((item) => item.el);
+    }
+
+    function captureRects(zone) {
+        const resolved = getZone(zone);
+        if (!resolved) return new Map();
+        const rects = new Map();
+        Array.from(resolved.element.children).forEach((el) => {
+            if (el.nodeType !== 1) return;
+            rects.set(el, {
+                rect: el.getBoundingClientRect(),
+                transform: getComputedStyle(el).transform === 'none' ? '' : getComputedStyle(el).transform
+            });
+        });
+        return rects;
+    }
+
+    function animateFromRect(el, firstRect, lastRect, duration) {
+        if (!el || !firstRect || !lastRect) return Promise.resolve();
+        const dx = firstRect.left - lastRect.left;
+        const dy = firstRect.top - lastRect.top;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return Promise.resolve();
+        const baseTransform = getComputedStyle(el).transform === 'none' ? '' : getComputedStyle(el).transform;
+        return playAnimation(el, {
+            transform: [
+                `translate3d(${dx}px, ${dy}px, 0) ${baseTransform}`,
+                baseTransform || 'translate3d(0, 0, 0)'
+            ],
+            duration: duration ?? MOTION.standardMs,
+            ease: MOTION.ease
+        }).then(() => {
+            el.style.transform = '';
+        });
+    }
+
+    function animateZoneChange(zone, mutation, options) {
+        const resolved = getZone(zone);
+        if (!resolved) {
+            mutation?.();
+            return Promise.resolve();
+        }
+        const first = captureRects(resolved);
+        mutation?.();
+        const cards = options?.cards ? Array.from(options.cards) : null;
+        if (cards) cards.forEach((card) => resolved.element.appendChild(card));
+        layoutZone(resolved, cards || undefined, options?.layout);
+        const last = captureRects(resolved);
+        const animations = [];
+        last.forEach((entry, el) => {
+            const before = first.get(el);
+            if (before) {
+                animations.push(animateFromRect(el, before.rect, entry.rect, options?.duration));
                 return;
             }
-            state.playing = true;
-            state.pending.add(cardKey(card));
-            fetch('/api/games', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({cardType: card.cardType, card: card.card})
-            })
-                .then(async (res) => {
-                    if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(text || `play failed: ${res.status}`);
+            if (!el.classList.contains('game-hand-placeholder')) {
+                const transform = getComputedStyle(el).transform === 'none' ? '' : getComputedStyle(el).transform;
+                animations.push(playAnimation(el, {
+                    opacity: [0, 1],
+                    transform: [`${transform} scale(.94)`, transform || 'scale(1)'],
+                    duration: options?.duration ?? MOTION.quickMs,
+                    ease: MOTION.ease
+                }).then(() => {
+                    el.style.opacity = '';
+                    el.style.transform = '';
+                }));
+            }
+        });
+        return Promise.all(animations);
+    }
+
+    function applyHandFan(cards) {
+        const list = Array.from(cards || []);
+        if (!list.length) return;
+        const parent = list[0].parentElement;
+        const zone = parent ? getZone(parent) : null;
+        if (zone) {
+            layoutZone(zone, list);
+            return;
+        }
+        const total = list.length;
+        list.forEach((el, index) => {
+            const centeredIndex = index - ((total - 1) / 2);
+            el.style.setProperty('--tilt', `${centeredIndex * 5}deg`);
+        });
+    }
+
+    function syncBackCards(cardsEl, cardsCount, options) {
+        if (!cardsEl) return;
+        const count = Math.max(Number(cardsCount) || 0, 0);
+        const existingCards = Array.from(cardsEl.children).filter((el) => !el.classList.contains('game-hand-placeholder'));
+        const first = new Map(existingCards.map((el) => [el, el.getBoundingClientRect()]));
+        while (existingCards.length > count) existingCards.pop()?.remove();
+        while (existingCards.length < count) {
+            const img = renderCardImage({
+                cardType: options?.cardType,
+                className: options?.className || 'seat-card',
+                alt: options?.alt || 'Card back'
+            });
+            cardsEl.appendChild(img);
+            existingCards.push(img);
+        }
+        const total = existingCards.length;
+        existingCards.forEach((img, index) => {
+            const centeredIndex = index - ((total - 1) / 2);
+            const rotate = centeredIndex * (options?.spread ?? 5);
+            const lift = Math.abs(centeredIndex) * 1.5;
+            img.style.transform = `translateY(${lift}px) rotate(${rotate}deg)`;
+            img.style.zIndex = String(index + 1);
+        });
+        existingCards.forEach((img) => {
+            const previous = first.get(img);
+            const next = img.getBoundingClientRect();
+            if (previous) {
+                animateFromRect(img, previous, next, MOTION.quickMs);
+                return;
+            }
+            playAnimation(img, {
+                opacity: [0, 1],
+                transform: [`${img.style.transform} scale(.92)`, img.style.transform],
+                duration: MOTION.quickMs,
+                ease: MOTION.ease
+            });
+        });
+    }
+
+    function renderDeckTower(deckTower, deckStack, cardsLeft, options) {
+        if (!deckTower) return;
+        deckTower.innerHTML = '';
+        const deckTowerCount = Math.max((cardsLeft ?? 0) - (options?.featuredCard ? 1 : 0), 0);
+        const exhausting = options?.exhausting === true;
+        if (deckStack) deckStack.classList.toggle('is-empty', deckTowerCount <= 0 && !exhausting);
+        if (deckTowerCount <= 0 && !exhausting) return;
+        const count = exhausting ? 1 : Math.min(deckTowerCount, 18);
+        for (let i = 0; i < count; i += 1) {
+            const img = renderCardImage({
+                cardType: options?.cardType,
+                className: options?.className || '',
+                alt: options?.alt || 'Deck'
+            });
+            const depthFromTop = count - i - 1;
+            const xOffset = Number((depthFromTop * 0.65).toFixed(2));
+            const yOffset = Number((-depthFromTop * 0.55).toFixed(2));
+            const rotation = Number((((i % 3) - 1) * 0.65).toFixed(3));
+            img.style.setProperty('--deck-offset-x', String(xOffset));
+            img.style.setProperty('--deck-offset-y', String(yOffset));
+            img.style.setProperty('--deck-rot', String(rotation));
+            img.style.zIndex = String(i + 1);
+            deckTower.appendChild(img);
+        }
+    }
+
+    function normalizeRect(rect) {
+        if (!rect) return null;
+        return {
+            left: rect.left,
+            top: rect.top,
+            right: rect.right ?? rect.left + rect.width,
+            bottom: rect.bottom ?? rect.top + rect.height,
+            width: rect.width,
+            height: rect.height
+        };
+    }
+
+    function resolveDragBounds(options) {
+        const elementRect = options?.boundsElement?.getBoundingClientRect?.();
+        const rect = normalizeRect(options?.boundsRect || elementRect);
+        const viewport = {
+            left: VIEWPORT_DRAG_PADDING,
+            top: VIEWPORT_DRAG_PADDING,
+            right: window.innerWidth - VIEWPORT_DRAG_PADDING,
+            bottom: window.innerHeight - VIEWPORT_DRAG_PADDING
+        };
+        if (!rect) return viewport;
+        return {
+            left: Math.max(rect.left, viewport.left),
+            top: Math.max(rect.top, viewport.top),
+            right: Math.min(rect.right, viewport.right),
+            bottom: Math.min(rect.bottom, viewport.bottom)
+        };
+    }
+
+    function clamp(value, min, max) {
+        if (max < min) return min;
+        return Math.min(Math.max(value, min), max);
+    }
+
+    function overlayCloneFromElement(sourceEl, options) {
+        if (!sourceEl) return null;
+        const rect = sourceEl.getBoundingClientRect();
+        const clone = sourceEl.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.classList.add(options?.className || 'game-moving-card');
+        clone.style.width = `${rect.width}px`;
+        clone.style.height = `${rect.height}px`;
+        clone.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0) rotate(${options?.fromRot || '0deg'})`;
+        ensureOverlayLayer().appendChild(clone);
+        return {clone, rect};
+    }
+
+    function getReservedTargetRect(toZone, toIndex) {
+        const resolved = getZone(toZone);
+        if (!resolved) return null;
+        const placeholder = reserveSlot(resolved, toIndex);
+        return placeholder?.getBoundingClientRect() || resolved.element.getBoundingClientRect();
+    }
+
+    function animateOverlayToRect(clone, fromRect, toRect, options) {
+        if (!clone || !fromRect || !toRect) return Promise.resolve();
+        const duration = prefersReducedMotion() ? 80 : (options?.duration ?? MOTION.dealMs);
+        const fromX = fromRect.left;
+        const fromY = fromRect.top;
+        const toX = toRect.left + (toRect.width - fromRect.width) / 2;
+        const toY = toRect.top + (toRect.height - fromRect.height) / 2;
+        const lift = Math.min(36, Math.max(12, Math.abs(toY - fromY) * 0.07));
+        const midX = fromX + (toX - fromX) * 0.58;
+        const midY = fromY + (toY - fromY) * 0.58 - lift;
+        return playAnimation(clone, {
+            transform: [
+                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${options?.fromScale || 1})`,
+                `translate3d(${midX}px, ${midY}px, 0) rotate(${options?.midRot || '-2deg'}) scale(${options?.midScale || 1.03})`,
+                `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.toScale || 1})`
+            ],
+            opacity: options?.fadeOut ? [1, 1, 0] : [1, 1, 1],
+            duration,
+            delay: Number(options?.delay) || 0,
+            ease: options?.easing || MOTION.ease
+        }).then(() => {
+            clone.remove();
+            options?.onDone?.();
+        });
+    }
+
+    function animateCardTransfer(options) {
+        const sourceEl = options?.cardEl || options?.sourceEl;
+        const sourceRect = options?.sourceRect || sourceEl?.getBoundingClientRect();
+        const targetRect = options?.targetRect || getReservedTargetRect(options?.toZone || options?.toHand, options?.toIndex);
+        if (!sourceRect || !targetRect) return Promise.resolve();
+        let clone;
+        if (sourceEl) {
+            clone = overlayCloneFromElement(sourceEl, options)?.clone;
+        } else {
+            clone = renderCardImage({
+                card: options?.card,
+                cardType: options?.cardType,
+                className: options?.className || 'game-moving-card',
+                alt: options?.alt || 'Card'
+            });
+            clone.style.width = `${sourceRect.width || targetRect.width || 96}px`;
+            clone.style.height = sourceRect.height ? `${sourceRect.height}px` : 'auto';
+            clone.style.transform = `translate3d(${sourceRect.left}px, ${sourceRect.top}px, 0)`;
+            ensureOverlayLayer().appendChild(clone);
+        }
+        return animateOverlayToRect(clone, sourceRect, targetRect, options)
+            .then(() => {
+                if (options?.toZone || options?.toHand) clearReservedSlot(options.toZone || options.toHand);
+            });
+    }
+
+    function startDragCard(options) {
+        const sourceEl = options?.sourceEl;
+        const pointer = options?.pointer || {x: 0, y: 0};
+        const overlay = overlayCloneFromElement(sourceEl, {
+            className: options?.className || 'drag-ghost'
+        });
+        if (!overlay) return null;
+        const session = {
+            clone: overlay.clone,
+            originEl: sourceEl,
+            originRect: overlay.rect,
+            pointerOffsetX: overlay.rect.width / 2,
+            pointerOffsetY: overlay.rect.height / 2,
+            originZone: getZone(options?.originZone || options?.originHand || sourceEl?.parentElement),
+            bounds: resolveDragBounds(options),
+            accepted: false,
+            overDropZone: false,
+            lastPoint: pointer
+        };
+        sourceEl?.classList.add('is-dragging');
+        layoutZone(session.originZone);
+        updateDragCard(session, pointer.x, pointer.y);
+        return session;
+    }
+
+    function updateDragCard(session, x, y) {
+        if (!session?.clone) return;
+        const rect = session.clone.getBoundingClientRect();
+        const width = rect.width || session.originRect?.width || 96;
+        const height = rect.height || session.originRect?.height || 134;
+        const bounds = session.bounds || resolveDragBounds();
+        const moveX = clamp(x - session.pointerOffsetX, bounds.left, bounds.right - width);
+        const moveY = clamp(y - session.pointerOffsetY, bounds.top, bounds.bottom - height);
+        session.lastPoint = {x, y};
+        session.clone.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) rotate(var(--drag-rot, 0deg)) scale(1.045)`;
+    }
+
+    function finishDragCard(session, options) {
+        if (!session?.clone) return Promise.resolve();
+        const targetRect = options?.targetRect || session.originRect;
+        const currentRect = session.clone.getBoundingClientRect();
+        const duration = options?.duration ?? (options?.accepted ? 170 : 240);
+        return animateOverlayToRect(session.clone, currentRect, targetRect, {
+            duration,
+            easing: options?.accepted ? MOTION.ease : MOTION.snapEase,
+            toScale: options?.accepted ? 0.94 : 1,
+            toRot: options?.toRot || '0deg',
+            fadeOut: options?.accepted === true
+        }).then(() => {
+            if (!options?.accepted) {
+                session.originEl?.classList.remove('is-dragging');
+                layoutZone(session.originZone);
+            }
+            options?.onDone?.();
+        });
+    }
+
+    function enableDropZone(element, options) {
+        if (!element || !interactApi) return null;
+        interactApi.dynamicDrop?.(true);
+        const interactable = interactApi(element).dropzone({
+            accept: options?.accept || '.hand-card',
+            overlap: options?.overlap ?? 0.28,
+            ondragenter(event) {
+                options?.onEnter?.(event);
+            },
+            ondragleave(event) {
+                options?.onLeave?.(event);
+            },
+            ondrop(event) {
+                options?.onDrop?.(event);
+            }
+        });
+        element.__ucDropZone = interactable;
+        return interactable;
+    }
+
+    function enableCardDrag(element, options) {
+        if (!element) return null;
+        disableCardDrag(element);
+        if (!interactApi) return null;
+        const interactable = interactApi(element)
+            .styleCursor(false)
+            .draggable({
+                inertia: options?.inertia ?? false,
+                autoScroll: false,
+                listeners: {
+                    start(event) {
+                        const pointer = eventToPoint(event);
+                        const session = startDragCard({
+                            sourceEl: element,
+                            originZone: options?.originZone || options?.originHand,
+                            pointer,
+                            className: options?.className || 'drag-ghost',
+                            boundsElement: options?.boundsElement,
+                            boundsRect: options?.boundsRect
+                        });
+                        element.__ucDragSession = session;
+                        options?.onStart?.(session, event);
+                    },
+                    move(event) {
+                        const session = element.__ucDragSession;
+                        if (!session) return;
+                        const pointer = eventToPoint(event);
+                        updateDragCard(session, pointer.x, pointer.y);
+                        options?.onMove?.(session, event);
+                    },
+                    end(event) {
+                        const session = element.__ucDragSession;
+                        element.__ucDragSession = null;
+                        options?.onEnd?.(session, event);
                     }
-                    return res.json().catch(() => null);
-                })
-                .then((game) => {
-                    state.playing = false;
-                    animateHandRemoval(cardKey(card));
-                    setTimeout(() => {
-                        state.hand = state.hand.filter((entry) => cardKey(entry) !== cardKey(card));
-                        syncHand();
-                    }, 230);
-                    if (game) {
-                        applyGame(game, 'UPDATED', null);
-                    }
-                    scheduleHandRefresh(6);
-                })
-                .catch((err) => {
-                    state.playing = false;
-                    state.pending.delete(cardKey(card));
-                    restoreDraggedCard(cardKey(card));
-                    syncHand();
-                });
-        }
-
-        function setupDropZone(zone) {
-            zone.addEventListener('pointerdown', (evt) => evt.preventDefault());
-        }
-
-        function armDrag(card, originEl, evt) {
-            if (state.dragSession || state.playing) return;
-            const isTurn = state.game && state.game.playersTurn
-                && isCurrentUser(state.game.playersTurn);
-            if (state.game && state.game.playersTurn && !isTurn) {
-                return;
-            }
-            const pointerId = evt.pointerId;
-            const rect = originEl.getBoundingClientRect();
-            const start = {x: evt.clientX, y: evt.clientY};
-            originEl.classList.add('is-pressed');
-            state.dragSession = {
-                card,
-                originEl,
-                pointerId,
-                rect,
-                start,
-                dragging: false,
-                ghost: null
-            };
-
-            const onMove = (moveEvt) => {
-                if (!state.dragSession || state.dragSession.pointerId !== moveEvt.pointerId) return;
-                const deltaX = moveEvt.clientX - state.dragSession.start.x;
-                const deltaY = moveEvt.clientY - state.dragSession.start.y;
-                const distance = Math.hypot(deltaX, deltaY);
-                if (!state.dragSession.dragging && distance < 10) {
-                    return;
-                }
-                if (!state.dragSession.dragging) {
-                    startDrag(state.dragSession);
-                }
-                moveGhost(state.dragSession.ghost, moveEvt.clientX, moveEvt.clientY);
-            };
-
-            const finish = (upEvt, cancelled) => {
-                if (!state.dragSession || state.dragSession.pointerId !== upEvt.pointerId) return;
-                const session = state.dragSession;
-                cleanupDragListeners();
-                state.dragSession = null;
-                session.originEl.classList.remove('is-pressed');
-
-                if (!session.dragging || cancelled) {
-                    if (session.ghost) session.ghost.remove();
-                    return;
-                }
-
-                dom.dropZone?.classList.remove('ready');
-                const targetRect = dom.dropZone ? dom.dropZone.getBoundingClientRect() : null;
-                const inside = targetRect
-                    && upEvt.clientX >= targetRect.left
-                    && upEvt.clientX <= targetRect.right
-                    && upEvt.clientY >= targetRect.top
-                    && upEvt.clientY <= targetRect.bottom;
-                if (inside && dom.dropZone) {
-                    const centerX = targetRect.left + targetRect.width / 2;
-                    const centerY = targetRect.top + targetRect.height / 2;
-                    session.ghost.classList.add('snap');
-                    session.ghost.style.transition = 'transform 160ms ease, left 160ms ease, top 160ms ease';
-                    session.ghost.style.left = `${centerX}px`;
-                    session.ghost.style.top = `${centerY}px`;
-                    setTimeout(() => {
-                        session.ghost.remove();
-                        playCard(session.card);
-                    }, 170);
-                } else {
-                    session.ghost.style.transition = 'transform 210ms cubic-bezier(.22, .9, .3, 1), left 210ms cubic-bezier(.22, .9, .3, 1), top 210ms cubic-bezier(.22, .9, .3, 1), opacity 210ms ease';
-                    const returnX = session.rect.left + session.rect.width / 2;
-                    const returnY = session.rect.top + session.rect.height / 2;
-                    session.ghost.style.left = `${returnX}px`;
-                    session.ghost.style.top = `${returnY}px`;
-                    setTimeout(() => {
-                        session.ghost.remove();
-                        session.originEl.classList.remove('is-dragging');
-                    }, 210);
-                }
-            };
-
-            const cleanupDragListeners = () => {
-                window.removeEventListener('pointermove', onMove);
-                window.removeEventListener('pointerup', onUp);
-                window.removeEventListener('pointercancel', onCancel);
-            };
-
-            const onUp = (upEvt) => finish(upEvt, false);
-            const onCancel = (cancelEvt) => finish(cancelEvt, true);
-
-            window.addEventListener('pointermove', onMove);
-            window.addEventListener('pointerup', onUp);
-            window.addEventListener('pointercancel', onCancel);
-        }
-
-        function startDrag(session) {
-            if (state.playing) return;
-            const ghost = document.createElement('img');
-            ghost.src = session.originEl.src;
-            ghost.className = 'drag-ghost';
-            ghost.style.width = `${session.rect.width}px`;
-            document.body.appendChild(ghost);
-            session.ghost = ghost;
-            session.dragging = true;
-            session.originEl.classList.remove('is-pressed');
-            session.originEl.classList.add('is-dragging');
-            moveGhost(ghost, session.start.x, session.start.y);
-            dom.dropZone?.classList.add('ready');
-        }
-
-        function moveGhost(ghost, x, y) {
-            ghost.style.left = `${x}px`;
-            ghost.style.top = `${y}px`;
-        }
-
-        /**
-         * @param {GameState} game
-         * @returns {UiPlayer[]}
-         */
-        function buildPlayers(game) {
-            const players = new Map();
-            const orderedKeys = [];
-            const registerPlayer = (candidate, keyFallback = '') => {
-                const parsed = parsePlayerKey(candidate);
-                const idKey = parsed.id || parsed.name || keyFallback;
-                if (!idKey) {
-                    return null;
-                }
-                const existing = players.get(idKey) || {};
-                players.set(idKey, {...existing, ...parsed});
-                if (!orderedKeys.includes(idKey)) {
-                    orderedKeys.push(idKey);
-                }
-                return idKey;
-            };
-
-            (game.playersOrder || []).forEach((player) => {
-                registerPlayer(player);
-            });
-
-            const cardsMap = game.playersCardsMap || {};
-            Object.keys(cardsMap).forEach((key) => {
-                const idKey = registerPlayer(key, key);
-                if (!idKey) {
-                    return;
-                }
-                const existing = players.get(idKey) || {};
-                players.set(idKey, {...existing, cards: cardsMap[key]});
-            });
-            const pointsMap = game.pointsPerPerson || {};
-            Object.keys(pointsMap).forEach((key) => {
-                const idKey = registerPlayer(key, key);
-                if (!idKey) {
-                    return;
-                }
-                const existing = players.get(idKey) || {};
-                players.set(idKey, {...existing, points: pointsMap[key]});
-            });
-            const orderedPlayers = orderedKeys
-                .map((key) => players.get(key))
-                .filter(Boolean);
-            if (!currentUserId) {
-                return orderedPlayers;
-            }
-
-            const currentIndex = orderedPlayers.findIndex((player) => isCurrentUser(player));
-            if (currentIndex <= 0) {
-                return orderedPlayers;
-            }
-
-            return orderedPlayers
-                .slice(currentIndex)
-                .concat(orderedPlayers.slice(0, currentIndex));
-        }
-
-        function resolveTeams(game) {
-            const config = game?.gameConfig;
-            if (!config || config.teamsEnabled !== true) {
-                return null;
-            }
-
-            const configuredUsers = normalizeTeamPlayers(config.orderedUsers);
-            const playOrderUsers = normalizeTeamPlayers(game?.playersOrder);
-            const orderedUsers = configuredUsers.length >= 4 ? configuredUsers : playOrderUsers;
-            if (orderedUsers.length < 4) {
-                return null;
-            }
-            const usePlayOrderTeams = configuredUsers.length < 4;
-            const team1 = usePlayOrderTeams
-                ? [orderedUsers[0], orderedUsers[2]]
-                : orderedUsers.slice(0, 2);
-            const team2 = usePlayOrderTeams
-                ? [orderedUsers[1], orderedUsers[3]]
-                : orderedUsers.slice(2, 4);
-            const teamByKey = new Map();
-            team1.forEach((player) => addTeamLookupKeys(teamByKey, player, 1));
-            team2.forEach((player) => addTeamLookupKeys(teamByKey, player, 2));
-
-            return {
-                team1,
-                team2,
-                teamByKey,
-                currentUserTeamNumber: getPlayerTeamNumber({teamByKey}, {id: currentUserId, name: currentUsername})
-            };
-        }
-
-        function normalizeTeamPlayers(team) {
-            if (!Array.isArray(team)) {
-                return [];
-            }
-            return team
-                .map((player) => parsePlayerKey(player))
-                .filter((player) => player && (player.id != null || player.name));
-        }
-
-        function getPlayerTeamNumber(teamState, player) {
-            if (!teamState || !player) {
-                return null;
-            }
-            for (const key of playerLookupKeys(player)) {
-                const teamNumber = teamState.teamByKey.get(key);
-                if (teamNumber != null) {
-                    return teamNumber;
-                }
-            }
-            return null;
-        }
-
-        function resolvePlayerTeamTone(teamState, player) {
-            if (!teamState) {
-                return 'neutral';
-            }
-            const playerTeam = getPlayerTeamNumber(teamState, player);
-            if (!playerTeam || !teamState.currentUserTeamNumber) {
-                return 'neutral';
-            }
-            return playerTeam === teamState.currentUserTeamNumber ? 'ally' : 'enemy';
-        }
-
-        function formatSeatTeamBadge(teamState, player) {
-            const teamNumber = getPlayerTeamNumber(teamState, player);
-            if (!teamNumber) {
-                return '';
-            }
-            if (isCurrentUser(player)) {
-                return '';
-            }
-            const tone = resolvePlayerTeamTone(teamState, player);
-            if (tone === 'ally') {
-                return 'Teammate';
-            }
-            if (tone === 'enemy') {
-                return 'Opponent';
-            }
-            return getTeamDisplayName(teamNumber);
-        }
-
-        function formatWinnerText(winners, game) {
-            if (!Array.isArray(winners) || !winners.length) {
-                return 'No winner recorded';
-            }
-            const teamState = resolveTeams(game);
-            if (teamState && winners.length > 1) {
-                return `Winning team: ${formatPlayerList(winners)}`;
-            }
-            return winners.map((winner) => winner.name).join(', ');
-        }
-
-        function buildResultMetaText(winners, game) {
-            const teamState = resolveTeams(game);
-            if (!teamState || !Array.isArray(winners) || !winners.length) {
-                return 'Game ended.';
-            }
-            const currentTeamPlayers = teamState.currentUserTeamNumber === 1
-                ? teamState.team1
-                : (teamState.currentUserTeamNumber === 2 ? teamState.team2 : []);
-            if (!currentTeamPlayers.length) {
-                return 'Game ended.';
-            }
-            const currentTeamWon = currentTeamPlayers.length > 0
-                && winners.every((winner) => currentTeamPlayers.some((player) => isSamePlayer(player, winner)));
-            return currentTeamWon ? 'Your team won.' : 'Your team lost.';
-        }
-
-        function formatPlayerList(players) {
-            if (!Array.isArray(players) || !players.length) {
-                return 'Waiting for players';
-            }
-            return players.map((player) => player?.name || `User ${player?.id ?? ''}`).join(', ');
-        }
-
-        /**
-         * @param {GameState} game
-         */
-        function renderCurrentPlayer(game) {
-            if (!dom.playerSummary) return;
-            const players = buildPlayers(game);
-            const current = players.find((player) => isCurrentUser(player));
-            if (!current) {
-                dom.playerSummary.style.visibility = 'hidden';
-                return;
-            }
-            dom.playerSummary.style.visibility = 'visible';
-            if (dom.playerSummaryPoints) {
-                dom.playerSummaryPoints.textContent = `Points: ${current.points ?? 0}`;
-            }
-            if (dom.playerSummaryAvatar) {
-                dom.playerSummaryAvatar.textContent = (current.name || 'P').charAt(0).toUpperCase();
-            }
-            if (dom.playerSummaryName) {
-                dom.playerSummaryName.textContent = current.name || 'Player';
-            }
-        }
-
-        function positionSeats(ring) {
-            if (!ring) return;
-            const seats = Array.from(ring.children);
-            const base = Math.min(ring.clientWidth, ring.clientHeight) / 2;
-            const radius = base - 2;
-            seats.forEach((seat, index) => {
-                const count = Number(seat.dataset.seatTotal) || seats.length || 1;
-                const seatIndex = Number(seat.dataset.seatIndex);
-                const resolvedIndex = Number.isFinite(seatIndex) ? seatIndex : index;
-                const angle = (Math.PI * 2 * resolvedIndex) / count + Math.PI / 2;
-                const x = Math.cos(angle) * radius;
-                let y = Math.sin(angle) * radius;
-                const selfTopOffset = seat.dataset.isSelf === '1' ? 84 : 0;
-                const seatSide = x < -8 ? 'left' : (x > 8 ? 'right' : (y < 0 ? 'top' : 'bottom'));
-                if (count === 4 && seatSide === 'top') {
-                    y += 20;
-                }
-                seat.dataset.seatSide = seatSide;
-                seat.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
-                seat.style.left = '50%';
-                seat.style.top = `calc(50% + ${selfTopOffset}px)`;
-                seat.style.setProperty('--hand-rotate', getSeatHandRotate(seatSide));
-            });
-        }
-
-        function setupTrumpZoom(img) {
-            if (!img || img.dataset.zoomReady) return;
-            img.dataset.zoomReady = '1';
-            let timer = null;
-            let overlay = null;
-
-            const clear = () => {
-                if (timer) {
-                    clearTimeout(timer);
-                    timer = null;
-                }
-                if (overlay) {
-                    overlay.remove();
-                    overlay = null;
-                }
-            };
-
-            img.addEventListener('mouseenter', () => {
-                clear();
-                timer = setTimeout(() => {
-                    overlay = document.createElement('div');
-                    overlay.className = 'trump-zoom';
-                    const big = document.createElement('img');
-                    big.src = img.src;
-                    big.alt = 'Trump card';
-                    big.addEventListener('mouseleave', clear);
-                    overlay.appendChild(big);
-                    overlay.addEventListener('click', clear);
-                    document.body.appendChild(overlay);
-                    timer = null;
-                }, 1000);
-            });
-            img.addEventListener('mouseleave', () => {
-                if (overlay) return;
-                clear();
-            });
-        }
-
-        function normalizePlayer(player) {
-            if (!player) return null;
-            if (typeof player === 'object' && player.name) {
-                return {name: player.name, id: player.id != null ? String(player.id) : null};
-            }
-            return parsePlayerKey(player);
-        }
-
-        function cardKey(card) {
-            if (!card) return '';
-            return `${card.cardType || ''}:${card.card || ''}`;
-        }
-
-        function animateHandRemoval(key) {
-            if (!dom.hand) return;
-            const el = dom.hand.querySelector(`[data-card-key="${key}"]`);
-            if (el) el.classList.add('played');
-        }
-
-        function animateAutoPlayedHandRemoval(card) {
-            const key = cardKey(card);
-            if (!key || state.pending.has(key) || state.autoPlayedPending.has(key)) return;
-            cancelDragForCard(key);
-            state.autoPlayedPending.add(key);
-            animateHandRemoval(key);
-            setTimeout(() => {
-                syncHand();
-            }, 230);
-        }
-
-        function restoreDraggedCard(key) {
-            if (!dom.hand) return;
-            const el = dom.hand.querySelector(`[data-card-key="${key}"]`);
-            if (!el) return;
-            el.classList.remove('is-dragging');
-            el.classList.add('returning');
-            setTimeout(() => el.classList.remove('returning'), 220);
-        }
-
-        function cancelDragForCard(key) {
-            const session = state.dragSession;
-            if (!session || cardKey(session.card) !== key) return;
-            session.originEl.classList.remove('is-pressed', 'is-dragging');
-            session.ghost?.remove();
-            dom.dropZone?.classList.remove('ready');
-            state.dragSession = null;
-        }
-
-        function collectEnteringCardKeys(previousCards, nextCards) {
-            const previousCounts = new Map();
-            (previousCards || []).forEach((card) => {
-                const key = cardKey(card);
-                previousCounts.set(key, (previousCounts.get(key) || 0) + 1);
-            });
-            const entering = new Set();
-            (nextCards || []).forEach((card) => {
-                const key = cardKey(card);
-                const count = previousCounts.get(key) || 0;
-                if (count > 0) {
-                    previousCounts.set(key, count - 1);
-                } else {
-                    entering.add(key);
                 }
             });
-            return entering;
+        element.__ucCardDrag = interactable;
+        return interactable;
+    }
+
+    function disableCardDrag(element) {
+        if (!element?.__ucCardDrag) return;
+        try {
+            element.__ucCardDrag.unset();
+        } catch (err) {
+            console.warn('Unable to unset card drag interaction.', err);
         }
+        element.__ucCardDrag = null;
+    }
 
-        function detectAutoPlayedCard(previousCards, nextCards) {
-            if (!nextCards || nextCards.length <= (previousCards?.length || 0)) return null;
-            const enteringKeys = collectEnteringCardKeys(previousCards || [], nextCards);
-            for (const card of nextCards) {
-                const key = cardKey(card);
-                if (!enteringKeys.has(key)) continue;
-                const matchesHand = state.hand.some((handCard) => cardKey(handCard) === key);
-                if (matchesHand && !state.pending.has(key)) {
-                    return card;
-                }
-            }
-            return null;
-        }
+    function eventToPoint(event) {
+        return {
+            x: Number(event.clientX ?? event.pageX ?? 0),
+            y: Number(event.clientY ?? event.pageY ?? 0)
+        };
+    }
 
-        function updateTurnIndicator(game) {
-            const turnPlayer = game?.playersTurn || null;
-            const turnEndTimeMs = game?.turnEndTime ? Date.parse(game.turnEndTime) : NaN;
-            const nextTargetKey = playerSeatKey(turnPlayer);
-            const hasCountdown = turnPlayer && Number.isFinite(turnEndTimeMs);
-            state.turnIndicatorTargetKey = hasCountdown ? nextTargetKey : null;
-            state.turnIndicatorEndsAt = hasCountdown ? turnEndTimeMs : null;
+    function markCardReturning(hand, cardKeyValue, options) {
+        if (!hand || !cardKeyValue) return;
+        const el = hand.querySelector(`[data-card-key="${CSS.escape(cardKeyValue)}"]`);
+        if (!el) return;
+        const className = options?.className || 'returning';
+        const duration = Number(options?.duration) || 220;
+        el.classList.remove('is-dragging');
+        el.classList.add(className);
+        playAnimation(el, {
+            opacity: [0.72, 1],
+            transform: ['translate3d(0, 12px, 0) scale(.94)', 'translate3d(0, 0, 0) scale(1)'],
+            duration,
+            ease: MOTION.snapEase
+        }).then(() => el.classList.remove(className));
+    }
 
-            Array.from(dom.ring?.children || []).forEach((seat) => {
-                const isTarget = hasCountdown && seat.dataset.playerKey === nextTargetKey;
-                const avatar = seat.querySelector('.seat-avatar');
-                const wasTarget = seat.classList.contains('has-turn-indicator');
-                seat.classList.toggle('has-turn-indicator', isTarget);
-                if (isTarget && !wasTarget) {
-                    seat.classList.remove('turn-indicator-exit');
-                    void seat.offsetWidth;
-                    seat.classList.add('turn-indicator-enter');
-                } else if (!isTarget && wasTarget) {
-                    seat.classList.remove('turn-indicator-enter');
-                    seat.classList.add('turn-indicator-exit');
-                }
-                if (!isTarget) {
-                    seat.classList.remove('is-turn-warning');
-                    avatar?.style.setProperty('--turn-progress', '0');
-                }
-            });
+    function createDealFlipCard(incomingCard, cardType) {
+        const card = document.createElement('div');
+        const back = document.createElement('div');
+        back.className = 'deal-card-face deal-card-back';
+        back.appendChild(renderCardImage({cardType, alt: 'Card back'}));
 
-            if (!hasCountdown) {
-                stopTurnIndicatorLoop();
-                return;
-            }
-            if (!state.turnIndicatorFrame) {
-                runTurnIndicatorFrame();
-            }
-        }
+        const front = document.createElement('div');
+        front.className = 'deal-card-face deal-card-front';
+        front.appendChild(renderCardImage({card: incomingCard, cardType, alt: 'Card'}));
 
-        function runTurnIndicatorFrame() {
-            state.turnIndicatorFrame = null;
-            const targetKey = state.turnIndicatorTargetKey;
-            const endsAt = state.turnIndicatorEndsAt;
-            if (!targetKey || !Number.isFinite(endsAt)) {
-                stopTurnIndicatorLoop();
-                return;
-            }
-            const seat = dom.ring?.querySelector(`[data-player-key="${CSS.escape(targetKey)}"]`);
-            if (!seat) {
-                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
-                return;
-            }
-            const avatar = seat.querySelector('.seat-avatar');
-            if (!avatar) {
-                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
-                return;
-            }
-            const remaining = Math.max(0, endsAt - Date.now());
-            const progress = Math.max(0, Math.min(1, remaining / Math.max(state.turnDurationMs, 1)));
-            avatar.style.setProperty('--turn-progress', progress.toFixed(4));
-            seat.classList.toggle('is-turn-warning', remaining <= 5000 && remaining > 0);
+        card.appendChild(back);
+        card.appendChild(front);
+        return card;
+    }
 
-            if (remaining > 0) {
-                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
-            } else {
-                seat.classList.add('is-turn-warning');
-            }
-        }
+    window.UltracardsGameUi = {
+        applyHandFan,
+        animateHandChange: animateZoneChange,
+        animateZoneChange,
+        cardBackUrl,
+        cardKey,
+        cardUrl,
+        animateCardTransfer,
+        createDealFlipCard,
+        clearReservedSlot,
+        disableCardDrag,
+        enableCardDrag,
+        enableDropZone,
+        finishDragCard,
+        hydrateCardImages,
+        italianCardUrl,
+        layoutHand: layoutZone,
+        layoutZone,
+        markCardReturning,
+        pokerCardUrl,
+        animateElement: playAnimation,
+        registerHand: registerZone,
+        registerZone,
+        renderCardImage,
+        renderDeckTower,
+        reserveSlot,
+        startDragCard,
+        updateDragCard,
+        syncBackCards
+    };
 
-        function stopTurnIndicatorLoop() {
-            if (state.turnIndicatorFrame) {
-                cancelAnimationFrame(state.turnIndicatorFrame);
-                state.turnIndicatorFrame = null;
-            }
-        }
-
-        function italianCardUrl(code) {
-            if (!code) return '';
-            const suitLetter = code.charAt(0).toUpperCase();
-            const valueNum = code.slice(1);
-            const suitMap = {C: 'COPPE', D: 'DENARI', S: 'SPADE', B: 'BASTONI'};
-            const valueMap = {
-                '1': 'ACE', '2': 'TWO', '3': 'THREE', '4': 'FOUR', '5': 'FIVE', '6': 'SIX',
-                '7': 'SEVEN', '11': 'JACK', '12': 'KNIGHT', '13': 'KING'
-            };
-            const suit = suitMap[suitLetter];
-            const value = valueMap[valueNum];
-            if (!suit || !value) return '';
-            return `/api/cards/italian/${suit}/${value}`;
-        }
-
-        function italianBackUrl() {
-            return '/api/cards/italian/back';
-        }
-
-        function playerSeatKey(player) {
-            if (!player) return '';
-            if (player.id != null) return `id:${player.id}`;
-            return `name:${player.name || ''}`;
-        }
-
-        function addTeamLookupKeys(teamByKey, player, teamNumber) {
-            playerLookupKeys(player).forEach((key) => teamByKey.set(key, teamNumber));
-        }
-
-        function playerLookupKeys(player) {
-            if (!player) return [];
-            const keys = [];
-            if (player.id != null && String(player.id) !== '') {
-                keys.push(`id:${String(player.id)}`);
-            }
-            if (player.name) {
-                const name = String(player.name);
-                keys.push(`name:${name}`);
-                keys.push(`name:${name.toLowerCase()}`);
-            }
-            return [...new Set(keys)];
-        }
-
-        function syncSeatCards(cardsEl, cardsCount, seatSide) {
-            const existingCards = Array.from(cardsEl.children);
-            while (existingCards.length > cardsCount) {
-                const card = existingCards.pop();
-                card?.remove();
-            }
-            while (existingCards.length < cardsCount) {
-                const img = document.createElement('img');
-                img.className = 'seat-card';
-                img.alt = 'Card back';
-                img.src = italianBackUrl();
-                cardsEl.appendChild(img);
-                existingCards.push(img);
-            }
-            existingCards.forEach((img, i) => {
-                const centeredIndex = i - ((cardsCount - 1) / 2);
-                const rotate = centeredIndex * 6.5;
-                const lift = Math.abs(centeredIndex) * 1.6;
-                img.style.transform = `translateY(${lift}px) rotate(${rotate}deg)`;
-            });
-        }
-
-        function getSeatHandRotate(seatSide) {
-            if (seatSide !== 'bottom') return '180deg';
-            return '0deg';
-        }
-
-        function renderDeckTower(cardsLeft) {
-            if (!dom.deckTower) return;
-            dom.deckTower.innerHTML = '';
-            const deckTowerCount = Math.max((cardsLeft ?? 0) - 1, 0);
-            if (dom.deckStack) {
-                dom.deckStack.classList.toggle('is-empty', deckTowerCount <= 0 && !state.deckExhausting);
-            }
-            if (deckTowerCount <= 0 && !state.deckExhausting) return;
-            const count = state.deckExhausting ? 1 : deckTowerCount;
-            for (let i = 0; i < count; i++) {
-                const img = document.createElement('img');
-                img.alt = 'Deck';
-                img.src = italianBackUrl();
-                const depth = count - i - 1;
-                const maxSpread = Math.min(count - 1, 20);
-                const ratio = maxSpread > 0 ? Math.min(depth, maxSpread) / maxSpread : 0;
-                const xOffset = Math.round(ratio * 9);
-                const yOffset = Math.round(-ratio * 16);
-                const rotation = ((depth % 5) - 2) * 0.8;
-                img.style.setProperty('--deck-offset-x', String(xOffset));
-                img.style.setProperty('--deck-offset-y', String(yOffset));
-                img.style.setProperty('--deck-rot', String(rotation));
-                img.style.zIndex = String(i + 1);
-                dom.deckTower.appendChild(img);
-            }
-        }
-
-        function animateDeckDraw(draws) {
-            if (!dom.deckTower || !dom.ring || draws <= 0) return;
-            const towerRect = dom.deckTower.getBoundingClientRect();
-            if (!towerRect.width || !towerRect.height) return;
-            const seats = Array.from(dom.ring.children);
-            if (!seats.length) return;
-            const fromX = towerRect.left + towerRect.width / 2;
-            const fromY = towerRect.top + towerRect.height / 2;
-            const targets = seats.map((seat) => ({
-                isSelf: seat.dataset.isSelf === '1',
-                rect: seat.dataset.isSelf === '1' && dom.hand
-                    ? dom.hand.getBoundingClientRect()
-                    : seat.getBoundingClientRect()
-            }));
-            for (let i = 0; i < draws; i++) {
-                const target = targets[i % targets.length];
-                if (!target) continue;
-                if (target.isSelf) continue;
-                const toX = target.rect.left + target.rect.width / 2;
-                const toY = target.rect.top + target.rect.height / 2;
-                const card = document.createElement('img');
-                card.className = 'deal-card';
-                card.src = italianBackUrl();
-                card.style.setProperty('--from-x', `${fromX}px`);
-                card.style.setProperty('--from-y', `${fromY}px`);
-                card.style.setProperty('--to-x', `${toX}px`);
-                card.style.setProperty('--to-y', `${toY}px`);
-                card.style.setProperty('--from-rot', `${-10 + (i % 3) * 5}deg`);
-                card.style.setProperty('--to-rot', `${-4 + (i % 5) * 2}deg`);
-                document.body.appendChild(card);
-                const delay = i * 80;
-                card.style.animationDelay = `${delay}ms`;
-                setTimeout(() => card.remove(), 640 + delay);
-            }
-        }
-
-        function animateIncomingHandCards(cards, useTrumpForLastDraw) {
-            if (!dom.deckTower || !dom.hand || !cards || !cards.length) return;
-            const towerRect = dom.deckTower.getBoundingClientRect();
-            if (!towerRect.width || !towerRect.height) return;
-            cards.forEach((card, index) => {
-                const key = cardKey(card);
-                const targetEl = dom.hand.querySelector(`[data-card-key="${key}"]`);
-                if (!targetEl) return;
-                const targetRect = targetEl.getBoundingClientRect();
-                const animationCard = createDealFlipCard(card);
-                const useTrumpSource = useTrumpForLastDraw && index === cards.length - 1 && dom.trump && dom.trump.getAttribute('src');
-                const sourceRect = useTrumpSource
-                    ? dom.trump.getBoundingClientRect()
-                    : towerRect;
-                targetEl.classList.add('is-dealing');
-                animationCard.className = 'deal-card to-self';
-                animationCard.style.setProperty('--from-x', `${sourceRect.left + sourceRect.width / 2}px`);
-                animationCard.style.setProperty('--from-y', `${sourceRect.top + sourceRect.height / 2}px`);
-                animationCard.style.setProperty('--to-x', `${targetRect.left + targetRect.width / 2}px`);
-                animationCard.style.setProperty('--to-y', `${targetRect.top + targetRect.height / 2}px`);
-                animationCard.style.setProperty('--from-rot', `${-12 + index * 3}deg`);
-                animationCard.style.setProperty('--to-rot', `${-6 + index * 4}deg`);
-                document.body.appendChild(animationCard);
-                const delay = index * 90;
-                animationCard.style.animationDelay = `${delay}ms`;
-                setTimeout(() => {
-                    targetEl.classList.remove('is-dealing');
-                    animationCard.remove();
-                    if (useTrumpForLastDraw && index === cards.length - 1) {
-                        state.deckExhausting = false;
-                        renderDeckTower(0);
-                        renderTrump(null, 0);
-                    }
-                }, 780 + delay);
-            });
-        }
-
-        function createDealFlipCard(incomingCard) {
-            const card = document.createElement('div');
-            const back = document.createElement('div');
-            back.className = 'deal-card-face deal-card-back';
-            const backImg = document.createElement('img');
-            backImg.src = italianBackUrl();
-            backImg.alt = 'Card back';
-            back.appendChild(backImg);
-
-            const front = document.createElement('div');
-            front.className = 'deal-card-face deal-card-front';
-            const frontImg = document.createElement('img');
-            frontImg.src = incomingCard ? italianCardUrl(incomingCard.card) : italianBackUrl();
-            frontImg.alt = 'Card';
-            front.appendChild(frontImg);
-
-            card.appendChild(back);
-            card.appendChild(front);
-            return card;
-        }
-
-        function parsePlayerKey(key) {
-            if (!key) return {name: ''};
-            if (typeof key === 'object' && key.name) {
-                return {name: key.name, id: key.id != null ? String(key.id) : null};
-            }
-            const raw = String(key);
-            if (raw.startsWith('{') && raw.endsWith('}')) {
-                try {
-                    const obj = JSON.parse(raw);
-                    if (obj && obj.name) {
-                        return {name: obj.name, id: obj.id != null ? String(obj.id) : null};
-                    }
-                } catch (error) {
-                }
-            }
-            const nameMatch = raw.match(/name=([^,)]+)/i);
-            const idMatch = raw.match(/id=([^,)]+)/i);
-            return {
-                name: nameMatch ? nameMatch[1].trim() : raw,
-                id: idMatch ? idMatch[1].trim() : null
-            };
-        }
-
-        function isCurrentUser(player) {
-            if (!player) return false;
-            if (currentUserId && player.id != null && String(player.id) === currentUserId) {
-                return true;
-            }
-            return !!currentUsername && !!player.name && String(player.name) === currentUsername;
-        }
-
-        function isSamePlayer(left, right) {
-            if (!left || !right) return false;
-            if (left.id != null && right.id != null) {
-                return String(left.id) === String(right.id);
-            }
-            return !!left.name && !!right.name && String(left.name) === String(right.name);
-        }
-
-    })();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => hydrateCardImages(document), {once: true});
+    } else {
+        hydrateCardImages(document);
+    }
+})();

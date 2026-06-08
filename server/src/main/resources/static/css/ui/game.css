@@ -21,12 +21,6 @@
             --deck-offset-x: 0;
             --deck-offset-y: 0;
             --deck-rot: 0;
-            --from-x: 0px;
-            --from-y: 0px;
-            --from-rot: -8deg;
-            --to-x: 0px;
-            --to-y: 0px;
-            --to-rot: 0deg;
             --turn-frame-safe: rgba(126, 220, 132, 0.98);
             --turn-frame-danger: rgba(255, 30, 30, 1);
         }
@@ -41,54 +35,53 @@
             --card-back: color-mix(in oklab, var(--color-surface-2) 46%, #55407f);
         }
 
+        .game-shell,
         .briskula-shell {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            margin-top: 2rem;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            gap: 0;
+            margin-top: 0;
+            min-height: 0;
             font-family: "Trebuchet MS", "Segoe UI", sans-serif;
             font-size: 0.95rem;
         }
 
         .game-layout {
             --header-height: 72px;
-            --table-size: min(60vmin, 48vh, 620px);
-            --avatar-size: clamp(38px, 6.2vmin, 56px);
-            --player-ring-pad: clamp(48px, 7.5vmin, 82px);
-            --hand-card-width: clamp(98px, calc(var(--table-size) * 0.19), 118px);
-            --hand-card-overlap: calc(var(--table-size) * -0.04);
-            --deck-cluster-width: calc(var(--table-size) * 0.277);
-            --deck-cluster-height: calc(var(--table-size) * 0.342);
-            --deck-tower-width: calc(var(--table-size) * 0.18);
-            --deck-tower-height: calc(var(--table-size) * 0.245);
-            --deck-card-width: calc(var(--table-size) * 0.174);
-            --trump-card-width: calc(var(--table-size) * 0.185);
-            --trump-card-right: calc(var(--table-size) * 0.145);
-            --trump-card-bottom: calc(var(--table-size) * 0.039);
-            --trump-card-hover-right: calc(var(--table-size) * 0.306);
-            --trump-card-hover-width: calc(var(--table-size) * 0.21);
-            width: min(100%, 1280px);
-            padding-top: calc((var(--header-height) * 0.65) + (var(--player-ring-pad) * 0.1));
+            --table-size: min(46vw, 54vh, 560px);
+            --avatar-size: clamp(32px, 3.8vmin, 44px);
+            --hand-card-width: clamp(82px, calc(var(--table-size) * 0.155), 104px);
+            --deck-cluster-width: calc(var(--table-size) * 0.19);
+            --deck-cluster-height: calc(var(--table-size) * 0.235);
+            --deck-tower-width: calc(var(--table-size) * 0.125);
+            --deck-tower-height: calc(var(--table-size) * 0.18);
+            --deck-card-width: calc(var(--table-size) * 0.115);
+            --trump-card-width: calc(var(--table-size) * 0.126);
+            --trump-card-right: calc(var(--table-size) * 0.08);
+            --trump-card-bottom: calc(var(--table-size) * 0.02);
+            --trump-card-hover-right: calc(var(--table-size) * 0.18);
+            --trump-card-hover-width: calc(var(--table-size) * 0.148);
+            width: min(100%, 1360px);
             min-height: calc(100vh - var(--header-height));
-            padding-bottom: 0.35rem;
+            padding-top: calc(var(--header-height) + 0.75rem);
+            padding-bottom: 1rem;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
-            gap: 1rem;
+            grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+            gap: clamp(0.85rem, 1.7vw, 1.3rem);
             align-items: start;
         }
 
         .game-layout.is-four-player {
-            padding-top: calc(var(--header-height) + 1.25rem);
-            --player-ring-pad: clamp(64px, 9vmin, 102px);
-            column-gap: 2rem;
+            column-gap: clamp(1rem, 2vw, 1.5rem);
         }
 
         .game-layout.is-two-player {
-            padding-top: calc(var(--header-height) + 5.5rem);
+            --table-size: min(45vw, 55vh, 540px);
         }
 
-        .game-layout.is-four-player .table-wrap {
-            margin-top: 4.1rem;
+        #game-container {
+            min-width: 0;
+            display: grid;
         }
 
         .turn-subtext {
@@ -98,23 +91,26 @@
         }
 
         .chat-sidebar {
-            margin-top: 2rem;
+            margin-top: 0;
             display: grid;
             grid-template-rows: auto minmax(0, 1fr) auto;
-            gap: 1rem;
-            height: 31rem;
-            padding: 1.1rem;
+            gap: 0.75rem;
+            width: min(100%, 320px);
+            height: min(540px, calc(100vh - var(--header-height) - 2rem));
+            align-self: start;
+            justify-self: end;
+            padding: 0.9rem;
             border: 1px solid var(--panel-border);
-            border-radius: var(--radius-lg);
-            background: var(--panel-bg);
-            backdrop-filter: blur(18px);
-            box-shadow: var(--panel-shadow);
+            border-radius: 14px;
+            background: color-mix(in oklab, var(--panel-bg) 82%, transparent);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
             overflow: hidden;
         }
 
         .game-layout.is-four-player .chat-sidebar {
             justify-self: end;
-            margin-left: 1.5rem;
+            margin-left: 0;
         }
 
         .chat-header {
@@ -222,9 +218,13 @@
             position: relative;
             display: grid;
             place-items: center;
-            padding: 0 0.5rem 0.1rem;
-            margin-top: -1.2rem;
-            animation: table-rise 520ms ease-out both;
+            padding: clamp(3.6rem, 7vmin, 4.9rem) clamp(3.4rem, 6vw, 6rem) clamp(1rem, 2.2vmin, 1.5rem);
+            min-height: calc(var(--table-size) + clamp(7.6rem, 15vmin, 10rem));
+            border: 0;
+            border-radius: 0;
+            background: radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.08), transparent 58%);
+            box-shadow: none;
+            overflow: visible;
         }
 
         .table-surface {
@@ -260,20 +260,20 @@
 
         .player-ring {
             position: absolute;
-            inset: calc(-1 * var(--player-ring-pad));
+            inset: 0;
             pointer-events: none;
         }
 
         .player-seat {
             position: absolute;
-            width: 140px;
+            width: clamp(92px, 10vmin, 122px);
+            min-height: 92px;
             text-align: center;
             color: var(--seat-text);
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
             transition: transform 280ms ease, filter 280ms ease;
-            animation: seat-fade 420ms ease both;
             pointer-events: auto;
-            letter-spacing: 0.03em;
+            letter-spacing: 0;
             --hand-rotate: 0deg;
         }
 
@@ -282,6 +282,7 @@
         }
 
         .player-seat.is-self {
+            display: none;
             z-index: 7;
             filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.22));
         }
@@ -331,7 +332,7 @@
             font-weight: 800;
             margin-top: 0.45rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0;
         }
 
         .seat-points {
@@ -345,7 +346,7 @@
             margin-top: 0.32rem;
             font-size: 0.66rem;
             font-weight: 900;
-            letter-spacing: 0.14em;
+            letter-spacing: 0;
             text-transform: uppercase;
             color: rgba(255, 248, 226, 0.92);
         }
@@ -355,17 +356,17 @@
             justify-content: center;
             flex-wrap: nowrap;
             gap: 0;
-            margin: 0.55rem 0 0.25rem;
+            margin: 0.45rem 0 0.2rem;
             transform: rotate(var(--hand-rotate));
             transform-origin: 50% 50%;
         }
 
         .seat-card {
-            width: 34px;
-            border-radius: 8px;
+            width: 28px;
+            border-radius: 7px;
             box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
             background: var(--cream);
-            margin-left: -11px;
+            margin-left: -9px;
             transform-origin: 50% 85%;
             transition: transform 160ms ease;
         }
@@ -381,24 +382,88 @@
             transform: translate(-50%, -50%);
             display: flex;
             align-items: center;
-            gap: 0.8rem;
             z-index: 4;
         }
 
         .trick-area {
-            min-width: 230px;
-            min-height: 192px;
-            display: flex;
-            flex-wrap: nowrap;
-            gap: 0;
-            align-items: center;
-            justify-content: center;
+            width: min(40vmin, calc(var(--table-size) * 0.44));
+            min-width: 212px;
+            height: min(25vmin, calc(var(--table-size) * 0.29));
+            min-height: 152px;
+            display: block;
             position: relative;
             overflow: visible;
         }
 
+        .game-hand {
+            --slot-x: 0px;
+            --slot-y: 0px;
+            --slot-rot: 0deg;
+            --slot-scale: 1;
+            position: relative;
+            contain: layout;
+        }
+
+        .game-hand-card {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            will-change: transform, opacity;
+            transform: translate3d(var(--slot-x, 0px), var(--slot-y, 0px), 0)
+            rotate(var(--slot-rot, 0deg))
+            scale(var(--slot-scale, 1));
+        }
+
+        .game-hand-placeholder {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: var(--hand-card-width);
+            aspect-ratio: 0.72;
+            border-radius: 14px;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: inset 0 0 0 1px rgba(240, 180, 77, 0.16);
+            pointer-events: none;
+            transform: translate3d(var(--slot-x, 0px), var(--slot-y, 0px), 0)
+            rotate(var(--slot-rot, 0deg))
+            scale(var(--slot-scale, 1));
+        }
+
+        .seat-cards.game-hand {
+            margin-inline: auto;
+        }
+
+        .seat-cards .game-hand-placeholder {
+            width: 34px;
+            border-radius: 8px;
+        }
+
+        .trick-area .game-hand-placeholder {
+            width: 86px;
+            border-radius: 12px;
+        }
+
+        .game-animation-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1600;
+            overflow: visible;
+            contain: layout style;
+        }
+
+        .game-moving-card,
+        .game-animation-layer .deal-card,
+        .game-animation-layer .drag-ghost {
+            position: absolute;
+            inset: 0 auto auto 0;
+            margin: 0;
+            transform-origin: 50% 50%;
+            will-change: transform, opacity;
+        }
+
         .trick-area.is-clearing {
-            animation: trick-area-clear 320ms ease-in forwards;
             pointer-events: none;
         }
 
@@ -407,12 +472,9 @@
             width: calc(86px + var(--grow));
             border-radius: 12px;
             box-shadow: 0 18px 28px rgba(0, 0, 0, 0.35);
-            transform: rotate(var(--spin, 0deg));
-            transition: width 180ms ease, margin-right 180ms ease, transform 180ms ease, box-shadow 180ms ease;
-            margin-left: -28px;
-            margin-right: calc(var(--grow) * -1);
+            transition: width 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+            margin: 0;
             cursor: pointer;
-            position: relative;
             z-index: 1;
         }
 
@@ -422,31 +484,32 @@
 
         .trick-card:hover {
             --grow: 14px;
-            transform: rotate(var(--spin, 0deg));
             box-shadow: 0 20px 26px rgba(0, 0, 0, 0.4);
             z-index: 4;
         }
 
         .trick-card.is-entering {
-            animation: trick-arrive 280ms cubic-bezier(.18, .86, .28, 1.12) both;
+            opacity: 0;
         }
 
         .deck-stack {
             position: absolute;
-            right: 10%;
-            top: 54%;
-            transform: translate(50%, -50%);
+            right: 9.5%;
+            top: 64%;
+            width: max-content;
+            height: max-content;
+            transform: translate(38%, -50%) scale(0.92);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.35rem;
             z-index: 2;
             transition: opacity 320ms ease, transform 320ms ease;
         }
 
         .deck-stack.is-empty {
             opacity: 0;
-            transform: translate(50%, -50%) scale(0.88);
+            transform: translate(38%, -50%) scale(0.84);
             pointer-events: none;
         }
 
@@ -455,16 +518,16 @@
             width: var(--deck-cluster-width);
             height: var(--deck-cluster-height);
             overflow: visible;
-            padding: 12px 12px 28px 20px;
+            padding: 8px 8px 20px 14px;
             box-sizing: border-box;
         }
 
         .deck-count {
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             font-weight: 800;
             color: var(--seat-text);
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-            letter-spacing: 0.04em;
+            letter-spacing: 0;
         }
 
         .deck-tower {
@@ -477,8 +540,8 @@
         .deck-tower img {
             position: absolute;
             width: var(--deck-card-width);
-            border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+            border-radius: 9px;
+            box-shadow: 0 7px 13px rgba(0, 0, 0, 0.16);
             left: calc(var(--deck-offset-x, 0) * 1px);
             top: calc(var(--deck-offset-y, 0) * 1px);
             transform: rotate(calc(var(--deck-rot, 0) * 1deg));
@@ -490,8 +553,8 @@
 
         .trump-card {
             width: var(--trump-card-width);
-            border-radius: 10px;
-            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.34);
+            border-radius: 9px;
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.28);
             transform: rotate(90deg) translate3d(0, 0, 0);
             transform-origin: 50% 50%;
             position: absolute;
@@ -500,9 +563,9 @@
             z-index: 2;
             cursor: pointer;
             transition: transform 280ms cubic-bezier(.2, .8, .2, 1),
+            width 280ms cubic-bezier(.2, .8, .2, 1),
             right 280ms cubic-bezier(.2, .8, .2, 1),
             bottom 280ms cubic-bezier(.2, .8, .2, 1),
-            width 280ms cubic-bezier(.2, .8, .2, 1),
             box-shadow 220ms ease,
             filter 220ms ease;
         }
@@ -513,10 +576,10 @@
 
         .trump-card:hover {
             transform: rotate(90deg) translate3d(-12px, -2px, 0) scale(1.02);
+            right: var(--trump-card-hover-right);
+            bottom: calc(var(--trump-card-bottom) + 8px);
             box-shadow: 0 26px 38px rgba(0, 0, 0, 0.42);
             filter: saturate(1.08);
-            bottom: 10px;
-            right: var(--trump-card-hover-right);
             width: var(--trump-card-hover-width);
         }
 
@@ -524,9 +587,9 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 176px;
-            height: 176px;
-            transform: translate(-50%, -50%);
+            width: 132px;
+            height: 132px;
+            transform: translate(-50%, -50%) scale(1);
             border-radius: 50%;
             border: 1px dashed rgba(255, 255, 255, 0.2);
             display: flex;
@@ -565,13 +628,13 @@
         }
 
         .drop-zone.is-result.ready {
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(1);
         }
 
         .drop-zone-title {
             font-size: 0.72rem;
             font-weight: 900;
-            letter-spacing: 0.22em;
+            letter-spacing: 0;
             text-transform: uppercase;
             color: rgba(255, 236, 196, 0.84);
         }
@@ -590,14 +653,14 @@
             font-size: 0.82rem;
             font-weight: 700;
             color: rgba(255, 236, 203, 0.78);
-            letter-spacing: 0.05em;
+            letter-spacing: 0;
         }
 
         .table-turn-overlay {
             position: absolute;
-            left: 18%;
-            right: 18%;
-            bottom: 20%;
+            left: 20%;
+            right: 20%;
+            bottom: 16%;
             height: 76px;
             display: flex;
             align-items: flex-end;
@@ -617,23 +680,24 @@
             border-radius: 18px;
             color: var(--cream);
             font-weight: 800;
-            letter-spacing: 0.04em;
+            letter-spacing: 0;
             background: rgba(18, 22, 19, 0.58);
             backdrop-filter: blur(8px);
             box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
         }
 
         .hand-zone {
-            display: flex;
-            flex-direction: column;
-            gap: 0.45rem;
-            background: transparent;
-            border-radius: 0;
-            padding: 0;
-            border: none;
-            box-shadow: none;
-            width: min(100%, 960px);
+            display: grid;
+            place-items: center;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.028));
+            border-radius: 16px;
+            padding: 0.4rem 0.85rem 0.62rem;
+            border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+            width: min(100%, 720px);
             align-self: center;
+            backdrop-filter: blur(10px);
         }
 
         .hand-row {
@@ -642,9 +706,9 @@
             justify-content: center;
             gap: 0.9rem;
             flex-wrap: nowrap;
-            margin-top: -6.1rem;
+            margin-top: clamp(0.55rem, 1.4vmin, 1rem);
             position: relative;
-            z-index: 4;
+            z-index: 8;
         }
 
         .player-summary {
@@ -661,7 +725,7 @@
         .player-summary-points {
             font-size: 0.9rem;
             font-weight: 800;
-            letter-spacing: 0.06em;
+            letter-spacing: 0;
             color: var(--seat-muted);
             text-transform: uppercase;
         }
@@ -683,47 +747,39 @@
         .player-summary-name {
             font-size: 0.86rem;
             font-weight: 900;
-            letter-spacing: 0.12em;
+            letter-spacing: 0;
             text-transform: uppercase;
         }
 
         .hand-cards {
-            display: flex;
-            flex-wrap: nowrap;
-            justify-content: center;
-            gap: 0;
+            display: block;
+            position: relative;
+            width: min(100%, 660px);
             overflow: visible;
-            padding: 0.25rem 1rem 0.4rem;
-            min-height: 154px;
+            padding: 0;
+            min-height: 142px;
         }
 
         .hand-card {
             --grow: 0px;
-            width: calc(var(--hand-card-width) + var(--grow));
+            width: var(--hand-card-width);
             height: auto;
             border-radius: 14px;
             box-shadow: 0 16px 30px rgba(0, 0, 0, 0.26);
             cursor: grab;
-            transition: width 180ms ease, margin-right 180ms ease, transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, filter 180ms ease;
+            transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, filter 180ms ease;
             background: var(--cream);
-            margin-left: var(--hand-card-overlap);
-            margin-right: calc(var(--grow) * -1);
-            position: relative;
+            margin: 0;
             z-index: 1;
             --tilt: 0deg;
             --lift: 0px;
             --press-y: 0px;
-            transform: translateY(calc(var(--lift) + var(--press-y))) rotate(var(--tilt));
             transform-origin: 50% 88%;
             touch-action: none;
         }
 
         .hand-card:first-child {
             margin-left: 0;
-        }
-
-        .hand-card.is-entering {
-            animation: hand-arrive 560ms cubic-bezier(.2, .8, .2, 1) both;
         }
 
         .hand-card.is-dealing {
@@ -733,17 +789,15 @@
 
         .hand-card.played {
             opacity: 0;
-            transform: translateY(-24px) scale(0.9) rotate(var(--tilt));
             transition: transform 220ms ease, opacity 220ms ease;
         }
 
         .hand-card.returning {
-            animation: hand-return 220ms ease;
+            will-change: transform, opacity;
         }
 
         .hand-card.is-dragging {
             opacity: 0;
-            transform: translateY(14px) scale(0.88) rotate(var(--tilt));
             pointer-events: none;
         }
 
@@ -760,20 +814,35 @@
 
         .hand-card:hover:not(.is-disabled) {
             --lift: -18px;
-            --grow: 12px;
             box-shadow: 0 24px 38px rgba(0, 0, 0, 0.34);
             z-index: 6;
         }
 
+        .game-hand-card.hand-card {
+            transform: translate3d(
+                    var(--slot-x, 0px),
+                    calc(var(--slot-y, 0px) + var(--lift, 0px) + var(--press-y, 0px)),
+                    0
+            )
+            rotate(var(--slot-rot, 0deg))
+            scale(var(--slot-scale, 1));
+        }
+
+        .game-hand-card.trick-card {
+            transform: translate3d(var(--slot-x, 0px), var(--slot-y, 0px), 0)
+            rotate(calc(var(--slot-rot, 0deg) + var(--spin, 0deg)))
+            scale(var(--slot-scale, 1));
+        }
+
         .drag-ghost {
-            position: fixed;
-            width: 96px;
+            position: absolute;
+            inset: 0 auto auto 0;
             border-radius: 10px;
             pointer-events: none;
             z-index: 999;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
-            transform: translate(-50%, -50%) scale(1.05);
-            transition: transform 120ms ease;
+            transform: translate3d(0, 0, 0) scale(1.05);
+            will-change: transform;
         }
 
         .drag-ghost.snap {
@@ -881,19 +950,18 @@
         }
 
         .deal-card {
-            position: fixed;
-            left: 0;
-            top: 0;
+            position: absolute;
+            inset: 0 auto auto 0;
             width: 98px;
             border-radius: 12px;
             box-shadow: 0 18px 28px rgba(0, 0, 0, 0.35);
             pointer-events: none;
             z-index: 500;
-            animation: fly-card 640ms cubic-bezier(.2, .8, .2, 1) forwards;
+            transform-origin: 50% 50%;
+            will-change: transform, opacity;
         }
 
         .deal-card.to-self {
-            animation: fly-card-self 700ms cubic-bezier(.2, .8, .2, 1) forwards;
             transform-style: preserve-3d;
         }
 
@@ -927,111 +995,6 @@
             ),
             linear-gradient(135deg, var(--game-bg-1), var(--game-bg-2) 45%, var(--game-bg-3));
             color: var(--color-text);
-        }
-
-        @keyframes table-rise {
-            from {
-                transform: scale(0.98);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        @keyframes seat-fade {
-            from {
-                opacity: 0;
-                filter: blur(2px);
-            }
-            to {
-                opacity: 1;
-                filter: blur(0);
-            }
-        }
-
-        @keyframes hand-arrive {
-            0% {
-                opacity: 0;
-                transform: translateY(18px) scale(0.86) rotate(var(--tilt, 0deg));
-            }
-            55% {
-                opacity: 1;
-                transform: translateY(-6px) scale(1.03) rotate(var(--tilt, 0deg));
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1) rotate(var(--tilt, 0deg));
-            }
-        }
-
-        @keyframes hand-return {
-            0% {
-                opacity: 0.64;
-                transform: translateY(12px) scale(0.92) rotate(var(--tilt, 0deg));
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1) rotate(var(--tilt, 0deg));
-            }
-        }
-
-        @keyframes fly-card {
-            0% {
-                transform: translate(var(--from-x, 0px), var(--from-y, 0px)) rotate(var(--from-rot, -8deg)) scale(0.9);
-                opacity: 0.96;
-            }
-            75% {
-                opacity: 1;
-            }
-            100% {
-                transform: translate(var(--to-x, 0px), var(--to-y, 0px)) rotate(var(--to-rot, 0deg)) scale(1);
-                opacity: 0.14;
-            }
-        }
-
-        @keyframes fly-card-self {
-            0% {
-                transform: translate(var(--from-x, 0px), var(--from-y, 0px)) rotate(var(--from-rot, -8deg)) rotateY(0deg) scale(0.9);
-                opacity: 0.98;
-            }
-            48% {
-                transform: translate(calc(var(--from-x, 0px) * 0.36 + var(--to-x, 0px) * 0.64), calc(var(--from-y, 0px) * 0.36 + var(--to-y, 0px) * 0.64)) rotate(-3deg) rotateY(0deg) scale(0.98);
-                opacity: 1;
-            }
-            68% {
-                transform: translate(calc(var(--from-x, 0px) * 0.22 + var(--to-x, 0px) * 0.78), calc(var(--from-y, 0px) * 0.22 + var(--to-y, 0px) * 0.78)) rotate(-1deg) rotateY(90deg) scale(1.02);
-                opacity: 1;
-            }
-            100% {
-                transform: translate(var(--to-x, 0px), var(--to-y, 0px)) rotate(var(--to-rot, 0deg)) rotateY(180deg) scale(1.03);
-                opacity: 0.08;
-            }
-        }
-
-        @keyframes trick-area-clear {
-            from {
-                opacity: 1;
-                transform: scale(1);
-                filter: blur(0);
-            }
-            to {
-                opacity: 0;
-                transform: scale(0.92);
-                filter: blur(1.5px);
-            }
-        }
-
-        @keyframes trick-arrive {
-            0% {
-                opacity: 0;
-                transform: rotate(var(--spin, 0deg)) translateY(22px) scale(0.82);
-            }
-            100% {
-                opacity: 1;
-                transform: rotate(var(--spin, 0deg)) translateY(0) scale(1);
-            }
         }
 
         @keyframes turn-warning-pulse {
@@ -1068,8 +1031,9 @@
         @media (max-width: 900px) {
             .game-layout {
                 --header-height: 68px;
-                --table-size: min(56vmin, 44vh, 560px);
+                --table-size: min(74vw, 46vh, 500px);
                 grid-template-columns: 1fr;
+                padding-top: calc(var(--header-height) + 0.6rem);
             }
 
             .player-seat {
@@ -1077,32 +1041,38 @@
             }
 
             .deck-stack {
-                right: 2%;
+                right: 8%;
             }
 
             .chat-sidebar {
-                margin-top: 0;
-                height: 29rem;
+                width: 100%;
+                justify-self: stretch;
+                height: min(24rem, 40vh);
             }
         }
 
         @media (max-width: 640px) {
             .game-layout {
                 --header-height: 64px;
-                --table-size: min(56vmin, 40vh, 460px);
+                --table-size: min(86vw, 43vh, 430px);
+                padding-inline: 0.6rem;
             }
 
             .player-seat {
-                width: 96px;
+                width: 90px;
             }
 
             .seat-card {
-                width: 24px;
+                width: 22px;
+            }
+
+            .deck-stack {
+                right: 4%;
             }
 
             .drop-zone {
-                width: 144px;
-                height: 144px;
+                width: 116px;
+                height: 116px;
                 font-size: 0.8rem;
             }
 
@@ -1116,12 +1086,8 @@
                 font-size: 0.92rem;
             }
 
-            .deck-stack {
-                right: 1%;
-            }
-
             .player-summary-card {
-                min-width: 138px;
+                min-width: 128px;
                 padding: 0.58rem 0.8rem;
             }
         }
@@ -1129,55 +1095,46 @@
         @media (max-width: 480px) {
             .game-layout {
                 --hand-card-width: clamp(86px, calc(var(--table-size) * 0.16), 100px);
-                --hand-card-overlap: calc(var(--table-size) * -0.026);
-                --deck-cluster-width: calc(var(--table-size) * 0.23);
-                --deck-cluster-height: calc(var(--table-size) * 0.285);
-                --deck-tower-width: calc(var(--table-size) * 0.145);
-                --deck-tower-height: calc(var(--table-size) * 0.2);
-                --deck-card-width: calc(var(--table-size) * 0.135);
-                --trump-card-width: calc(var(--table-size) * 0.14);
-                --trump-card-right: calc(var(--table-size) * 0.1);
+                --deck-cluster-width: calc(var(--table-size) * 0.2);
+                --deck-cluster-height: calc(var(--table-size) * 0.25);
+                --deck-tower-width: calc(var(--table-size) * 0.13);
+                --deck-tower-height: calc(var(--table-size) * 0.18);
+                --deck-card-width: calc(var(--table-size) * 0.12);
+                --trump-card-width: calc(var(--table-size) * 0.13);
+                --trump-card-right: calc(var(--table-size) * 0.08);
                 --trump-card-bottom: calc(var(--table-size) * 0.02);
-                --trump-card-hover-right: calc(var(--table-size) * 0.22);
-                --trump-card-hover-width: calc(var(--table-size) * 0.165);
+                --trump-card-hover-right: calc(var(--table-size) * 0.17);
+                --trump-card-hover-width: calc(var(--table-size) * 0.15);
+            }
+
+            .table-wrap {
+                padding-inline: 2.2rem;
+                padding-bottom: 0.8rem;
             }
 
             .hand-cards {
-                padding-inline: 0.3rem;
+                width: min(100%, 380px);
             }
         }
 
         @media (max-height: 740px) {
             .game-layout {
-                --table-size: min(50vmin, 36vh, 460px);
-                --player-ring-pad: clamp(42px, 6.5vmin, 68px);
-                padding-top: calc(var(--header-height) + (var(--player-ring-pad) * 0.45));
+                --table-size: min(44vw, 46vh, 480px);
+                padding-top: calc(var(--header-height) + 0.5rem);
             }
 
             .table-wrap {
-                padding-top: 0.15rem;
-                margin-top: -0.8rem;
-            }
-
-            .game-layout.is-four-player .table-wrap {
-                margin-top: 0.8rem;
-            }
-
-            .game-layout.is-two-player {
-                padding-top: calc(var(--header-height) + 1.5rem);
-            }
-
-            .hand-row {
-                margin-top: -1.35rem;
+                padding-top: clamp(3rem, 6.4vmin, 4.1rem);
+                padding-bottom: 0.8rem;
+                min-height: calc(var(--table-size) + clamp(6.8rem, 13vmin, 8.7rem));
             }
 
             .hand-zone {
-                padding: 0;
+                padding: 0.35rem 0.75rem 0.55rem;
             }
 
             .hand-cards {
-                min-height: 126px;
-                padding-bottom: 0.2rem;
+                min-height: 132px;
             }
 
             .player-summary {
@@ -1186,6 +1143,20 @@
 
             .player-summary-card {
                 padding: 0.5rem 0.75rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .game-hand-card,
+            .deal-card,
+            .drag-ghost,
+            .hand-card,
+            .trick-card,
+            .seat-card,
+            .deck-stack,
+            .trump-card {
+                animation-duration: 80ms !important;
+                transition-duration: 80ms !important;
             }
         }
 

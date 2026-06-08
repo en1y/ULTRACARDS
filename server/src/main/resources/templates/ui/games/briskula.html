@@ -3,24 +3,24 @@
       th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
-    <title>ULTRACARDS</title>
+    <title>Briskula | ULTRACARDS</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
-    <!--suppress CssUnusedSymbol -->
-        <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting…
-</div>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting...</div>
 
 <main class="container game-layout">
     <div id="game-container"
-         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username}">
-        <div class="game-shell">
-            <th:block th:replace="~{ui/fragments/game/table :: table('', 'Waiting for game', ${game != null ? game.cardsLeftInDeck : 0}, ${game != null ? game.trumpCard : null}, false)}"></th:block>
+         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
+        <div class="game-shell briskula-game-shell">
+            <th:block th:replace="~{ui/fragments/game/table :: table('', 'Drag a card to play', ${game.cardsLeftInDeck}, ${game.trumpCard}, true)}"></th:block>
+
             <div class="hand-row">
                 <th:block th:replace="~{ui/fragments/game/hand :: hand('', 'self', ${currentUserId}, null, 0)}"></th:block>
             </div>
@@ -31,7 +31,6 @@
 </main>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-<!--suppress JSUnresolvedVariable, RegExpRedundantEscape, CheckTagEmptyBody -->
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
@@ -39,5 +38,6 @@
 <script th:src="@{/webjars/animejs/4.1.2/lib/anime.umd.min.js}"></script>
 <script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
 <script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/games/briskula.js}"></script>
 </body>
 </html>

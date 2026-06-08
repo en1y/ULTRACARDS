@@ -1,0 +1,24 @@
+<th:block th:fragment="table(idPrefix, dropZoneText, cardsLeft, featuredCard, featuredEnabled)" xmlns:th="http://www.thymeleaf.org">
+    <div class="table-wrap"
+         th:attr="data-zone-id=${idPrefix + 'table-stage'},data-zone-kind='stage'">
+        <div class="table-surface"
+             th:attr="data-zone-id=${idPrefix + 'table'},data-zone-kind='table'">
+            <div class="table-rim"></div>
+            <div class="table-felt"></div>
+            <div th:id="${idPrefix + 'player-ring'}" class="player-ring"></div>
+            <div class="drop-zone"
+                 th:id="${idPrefix + 'drop-zone'}"
+                 th:attr="data-zone-id=${idPrefix + 'table-drop'},data-zone-kind='drop'"
+                 th:text="${dropZoneText}">Drag a card to play</div>
+            <div th:id="${idPrefix + 'table-turn-overlay'}" class="table-turn-overlay">
+                <div th:id="${idPrefix + 'table-turn-message'}" class="table-turn-message">Waiting for the next move</div>
+            </div>
+            <div class="table-center">
+                <div th:id="${idPrefix + 'trick-area'}"
+                     class="trick-area"
+                     th:attr="data-zone-id=${idPrefix + 'table-center'},data-zone-kind='center'"></div>
+            </div>
+            <th:block th:replace="~{ui/fragments/game/deck :: deck(${idPrefix}, ${cardsLeft}, ${featuredCard}, ${featuredEnabled})}"></th:block>
+        </div>
+    </div>
+</th:block>

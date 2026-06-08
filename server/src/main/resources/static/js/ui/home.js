@@ -81,6 +81,15 @@
         return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     }
 
+    function setButtonLabel(button, label) {
+        const text = button?.querySelector('span');
+        if (text) {
+            text.textContent = label;
+        } else if (button) {
+            button.textContent = label;
+        }
+    }
+
     function setStatus(message, type = '') {
         statusText.textContent = message;
         statusText.classList.toggle('error', type === 'error');

@@ -35,3 +35,7 @@ build/
 .DS_Store
 /.idea/
 /.envrc
+
+### Graphify ###
+.codex/
+graphify-out/

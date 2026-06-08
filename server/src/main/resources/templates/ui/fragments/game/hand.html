@@ -1,0 +1,17 @@
+<th:block th:fragment="hand(idPrefix, handId, ownerId, visibleCards, hiddenCount)" xmlns:th="http://www.thymeleaf.org">
+    <div class="hand-zone"
+         th:attr="data-hand-id=${handId},data-owner-id=${ownerId},data-zone-id=${handId},data-zone-kind='hand'">
+        <div th:id="${idPrefix + 'hand-cards'}"
+             class="hand-cards"
+             th:attr="data-hand-id=${handId},data-owner-id=${ownerId},data-zone-id=${handId},data-zone-kind='hand'">
+            <th:block th:if="${visibleCards != null and !#lists.isEmpty(visibleCards)}"
+                      th:each="card, cardState : ${visibleCards}">
+                <th:block th:replace="~{ui/fragments/game/card :: card(${card}, ${card.cardType}, 'hand-card', ${cardState.index}, null)}"></th:block>
+            </th:block>
+            <th:block th:if="${(visibleCards == null or #lists.isEmpty(visibleCards)) and hiddenCount != null and hiddenCount > 0}"
+                      th:each="cardIndex : ${#numbers.sequence(1, hiddenCount)}">
+                <th:block th:replace="~{ui/fragments/game/card :: card(null, 'ITALIAN', 'hand-card', ${cardIndex}, null)}"></th:block>
+            </th:block>
+        </div>
+    </div>
+</th:block>

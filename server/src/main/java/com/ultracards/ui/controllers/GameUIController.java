@@ -39,7 +39,8 @@ public class GameUIController {
             return "redirect:/lobbies";
         }
         var gameDto = toGameDto(currentGame);
-        if (gameDto == null) {
+        var gameView = toGameView(currentGame);
+        if (gameDto == null || gameView == null) {
             return "redirect:/lobbies";
         }
 
@@ -48,12 +49,19 @@ public class GameUIController {
         model.addAttribute("currentUserId", user.getId());
         model.addAttribute("game", gameDto);
         model.addAttribute("chat", chatService.getChat(currentLobby.getId()).toDto());
-        return "ui/game";
+        return gameView;
     }
 
     private GameEntityDTO toGameDto(GameEntity<?, ?> game) {
         if (game instanceof BriskulaGameEntity briskulaGame) {
             return briskulaGame.createGameDTO();
+        }
+        return null;
+    }
+
+    private String toGameView(GameEntity<?, ?> game) {
+        if (game instanceof BriskulaGameEntity) {
+            return "ui/games/briskula";
         }
         return null;
     }
