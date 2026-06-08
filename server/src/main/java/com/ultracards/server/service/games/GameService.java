@@ -12,6 +12,7 @@ import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.games.BriskulaGameRepository;
 import com.ultracards.server.service.lobby.LobbyManager;
+import com.ultracards.templates.cards.AbstractCard;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -78,22 +79,23 @@ public class GameService {
     }
 
     public void setTimer(GameEntity<?, ?> game) {
-        if (game.getGameType().equals(GameTypeDTO.Briskula)) {
-            var briskulaGame = ((BriskulaGameEntity) game);
-            game.setTurnEndTime(Instant.now().plusSeconds(briskulaTimerDuration));
-            var prevTurnNum = game.getTurnNumber();
-            taskScheduler.schedule(() -> {
-                if (briskulaGame.getTurnNumber().equals(prevTurnNum)) {
-                    var player = briskulaGame.getCurrentPlayer();
-                    var card = GameCardDTO.createCardDTO(
-                            player.getHand().getCards().getFirst());
-                    if (card != null) {
-                        playCard(player.getUser(), card);
+        if (game.getGameType().equals(GameTypeDTO.Briskula))
+            setBriskulaTimer((BriskulaGameEntity) game);
+    }
+    private void setBriskulaTimer (BriskulaGameEntity briskulaGame) {
+        briskulaGame.setTurnEndTime(Instant.now().plusSeconds(briskulaTimerDuration));
+        var prevTurnNum = briskulaGame.getTurnNumber();
+        taskScheduler.schedule(() -> {
+            if (briskulaGame.getTurnNumber().equals(prevTurnNum)) {
+                var player = briskulaGame.getCurrentPlayer();
+                var card = GameCardDTO.createCardDTO(
+                        player.getHand().getCards().getFirst());
+                if (card != null) {
+                    playCard(player.getUser(), card);
 
-                    }
                 }
-            }, briskulaGame.getTurnEndTime());
-        }
+            }
+        }, briskulaGame.getTurnEndTime());
     }
 
     public Optional<GameEntity<?, ?>> getGameByUser(UserEntity user) {
@@ -104,42 +106,49 @@ public class GameService {
         var game = gameManager.getGame(user.getId());
         var genericCard = cardDTO.toCard();
         if (game instanceof BriskulaGameEntity game1 && genericCard instanceof ItalianCard<?>) {
-            var briskulaGame = game1.getGame();
-            var playingField = briskulaGame.getPlayingField();
-            var success = game1.playCard(user, genericCard);
+            playCardInBriskula(game1, user, genericCard);
 
-            if (success) {
-                var newPlayingField = briskulaGame.getPlayingField();
-                if (newPlayingField == null || newPlayingField.getPlayedCards().isEmpty()) {
-                    briskulaGame.setPlayingField(playingField);
-                    eventPublisher.publish(game, UPDATED);
-                    briskulaGame.setPlayingField(newPlayingField);
-                }
-                if (game.isActive()) {
-                    setTimer(game);
-                    eventPublisher.publish(game, UPDATED);
-                }
-                else {
-                    eventPublisher.publish(game, RESULTED);
+        }
+    }
 
-                    var winners = game1.getGame().determineGameWinners();
-                    var briskulaGameConfig = game1.getGameConfig().getGameConfig();
-                    var winnerUsers = new HashSet<UserEntity>();
-                    winners.forEach(player -> winnerUsers.add(((BriskulaPlayerEntity) player).getUser()));
-                    game.getGame().getPlayers().forEach(p -> {
-                        var player = (BriskulaPlayerEntity) p;
-                        var won = winners.contains(p);
-                        userGamesStatsService.addGame(player.getUser(), GameType.BRISKULA, won);
-                        userBriskulaStatsService.addBriskulaGame(player.getUser(), briskulaGameConfig, won);
-                    });
-                    updateBriskulaRelationshipStats(game.getPlayers(), winnerUsers, briskulaGameConfig);
-                    game1.markEnded();
-                    briskulaGameRepository.save(game1);
+    private void playCardInBriskula(BriskulaGameEntity briskulaGameEntity,
+                                    UserEntity user,
+                                    AbstractCard<?, ?, ? extends AbstractCard<?, ?, ?>> genericCard) {
+        var briskulaGame = briskulaGameEntity.getGame();
+        var playingField = briskulaGame.getPlayingField();
+        var success = briskulaGameEntity.playCard(user, genericCard);
 
-                    game.getPlayers().forEach(p -> gameCache.remove(p.getId()));
-                    var lobby = lobbyManager.getLobby(game.getLobbyId());
-                    openLobby.apply(lobby);
-                }
+        if (success) {
+            var newPlayingField = briskulaGame.getPlayingField();
+            if (newPlayingField == null || newPlayingField.getPlayedCards().isEmpty()) {
+                briskulaGame.setPlayingField(playingField);
+                eventPublisher.publish(briskulaGameEntity, UPDATED);
+                briskulaGame.setPlayingField(newPlayingField);
+            }
+            if (briskulaGameEntity.isActive()) {
+                setTimer(briskulaGameEntity);
+                eventPublisher.publish(briskulaGameEntity, UPDATED);
+            }
+            else {
+                eventPublisher.publish(briskulaGameEntity, RESULTED);
+
+                var winners = briskulaGameEntity.getGame().determineGameWinners();
+                var briskulaGameConfig = briskulaGameEntity.getGameConfig().getGameConfig();
+                var winnerUsers = new HashSet<UserEntity>();
+                winners.forEach(player -> winnerUsers.add(((BriskulaPlayerEntity) player).getUser()));
+                briskulaGame.getPlayers().forEach(p -> {
+                    var player = (BriskulaPlayerEntity) p;
+                    var won = winners.contains(p);
+                    userGamesStatsService.addGame(player.getUser(), GameType.BRISKULA, won);
+                    userBriskulaStatsService.addBriskulaGame(player.getUser(), briskulaGameConfig, won);
+                });
+                updateBriskulaRelationshipStats(briskulaGameEntity.getPlayers(), winnerUsers, briskulaGameConfig);
+                briskulaGameEntity.markEnded();
+                briskulaGameRepository.save(briskulaGameEntity);
+
+                briskulaGameEntity.getPlayers().forEach(p -> gameCache.remove(p.getId()));
+                var lobby = lobbyManager.getLobby(briskulaGameEntity.getLobbyId());
+                openLobby.apply(lobby);
             }
         }
     }
