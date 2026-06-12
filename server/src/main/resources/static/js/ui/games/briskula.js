@@ -29,6 +29,12 @@
         const gameEl = document.getElementById('game-container');
         if (!gameEl || !gameEl.dataset.gameId) return;
 
+        function getTeamDisplayName(n) {
+            if (n === 1) return 'Team 1';
+            if (n === 2) return 'Team 2';
+            return `Team ${n}`;
+        }
+
         const gameId = gameEl.dataset.gameId;
         const currentUserId = gameEl.dataset.currentUserId ? String(gameEl.dataset.currentUserId) : null;
         const currentUsername = gameEl.dataset.username ? String(gameEl.dataset.username) : '';
@@ -85,6 +91,53 @@
                 table: null
             }
         };
+        const PreviousRoundStore = {
+            save(id, data) {
+                try { localStorage.setItem('uc-prev-round-' + id, JSON.stringify(data)); } catch (e) {}
+            },
+            load(id) {
+                try { return JSON.parse(localStorage.getItem('uc-prev-round-' + id)); } catch (e) { return null; }
+            }
+        };
+
+        const prevRoundToggle = document.getElementById('prev-round-toggle');
+        const prevRoundPanel = document.getElementById('prev-round-panel');
+        const prevRoundCardsEl = document.getElementById('prev-round-cards');
+
+        if (prevRoundToggle && prevRoundPanel) {
+            prevRoundToggle.addEventListener('click', () => {
+                const open = prevRoundPanel.classList.toggle('is-open');
+                prevRoundToggle.setAttribute('aria-expanded', String(open));
+                if (open) renderPrevRoundPanel();
+            });
+        }
+
+        function renderPrevRoundPanel() {
+            if (!prevRoundCardsEl) return;
+            const data = PreviousRoundStore.load(gameId);
+            if (!data || !Array.isArray(data.cards) || !data.cards.length) {
+                prevRoundCardsEl.innerHTML = '<span class="prev-round-empty">No trick recorded yet</span>';
+                return;
+            }
+            prevRoundCardsEl.innerHTML = '';
+            data.cards.forEach((card, i) => {
+                const entry = document.createElement('div');
+                entry.className = 'prev-round-entry';
+
+                const img = document.createElement('img');
+                img.src = window.UltracardsGameUi?.cardUrl(card) || window.UltracardsGameUi?.italianCardUrl(card.card) || '';
+                img.alt = `Card ${i + 1}`;
+
+                const label = document.createElement('div');
+                label.className = 'prev-round-player';
+                label.textContent = data.players?.[i]?.name || `Player ${i + 1}`;
+
+                entry.appendChild(img);
+                entry.appendChild(label);
+                prevRoundCardsEl.appendChild(entry);
+            });
+        }
+
         let refreshTimer = null;
         let refreshAttempts = 0;
         const chat = window.UltracardsChat?.create({
@@ -372,12 +425,17 @@
         function renderTrump(card, deckLeft) {
             if (!dom.trump) return;
             if (!card || ((deckLeft != null && deckLeft <= 0) && !state.deckExhausting)) {
-                dom.trump.removeAttribute('src');
                 dom.trump.style.display = 'none';
+                dom.trump.dataset.cardCode = '';
+                dom.trump.dataset.cardFace = 'false';
                 dom.deckStack?.classList.remove('has-trump');
                 return;
             }
-            dom.trump.src = italianCardUrl(card.card);
+            const frontImg = dom.trump.querySelector('.card-front');
+            const url = italianCardUrl(card.card);
+            if (frontImg) frontImg.src = url;
+            dom.trump.dataset.cardCode = card.card || '';
+            dom.trump.dataset.cardFace = 'true';
             dom.trump.style.display = '';
             dom.deckStack?.classList.add('has-trump');
             setupTrumpZoom(dom.trump);
@@ -504,18 +562,33 @@
 
         function animateTrickClear() {
             if (!dom.trick) return;
-            if (!dom.trick.querySelector('.trick-card')) return;
+            const trickCards = Array.from(dom.trick.querySelectorAll('.trick-card'));
+            if (!trickCards.length) return;
+
+            // Save previous round before clearing
+            const cardsToSave = Array.isArray(state.game?.playedCards) ? state.game.playedCards : [];
+            if (cardsToSave.length > 0) {
+                const roundData = {
+                    cards: cardsToSave,
+                    players: (state.game?.playersOrder ?? []).map((p) => ({id: p.id, name: p.name})),
+                    timestamp: Date.now()
+                };
+                PreviousRoundStore.save(gameId, roundData);
+                if (prevRoundPanel?.classList.contains('is-open')) renderPrevRoundPanel();
+            }
+
             dom.trick.classList.remove('is-clearing');
             dom.trick.classList.add('is-clearing');
-            Promise.resolve(window.UltracardsGameUi?.animateElement(dom.trick, {
-                opacity: [1, 0],
-                transform: ['scale(1)', 'scale(.95)'],
-                duration: 260,
-                ease: 'inOut(2)'
-            })).then(() => {
+
+            const winnerPlayer = state.game?.playersTurn;
+            const winnerSeatEl = winnerPlayer?.id
+                ? dom.ring?.querySelector(`[data-player-id="${CSS.escape(String(winnerPlayer.id))}"]`)
+                : null;
+
+            Promise.resolve(
+                window.UltracardsGameUi?.animateTrickCollect(trickCards, winnerSeatEl)
+            ).then(() => {
                 dom.trick.classList.remove('is-clearing');
-                dom.trick.style.opacity = '';
-                dom.trick.style.transform = '';
             });
         }
 
@@ -618,7 +691,14 @@
 
                 const points = seat.querySelector('.seat-points');
                 if (points) {
-                    points.textContent = `Points: ${player.points ?? 0}`;
+                    let bubble = points.querySelector('.seat-points-bubble');
+                    if (!bubble) {
+                        points.textContent = '';
+                        bubble = document.createElement('span');
+                        bubble.className = 'seat-points-bubble';
+                        points.appendChild(bubble);
+                    }
+                    bubble.textContent = String(player.points ?? 0);
                 }
 
                 if (seat.parentElement !== dom.ring) {
@@ -696,13 +776,14 @@
         }
 
         function createHandCard(card, isTurn) {
-            const img = window.UltracardsGameUi?.renderCardImage({
+            const wrap = window.UltracardsGameUi?.renderCardImage({
                 card,
                 className: 'hand-card',
                 alt: 'Card'
-            }) || document.createElement('img');
-            updateHandCardState(img, card, isTurn);
-            return img;
+            }) || document.createElement('div');
+            // Flip reveal is triggered by animateIncomingHandCards after the deal animation lands.
+            updateHandCardState(wrap, card, isTurn);
+            return wrap;
         }
 
         function updateHandCardState(img, card, isTurn) {
@@ -1086,7 +1167,7 @@
             }
             dom.playerSummary.style.visibility = 'visible';
             if (dom.playerSummaryPoints) {
-                dom.playerSummaryPoints.textContent = `Points: ${current.points ?? 0}`;
+                dom.playerSummaryPoints.textContent = String(current.points ?? 0);
             }
             if (dom.playerSummaryAvatar) {
                 dom.playerSummaryAvatar.textContent = (current.name || 'P').charAt(0).toUpperCase();
@@ -1136,30 +1217,27 @@
             return slots[index] || slots[index % slots.length];
         }
 
-        function setupTrumpZoom(img) {
-            if (!img || img.dataset.zoomReady) return;
-            img.dataset.zoomReady = '1';
+        function setupTrumpZoom(cardWrap) {
+            if (!cardWrap || cardWrap.dataset.zoomReady) return;
+            cardWrap.dataset.zoomReady = '1';
             let timer = null;
             let overlay = null;
 
             const clear = () => {
-                if (timer) {
-                    clearTimeout(timer);
-                    timer = null;
-                }
-                if (overlay) {
-                    overlay.remove();
-                    overlay = null;
-                }
+                if (timer) { clearTimeout(timer); timer = null; }
+                if (overlay) { overlay.remove(); overlay = null; }
             };
 
-            img.addEventListener('mouseenter', () => {
+            cardWrap.addEventListener('mouseenter', () => {
                 clear();
                 timer = setTimeout(() => {
+                    const frontImg = cardWrap.querySelector('.card-front');
+                    const src = frontImg?.src || '';
+                    if (!src) return;
                     overlay = document.createElement('div');
                     overlay.className = 'trump-zoom';
                     const big = document.createElement('img');
-                    big.src = img.src;
+                    big.src = src;
                     big.alt = 'Trump card';
                     big.addEventListener('mouseleave', clear);
                     overlay.appendChild(big);
@@ -1168,7 +1246,7 @@
                     timer = null;
                 }, 1000);
             });
-            img.addEventListener('mouseleave', () => {
+            cardWrap.addEventListener('mouseleave', () => {
                 if (overlay) return;
                 clear();
             });
@@ -1426,7 +1504,7 @@
                 const targetEl = dom.hand.querySelector(`[data-card-key="${key}"]`);
                 if (!targetEl) return;
                 const targetRect = targetEl.getBoundingClientRect();
-                const useTrumpSource = useTrumpForLastDraw && index === cards.length - 1 && dom.trump && dom.trump.getAttribute('src');
+                const useTrumpSource = useTrumpForLastDraw && index === cards.length - 1 && dom.trump && dom.trump.dataset.cardCode;
                 const sourceRect = useTrumpSource
                     ? dom.trump.getBoundingClientRect()
                     : towerRect;
@@ -1447,6 +1525,7 @@
                 });
                 setTimeout(() => {
                     targetEl.classList.remove('is-dealing');
+                    window.UltracardsGameUi?.flipCardReveal(targetEl, card);
                     if (useTrumpForLastDraw && index === cards.length - 1) {
                         state.deckExhausting = false;
                         renderDeckTower(0);

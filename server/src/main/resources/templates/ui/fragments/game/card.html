@@ -1,13 +1,20 @@
 <th:block th:fragment="card(card, cardType, cssClass, index, elementId)"
           th:with="resolvedCardType=${card != null and card.cardType != null ? card.cardType : (cardType != null ? cardType : 'ITALIAN')}"
           xmlns:th="http://www.thymeleaf.org">
-    <img th:class="${cssClass != null ? cssClass : 'game-card'}"
+    <div th:class="${(cssClass != null ? cssClass : 'game-card') + ' card-wrap'}"
          th:id="${elementId}"
          th:attr="data-card-type=${resolvedCardType},
                   data-card-code=${card != null ? card.card : null},
                   data-card-index=${index},
                   data-card-face=${card != null},
-                  data-card-key=${card != null ? resolvedCardType + ':' + card.card : null}"
-         th:src="${'/api/cards/' + #strings.toLowerCase(resolvedCardType) + '/back'}"
-         th:alt="${card != null ? 'Card' : 'Card back'}">
+                  data-card-key=${card != null ? resolvedCardType + ':' + card.card : null}">
+        <div class="card-inner">
+            <img class="card-front"
+                 src=""
+                 th:alt="${card != null ? 'Card' : ''}">
+            <img class="card-back"
+                 th:src="${'/api/cards/' + #strings.toLowerCase(resolvedCardType) + '/back'}"
+                 alt="Card back">
+        </div>
+    </div>
 </th:block>

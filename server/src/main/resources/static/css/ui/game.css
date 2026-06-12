@@ -337,9 +337,6 @@
 
         .seat-points {
             margin-top: 0.25rem;
-            font-size: 0.92rem;
-            color: var(--seat-muted);
-            font-weight: 900;
         }
 
         .seat-team-badge {
@@ -537,7 +534,7 @@
             z-index: 3;
         }
 
-        .deck-tower img {
+        .deck-tower .card-wrap {
             position: absolute;
             width: var(--deck-card-width);
             border-radius: 9px;
@@ -565,9 +562,14 @@
             transition: transform 280ms cubic-bezier(.2, .8, .2, 1),
             width 280ms cubic-bezier(.2, .8, .2, 1),
             right 280ms cubic-bezier(.2, .8, .2, 1),
+            left 280ms cubic-bezier(.2, .8, .2, 1),
             bottom 280ms cubic-bezier(.2, .8, .2, 1),
             box-shadow 220ms ease,
             filter 220ms ease;
+        }
+
+        .trump-card .card-inner {
+            pointer-events: none;
         }
 
         .deck-stack.has-trump .trump-card {
@@ -577,6 +579,26 @@
         .trump-card:hover {
             transform: rotate(90deg) translate3d(-12px, -2px, 0) scale(1.02);
             right: var(--trump-card-hover-right);
+            bottom: calc(var(--trump-card-bottom) + 8px);
+            box-shadow: 0 26px 38px rgba(0, 0, 0, 0.42);
+            filter: saturate(1.08);
+            width: var(--trump-card-hover-width);
+        }
+
+        .deck-stack.trump-side-left .trump-card {
+            right: auto;
+            left: var(--trump-card-right);
+            transform: rotate(-90deg) translate3d(0, 0, 0);
+        }
+
+        .deck-stack.trump-side-left.has-trump .trump-card {
+            transform: rotate(-90deg) translate3d(-18px, 2px, 0);
+        }
+
+        .deck-stack.trump-side-left .trump-card:hover {
+            transform: rotate(-90deg) translate3d(12px, 2px, 0) scale(1.02);
+            left: var(--trump-card-hover-right);
+            right: auto;
             bottom: calc(var(--trump-card-bottom) + 8px);
             box-shadow: 0 26px 38px rgba(0, 0, 0, 0.42);
             filter: saturate(1.08);
@@ -1168,5 +1190,219 @@
             100% {
                 opacity: 1;
                 transform: translateY(0) scale(1);
+            }
+        }
+
+        /* ===== CARD FLIP STRUCTURE ===== */
+
+        .card-wrap {
+            position: relative;
+            aspect-ratio: 68 / 95;
+            perspective: 600px;
+            border-radius: inherit;
+            display: block;
+            background: transparent;
+        }
+
+        .card-inner {
+            position: absolute;
+            inset: 0;
+            transform-style: preserve-3d;
+        }
+
+        .card-front,
+        .card-back {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: inherit;
+            overflow: hidden;
+        }
+
+        .card-front img,
+        .card-back img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: inherit;
+        }
+
+        /* Initially back is visible; GSAP rotates .card-inner to reveal face */
+        .card-front { transform: rotateY(180deg); }
+        .card-back  { transform: rotateY(0deg); }
+
+        /* Remove background from card-wrap variants that had it on the img */
+        .hand-card.card-wrap,
+        .trick-card.card-wrap,
+        .seat-card.card-wrap,
+        .trump-card.card-wrap {
+            background: transparent;
+        }
+
+        /* ===== DECK COUNT BUBBLE ===== */
+
+        .deck-count-bubble {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            min-width: 24px;
+            height: 24px;
+            padding: 0 5px;
+            border-radius: 12px;
+            background: var(--gold);
+            color: var(--ink);
+            font-size: 0.72rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.32);
+            pointer-events: none;
+            z-index: 10;
+            letter-spacing: 0;
+        }
+
+        /* ===== SEAT POINTS BUBBLE ===== */
+
+        .seat-points {
+            display: flex;
+            justify-content: center;
+            margin-top: 0.25rem;
+        }
+
+        .seat-points-bubble {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 4px;
+            border-radius: 11px;
+            background: var(--gold);
+            color: var(--ink);
+            font-size: 0.7rem;
+            font-weight: 900;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.24);
+            letter-spacing: 0;
+        }
+
+        /* Team-tinted point bubbles */
+        .player-seat.team-seat-ally .seat-points-bubble {
+            background: #55bb73;
+            color: #fff;
+        }
+
+        .player-seat.team-seat-enemy .seat-points-bubble {
+            background: #d16363;
+            color: #fff;
+        }
+
+        /* ===== PREVIOUS ROUND PANEL ===== */
+
+        .prev-round-toggle {
+            position: fixed;
+            bottom: 1.3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 900;
+            padding: 0.48rem 1.1rem;
+            border-radius: 20px;
+            background: color-mix(in oklab, var(--panel-bg) 88%, transparent);
+            border: 1px solid var(--panel-border);
+            color: var(--seat-text);
+            cursor: pointer;
+            font: 900 0.75rem/1 "Trebuchet MS", "Segoe UI", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+            transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
+            white-space: nowrap;
+        }
+
+        .prev-round-toggle:hover {
+            transform: translateX(-50%) translateY(-2px);
+            background: color-mix(in oklab, var(--panel-bg) 96%, transparent);
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+        }
+
+        .prev-round-panel {
+            position: fixed;
+            bottom: 4rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            width: min(520px, 94vw);
+            background: color-mix(in oklab, var(--panel-bg) 92%, transparent);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            padding: 1rem 1.25rem 1.25rem;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--panel-shadow);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease, transform 220ms ease;
+            z-index: 899;
+        }
+
+        .prev-round-panel.is-open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .prev-round-title {
+            font-size: 0.7rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            color: var(--seat-muted);
+            margin-bottom: 0.85rem;
+            text-align: center;
+        }
+
+        .prev-round-cards {
+            display: flex;
+            gap: 0.85rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .prev-round-entry {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.32rem;
+        }
+
+        .prev-round-entry img {
+            width: 58px;
+            border-radius: 9px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
+            display: block;
+        }
+
+        .prev-round-player {
+            font-size: 0.66rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: var(--seat-muted);
+            max-width: 70px;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .prev-round-empty {
+            font-size: 0.82rem;
+            color: var(--seat-muted);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .card-inner {
+                transition-duration: 80ms !important;
             }
         }
