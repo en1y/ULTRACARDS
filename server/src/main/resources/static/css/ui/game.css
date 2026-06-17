@@ -21,8 +21,8 @@
             --deck-offset-x: 0;
             --deck-offset-y: 0;
             --deck-rot: 0;
-            --turn-frame-safe: rgba(126, 220, 132, 0.98);
-            --turn-frame-danger: rgba(255, 30, 30, 1);
+            --turn-frame-safe: rgba(126, 220, 132, 0.7);
+            --turn-frame-danger: rgba(255, 60, 60, 0.85);
         }
 
         [data-theme="dark"] {
@@ -218,8 +218,8 @@
             position: relative;
             display: grid;
             place-items: center;
-            padding: clamp(3.6rem, 7vmin, 4.9rem) clamp(3.4rem, 6vw, 6rem) clamp(1rem, 2.2vmin, 1.5rem);
-            min-height: calc(var(--table-size) + clamp(7.6rem, 15vmin, 10rem));
+            padding: clamp(2.8rem, 5.4vmin, 3.9rem) clamp(3.4rem, 6vw, 6rem) clamp(0.6rem, 1.4vmin, 1rem);
+            min-height: calc(var(--table-size) + clamp(6rem, 11vmin, 8rem));
             border: 0;
             border-radius: 0;
             background: radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.08), transparent 58%);
@@ -278,7 +278,7 @@
         }
 
         .player-seat.is-turn {
-            filter: drop-shadow(0 0 14px rgba(240, 180, 77, 0.72));
+            filter: drop-shadow(0 0 9px rgba(240, 180, 77, 0.4));
         }
 
         .player-seat.is-self {
@@ -411,6 +411,15 @@
             scale(var(--slot-scale, 1));
         }
 
+        /* .card-wrap (defined later in this file) sets position:relative with equal
+           specificity, which would knock positioned cards back into normal flow and
+           cause a diagonal cascade. This higher-specificity rule keeps them absolute. */
+        .card-wrap.game-hand-card {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+        }
+
         .game-hand-placeholder {
             position: absolute;
             inset: 0;
@@ -465,25 +474,15 @@
         }
 
         .trick-card {
-            --grow: 0px;
-            width: calc(86px + var(--grow));
+            width: 86px;
             border-radius: 12px;
             box-shadow: 0 18px 28px rgba(0, 0, 0, 0.35);
-            transition: width 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+            transition: transform 180ms ease, box-shadow 180ms ease;
             margin: 0;
             cursor: pointer;
             z-index: 1;
         }
 
-        .trick-card:first-child {
-            margin-left: 0;
-        }
-
-        .trick-card:hover {
-            --grow: 14px;
-            box-shadow: 0 20px 26px rgba(0, 0, 0, 0.4);
-            z-index: 4;
-        }
 
         .trick-card.is-entering {
             opacity: 0;
@@ -623,15 +622,22 @@
             text-align: center;
             padding: 0.6rem;
             z-index: 1;
-            pointer-events: auto;
+            pointer-events: none;
             transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
         }
 
         .drop-zone.ready {
-            border-color: rgba(240, 180, 77, 0.6);
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--cream);
-            transform: translate(-50%, -50%) scale(1.03);
+            border-color: rgba(240, 180, 77, 0.34);
+            background: rgba(255, 255, 255, 0.05);
+            color: color-mix(in oklab, var(--cream) 88%, transparent);
+            transform: translate(-50%, -50%) scale(1.02);
+        }
+
+        .table-surface.is-drop-ready .table-felt {
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45),
+            inset 0 0 60px rgba(0, 0, 0, 0.25),
+            inset 0 0 0 2px rgba(240, 180, 77, 0.18);
+            transition: box-shadow 200ms ease;
         }
 
         .drop-zone.is-result {
@@ -724,11 +730,12 @@
 
         .hand-row {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 0.9rem;
+            justify-content: flex-start;
+            gap: 0.3rem;
             flex-wrap: nowrap;
-            margin-top: clamp(0.55rem, 1.4vmin, 1rem);
+            margin-top: clamp(0.3rem, 0.9vmin, 0.6rem);
             position: relative;
             z-index: 8;
         }
@@ -737,9 +744,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.45rem;
-            margin: -0.15rem auto 0;
-            min-height: 98px;
+            gap: 0.2rem;
+            margin: 0 auto;
+            min-height: 0;
             color: var(--seat-text);
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
         }
@@ -753,16 +760,17 @@
         }
 
         .player-summary-card {
-            min-width: 180px;
-            padding: 0.65rem 0.95rem;
-            border-radius: 18px;
+            min-width: 120px;
+            padding: 0.4rem 0.9rem 0.5rem;
+            border-radius: 16px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.35rem;
+            justify-content: center;
+            gap: 0.28rem;
             background: color-mix(in oklab, var(--color-bg) 62%, rgba(12, 18, 15, 0.2));
             border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
-            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
             backdrop-filter: blur(8px);
         }
 
@@ -779,7 +787,7 @@
             width: min(100%, 660px);
             overflow: visible;
             padding: 0;
-            min-height: 142px;
+            min-height: 128px;
         }
 
         .hand-card {
@@ -800,13 +808,21 @@
             touch-action: none;
         }
 
-        .hand-card:first-child {
-            margin-left: 0;
-        }
 
         .hand-card.is-dealing {
-            opacity: 0.98;
+            opacity: 1;
             z-index: 8;
+            /* While flying in from the deck via gsap-animated --deal-* vars, the CSS
+               transition must not also try to animate transform (it would fight gsap). */
+            transition: none;
+        }
+
+        /* Like is-dealing (suppresses the CSS transition during a --deal-* var tween)
+           but does NOT force the card to its back — used when a FACE-UP card flies
+           (e.g. returning to the hand) so it keeps its face toward the player. */
+        .hand-card.is-flying {
+            z-index: 50;
+            transition: none;
         }
 
         .hand-card.played {
@@ -834,26 +850,46 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.24);
         }
 
-        .hand-card:hover:not(.is-disabled) {
-            --lift: -18px;
-            box-shadow: 0 24px 38px rgba(0, 0, 0, 0.34);
-            z-index: 6;
-        }
-
         .game-hand-card.hand-card {
             transform: translate3d(
-                    var(--slot-x, 0px),
-                    calc(var(--slot-y, 0px) + var(--lift, 0px) + var(--press-y, 0px)),
+                    calc(var(--slot-x, 0px) + var(--deal-x, 0px)),
+                    calc(var(--slot-y, 0px) + var(--lift, 0px) + var(--press-y, 0px) + var(--deal-y, 0px)),
                     0
             )
-            rotate(var(--slot-rot, 0deg))
-            scale(var(--slot-scale, 1));
+            rotate(calc(var(--slot-rot, 0deg) + var(--deal-rot, 0deg)))
+            scale(calc(var(--slot-scale, 1) * var(--hover-scale, 1) * var(--deal-scale, 1)));
         }
 
         .game-hand-card.trick-card {
-            transform: translate3d(var(--slot-x, 0px), var(--slot-y, 0px), 0)
+            transform: translate3d(var(--slot-x, 0px), calc(var(--slot-y, 0px) + var(--lift, 0px)), 0)
             rotate(calc(var(--slot-rot, 0deg) + var(--spin, 0deg)))
-            scale(var(--slot-scale, 1));
+            scale(calc(var(--slot-scale, 1) * var(--hover-scale, 1)));
+        }
+
+        /* Hover-enlarge: any FACE-UP card (hand or trick) grows a bit. Integrated
+           with the slot transform via the --hover-scale/--lift CSS vars, so it
+           composes with the existing transitions. Card backs are unaffected. */
+        .game-hand-card[data-card-face="true"]:hover:not(.is-dragging) {
+            --hover-scale: 1.1;
+            z-index: 30;
+        }
+
+        .game-hand-card.hand-card[data-card-face="true"]:hover:not(.is-dragging) {
+            --lift: -16px;
+            box-shadow: 0 24px 38px rgba(0, 0, 0, 0.34);
+        }
+
+        /* The card nearest the cursor (set by enableHandHoverRaise) pops up and to the
+           front so the user reliably grabs the card they are pointing at. */
+        .game-hand-card.hand-card.is-raised {
+            --lift: -20px;
+            --hover-scale: 1.08;
+            box-shadow: 0 26px 40px rgba(0, 0, 0, 0.36);
+        }
+
+        .game-hand-card.trick-card[data-card-face="true"]:hover {
+            --lift: -10px;
+            box-shadow: 0 22px 30px rgba(0, 0, 0, 0.42);
         }
 
         .drag-ghost {
@@ -865,6 +901,9 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
             transform: translate3d(0, 0, 0) scale(1.05);
             will-change: transform;
+            /* Never animate transform via CSS — the clone must track the cursor
+               exactly during drag, and gsap drives the fly-back / fly-to tweens. */
+            transition: none !important;
         }
 
         .drag-ghost.snap {
@@ -911,7 +950,7 @@
         .player-seat.has-turn-indicator .seat-avatar::before {
             opacity: 1;
             transform: scale(1);
-            filter: drop-shadow(0 0 16px color-mix(in oklab, var(--turn-frame-color) 78%, transparent));
+            filter: drop-shadow(0 0 9px color-mix(in oklab, var(--turn-frame-color) 55%, transparent));
         }
 
         .player-seat.turn-indicator-enter .seat-avatar::before {
@@ -928,6 +967,30 @@
 
         .player-seat.turn-indicator-exit .seat-avatar::before {
             animation: timer-ring-out 220ms ease forwards;
+        }
+
+        /* Move timer mirrored onto the current user's under-hand avatar
+           (their table seat is hidden). Reuses the same conic ring. */
+        .player-summary.has-turn-indicator .seat-avatar::before {
+            opacity: 1;
+            transform: scale(1);
+            filter: drop-shadow(0 0 9px color-mix(in oklab, var(--turn-frame-color) 55%, transparent));
+        }
+
+        .player-summary.turn-indicator-enter .seat-avatar::before {
+            animation: timer-ring-in 240ms cubic-bezier(.16, .84, .28, 1.08);
+        }
+
+        .player-summary.turn-indicator-exit .seat-avatar::before {
+            animation: timer-ring-out 220ms ease forwards;
+        }
+
+        .player-summary.is-turn-warning .seat-avatar {
+            --turn-frame-color: var(--turn-frame-danger);
+        }
+
+        .player-summary.is-turn-warning .seat-avatar::before {
+            animation: turn-warning-pulse 820ms ease-in-out infinite;
         }
 
         .trump-zoom {
@@ -1021,10 +1084,10 @@
 
         @keyframes turn-warning-pulse {
             0%, 100% {
-                filter: drop-shadow(0 0 12px rgba(255, 30, 30, 0.52));
+                filter: drop-shadow(0 0 8px rgba(255, 60, 60, 0.34));
             }
             50% {
-                filter: drop-shadow(0 0 26px rgba(255, 30, 30, 0.95));
+                filter: drop-shadow(0 0 16px rgba(255, 60, 60, 0.6));
             }
         }
 
@@ -1233,6 +1296,16 @@
         .card-front { transform: rotateY(180deg); }
         .card-back  { transform: rotateY(0deg); }
 
+        /* Show face automatically when card data is known */
+        .card-wrap[data-card-face="true"] .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        /* Keep back visible during deal animation so GSAP flip plays correctly */
+        .card-wrap.is-dealing .card-inner {
+            transform: rotateY(0deg) !important;
+        }
+
         /* Remove background from card-wrap variants that had it on the img */
         .hand-card.card-wrap,
         .trick-card.card-wrap,
@@ -1302,30 +1375,37 @@
         /* ===== PREVIOUS ROUND PANEL ===== */
 
         .prev-round-toggle {
+            /* Hidden until at least one completed round has been recorded. */
+            display: none;
             position: fixed;
             bottom: 1.3rem;
             left: 50%;
             transform: translateX(-50%);
             z-index: 900;
-            padding: 0.48rem 1.1rem;
+            padding: 0.46rem 1.05rem;
             border-radius: 20px;
-            background: color-mix(in oklab, var(--panel-bg) 88%, transparent);
-            border: 1px solid var(--panel-border);
-            color: var(--seat-text);
+            background: color-mix(in oklab, var(--panel-bg) 72%, transparent);
+            border: 1px solid color-mix(in oklab, var(--panel-border) 70%, transparent);
+            color: color-mix(in oklab, var(--seat-text) 82%, transparent);
             cursor: pointer;
-            font: 900 0.75rem/1 "Trebuchet MS", "Segoe UI", sans-serif;
+            font: 800 0.72rem/1 "Trebuchet MS", "Segoe UI", sans-serif;
             text-transform: uppercase;
             letter-spacing: 0;
             backdrop-filter: blur(12px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-            transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+            transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease, color 200ms ease;
             white-space: nowrap;
+        }
+
+        .prev-round-toggle.has-data {
+            display: inline-block;
         }
 
         .prev-round-toggle:hover {
             transform: translateX(-50%) translateY(-2px);
-            background: color-mix(in oklab, var(--panel-bg) 96%, transparent);
-            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+            background: color-mix(in oklab, var(--panel-bg) 88%, transparent);
+            color: var(--seat-text);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
         }
 
         .prev-round-panel {
@@ -1377,7 +1457,8 @@
             gap: 0.32rem;
         }
 
-        .prev-round-entry img {
+        .prev-round-entry img,
+        .prev-round-card-img {
             width: 58px;
             border-radius: 9px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
@@ -1394,6 +1475,18 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        /* Highlight the card(s) played by the round winner. */
+        .prev-round-entry.is-winner .prev-round-player {
+            color: var(--gold);
+        }
+
+        .prev-round-entry.is-winner .prev-round-card-img,
+        .prev-round-entry.is-winner img {
+            outline: 2px solid var(--gold);
+            outline-offset: 1px;
+            box-shadow: 0 0 14px rgba(240, 180, 77, 0.45), 0 8px 16px rgba(0, 0, 0, 0.28);
         }
 
         .prev-round-empty {

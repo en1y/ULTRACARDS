@@ -125,7 +125,29 @@
         inner.appendChild(front);
         inner.appendChild(back);
         wrap.appendChild(inner);
+
+        // Every card carries its own flip ("turn around") API, so callers never
+        // need to spawn a second element to reveal a face.
+        const resolveCardData = (c) => c
+            || (wrap.dataset.cardCode ? {cardType: wrap.dataset.cardType, card: wrap.dataset.cardCode} : null);
+        wrap.cardApi = {
+            el: wrap,
+            reveal(c) { revealCardFace(wrap, resolveCardData(c)); },
+            flip(c) { return flipCardReveal(wrap, resolveCardData(c)); },
+            showBack() {
+                wrap.dataset.cardFace = 'false';
+                if (inner) {
+                    if (gsap) gsap.set(inner, {rotateY: 0});
+                    else inner.style.transform = 'rotateY(0deg)';
+                }
+            },
+            isFaceUp() { return wrap.dataset.cardFace === 'true'; }
+        };
         return wrap;
+    }
+
+    function createCard(options) {
+        return renderCardImage(options);
     }
 
     function hydrateCardImages(root) {
@@ -367,11 +389,12 @@
         const baseHeight = resolved.options.cardHeight || sampleRect?.height || baseWidth * 1.38;
         const available = Math.max(rect.width - baseWidth, baseWidth);
         const zoneType = resolved.options.type || resolved.options.zoneType || element.dataset.zoneType;
-        const spacingScale = resolved.options.spacingScale ?? (zoneType === 'center' ? 0.72 : 0.52);
+        // Tighter, overlap-based spacing — flexible for any card count.
+        const spacingScale = resolved.options.spacingScale ?? (zoneType === 'center' ? 0.45 : 0.4);
         const naturalSpacing = baseWidth * spacingScale;
         const spacing = total > 1 ? Math.min(naturalSpacing, available / (total - 1)) : 0;
-        const maxTilt = resolved.options.maxTilt ?? (zoneType === 'center' ? 8 : 18);
-        const yArc = resolved.options.yArc ?? (zoneType === 'center' ? 4 : 16);
+        const maxTilt = resolved.options.maxTilt ?? (zoneType === 'center' ? 4 : 6);
+        const yArc = resolved.options.yArc ?? (zoneType === 'center' ? 3 : 5);
         const baseOffsetY = Number(resolved.options.baseOffsetY) || 0;
 
         if (zoneType !== 'mini') {
@@ -389,6 +412,22 @@
             const rotation = normalized * maxTilt;
             const el = item.el;
             el.classList.add('game-hand-card');
+            // Positions are driven purely by the CSS-var slot transform. Clear any
+            // stale inline transform/opacity a prior animation may have left behind,
+            // otherwise it would override the slot transform and strand the card.
+            // Also reset the deal-offset vars on any card that is NOT mid-deal, so a
+            // deal whose tween was interrupted can never leave a card permanently
+            // shifted away from its slot.
+            if (!item.placeholder) {
+                el.style.transform = '';
+                el.style.opacity = '';
+                if (!el.classList.contains('is-dealing')) {
+                    el.style.removeProperty('--deal-x');
+                    el.style.removeProperty('--deal-y');
+                    el.style.removeProperty('--deal-rot');
+                    el.style.removeProperty('--deal-scale');
+                }
+            }
             el.style.width = item.placeholder ? `${Math.round(baseWidth)}px` : '';
             el.style.setProperty('--slot-x', `${x.toFixed(2)}px`);
             el.style.setProperty('--slot-y', `${y.toFixed(2)}px`);
@@ -432,39 +471,21 @@
         });
     }
 
+    // Reflow a zone purely through the CSS-variable slot transform. Movement is
+    // animated by the cards' own CSS `transition: transform`, so NO inline transforms
+    // are ever written here — this makes it impossible for an interrupted animation to
+    // strand a card at a stale position (the bug that kept one hand card separated).
     function animateZoneChange(zone, mutation, options) {
         const resolved = getZone(zone);
         if (!resolved) {
             mutation?.();
             return Promise.resolve();
         }
-        const first = captureRects(resolved);
         mutation?.();
         const cards = options?.cards ? Array.from(options.cards) : null;
         if (cards) cards.forEach((card) => resolved.element.appendChild(card));
         layoutZone(resolved, cards || undefined, options?.layout);
-        const last = captureRects(resolved);
-        const animations = [];
-        last.forEach((entry, el) => {
-            const before = first.get(el);
-            if (before) {
-                animations.push(animateFromRect(el, before.rect, entry.rect, options?.duration));
-                return;
-            }
-            if (!el.classList.contains('game-hand-placeholder')) {
-                const transform = getComputedStyle(el).transform === 'none' ? '' : getComputedStyle(el).transform;
-                animations.push(playAnimation(el, {
-                    opacity: [0, 1],
-                    transform: [`${transform} scale(.94)`, transform || 'scale(1)'],
-                    duration: options?.duration ?? MOTION.quickMs,
-                    ease: MOTION.ease
-                }).then(() => {
-                    el.style.opacity = '';
-                    el.style.transform = '';
-                }));
-            }
-        });
-        return Promise.all(animations);
+        return Promise.resolve();
     }
 
     function applyHandFan(cards) {
@@ -588,6 +609,12 @@
         const rect = sourceEl.getBoundingClientRect();
         const clone = sourceEl.cloneNode(true);
         clone.removeAttribute('id');
+        // Strip layout/interaction classes so the clone inherits none of their
+        // transitions (which would make it lag the cursor) or positioning rules.
+        // Keep `card-wrap` for the flip visual. Reset any slot transform vars.
+        clone.classList.remove('hand-card', 'trick-card', 'game-hand-card', 'seat-card', 'is-dragging', 'is-dealing');
+        ['--slot-x', '--slot-y', '--slot-rot', '--tilt', '--lift', '--press-y', '--hover-scale', '--slot-scale']
+            .forEach((prop) => clone.style.removeProperty(prop));
         clone.classList.add(options?.className || 'game-moving-card');
         clone.style.width = `${rect.width}px`;
         clone.style.height = `${rect.height}px`;
@@ -604,36 +631,74 @@
     }
 
     function animateOverlayToRect(clone, fromRect, toRect, options) {
-        if (!clone || !fromRect || !toRect) return Promise.resolve();
+        if (!clone || !fromRect || !toRect) {
+            clone?.remove();
+            return Promise.resolve();
+        }
         const duration = prefersReducedMotion() ? 80 : (options?.duration ?? MOTION.dealMs);
+        const delay = Number(options?.delay) || 0;
         const fromX = fromRect.left;
         const fromY = fromRect.top;
         const toX = toRect.left + (toRect.width - fromRect.width) / 2;
         const toY = toRect.top + (toRect.height - fromRect.height) / 2;
-        const lift = Math.min(36, Math.max(12, Math.abs(toY - fromY) * 0.07));
-        const midX = fromX + (toX - fromX) * 0.58;
-        const midY = fromY + (toY - fromY) * 0.58 - lift;
+        let settled = false;
+        const cleanup = () => {
+            if (settled) return;
+            settled = true;
+            clone.remove();
+            options?.onDone?.();
+        };
+        // Safety net: always remove the overlay clone even if the animation
+        // is interrupted or its promise never settles.
+        const safety = setTimeout(cleanup, duration + delay + 400);
+        // Single continuous tween (no mid-point) so the motion has no visible
+        // stages / rough edges.
         return playAnimation(clone, {
             transform: [
                 `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${options?.fromScale || 1})`,
-                `translate3d(${midX}px, ${midY}px, 0) rotate(${options?.midRot || '-2deg'}) scale(${options?.midScale || 1.03})`,
                 `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.toScale || 1})`
             ],
-            opacity: options?.fadeOut ? [1, 1, 0] : [1, 1, 1],
+            opacity: options?.fadeOut ? [1, 0] : [1, 1],
             duration,
-            delay: Number(options?.delay) || 0,
-            ease: options?.easing || MOTION.ease
-        }).then(() => {
-            clone.remove();
-            options?.onDone?.();
+            delay,
+            ease: options?.easing || 'out(3)'
+        }).catch(() => undefined).then(() => {
+            clearTimeout(safety);
+            cleanup();
         });
     }
 
-    function animateCardTransfer(options) {
-        const sourceEl = options?.cardEl || options?.sourceEl;
-        const sourceRect = options?.sourceRect || sourceEl?.getBoundingClientRect();
-        const targetRect = options?.targetRect || getReservedTargetRect(options?.toZone || options?.toHand, options?.toIndex);
-        if (!sourceRect || !targetRect) return Promise.resolve();
+    // Resolve the on-screen rect for a slot in a zone — the shared "coordinate"
+    // calculator for cross-zone card movement. `index == null` returns the zone's
+    // own rect (e.g. the deck pile as a whole); otherwise a slot is reserved.
+    function zoneSlotRect(zoneOrEl, index) {
+        const resolved = getZone(zoneOrEl);
+        if (!resolved) return null;
+        if (index == null) return resolved.element.getBoundingClientRect();
+        const placeholder = reserveSlot(resolved, index);
+        return placeholder?.getBoundingClientRect() || resolved.element.getBoundingClientRect();
+    }
+
+    // Animate a card from one zone/element to another. A single subfunction computes
+    // BOTH endpoint coordinates up-front (no rect reads mid-flight, avoiding jank),
+    // builds an overlay clone, and flies it along a smooth arc.
+    //
+    // Source resolution order:  fromEl → sourceRect → zone(fromZone, fromIndex)
+    // Target resolution order:  toEl  → targetRect → zone(toZone/toHand, toIndex)
+    function animateCardBetweenZones(options) {
+        const sourceEl = options?.fromEl || options?.cardEl || options?.sourceEl;
+        const toZone = options?.toZone || options?.toHand;
+        // Compute all coordinates before touching the clone.
+        const sourceRect = sourceEl
+            ? sourceEl.getBoundingClientRect()
+            : (options?.sourceRect ? normalizeRect(options.sourceRect) : zoneSlotRect(options?.fromZone, options?.fromIndex));
+        const targetRect = options?.toEl
+            ? options.toEl.getBoundingClientRect()
+            : (options?.targetRect ? normalizeRect(options.targetRect) : zoneSlotRect(toZone, options?.toIndex));
+        if (!sourceRect || !targetRect) {
+            if (toZone) clearReservedSlot(toZone);
+            return Promise.resolve();
+        }
         let clone;
         if (sourceEl) {
             clone = overlayCloneFromElement(sourceEl, options)?.clone;
@@ -651,65 +716,169 @@
         }
         return animateOverlayToRect(clone, sourceRect, targetRect, options)
             .then(() => {
-                if (options?.toZone || options?.toHand) clearReservedSlot(options.toZone || options.toHand);
+                if (toZone) clearReservedSlot(toZone);
             });
     }
 
+    // Backwards-compatible alias for existing call sites.
+    function animateCardTransfer(options) {
+        return animateCardBetweenZones(options);
+    }
+
+    // Drag the REAL card element (no clone). The card is lifted into the fixed
+    // overlay layer so it can move across the whole page without clipping and stops
+    // participating in the hand fan; on cancel it is returned to its slot.
     function startDragCard(options) {
         const sourceEl = options?.sourceEl;
+        if (!sourceEl) return null;
         const pointer = options?.pointer || {x: 0, y: 0};
-        const overlay = overlayCloneFromElement(sourceEl, {
-            className: options?.className || 'drag-ghost'
-        });
-        if (!overlay) return null;
+        const rect = sourceEl.getBoundingClientRect();
+        const originZone = getZone(options?.originZone || options?.originHand || sourceEl.parentElement);
         const session = {
-            clone: overlay.clone,
+            el: sourceEl,
             originEl: sourceEl,
-            originRect: overlay.rect,
-            pointerOffsetX: overlay.rect.width / 2,
-            pointerOffsetY: overlay.rect.height / 2,
-            originZone: getZone(options?.originZone || options?.originHand || sourceEl?.parentElement),
+            originRect: rect,
+            originParent: sourceEl.parentElement,
+            originNextSibling: sourceEl.nextElementSibling,
+            // Grab the card at the point under the cursor so it doesn't jump.
+            pointerOffsetX: clamp(pointer.x - rect.left, 0, rect.width) || rect.width / 2,
+            pointerOffsetY: clamp(pointer.y - rect.top, 0, rect.height) || rect.height / 2,
+            originZone,
             bounds: resolveDragBounds(options),
             accepted: false,
             overDropZone: false,
             lastPoint: pointer
         };
-        sourceEl?.classList.add('is-dragging');
-        layoutZone(session.originZone);
+        sourceEl.style.width = `${rect.width}px`;
+        sourceEl.style.height = `${rect.height}px`;
+        sourceEl.classList.add(options?.className || 'drag-ghost');
+        ensureOverlayLayer().appendChild(sourceEl);
+        sourceEl.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
+        // The card left the hand container, so the remaining cards re-fan to close the gap.
+        if (originZone) layoutZone(originZone);
         updateDragCard(session, pointer.x, pointer.y);
         return session;
     }
 
     function updateDragCard(session, x, y) {
-        if (!session?.clone) return;
-        const rect = session.clone.getBoundingClientRect();
-        const width = rect.width || session.originRect?.width || 96;
-        const height = rect.height || session.originRect?.height || 134;
+        if (!session?.el) return;
+        const width = session.originRect?.width || 96;
+        const height = session.originRect?.height || 134;
         const bounds = session.bounds || resolveDragBounds();
         const moveX = clamp(x - session.pointerOffsetX, bounds.left, bounds.right - width);
         const moveY = clamp(y - session.pointerOffsetY, bounds.top, bounds.bottom - height);
         session.lastPoint = {x, y};
-        session.clone.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) rotate(var(--drag-rot, 0deg)) scale(1.045)`;
+        session.el.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) rotate(var(--drag-rot, 0deg)) scale(1.04)`;
+    }
+
+    function restoreDraggedElement(session) {
+        const el = session?.el;
+        if (!el) return;
+        el.classList.remove('drag-ghost');
+        el.style.transform = '';
+        el.style.opacity = '';
+        el.style.width = '';
+        el.style.height = '';
+        const parent = session.originParent;
+        if (parent) {
+            const next = session.originNextSibling;
+            if (next && next.parentElement === parent) parent.insertBefore(el, next);
+            else parent.appendChild(el);
+        }
+        if (session.originZone) layoutZone(session.originZone);
     }
 
     function finishDragCard(session, options) {
-        if (!session?.clone) return Promise.resolve();
+        const el = session?.el;
+        if (!el) return Promise.resolve();
+        // The dragged card was removed mid-drag (e.g. auto-played): nothing to fly.
+        if (!el.isConnected) {
+            options?.onDone?.();
+            return Promise.resolve();
+        }
         const targetRect = options?.targetRect || session.originRect;
-        const currentRect = session.clone.getBoundingClientRect();
-        const duration = options?.duration ?? (options?.accepted ? 170 : 240);
-        return animateOverlayToRect(session.clone, currentRect, targetRect, {
+        const currentRect = el.getBoundingClientRect();
+        const duration = options?.duration ?? (options?.accepted ? 180 : 240);
+        const fromX = currentRect.left;
+        const fromY = currentRect.top;
+        const toX = targetRect.left + (targetRect.width - currentRect.width) / 2;
+        const toY = targetRect.top + (targetRect.height - currentRect.height) / 2;
+        return playAnimation(el, {
+            transform: [
+                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.toRot || '0deg'}) scale(1.04)`,
+                `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.accepted ? 0.96 : 1})`
+            ],
+            opacity: options?.accepted ? [1, 0] : [1, 1],
             duration,
-            easing: options?.accepted ? MOTION.ease : MOTION.snapEase,
-            toScale: options?.accepted ? 0.94 : 1,
-            toRot: options?.toRot || '0deg',
-            fadeOut: options?.accepted === true
+            ease: options?.accepted ? 'out(3)' : 'out(4)'
         }).then(() => {
-            if (!options?.accepted) {
-                session.originEl?.classList.remove('is-dragging');
-                layoutZone(session.originZone);
+            if (options?.accepted) {
+                el.remove();
+            } else {
+                restoreDraggedElement(session);
             }
             options?.onDone?.();
         });
+    }
+
+    // ---- Reusable flying-animation helpers (customizable parameters) ----
+
+    // Fly a card that is ALREADY placed in its slot, starting visually from `fromRect`,
+    // by animating the composable --deal-* vars so it always lands EXACTLY on its slot
+    // (composing with the fan transform). `faceDown:true` shows the back during flight
+    // (deal); otherwise the card keeps its face (return). Params: duration(ms), ease,
+    // spin(deg), fromScale, faceDown, delay(ms), onLand(el).
+    function flyIntoSlot(el, fromRect, options) {
+        if (!el || !fromRect) return Promise.resolve();
+        const gsap = window.gsap;
+        const faceDown = options?.faceDown === true;
+        const flightClass = faceDown ? 'is-dealing' : 'is-flying';
+        el.classList.add(flightClass);
+        const slot = el.getBoundingClientRect();
+        const dx = (fromRect.left + fromRect.width / 2) - (slot.left + slot.width / 2);
+        const dy = (fromRect.top + fromRect.height / 2) - (slot.top + slot.height / 2);
+        const DEAL = ['--deal-x', '--deal-y', '--deal-rot', '--deal-scale'];
+        const cleanup = () => {
+            el.classList.remove(flightClass);
+            DEAL.forEach((p) => el.style.removeProperty(p));
+            options?.onLand?.(el);
+        };
+        if (!gsap) { cleanup(); return Promise.resolve(); }
+        gsap.set(el, {
+            '--deal-x': `${dx}px`, '--deal-y': `${dy}px`,
+            '--deal-rot': `${options?.spin ?? 8}deg`, '--deal-scale': options?.fromScale ?? 1.04
+        });
+        return new Promise((resolve) => {
+            gsap.to(el, {
+                '--deal-x': '0px', '--deal-y': '0px', '--deal-rot': '0deg', '--deal-scale': 1,
+                duration: (options?.duration ?? 300) / 1000,
+                delay: (options?.delay ?? 0) / 1000,
+                ease: options?.ease || 'power3.out',
+                onComplete() { cleanup(); resolve(); }
+            });
+        });
+    }
+
+    // Fly an OVERLAY-layer element (a re-parented real card or a clone) to a target
+    // rect via a single inline-transform tween. Params: duration(ms), ease, fromScale,
+    // toScale, fromRot, toRot, fade(boolean → fade to 0 on arrival), onLand(el).
+    function flyOverlayTo(el, toRect, options) {
+        if (!el || !toRect) return Promise.resolve();
+        const fromRect = el.getBoundingClientRect();
+        const duration = prefersReducedMotion() ? 80 : (options?.duration ?? MOTION.dealMs);
+        const fromX = fromRect.left;
+        const fromY = fromRect.top;
+        const toX = toRect.left + (toRect.width - fromRect.width) / 2;
+        const toY = toRect.top + (toRect.height - fromRect.height) / 2;
+        return playAnimation(el, {
+            transform: [
+                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${options?.fromScale ?? 1.04})`,
+                `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.toScale ?? 1})`
+            ],
+            opacity: options?.fade ? [1, 0] : [1, 1],
+            duration,
+            ease: options?.ease || 'out(3)'
+        }).then(() => { options?.onLand?.(el); });
     }
 
     function enableDropZone(element, options) {
@@ -790,20 +959,136 @@
         };
     }
 
+    // Make a fanned hand grab the card the user is POINTING AT. Because cards overlap,
+    // a card's face is covered by the next one, so a plain click/drag would grab the
+    // wrong (front-most) card. This raises the card whose center is nearest the cursor
+    // X to the top (inline z-index beats the per-card index set by layoutZone), so the
+    // intended card is on top everywhere it matters and gets dragged — the real card,
+    // never a copy.
+    function enableHandHoverRaise(zoneOrEl, options) {
+        const resolved = getZone(zoneOrEl);
+        const element = resolved ? resolved.element : zoneOrEl;
+        if (!element || element.__ucHoverRaise) return;
+        element.__ucHoverRaise = true;
+        let raised = null;
+        const lower = () => {
+            if (!raised) return;
+            raised.style.zIndex = raised.__ucPrevZ || '';
+            raised.classList.remove('is-raised');
+            raised = null;
+            element.__ucRaisedCard = null;
+        };
+        const raise = (card) => {
+            if (raised === card) return;
+            lower();
+            if (!card) return;
+            raised = card;
+            card.__ucPrevZ = card.style.zIndex;
+            card.style.zIndex = '60';
+            card.classList.add('is-raised');
+            // Expose the currently raised card so the drag picks THIS card (the one
+            // the user sees enlarged), regardless of exact pointer-vs-element overlap.
+            element.__ucRaisedCard = card;
+        };
+        const nearest = (x) => {
+            let best = null;
+            let bestDist = Infinity;
+            getZoneCards(resolved || {element}).forEach((card) => {
+                if (card.classList.contains('is-dragging') || card.classList.contains('drag-ghost')) return;
+                const r = card.getBoundingClientRect();
+                const dist = Math.abs(x - (r.left + r.width / 2));
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = card;
+                }
+            });
+            return best;
+        };
+        element.addEventListener('pointermove', (event) => {
+            if (options?.isActive && !options.isActive()) {
+                lower();
+                return;
+            }
+            raise(nearest(Number(event.clientX ?? event.pageX ?? 0)));
+        });
+        element.addEventListener('pointerleave', lower);
+    }
+
+    // Container-level hand drag. One draggable on the hand element; on start it picks
+    // the RAISED card (the enlarged one the user is pointing at) — falling back to the
+    // card nearest the cursor X — instead of relying on which element the pointer
+    // happens to be over. This guarantees the intended (enlarged) card is dragged, as
+    // the real element, never a copy, even when the lift makes the cursor overlap a
+    // card behind it.
+    function enableHandCardDrag(zoneOrEl, options) {
+        const resolved = getZone(zoneOrEl);
+        const element = resolved ? resolved.element : zoneOrEl;
+        if (!element || !interactApi) return null;
+        if (element.__ucHandDrag) {
+            try { element.__ucHandDrag.unset(); } catch (err) { /* ignore */ }
+        }
+        const nearestCard = (x) => {
+            let best = null;
+            let bestDist = Infinity;
+            getZoneCards(resolved || {element}).forEach((card) => {
+                if (card.classList.contains('drag-ghost')) return;
+                const r = card.getBoundingClientRect();
+                const d = Math.abs(x - (r.left + r.width / 2));
+                if (d < bestDist) { bestDist = d; best = card; }
+            });
+            return best;
+        };
+        const interactable = interactApi(element)
+            .styleCursor(false)
+            .draggable({
+                inertia: false,
+                autoScroll: false,
+                listeners: {
+                    start(event) {
+                        if (options?.isActive && !options.isActive()) return;
+                        const pointer = eventToPoint(event);
+                        const cardEl = element.__ucRaisedCard || nearestCard(pointer.x);
+                        if (!cardEl) return;
+                        const session = startDragCard({
+                            sourceEl: cardEl,
+                            originZone: options?.originZone || resolved,
+                            pointer,
+                            className: options?.className || 'drag-ghost',
+                            boundsElement: options?.boundsElement,
+                            boundsRect: options?.boundsRect
+                        });
+                        element.__ucActiveDrag = session || null;
+                        if (session) options?.onStart?.(session, cardEl, event);
+                    },
+                    move(event) {
+                        const session = element.__ucActiveDrag;
+                        if (!session) return;
+                        const pointer = eventToPoint(event);
+                        updateDragCard(session, pointer.x, pointer.y);
+                        options?.onMove?.(session, event);
+                    },
+                    end(event) {
+                        const session = element.__ucActiveDrag;
+                        element.__ucActiveDrag = null;
+                        if (!session) return;
+                        options?.onEnd?.(session, event);
+                    }
+                }
+            });
+        element.__ucHandDrag = interactable;
+        return interactable;
+    }
+
     function markCardReturning(hand, cardKeyValue, options) {
         if (!hand || !cardKeyValue) return;
         const el = hand.querySelector(`[data-card-key="${CSS.escape(cardKeyValue)}"]`);
         if (!el) return;
-        const className = options?.className || 'returning';
-        const duration = Number(options?.duration) || 220;
+        // The card returns to its slot via its CSS-var slot transform + CSS transition.
+        // Never write an inline transform here — a leftover one would override the slot
+        // position and strand the card. Just clear drag state and any stale inline style.
         el.classList.remove('is-dragging');
-        el.classList.add(className);
-        playAnimation(el, {
-            opacity: [0.72, 1],
-            transform: ['translate3d(0, 12px, 0) scale(.94)', 'translate3d(0, 0, 0) scale(1)'],
-            duration,
-            ease: MOTION.snapEase
-        }).then(() => el.classList.remove(className));
+        el.style.transform = '';
+        el.style.opacity = '';
     }
 
     function revealCardFace(cardEl, cardData) {
@@ -831,6 +1116,7 @@
             return Promise.resolve();
         }
         const dur = 0.20;
+        gsap.set(inner, {rotateY: 0});
         return new Promise((resolve) => {
             gsap.to(inner, {
                 rotateY: 90,
@@ -908,14 +1194,21 @@
         cardBackUrl,
         cardKey,
         cardUrl,
+        createCard,
         animateCardTransfer,
+        animateCardBetweenZones,
+        zoneSlotRect,
         animateTrickCollect,
         createDealFlipCard,
         clearReservedSlot,
         disableCardDrag,
         enableCardDrag,
+        enableHandCardDrag,
+        enableHandHoverRaise,
         enableDropZone,
         finishDragCard,
+        flyIntoSlot,
+        flyOverlayTo,
         flipCardReveal,
         hydrateCardImages,
         italianCardUrl,
