@@ -31,6 +31,9 @@ public class TokenService {
     @Value("${app.token.duration-minutes:15}")
     private Long tokenDurationMinutes;
 
+    @Value("${app.token.rotated-token-reuse-seconds:30}")
+    private Long rotatedTokenReuseSeconds;
+
     private String createTokenValue() {
         var bytes = new byte[32];
         RNG.nextBytes(bytes);
@@ -55,20 +58,55 @@ public class TokenService {
                 .orElseThrow( () -> new IllegalArgumentException("Invalid token"));
     }
 
+    public TokenEntity getTokenForUpdate(String token) {
+        return tokenRepository.findByTokenForUpdate(token)
+                .orElseThrow(() -> new AccessDeniedException("Invalid token"));
+    }
+
+    public TokenEntity resolveReusableToken(TokenEntity token, Instant now) {
+        if (token.isActive()) {
+            return token;
+        }
+
+        var replacement = token.getReplacementToken();
+        var reuseUntil = token.getReuseUntil();
+
+        if (replacement == null || reuseUntil == null || now.isAfter(reuseUntil)) {
+            throw new AccessDeniedException("Token is no longer reusable");
+        }
+
+        return replacement;
+    }
+
+    public TokenEntity rotateTokenIfExpired(TokenEntity token, Instant now) {
+        if (!token.isActive()) {
+            return resolveReusableToken(token, now);
+        }
+
+        if (token.getExpiresAt().isAfter(now)) {
+            return token;
+        }
+
+        var replacement = createToken(token.getUser());
+        token.setActive(false);
+        token.setReplacementToken(replacement);
+        token.setReuseUntil(now.plusSeconds(rotatedTokenReuseSeconds));
+        tokenRepository.save(token);
+        return replacement;
+    }
+
+    @Transactional
     public ValidationResult validateToken(TokenDTO token) {
-        var tokenEntity = getToken(token.getToken());
-
-        if (tokenEntity.getExpiresAt().isAfter(Instant.now())) {
-            return ValidationResult.proceed(tokenEntity);
+        try {
+            var tokenEntity = getTokenForUpdate(token.getToken());
+            var resolvedToken = rotateTokenIfExpired(tokenEntity, Instant.now());
+            if (tokenEntity.getId().equals(resolvedToken.getId())) {
+                return ValidationResult.proceed(resolvedToken);
+            }
+            return ValidationResult.rotated(resolvedToken);
+        } catch (AccessDeniedException ex) {
+            return ValidationResult.logout();
         }
-
-        if (tokenEntity.isActive()) {
-            var user = tokenEntity.getUser();
-            return ValidationResult.rotated(createToken(user));
-        }
-
-        tokenRepository.delete(tokenEntity);
-        return ValidationResult.logout();
     }
 
     public TokenEntity rotateToken (String token) {
