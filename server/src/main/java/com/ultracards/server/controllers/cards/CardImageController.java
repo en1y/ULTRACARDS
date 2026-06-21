@@ -1,9 +1,12 @@
 package com.ultracards.server.controllers.cards;
 
 import com.ultracards.server.service.cards.CardImageService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+
+import java.util.concurrent.TimeUnit;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +17,9 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/cards")
 public class CardImageController {
+
+    // Card art is immutable, so let browsers cache it aggressively to save bandwidth.
+    private static final CacheControl CARD_CACHE = CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic();
 
     private final CardImageService cardImageService;
 
@@ -28,7 +34,7 @@ public class CardImageController {
             @PathVariable String value
     ) {
         try {
-            return ResponseEntity.ok(cardImageService.italianCardFace(suit, value));
+            return ResponseEntity.ok().cacheControl(CARD_CACHE).body(cardImageService.italianCardFace(suit, value));
         } catch (IllegalStateException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -38,7 +44,7 @@ public class CardImageController {
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<byte[]> italianCardBack() {
         try {
-            return ResponseEntity.ok(cardImageService.italianCardBack());
+            return ResponseEntity.ok().cacheControl(CARD_CACHE).body(cardImageService.italianCardBack());
         } catch (IllegalStateException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -51,7 +57,7 @@ public class CardImageController {
             @PathVariable String value
     ) {
         try {
-            return ResponseEntity.ok(cardImageService.pokerCardFace(suit, value));
+            return ResponseEntity.ok().cacheControl(CARD_CACHE).body(cardImageService.pokerCardFace(suit, value));
         } catch (IllegalStateException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -61,7 +67,7 @@ public class CardImageController {
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<byte[]> pokerCardBack() {
         try {
-            return ResponseEntity.ok(cardImageService.pokerCardBack());
+            return ResponseEntity.ok().cacheControl(CARD_CACHE).body(cardImageService.pokerCardBack());
         } catch (IllegalStateException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
