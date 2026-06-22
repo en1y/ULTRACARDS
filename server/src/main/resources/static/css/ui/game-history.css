@@ -1,32 +1,11 @@
-.history-replay-layout {
-    --header-height: 72px;
-    --table-size: min(62vmin, 58vh, 620px);
-    --avatar-size: clamp(38px, 6.2vmin, 56px);
-    --player-ring-pad: clamp(82px, 12vmin, 132px);
-    --deck-cluster-width: calc(var(--table-size) * 0.277);
-    --deck-cluster-height: calc(var(--table-size) * 0.342);
-    --deck-tower-width: calc(var(--table-size) * 0.18);
-    --deck-tower-height: calc(var(--table-size) * 0.245);
-    --deck-card-width: calc(var(--table-size) * 0.174);
-    --trump-card-width: calc(var(--table-size) * 0.185);
-    --trump-card-right: calc(var(--table-size) * 0.145);
-    --trump-card-bottom: calc(var(--table-size) * 0.039);
-    --trump-card-hover-right: calc(var(--table-size) * 0.306);
-    --trump-card-hover-width: calc(var(--table-size) * 0.21);
-    width: min(100%, 1360px);
-    min-height: calc(100vh - var(--header-height));
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-    gap: 1rem;
-    align-items: start;
-    padding-top: 1rem;
-    padding-bottom: 2rem;
-}
+/* Replay reuses game.css's .game-layout + .chat-sidebar for sizing.
+   This file is only the controls-panel content + the face-up (omniscient) hands. */
 
-.history-replay-stage,
 .history-replay-panel {
-    display: grid;
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    overflow-y: auto;
 }
 
 .history-replay-head {
@@ -46,7 +25,7 @@
 }
 
 .history-replay-head h1 {
-    font-size: 1.8rem;
+    font-size: 1.4rem;
 }
 
 .history-replay-eyebrow {
@@ -62,190 +41,6 @@
     gap: 0.18rem;
     margin-top: 0.3rem;
     color: var(--color-text-muted);
-}
-
-.history-briskula-shell {
-    margin-top: 0;
-}
-
-.history-replay-layout .table-wrap {
-    margin-top: 2rem;
-    padding-bottom: 2.25rem;
-}
-
-.history-replay-layout .player-ring {
-    inset: calc(-1 * var(--player-ring-pad));
-}
-
-.history-replay-layout .player-seat {
-    width: 184px;
-}
-
-.history-replay-layout .player-seat.is-turn {
-    filter: drop-shadow(0 0 14px rgba(240, 180, 77, 0.74));
-}
-
-.history-replay-layout .seat-cards {
-    gap: 0.1rem;
-    margin-top: 0.45rem;
-    transform: rotate(var(--hand-rotate));
-}
-
-.history-replay-layout .seat-card.replay-seat-card {
-    width: 38px;
-    margin-left: -16px;
-    border-radius: 7px;
-    background: var(--cream);
-    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.34);
-    cursor: zoom-in;
-    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
-}
-
-.history-replay-layout .seat-card.replay-seat-card:first-child {
-    margin-left: 0;
-}
-
-.history-replay-layout .seat-card.replay-seat-card:hover {
-    position: relative;
-    z-index: 12;
-    transform: translateY(-18px) rotate(0deg) scale(2.4) !important;
-    box-shadow: 0 24px 42px rgba(0, 0, 0, 0.48);
-    filter: saturate(1.05);
-}
-
-.history-replay-layout .seat-card.replay-seat-card.is-replay-moving-card {
-    position: relative;
-    z-index: 18;
-    pointer-events: none;
-}
-
-.history-replay-layout .is-replay-hidden {
-    visibility: hidden;
-}
-
-.history-replay-layout .trick-area {
-    min-width: 260px;
-}
-
-.history-replay-layout .trick-card {
-    width: 84px;
-    cursor: default;
-}
-
-.history-replay-layout .trick-card:hover {
-    --grow: 0px;
-    z-index: 1;
-}
-
-.history-replay-state {
-    width: 212px;
-    height: 212px;
-    border-style: solid;
-    color: rgba(255, 248, 226, 0.78);
-    background: rgba(12, 18, 15, 0.26);
-    backdrop-filter: blur(4px);
-    pointer-events: none;
-}
-
-.history-replay-layout .deck-stack {
-    pointer-events: none;
-}
-
-.history-replay-layout .trump-card {
-    cursor: default;
-}
-
-.history-replay-layout .trump-card:hover {
-    width: var(--trump-card-width);
-    right: var(--trump-card-right);
-    bottom: var(--trump-card-bottom);
-    transform: rotate(90deg) translate3d(18px, -2px, 0);
-    filter: none;
-}
-
-.history-replay-fly-card {
-    position: fixed;
-    left: 0;
-    top: 0;
-    border-radius: 10px;
-    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
-    pointer-events: none;
-    z-index: 1500;
-    will-change: transform, width;
-}
-
-.history-replay-deal-card {
-    position: fixed;
-    left: var(--from-x);
-    top: var(--from-y);
-    width: var(--from-width);
-    aspect-ratio: 2.5 / 3.5;
-    border-radius: 10px;
-    pointer-events: none;
-    z-index: 1500;
-    transform: translate(-50%, -50%);
-    animation: history-replay-deal-card 420ms cubic-bezier(.18, .84, .24, 1) forwards;
-}
-
-.history-replay-deal-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    border-radius: inherit;
-    transform-style: preserve-3d;
-    animation: history-replay-deal-flip 260ms ease-in-out 90ms forwards;
-}
-
-.history-replay-deal-face {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    overflow: hidden;
-    backface-visibility: hidden;
-    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
-}
-
-.history-replay-deal-face img {
-    width: 100%;
-    height: 100%;
-    display: block;
-    border-radius: inherit;
-}
-
-.history-replay-deal-front {
-    transform: rotateY(180deg);
-}
-
-.history-replay-measure {
-    position: fixed;
-    visibility: hidden;
-    pointer-events: none;
-    z-index: -1;
-}
-
-.history-replay-measure.trick-area {
-    min-width: 0;
-}
-
-.history-replay-measure .trick-card {
-    width: 84px;
-    cursor: default;
-}
-
-.history-replay-measure .seat-card.replay-seat-card {
-    width: 38px;
-    margin-left: -16px;
-    border-radius: 7px;
-}
-
-.history-replay-measure .seat-card.replay-seat-card:first-child {
-    margin-left: 0;
-}
-
-.history-replay-panel {
-    position: sticky;
-    top: 5.5rem;
-    padding: 1rem;
 }
 
 .history-replay-controls {
@@ -321,89 +116,47 @@
     color: var(--color-text);
 }
 
-@media (max-width: 980px) {
-    .history-replay-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .history-replay-panel {
-        position: static;
-        order: -1;
-    }
+/* No bottom hand-row in the replay, so reserve room under the felt for the bottom seat
+   (otherwise its cards/points fall outside the board on small screens). */
+.is-replay .table-wrap {
+    padding-bottom: clamp(2.7rem, 6vmin, 4.2rem);
 }
 
-@media (max-width: 720px) {
-    .history-replay-layout {
-        --table-size: min(88vw, 520px);
-        --player-ring-pad: clamp(64px, 18vw, 108px);
-    }
-
-    .history-replay-head {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .history-replay-head .btn {
-        width: 100%;
-        text-align: center;
-    }
-
-    .history-replay-layout .player-seat {
-        width: 138px;
-    }
-
-    .history-replay-layout .seat-card.replay-seat-card {
-        width: 30px;
-        margin-left: -13px;
-    }
-
-    .history-replay-layout .trick-card {
-        width: 66px;
-        margin-left: -22px;
-    }
-
-    .history-replay-measure .trick-card {
-        width: 66px;
-        margin-left: -22px;
-    }
-
-    .history-replay-state {
-        width: 168px;
-        height: 168px;
-    }
-
-    .history-replay-measure .seat-card.replay-seat-card {
-        width: 30px;
-        margin-left: -13px;
-    }
+/* Bigger seat avatars so the player letter reads crisply in the replay. */
+.is-replay {
+    --avatar-size: clamp(40px, 5.6vmin, 54px);
 }
 
-@keyframes history-replay-deal-card {
-    0% {
-        left: var(--from-x);
-        top: var(--from-y);
-        width: var(--from-width);
-        opacity: 0.98;
-        transform: translate(-50%, -50%) rotate(-8deg) scale(0.92);
-    }
-    58% {
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(-2deg) scale(1.02);
-    }
-    100% {
-        left: var(--to-x);
-        top: var(--to-y);
-        width: var(--to-width);
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(0deg) scale(1);
-    }
+/* Replay hands are face-up (omniscient): larger than the live 28px backs, zoom on hover.
+   Wrapper uses the NATIVE card ratio (300x546) so the art fills it without cropping or
+   overflowing onto the points below. */
+.is-replay .seat-card {
+    width: 44px;
+    aspect-ratio: 300 / 546;
+    height: auto;
+    margin-left: -18px;
+    cursor: zoom-in;
+    overflow: hidden;
 }
 
-@keyframes history-replay-deal-flip {
-    from {
-        transform: rotateY(0deg);
-    }
-    to {
-        transform: rotateY(180deg);
-    }
+.is-replay .seat-card .card-front,
+.is-replay .seat-card .card-back {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.is-replay .seat-card:first-child {
+    margin-left: 0;
+}
+
+.is-replay .seat-points {
+    position: relative;
+    z-index: 5;
+}
+
+.is-replay .seat-cards .card-wrap:hover {
+    z-index: 30;
+    overflow: visible;
+    transform: translateY(-16px) rotate(0deg) scale(2.3) !important;
 }

@@ -11,7 +11,7 @@
     <link rel="stylesheet" th:href="@{/css/ui/game.css}">
     <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
 </head>
-<body>
+<body class="game-page">
 <div th:replace="~{ui/fragments/header :: header}"></div>
 <div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting...</div>
 
@@ -36,8 +36,6 @@
 
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
-
-<th:block th:replace="~{ui/fragments/game/previous-round :: previousRound(${game.id})}"></th:block>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <script th:inline="javascript">

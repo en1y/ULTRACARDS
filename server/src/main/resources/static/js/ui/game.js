@@ -4,6 +4,14 @@
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const theme = savedTheme || (systemDark ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
+
+    // Reclaim space from the old localStorage card-image cache (now browser-cached).
+    try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('uc-card-img:')) localStorage.removeItem(k);
+        }
+    } catch (_) {}
 })();
 
 (function () {
@@ -96,6 +104,24 @@
         return `${normalizeCardType(card.cardType)}:${card.card || ''}`;
     }
 
+    // Set a card image's src. The browser caches the PNG itself (Cache-Control on
+    // /api/cards/*), so there is no JS-side cache. On a transient load failure we
+    // re-request a few times so a card never stays blank ("Played card" alt).
+    function applyCardImage(img, url) {
+        if (!img) return;
+        if (!url) { img.src = ''; img.onerror = null; return; }
+        let attempts = 0;
+        img.onerror = () => {
+            if (attempts >= 3) { img.onerror = null; return; }
+            attempts += 1;
+            // small backoff, then re-request; cache-bust only on the last try
+            setTimeout(() => {
+                img.src = attempts >= 3 ? url + (url.includes('?') ? '&' : '?') + 'r=' + attempts : url;
+            }, 300 * attempts);
+        };
+        img.src = url;
+    }
+
     function renderCardImage(options) {
         const card = options?.card || null;
         const cardType = normalizeCardType(card?.cardType || options?.cardType);
@@ -115,12 +141,12 @@
         const front = document.createElement('img');
         front.className = 'card-front';
         front.alt = options?.alt || (card ? 'Card' : '');
-        front.src = card ? cardUrl(card) : '';
+        applyCardImage(front, card ? cardUrl(card) : '');
 
         const back = document.createElement('img');
         back.className = 'card-back';
         back.alt = card ? '' : (options?.alt || 'Card back');
-        back.src = cardBackUrl(cardType);
+        applyCardImage(back, cardBackUrl(cardType));
 
         inner.appendChild(front);
         inner.appendChild(back);
@@ -159,19 +185,19 @@
                 card: wrap.dataset.cardCode
             });
             const front = wrap.querySelector('.card-front');
-            if (front && src) front.src = src;
+            if (front && src) applyCardImage(front, src);
         });
         scope.querySelectorAll('.card-wrap[data-card-face="false"]').forEach((wrap) => {
             const back = wrap.querySelector('.card-back');
-            if (back) back.src = cardBackUrl(wrap.dataset.cardType || 'ITALIAN');
+            if (back) applyCardImage(back, cardBackUrl(wrap.dataset.cardType || 'ITALIAN'));
         });
         // legacy bare img elements (for game.html generic fallback)
         scope.querySelectorAll('img[data-card-code][data-card-face="true"]:not(.card-front):not(.card-back)').forEach((img) => {
             const src = cardUrl({cardType: img.dataset.cardType || 'ITALIAN', card: img.dataset.cardCode});
-            if (src) img.src = src;
+            if (src) applyCardImage(img, src);
         });
         scope.querySelectorAll('img[data-card-face="false"]:not(.card-front):not(.card-back)').forEach((img) => {
-            img.src = cardBackUrl(img.dataset.cardType || 'ITALIAN');
+            applyCardImage(img, cardBackUrl(img.dataset.cardType || 'ITALIAN'));
         });
     }
 
@@ -379,34 +405,48 @@
 
         const total = layoutItems.length;
         const rect = element.getBoundingClientRect();
-        const sample = layoutItems.find((item) => !item.placeholder)?.el;
-        const sampleRect = sample?.getBoundingClientRect();
+        // Prefer a real card to size the zone; otherwise measure the placeholder itself.
+        // Its CSS width is the zone's correct card size (e.g. --trick-card-width for the
+        // trick zone), so a first-played card's reserved-slot preview and fly target are
+        // sized right — not the --hand-card-width / 100px fallback.
+        let sample = layoutItems.find((item) => !item.placeholder)?.el;
+        if (!sample && placeholder) {
+            placeholder.style.width = '';   // drop any stale inline width before measuring
+            sample = placeholder;
+        }
         const style = getComputedStyle(element);
+        // Use the UNROTATED layout size (offsetWidth/Height), not the rotated bounding
+        // box — otherwise spacing depends on each card's tilt/spin, making a reserved
+        // placeholder (no spin) land a few px off from the real card.
         const baseWidth = resolved.options.cardWidth
-            || sampleRect?.width
+            || sample?.offsetWidth
             || Number.parseFloat(style.getPropertyValue('--hand-card-width'))
             || 100;
-        const baseHeight = resolved.options.cardHeight || sampleRect?.height || baseWidth * 1.38;
+        const baseHeight = resolved.options.cardHeight || sample?.offsetHeight || baseWidth * 1.38;
         const available = Math.max(rect.width - baseWidth, baseWidth);
         const zoneType = resolved.options.type || resolved.options.zoneType || element.dataset.zoneType;
+        // Optional FIXED slot count: when set, cards occupy fixed slots (by index)
+        // that never re-center as more cards are added — so e.g. a played card flies
+        // straight to its side slot instead of centering first. Hand zones omit it.
+        const slots = Math.max(Number(resolved.options.slotTotal) || 0, total);
         // Tighter, overlap-based spacing — flexible for any card count.
         const spacingScale = resolved.options.spacingScale ?? (zoneType === 'center' ? 0.45 : 0.4);
         const naturalSpacing = baseWidth * spacingScale;
-        const spacing = total > 1 ? Math.min(naturalSpacing, available / (total - 1)) : 0;
+        const spacing = slots > 1 ? Math.min(naturalSpacing, available / (slots - 1)) : 0;
         const maxTilt = resolved.options.maxTilt ?? (zoneType === 'center' ? 4 : 6);
         const yArc = resolved.options.yArc ?? (zoneType === 'center' ? 3 : 5);
         const baseOffsetY = Number(resolved.options.baseOffsetY) || 0;
 
         if (zoneType !== 'mini') {
-            const minWidth = Math.ceil(baseWidth + (total > 1 ? spacing * (total - 1) : 0) + 28);
+            const minWidth = Math.ceil(baseWidth + (slots > 1 ? spacing * (slots - 1) : 0) + 28);
             const minHeight = Math.ceil(baseHeight + yArc + Math.abs(baseOffsetY) + 28);
             element.style.minWidth = `${minWidth}px`;
             element.style.minHeight = `${minHeight}px`;
         }
 
         layoutItems.forEach((item, index) => {
-            const centered = index - ((total - 1) / 2);
-            const normalized = total > 1 ? centered / ((total - 1) / 2) : 0;
+            const centered = index - ((slots - 1) / 2);
+            const normalized = slots > 1 ? centered / ((slots - 1) / 2) : 0;
             const x = centered * spacing;
             const y = Math.abs(normalized) * yArc + baseOffsetY;
             const rotation = normalized * maxTilt;
@@ -421,7 +461,7 @@
             if (!item.placeholder) {
                 el.style.transform = '';
                 el.style.opacity = '';
-                if (!el.classList.contains('is-dealing')) {
+                if (!el.classList.contains('is-dealing') && !el.classList.contains('is-flying')) {
                     el.style.removeProperty('--deal-x');
                     el.style.removeProperty('--deal-y');
                     el.style.removeProperty('--deal-rot');
@@ -527,6 +567,13 @@
             card.style.transform = `translateY(${lift}px) rotate(${rotate}deg)`;
             card.style.zIndex = String(index + 1);
         });
+        // Generic deal/fly-in: cards that simply MOVED slide to their new slot (FLIP);
+        // BRAND-NEW cards fly in from `options.fromRect` (e.g. the deck) to their exact
+        // slot — so any hand (opponent seats, other game modes) gets the same animation
+        // the main hand has, landing in the right place rather than the seat centre.
+        const source = options?.fromRect;
+        const hasSource = source && (source.width || source.height);
+        let dealtIndex = 0;
         existingCards.forEach((card) => {
             const previous = first.get(card);
             const next = card.getBoundingClientRect();
@@ -534,9 +581,25 @@
                 animateFromRect(card, previous, next, MOTION.quickMs);
                 return;
             }
+            const slotTransform = card.style.transform || 'translate3d(0,0,0)';
+            if (hasSource && next.width) {
+                const dx = (source.left + (source.width || 0) / 2) - (next.left + next.width / 2);
+                const dy = (source.top + (source.height || 0) / 2) - (next.top + next.height / 2);
+                playAnimation(card, {
+                    opacity: [0.35, 1],
+                    transform: [
+                        `translate3d(${dx}px, ${dy}px, 0) ${slotTransform} scale(.94)`,
+                        slotTransform
+                    ],
+                    duration: options?.dealDuration ?? MOTION.dealMs,
+                    delay: (dealtIndex++) * (options?.dealStagger ?? 70),
+                    ease: MOTION.ease
+                });
+                return;
+            }
             playAnimation(card, {
                 opacity: [0, 1],
-                transform: [`${card.style.transform} scale(.92)`, card.style.transform],
+                transform: [`${slotTransform} scale(.92)`, slotTransform],
                 duration: MOTION.quickMs,
                 ease: MOTION.ease
             });
@@ -545,27 +608,34 @@
 
     function renderDeckTower(deckTower, deckStack, cardsLeft, options) {
         if (!deckTower) return;
-        deckTower.innerHTML = '';
         const deckTowerCount = Math.max((cardsLeft ?? 0) - (options?.featuredCard ? 1 : 0), 0);
         const exhausting = options?.exhausting === true;
         if (deckStack) deckStack.classList.toggle('is-empty', deckTowerCount <= 0 && !exhausting);
-        if (deckTowerCount <= 0 && !exhausting) return;
-        const count = exhausting ? 1 : Math.min(deckTowerCount, 18);
-        for (let i = 0; i < count; i += 1) {
+        if (deckTowerCount <= 0 && !exhausting) { deckTower.replaceChildren(); return; }
+
+        const target = exhausting ? 1 : Math.min(deckTowerCount, 18);
+        // Rebuild only if the card style changed (never within a game). Offsets are
+        // anchored to the index FROM THE BOTTOM so existing cards never need their
+        // transforms recomputed — drawing just removes the top element(s).
+        if (deckTower.dataset.deckType !== String(options?.cardType || '')) {
+            deckTower.replaceChildren();
+            deckTower.dataset.deckType = String(options?.cardType || '');
+        }
+        let current = deckTower.children.length;
+        while (current > target) { deckTower.lastElementChild?.remove(); current -= 1; }
+        while (current < target) {
+            const i = current;   // index from bottom — stable offset
             const img = renderCardImage({
                 cardType: options?.cardType,
                 className: options?.className || '',
                 alt: options?.alt || 'Deck'
             });
-            const depthFromTop = count - i - 1;
-            const xOffset = Number((depthFromTop * 0.65).toFixed(2));
-            const yOffset = Number((-depthFromTop * 0.55).toFixed(2));
-            const rotation = Number((((i % 3) - 1) * 0.65).toFixed(3));
-            img.style.setProperty('--deck-offset-x', String(xOffset));
-            img.style.setProperty('--deck-offset-y', String(yOffset));
-            img.style.setProperty('--deck-rot', String(rotation));
+            img.style.setProperty('--deck-offset-x', String(Number((i * 0.65).toFixed(2))));
+            img.style.setProperty('--deck-offset-y', String(Number((-i * 0.55).toFixed(2))));
+            img.style.setProperty('--deck-rot', String(Number((((i % 3) - 1) * 0.65).toFixed(3))));
             img.style.zIndex = String(i + 1);
             deckTower.appendChild(img);
+            current += 1;
         }
     }
 
@@ -868,8 +938,12 @@
         const duration = prefersReducedMotion() ? 80 : (options?.duration ?? MOTION.dealMs);
         const fromX = fromRect.left;
         const fromY = fromRect.top;
-        const toX = toRect.left + (toRect.width - fromRect.width) / 2;
-        const toY = toRect.top + (toRect.height - fromRect.height) / 2;
+        // Scale is applied about the element's center, so center the destination on the
+        // UNSCALED box (offsetWidth/Height), not the scaled getBoundingClientRect size.
+        const nw = el.offsetWidth || fromRect.width;
+        const nh = el.offsetHeight || fromRect.height;
+        const toX = toRect.left + (toRect.width - nw) / 2;
+        const toY = toRect.top + (toRect.height - nh) / 2;
         return playAnimation(el, {
             transform: [
                 `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${options?.fromScale ?? 1.04})`,
@@ -879,6 +953,33 @@
             duration,
             ease: options?.ease || 'out(3)'
         }).then(() => { options?.onLand?.(el); });
+    }
+
+    // Cross-hand transfer: animate a card element from a SOURCE hand into its slot in
+    // its (destination) hand. The card must already be placed at its destination slot;
+    // this flies it in from the source hand's on-screen position. `fromHand` may be a
+    // registered zone, a DOM element, or pass an explicit `fromRect`. This is the
+    // reusable "a card moves from one hand to another" primitive (e.g. an opponent's
+    // played card flying from their hand to the table). Params mirror flyIntoSlot:
+    // faceDown, spin, fromScale, duration, ease, delay.
+    function crossHandTransfer(options) {
+        const cardEl = options?.cardEl || options?.el;
+        if (!cardEl) return Promise.resolve();
+        let fromRect = options?.fromRect ? normalizeRect(options.fromRect) : null;
+        if (!fromRect) {
+            const fromHand = options?.fromHand || options?.from;
+            const fromEl = fromHand && (fromHand.element || fromHand);
+            fromRect = fromEl?.getBoundingClientRect?.();
+        }
+        if (!fromRect || !fromRect.width) return Promise.resolve();
+        return flyIntoSlot(cardEl, fromRect, {
+            faceDown: options?.faceDown,
+            spin: options?.spin,
+            fromScale: options?.fromScale,
+            duration: options?.duration,
+            ease: options?.ease,
+            delay: options?.delay
+        });
     }
 
     function enableDropZone(element, options) {
@@ -990,18 +1091,25 @@
             // the user sees enlarged), regardless of exact pointer-vs-element overlap.
             element.__ucRaisedCard = card;
         };
-        const nearest = (x) => {
-            let best = null;
-            let bestDist = Infinity;
-            getZoneCards(resolved || {element}).forEach((card) => {
-                if (card.classList.contains('is-dragging') || card.classList.contains('drag-ghost')) return;
+        // Pick the card nearest the cursor X, but ONLY when the cursor is actually over
+        // the cards' area — not the empty padding to the left/right/top/bottom of the
+        // hand. Otherwise hovering blank space would enlarge the edge card.
+        const pickCard = (x, y) => {
+            const cards = getZoneCards(resolved || {element}).filter((card) =>
+                !card.classList.contains('is-dragging') && !card.classList.contains('drag-ghost'));
+            if (!cards.length) return null;
+            let minL = Infinity, maxR = -Infinity, minT = Infinity, maxB = -Infinity;
+            let best = null, bestDist = Infinity;
+            cards.forEach((card) => {
                 const r = card.getBoundingClientRect();
+                if (r.left < minL) minL = r.left;
+                if (r.right > maxR) maxR = r.right;
+                if (r.top < minT) minT = r.top;
+                if (r.bottom > maxB) maxB = r.bottom;
                 const dist = Math.abs(x - (r.left + r.width / 2));
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    best = card;
-                }
+                if (dist < bestDist) { bestDist = dist; best = card; }
             });
+            if (x < minL || x > maxR || y < minT || y > maxB) return null;
             return best;
         };
         element.addEventListener('pointermove', (event) => {
@@ -1009,7 +1117,11 @@
                 lower();
                 return;
             }
-            raise(nearest(Number(event.clientX ?? event.pageX ?? 0)));
+            const x = Number(event.clientX ?? event.pageX ?? 0);
+            const y = Number(event.clientY ?? event.pageY ?? 0);
+            const target = pickCard(x, y);
+            if (target) raise(target);
+            else lower();
         });
         element.addEventListener('pointerleave', lower);
     }
@@ -1097,7 +1209,7 @@
         cardEl.dataset.cardCode = cardData.card || '';
         cardEl.dataset.cardKey = cardKey(cardData);
         const front = cardEl.querySelector('.card-front');
-        if (front) front.src = cardUrl(cardData);
+        if (front) applyCardImage(front, cardUrl(cardData));
     }
 
     function flipCardReveal(cardEl, cardData) {
@@ -1189,6 +1301,7 @@
 
     window.UltracardsGameUi = {
         applyHandFan,
+        applyCardImage,
         animateHandChange: animateZoneChange,
         animateZoneChange,
         cardBackUrl,
@@ -1209,6 +1322,7 @@
         finishDragCard,
         flyIntoSlot,
         flyOverlayTo,
+        crossHandTransfer,
         flipCardReveal,
         hydrateCardImages,
         italianCardUrl,
