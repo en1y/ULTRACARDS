@@ -1,6 +1,10 @@
 /* Replay reuses game.css's .game-layout + .chat-sidebar for sizing.
    This file is only the controls-panel content + the face-up (omniscient) hands. */
 
+.game-layout.is-replay {
+    --max-hand: 4;
+}
+
 .history-replay-panel {
     display: flex;
     flex-direction: column;
