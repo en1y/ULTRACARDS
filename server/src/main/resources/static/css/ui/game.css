@@ -583,7 +583,7 @@
             width: var(--trump-card-width);
             aspect-ratio: 300 / 546;
             position: relative;
-            right: calc(1vw + 8px);
+            right: 2vw;
             bottom: 7vh;
             z-index: 2;
             transform: rotate(90deg);

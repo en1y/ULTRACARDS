@@ -437,7 +437,7 @@
         const yArc = resolved.options.yArc ?? (zoneType === 'center' ? 3 : 5);
         const baseOffsetY = Number(resolved.options.baseOffsetY) || 0;
 
-        if (zoneType !== 'mini') {
+        if (zoneType !== 'mini' && zoneType !== 'fan') {
             const minWidth = Math.ceil(baseWidth + (slots > 1 ? spacing * (slots - 1) : 0) + 28);
             const minHeight = Math.ceil(baseHeight + yArc + Math.abs(baseOffsetY) + 28);
             element.style.minWidth = `${minWidth}px`;
