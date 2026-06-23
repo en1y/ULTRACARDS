@@ -232,7 +232,8 @@
         cards.forEach((card, i) => {
             const el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: `${playerName(player)} card`});
             const centered = i - (total - 1) / 2;
-            el.style.transform = `translateY(${Math.abs(centered) * 1.4}px) rotate(${centered * 5.5}deg)`;
+            el.style.setProperty('--slot-y', `${Math.abs(centered) * 1.4}px`);
+            el.style.setProperty('--slot-rot', `${centered * 5.5}deg`);
             el.style.zIndex = String(i + 1);
             el.addEventListener('mouseenter', () => { el._prev = showPreview(el, card.card); });
             el.addEventListener('mouseleave', () => { el._prev?.remove(); el._prev = null; });
@@ -358,21 +359,17 @@
     };
     const deckRect = () => dom.deckTower?.getBoundingClientRect() || dom.deckStack?.getBoundingClientRect();
 
-    // Fly a seat card (plain inline-transform fan) from a rect to its slot, keeping the fan.
-    // Starts at the source's visual size (e.g. trick/deck) and shrinks into the small hand
-    // so the motion is actually visible going back, not a near-invisible 44px nudge.
     const flySeatCard = (el, fromRect) => {
         if (!el || !fromRect) return Promise.resolve();
-        const next = el.getBoundingClientRect();
-        const slotT = el.style.transform || 'translate3d(0,0,0)';
-        const dx = (fromRect.left + fromRect.width / 2) - (next.left + next.width / 2);
-        const dy = (fromRect.top + fromRect.height / 2) - (next.top + next.height / 2);
-        const scale = Math.min(Math.max((fromRect.width / (next.width || 1)) || 1, 0.6), 3);
-        return Promise.resolve(ui.animateElement(el, {
-            transform: [`translate3d(${dx}px, ${dy}px, 0) ${slotT} scale(${scale})`, slotT],
-            opacity: [0.4, 1],
+        el.style.opacity = '0';
+        return Promise.resolve(ui.animateCardBetweenZones({
+            sourceRect: fromRect,
+            toEl: el,
+            card: {cardType: el.dataset.cardType, card: el.dataset.cardCode},
+            toRot: el.style.getPropertyValue('--slot-rot') || '0deg',
+            toScale: 1,
             duration: 360,
-            ease: 'out(3)'
+            onDone: () => { el.style.opacity = ''; }
         }));
     };
 
@@ -435,10 +432,7 @@
                     }
                 }));
                 await Promise.all(fresh.map((el, i) => new Promise((resolve) => setTimeout(
-                    () => flySeatCard(el, from).then(() => {
-                        el.style.opacity = '';
-                        resolve();
-                    }), i * 55))));
+                    () => flySeatCard(el, from).then(resolve), i * 55))));
             }
         } catch (_) { /* render already shows the correct state; ignore fly errors */ }
 

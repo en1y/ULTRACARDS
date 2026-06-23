@@ -707,10 +707,17 @@
         }
         const duration = prefersReducedMotion() ? 80 : (options?.duration ?? MOTION.dealMs);
         const delay = Number(options?.delay) || 0;
-        const fromX = fromRect.left;
-        const fromY = fromRect.top;
-        const toX = toRect.left + (toRect.width - fromRect.width) / 2;
-        const toY = toRect.top + (toRect.height - fromRect.height) / 2;
+        const width = clone.offsetWidth || fromRect.width;
+        const height = clone.offsetHeight || fromRect.height;
+        const fromX = fromRect.left + (fromRect.width - width) / 2;
+        const fromY = fromRect.top + (fromRect.height - height) / 2;
+        const toX = toRect.left + (toRect.width - width) / 2;
+        const toY = toRect.top + (toRect.height - height) / 2;
+        const fromScaleX = options?.fromScale ?? fromRect.width / width;
+        const fromScaleY = options?.fromScale ?? fromRect.height / height;
+        const toScaleX = options?.toScale ?? toRect.width / width;
+        const toScaleY = options?.toScale ?? toRect.height / height;
+        clone.style.transformOrigin = '50% 50%';
         let settled = false;
         const cleanup = () => {
             if (settled) return;
@@ -721,18 +728,29 @@
         // Safety net: always remove the overlay clone even if the animation
         // is interrupted or its promise never settles.
         const safety = setTimeout(cleanup, duration + delay + 400);
-        // Single continuous tween (no mid-point) so the motion has no visible
-        // stages / rough edges.
-        return playAnimation(clone, {
+        const animation = gsap ? new Promise((resolve) => {
+            gsap.set(clone, {
+                x: fromX, y: fromY, rotation: options?.fromRot || '0deg',
+                scaleX: fromScaleX, scaleY: fromScaleY, opacity: 1
+            });
+            gsap.to(clone, {
+                x: toX, y: toY, rotation: options?.toRot || '0deg',
+                scaleX: toScaleX, scaleY: toScaleY,
+                opacity: options?.fadeOut ? 0 : 1,
+                duration: duration / 1000,
+                delay: delay / 1000,
+                ease: mapEase(options?.easing || 'out(3)'),
+                onComplete: resolve
+            });
+        }) : playAnimation(clone, {
             transform: [
-                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${options?.fromScale || 1})`,
-                `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.toScale || 1})`
+                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${fromScaleX}, ${fromScaleY})`,
+                `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${toScaleX}, ${toScaleY})`
             ],
             opacity: options?.fadeOut ? [1, 0] : [1, 1],
-            duration,
-            delay,
-            ease: options?.easing || 'out(3)'
-        }).catch(() => undefined).then(() => {
+            duration, delay, ease: options?.easing || 'out(3)'
+        });
+        return animation.catch(() => undefined).then(() => {
             clearTimeout(safety);
             cleanup();
         });
@@ -779,8 +797,8 @@
                 className: options?.className || 'game-moving-card',
                 alt: options?.alt || 'Card'
             });
-            clone.style.width = `${sourceRect.width || targetRect.width || 96}px`;
-            clone.style.height = sourceRect.height ? `${sourceRect.height}px` : 'auto';
+            clone.style.width = `${options?.toEl?.offsetWidth || targetRect.width || sourceRect.width || 96}px`;
+            clone.style.height = `${options?.toEl?.offsetHeight || targetRect.height || sourceRect.height}px`;
             clone.style.transform = `translate3d(${sourceRect.left}px, ${sourceRect.top}px, 0)`;
             ensureOverlayLayer().appendChild(clone);
         }

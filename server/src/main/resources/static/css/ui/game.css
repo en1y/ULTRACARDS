@@ -479,6 +479,13 @@
             contain: layout style;
         }
 
+        .game-animation-layer > .card-wrap {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 0;
+        }
+
         .game-moving-card,
         .game-animation-layer .deal-card,
         .game-animation-layer .drag-ghost {

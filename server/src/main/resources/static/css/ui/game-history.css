@@ -198,6 +198,7 @@
     margin-left: -18px;
     cursor: zoom-in;
     overflow: hidden;
+    transform: translateY(var(--slot-y, 0px)) rotate(var(--slot-rot, 0deg));
 }
 
 .is-replay .seat-card .card-front,
