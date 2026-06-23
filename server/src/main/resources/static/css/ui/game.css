@@ -59,13 +59,13 @@
             --table-size: min(48vw, 78vh, 740px);
             --avatar-size: clamp(32px, 3.8vmin, 44px);
             --hand-card-width: clamp(104px, calc(var(--table-size) * 0.175), 132px);
-            --deck-cluster-width: clamp(112px, 13.5vh, calc(var(--table-size) * 0.247));
-            --deck-cluster-height: clamp(164px, 21.5vh, calc(var(--table-size) * 0.37));
-            --deck-tower-width: clamp(72px, 8.6vh, calc(var(--table-size) * 0.165));
-            --deck-tower-height: clamp(100px, 12.4vh, calc(var(--table-size) * 0.238));
-            --deck-card-width: clamp(66px, 8vh, calc(var(--table-size) * 0.15));
-            --trump-card-width: clamp(56px, 6.8vh, calc(var(--table-size) * 0.126));
-            --trump-card-hover-width: clamp(66px, 8vh, calc(var(--table-size) * 0.148));
+            --deck-cluster-width: clamp(128px, 15.5vh, calc(var(--table-size) * 0.285));
+            --deck-cluster-height: clamp(188px, 24.5vh, calc(var(--table-size) * 0.42));
+            --deck-tower-width: clamp(84px, 10vh, calc(var(--table-size) * 0.19));
+            --deck-tower-height: clamp(116px, 14.4vh, calc(var(--table-size) * 0.275));
+            --deck-card-width: clamp(78px, 9.4vh, calc(var(--table-size) * 0.175));
+            --trump-card-width: clamp(74px, 8.8vh, calc(var(--table-size) * 0.165));
+            --trump-card-hover-width: clamp(86px, 10.2vh, calc(var(--table-size) * 0.19));
             --trick-card-width: clamp(86px, calc(86px + (100vh - 1080px) * 0.18), 184px);
             --seat-top-nudge-y: clamp(-9px, -0.7vh, -4px);
             flex: none;               /* don't stretch in the body flex-column */
@@ -395,6 +395,9 @@
             display: flex;
             align-items: center;
             z-index: 4;
+            /* Empty center box must not eat the pointer — on a small felt it overlaps the
+               trump (z-index 2) and would block its hover. Drop is pointer-coord based. */
+            pointer-events: none;
         }
 
         .trick-area {
@@ -556,6 +559,7 @@
             width: var(--deck-tower-width);
             height: var(--deck-tower-height);
             z-index: 3;
+            pointer-events: none;
         }
 
         .deck-tower .card-wrap {
@@ -566,23 +570,33 @@
             left: calc(var(--deck-offset-x, 0) * 1px);
             top: calc(var(--deck-offset-y, 0) * 1px);
             transform: rotate(calc(var(--deck-rot, 0) * 1deg));
+            pointer-events: auto;
         }
 
         .deck-stack.is-empty .deck-tower {
             display: none;
         }
 
+        .trump-card-slot {
+            width: var(--trump-card-width);
+            aspect-ratio: 68 / 95;
+            position: relative;
+            right: 1vw;
+            bottom: 8.5vh;
+            z-index: 2;
+            transform: rotate(90deg);
+            transform-origin: 50% 50%;
+        }
+
         .trump-card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            translate: -50% -50%;
             width: var(--trump-card-width);
             border-radius: 9px;
             box-shadow: 0 12px 20px rgba(0, 0, 0, 0.28);
-            /* Trump sits sideways (landscape) under the deck pile, classic Briscola style. */
-            transform: rotate(90deg) translate3d(0, 0, 0);
             transform-origin: 50% 50%;
-            position: relative;
-            right: auto;
-            bottom: auto;
-            z-index: 2;
             cursor: pointer;
             transition: transform 280ms cubic-bezier(.2, .8, .2, 1),
             width 280ms cubic-bezier(.2, .8, .2, 1),
@@ -590,37 +604,20 @@
             filter 220ms ease;
         }
 
-        .trump-card .card-inner {
-            pointer-events: none;
-        }
-
-        .deck-stack.has-trump .trump-card {
-            transform: rotate(90deg) translate3d(0, 0, 0);
-        }
-
-        .trump-card:hover {
-            transform: rotate(90deg) translate3d(0, clamp(-7px, -0.8vh, -3px), 0) scale(1.02);
+        .trump-card-slot:hover .trump-card {
+            /* The slot stays put; only the card moves, so hover geometry remains stable. */
+            transform: translate3d(0, clamp(11px, 1.56vw, 22px), 0) scale(1.08);
             box-shadow: 0 26px 38px rgba(0, 0, 0, 0.42);
             filter: saturate(1.08);
             width: var(--trump-card-hover-width);
         }
 
-        .deck-stack.trump-side-left .trump-card {
+        .deck-stack.trump-side-left .trump-card-slot {
             left: auto;
-            transform: rotate(90deg) translate3d(0, 0, 0);
         }
 
-        .deck-stack.trump-side-left.has-trump .trump-card {
-            transform: rotate(90deg) translate3d(0, 0, 0);
-        }
-
-        .deck-stack.trump-side-left .trump-card:hover {
-            transform: rotate(90deg) translate3d(0, clamp(-7px, -0.8vh, -3px), 0) scale(1.02);
-            left: auto;
-            right: auto;
-            box-shadow: 0 26px 38px rgba(0, 0, 0, 0.42);
-            filter: saturate(1.08);
-            width: var(--trump-card-hover-width);
+        .deck-stack.trump-side-left .trump-card-slot:hover .trump-card {
+            transform: translate3d(0, clamp(-22px, -1.56vw, -11px), 0) scale(1.08);
         }
 
         .drop-zone {

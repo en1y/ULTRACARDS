@@ -116,15 +116,72 @@
     color: var(--color-text);
 }
 
-/* No bottom hand-row in the replay, so reserve room under the felt for the bottom seat
-   (otherwise its cards/points fall outside the board on small screens). */
-.is-replay .table-wrap {
-    padding-bottom: clamp(2.7rem, 6vmin, 4.2rem);
-}
-
 /* Bigger seat avatars so the player letter reads crisply in the replay. */
 .is-replay {
     --avatar-size: clamp(40px, 5.6vmin, 54px);
+}
+
+/* Seats sit in flow regions around the felt (column: top row / left|felt|right / bottom
+   row), so every player's icon + points + cards is always on screen — no absolute ring. */
+.replay-arena {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 0;
+    /* Stay bounded even when game.css collapses to one column on mobile (where the grid
+       row is auto-height) so the felt's aspect-ratio can't run away vertically. */
+    max-height: calc(100svh - var(--header-height, 64px) - 0.5rem);
+    width: 100%;
+    gap: clamp(0.3rem, 1.2vh, 0.9rem);
+}
+
+.is-replay .game-shell {
+    min-height: 0;
+}
+
+.replay-mid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: clamp(0.5rem, 2vw, 1.4rem);
+}
+
+.replay-region {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 1rem;
+}
+
+.replay-region.replay-col {
+    flex-direction: column;
+}
+
+.replay-mid .table-wrap {
+    flex: 0 1 auto;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    height: 100%;
+    padding: clamp(0.4rem, 2vmin, 1rem);
+}
+
+.is-replay .player-ring {
+    display: none;   /* seats live in the flow regions now */
+}
+
+.is-replay .player-seat {
+    position: static;
+    transform: none;
+    left: auto;
+    top: auto;
+    width: auto;
 }
 
 /* Replay hands are face-up (omniscient): larger than the live 28px backs, zoom on hover.
@@ -155,8 +212,22 @@
     z-index: 5;
 }
 
-.is-replay .seat-cards .card-wrap:hover {
-    z-index: 30;
-    overflow: visible;
-    transform: translateY(-16px) rotate(0deg) scale(2.3) !important;
+/* Reserve the full max-hand footprint so the seat (and the flexing felt) never shifts as
+   players play/draw/empty out. 44px card, 26px effective step (-18px overlap). */
+.is-replay .seat-cards {
+    justify-content: center;
+    min-width: calc(44px + (var(--max-hand, 4) - 1) * 26px);
+    min-height: 88px;
+}
+
+/* Hovered card pops a big, sharp preview toward the table (set by JS). pointer-events:none
+   so the small cards stay the hover targets and you can glide along the hand. */
+.replay-card-preview {
+    position: fixed;
+    width: clamp(110px, 14vh, 150px);
+    aspect-ratio: 300 / 546;
+    pointer-events: none;
+    z-index: 1000;
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
 }

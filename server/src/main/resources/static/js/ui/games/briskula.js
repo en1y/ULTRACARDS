@@ -208,6 +208,7 @@
 
         state.hands.self = window.UltracardsGameUi?.registerHand(dom.hand, {
             type: 'fan',
+            slotTotal: 3,
             spacingScale: 0.4,
             maxTilt: 6,
             yArc: 5,
@@ -555,7 +556,9 @@
 
         function renderTrump(card, deckLeft) {
             if (!dom.trump) return;
+            const slot = dom.trump.parentElement;
             if (!card || ((deckLeft != null && deckLeft <= 0) && !state.deckExhausting)) {
+                if (slot) slot.style.display = 'none';
                 dom.trump.style.display = 'none';
                 dom.trump.dataset.cardCode = '';
                 dom.trump.dataset.cardFace = 'false';
@@ -567,6 +570,7 @@
             if (frontImg) window.UltracardsGameUi?.applyCardImage(frontImg, url);
             dom.trump.dataset.cardCode = card.card || '';
             dom.trump.dataset.cardFace = 'true';
+            if (slot) slot.style.display = '';
             dom.trump.style.display = '';
             dom.deckStack?.classList.add('has-trump');
             setupTrumpZoom(dom.trump);
@@ -1573,8 +1577,10 @@
         }
 
         function setupTrumpZoom(cardWrap) {
-            if (!cardWrap || cardWrap.dataset.zoomReady) return;
-            cardWrap.dataset.zoomReady = '1';
+            if (!cardWrap) return;
+            const hoverTarget = cardWrap.parentElement;
+            if (!hoverTarget || hoverTarget.dataset.zoomReady) return;
+            hoverTarget.dataset.zoomReady = '1';
             let timer = null;
             let overlay = null;
 
@@ -1583,7 +1589,7 @@
                 if (overlay) { overlay.remove(); overlay = null; }
             };
 
-            cardWrap.addEventListener('mouseenter', () => {
+            hoverTarget.addEventListener('mouseenter', () => {
                 clear();
                 timer = setTimeout(() => {
                     const frontImg = cardWrap.querySelector('.card-front');
@@ -1601,7 +1607,7 @@
                     timer = null;
                 }, 1000);
             });
-            cardWrap.addEventListener('mouseleave', () => {
+            hoverTarget.addEventListener('mouseleave', () => {
                 if (overlay) return;
                 clear();
             });

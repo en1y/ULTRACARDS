@@ -5,7 +5,12 @@
     const dom = {
         title: document.getElementById('replay-title'),
         meta: document.getElementById('replay-meta'),
-        ring: document.getElementById('replay-player-ring'),
+        seatRegions: {
+            top: document.getElementById('replay-seats-top'),
+            left: document.getElementById('replay-seats-left'),
+            right: document.getElementById('replay-seats-right'),
+            bottom: document.getElementById('replay-seats-bottom')
+        },
         trick: document.getElementById('replay-trick-area'),
         stateLabel: document.getElementById('replay-drop-zone'),
         trump: document.getElementById('replay-trump-card'),
@@ -167,6 +172,7 @@
         const code = state.game?.trumpCard?.card;
         const show = !!code && deckLeft > 0;
         if (!dom.trump) return;
+        if (dom.trump.parentElement) dom.trump.parentElement.style.display = show ? '' : 'none';
         dom.trump.style.display = show ? '' : 'none';
         dom.deckStack?.classList.toggle('has-trump', show);
         if (show) ui?.revealCardFace(dom.trump, {cardType: 'ITALIAN', card: code});
@@ -202,6 +208,21 @@
         });
     };
 
+    // Big floating preview above (bottom hands) / below (top hands) a hovered card.
+    // pointer-events:none keeps the small cards as the hover targets so you can glide.
+    const showPreview = (cardEl, code) => {
+        const r = cardEl.getBoundingClientRect();
+        const img = document.createElement('img');
+        img.className = 'replay-card-preview';
+        img.src = ui.cardUrl({cardType: 'ITALIAN', card: code});
+        const up = r.top > window.innerHeight / 2;
+        img.style.left = `${r.left + r.width / 2}px`;
+        img.style.top = `${up ? r.top - 4 : r.bottom + 4}px`;
+        img.style.transform = up ? 'translate(-50%, -100%)' : 'translate(-50%, 0)';
+        document.body.appendChild(img);
+        return img;
+    };
+
     // Face-up seat hand (replay is omniscient). Same fan transform the live seats use.
     const renderSeatHand = (seat, player, cards) => {
         const hand = seat.querySelector('.seat-cards');
@@ -213,6 +234,8 @@
             const centered = i - (total - 1) / 2;
             el.style.transform = `translateY(${Math.abs(centered) * 1.4}px) rotate(${centered * 5.5}deg)`;
             el.style.zIndex = String(i + 1);
+            el.addEventListener('mouseenter', () => { el._prev = showPreview(el, card.card); });
+            el.addEventListener('mouseleave', () => { el._prev?.remove(); el._prev = null; });
             hand.appendChild(el);
         });
     };
@@ -290,6 +313,8 @@
     };
 
     const render = () => {
+        // Seat cards are rebuilt each step, so a preview whose card vanished must go.
+        document.querySelectorAll('.replay-card-preview').forEach((p) => p.remove());
         const step = getStep();
         const round = getRound();
         const visibleHands = buildVisibleHands(round, step.playCount);
@@ -436,6 +461,7 @@
             dom.meta.innerHTML = `<p>${escapeHtml(formatDate(game.endedAt || game.createdAt))}</p>
                 <p>${escapeHtml(settingsText(game.gameConfig))}</p>`;
         }
+        layout?.style.setProperty('--max-hand', String(game.gameConfig?.cardsInHandNum || 4));
         layout?.classList.toggle('is-two-player', playerCount() === 2);
         layout?.classList.toggle('is-four-player', playerCount() === 4);
         initSeats();
@@ -446,7 +472,6 @@
     dom.prev?.addEventListener('click', () => stepAnimated(state.stepIndex - 1));
     dom.next?.addEventListener('click', () => stepAnimated(state.stepIndex + 1));
     dom.range?.addEventListener('input', () => setStep(Number(dom.range.value) || 0));
-    window.addEventListener('resize', positionSeats);
 
     loadReplay().catch(() => {
         if (dom.title) dom.title.textContent = 'Replay unavailable';

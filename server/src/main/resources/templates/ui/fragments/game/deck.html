@@ -8,7 +8,9 @@
                  th:id="${idPrefix + 'deck-tower'}"
                  th:attr="data-zone-id=${idPrefix + 'deck-pile'},data-zone-kind='deck-pile'"></div>
             <th:block th:if="${featuredEnabled}">
-                <th:block th:replace="~{ui/fragments/game/card :: card(${featuredCard}, ${featuredCard != null ? featuredCard.cardType : 'ITALIAN'}, 'trump-card', 0, ${idPrefix + 'trump-card'})}"></th:block>
+                <div class="trump-card-slot" th:id="${idPrefix + 'trump-card-slot'}">
+                    <th:block th:replace="~{ui/fragments/game/card :: card(${featuredCard}, ${featuredCard != null ? featuredCard.cardType : 'ITALIAN'}, 'trump-card', 0, ${idPrefix + 'trump-card'})}"></th:block>
+                </div>
             </th:block>
             <div class="deck-count-bubble" th:id="${idPrefix + 'deck-left'}" th:text="${cardsLeft != null ? cardsLeft : 0}">0</div>
         </div>
