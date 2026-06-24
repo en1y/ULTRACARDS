@@ -37,5 +37,5 @@ build/
 /.envrc
 
 ### Graphify ###
-.codex/
 graphify-out/
+.codex/
