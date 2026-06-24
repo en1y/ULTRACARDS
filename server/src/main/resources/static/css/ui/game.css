@@ -563,10 +563,14 @@
             letter-spacing: 0;
         }
 
+        .deck-pile,
         .deck-tower {
             position: relative;
             width: var(--deck-tower-width);
             height: var(--deck-tower-height);
+        }
+
+        .deck-tower {
             z-index: 3;
             pointer-events: none;
         }
@@ -589,23 +593,21 @@
         .trump-card-slot {
             width: var(--trump-card-width);
             aspect-ratio: 300 / 546;
-            position: relative;
-            right: 2vw;
-            bottom: 7vh;
+            position: absolute;
+            top: 50%;
+            left: calc(var(--deck-card-width) - var(--trump-card-width));
             z-index: 2;
-            transform: rotate(90deg);
+            transform: translate(-50%, -50%) rotate(90deg);
             transform-origin: 50% 50%;
         }
 
         .trump-card {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            translate: -50% -50%;
+            top: 0;
+            left: 0;
             width: var(--trump-card-width);
             border-radius: 9px;
             box-shadow: 0 12px 20px rgba(0, 0, 0, 0.28);
-            transform-origin: 50% 50%;
             cursor: pointer;
             transition: transform 280ms cubic-bezier(.2, .8, .2, 1),
             width 280ms cubic-bezier(.2, .8, .2, 1),
