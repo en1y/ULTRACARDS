@@ -16,7 +16,6 @@
     <main class="lobbies-page">
         <section class="lobbies-hero container">
             <div class="lobbies-hero-copy">
-                <span class="chip">Game browser</span>
                 <h1>Find an ULTRAlobby</h1>
             </div>
             <div class="lobbies-hero-stats card">
@@ -67,7 +66,6 @@
                     <div>
                         <p class="lobbies-eyebrow">Open rooms</p>
                         <h2>Available lobbies</h2>
-                        <p id="active-filter-label" class="lobbies-filter-summary">Showing all open lobbies.</p>
                     </div>
                     <span id="active-lobbies-count" class="chip" th:text="${#lists.size(lobbies) + ' active'}">0 active</span>
                 </div>
@@ -90,7 +88,6 @@
                         <div>
                             <p class="lobbies-eyebrow">Invite code</p>
                             <h2>Join by code</h2>
-                            <p>Use this for private lobbies or direct invites.</p>
                         </div>
                         <div class="lobbies-code-row">
                             <input id="join-code-input"

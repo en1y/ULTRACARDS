@@ -64,6 +64,10 @@
             flex-wrap: wrap;
         }
 
+        .lobby-card-footer {
+            justify-content: flex-end;
+        }
+
         .lobby-card-settings {
             display: grid;
             gap: 0.45rem;
@@ -225,7 +229,7 @@
             .lobby-card-footer,
             .lobby-card-head {
                 flex-direction: column;
-                align-items: flex-start;
+                align-items: flex-end;
             }
 
             .lobbies-browser {

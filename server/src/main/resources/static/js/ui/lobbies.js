@@ -146,25 +146,6 @@ const gameSettingsAnimationDurationMs = 420;
                 return;
             }
 
-            function getFilterSummary() {
-                if (filterState.gameType === 'all') {
-                    return 'Showing all open lobbies.';
-                }
-
-                const gameLabel = filterState.gameType.charAt(0).toUpperCase() + filterState.gameType.slice(1);
-                const settingLabel = getGameTypeSetting(filterState.gameType, filterState.settingKey)?.ui_text;
-                if (settingLabel) {
-                    return `Showing ${gameLabel} lobbies for ${settingLabel}.`;
-                }
-                return `Showing ${gameLabel} lobbies.`;
-            }
-
-            function syncFilterSummary() {
-                if (activeFilterLabel) {
-                    activeFilterLabel.textContent = getFilterSummary();
-                }
-            }
-
             function normalizeCode(value) {
                 return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
             }
@@ -260,17 +241,17 @@ const gameSettingsAnimationDurationMs = 420;
                 }
 
                 const config = lobby.gameConfig;
-                const parts = [];
-                if (config.numberOfPlayers != null) {
-                    parts.push(`${config.numberOfPlayers} players`);
+                const n = config.numberOfPlayers;
+                if (n === 2) {
+                    return config.cardsInHandNum != null ? `2 players • ${config.cardsInHandNum} cards each` : '2 players';
                 }
-                if (config.cardsInHandNum != null) {
-                    parts.push(`${config.cardsInHandNum} cards each`);
+                if (n === 3) {
+                    return '3 players';
                 }
-                if (config.numberOfPlayers === 4) {
-                    parts.push(config.teamsEnabled ? 'teams enabled' : 'free-for-all');
+                if (n === 4) {
+                    return config.teamsEnabled ? '4 players with teams' : '4 players no teams';
                 }
-                return parts.join(' • ');
+                return 'Standard rules';
             }
 
             function renderPlayers(players, hostId) {
@@ -307,12 +288,6 @@ const gameSettingsAnimationDurationMs = 420;
                             <span class="chip">${players.length}/${lobby.maxPlayers ?? ''} players</span>
                         </div>
 
-                        <div class="lobby-card-stats">
-                            <span class="chip">${openSlots} open slot${openSlots === 1 ? '' : 's'}</span>
-                            <span class="chip">Min ${escapeHtml(lobby.minPlayers ?? players.length)}</span>
-                            <span class="chip">Public</span>
-                        </div>
-
                         <div class="lobby-card-settings">
                             <strong>Lobby settings</strong>
                             <p>${escapeHtml(describeLobbySettings(lobby))}</p>
@@ -323,7 +298,6 @@ const gameSettingsAnimationDurationMs = 420;
                         </div>
 
                         <div class="lobby-card-footer">
-                            <p>Join this room and continue in the live lobby view.</p>
                             <button class="btn btn-accent" type="button" data-join-lobby-id="${escapeHtml(lobby.id || '')}">
                                 <img class="uc-icon" data-icon="login" src="/pics/light/login.svg" alt="" aria-hidden="true">
                                 <span>Join lobby</span>
@@ -452,7 +426,6 @@ const gameSettingsAnimationDurationMs = 420;
                 filterState.settingKey = nextFilter.settingKey;
                 filterState.settingId = nextFilter.settingId;
                 persistFilter(nextFilter);
-                syncFilterSummary();
             }
 
             async function refreshLobbies(nextFilter) {
