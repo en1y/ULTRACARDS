@@ -498,17 +498,50 @@ body.friends-drawer-open .uc-header.hidden {
 
 .header-user-history-result {
   flex: 0 0 auto;
-  padding: 0.2rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.4rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 0.4rem;
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: 1.7rem;
   font-weight: 900;
+  position: relative;
+  transition: border-color 0.12s, background 0.12s;
 }
 
 .header-user-history-result.win {
-  border-color: color-mix(in oklab, var(--color-success) 42%, var(--color-border));
+  border-color: var(--color-success);
   color: var(--color-success);
+  background: color-mix(in oklab, var(--color-success) 12%, var(--color-bg));
+}
+
+.header-user-history-result.loss {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 12%, var(--color-bg));
+}
+
+.header-user-history-result:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
 }
 
 .header-user-history-row {
@@ -530,12 +563,26 @@ body.friends-drawer-open .uc-header.hidden {
 }
 
 .header-user-history-player {
-  padding: 0.2rem 0.45rem;
+  padding: 0.2rem 0.5rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 0.4rem;
   background: var(--color-bg);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.header-user-history-player[data-user-id] {
+  cursor: pointer;
+  background: color-mix(in oklab, var(--color-accent) 7%, var(--color-bg));
+  border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.header-user-history-player[data-user-id]:hover,
+.header-user-history-player[data-user-id]:focus-visible {
+  border-color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-bg));
+  outline: none;
 }
 
 .header-user-history-player.is-winner {

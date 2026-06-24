@@ -60,16 +60,18 @@
     && game.winners.some((winner) => playerId(winner) === currentUserId);
 
   const settingsText = (config = {}) => {
-    const players = config.numberOfPlayers || '?';
-    const cards = config.cardsInHandNum || '?';
-    const mode = config.teamsEnabled ? 'teams' : 'solo';
-    return `${players} players - ${cards} cards - ${mode}`;
+    const parts = [`${config.numberOfPlayers || '?'} players`];
+    if (config.numberOfPlayers === 2) parts.push(`${config.cardsInHandNum || '?'} cards`);
+    if (config.numberOfPlayers === 4) parts.push(config.teamsEnabled ? 'teams' : 'solo');
+    return parts.join(' - ');
   };
 
   const playerList = (players, game = null) => (players || [])
     .map((player) => {
       const winner = game && isWinner(game, player);
-      return `<span class="history-player ${winner ? 'is-winner' : ''}">${playerName(player)}</span>`;
+      const uid = playerId(player);
+      const interactive = uid > 0 ? ` data-user-id="${uid}" data-user-name="${playerName(player)}" tabindex="0" role="button"` : '';
+      return `<span class="history-player ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)}</span>`;
     })
     .join('');
 
@@ -82,7 +84,9 @@
   const scores = (game, pointsByUser = game.pointsByUser) => scoreEntries(pointsByUser)
     .map(({ player, points }) => {
       const winner = isWinner(game, player);
-      return `<span class="history-score ${winner ? 'is-winner' : ''}">${playerName(player)} <strong>${points}</strong></span>`;
+      const uid = playerId(player);
+      const interactive = uid > 0 ? ` data-user-id="${uid}" data-user-name="${playerName(player)}" tabindex="0" role="button"` : '';
+      return `<span class="history-score ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)} <strong>${points}</strong></span>`;
     }).join('');
 
   const renderGame = (game) => {
@@ -92,20 +96,17 @@
       <article class="card history-card" data-game-id="${escapeHtml(game.id)}">
         <div class="history-card-head">
           <div class="history-card-title">
+            <span class="chip">${escapeHtml(game.gameType || 'Unknown')}</span>
             <h3>${escapeHtml(game.name || 'Briskula')}</h3>
             <div class="history-meta">
               <span>${formatDate(game.endedAt || game.createdAt)}</span>
               <span>${escapeHtml(settingsText(game.gameConfig))}</span>
             </div>
           </div>
-          <span class="history-result ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span>
+          <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? 'Win' : 'Loss'}">${won ? 'W' : 'L'}</span>
         </div>
         <div class="history-card-row">
           <strong>Players</strong>
-          <div class="history-player-list">${playerList(game.playersOrder, game)}</div>
-        </div>
-        <div class="history-card-row">
-          <strong>Points</strong>
           <div class="history-score-list">${scores(game)}</div>
         </div>
         <div class="history-card-footer">
@@ -193,13 +194,30 @@
   gameTypeSelect.addEventListener('change', () => loadHistory(true));
   loadMoreButton.addEventListener('click', () => loadHistory(false));
   refreshButton.addEventListener('click', () => loadHistory(true));
+  const openPlayerProfile = (el) => {
+    document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+      detail: { id: Number(el.dataset.userId), username: el.dataset.userName }
+    }));
+  };
+
   list.addEventListener('click', (event) => {
+    const player = event.target.closest('[data-user-id]');
+    if (player) { openPlayerProfile(player); return; }
+
     const link = event.target.closest('[data-history-details]');
     if (!link) return;
     const game = gamesById.get(String(link.dataset.historyDetails));
     if (game) {
       sessionStorage.setItem(`ultracards:history:${game.id}`, JSON.stringify(game));
     }
+  });
+
+  list.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const player = event.target.closest('[data-user-id]');
+    if (!player) return;
+    event.preventDefault();
+    openPlayerProfile(player);
   });
 
   updateSummary();

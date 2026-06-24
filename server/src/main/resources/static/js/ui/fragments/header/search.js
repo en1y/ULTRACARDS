@@ -460,8 +460,31 @@
           item.classList.add('is-winner');
         }
         item.textContent = playerName(player);
+        const uid = playerId(player);
+        if (uid > 0) {
+          item.dataset.userId = uid;
+          item.dataset.userName = playerName(player);
+          item.tabIndex = 0;
+          item.role = 'button';
+        }
         list.append(item);
       }
+      list.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-user-id]');
+        if (!chip) return;
+        document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+          detail: { id: Number(chip.dataset.userId), username: chip.dataset.userName }
+        }));
+      });
+      list.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const chip = e.target.closest('[data-user-id]');
+        if (!chip) return;
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+          detail: { id: Number(chip.dataset.userId), username: chip.dataset.userName }
+        }));
+      });
       return list;
     };
 
@@ -480,8 +503,10 @@
       titleWrap.append(title, meta);
 
       const result = document.createElement('span');
-      result.className = `header-user-history-result ${userWonGame(game, profile?.id) ? 'win' : 'loss'}`;
-      result.textContent = userWonGame(game, profile?.id) ? 'Win' : 'Loss';
+      const won = userWonGame(game, profile?.id);
+      result.className = `header-user-history-result ${won ? 'win' : 'loss'}`;
+      result.textContent = won ? 'W' : 'L';
+      result.title = won ? 'Win' : 'Loss';
 
       head.append(titleWrap, result);
 

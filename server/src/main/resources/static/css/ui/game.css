@@ -301,19 +301,19 @@
         }
 
         .player-seat.team-seat-ally .seat-avatar {
-            background: linear-gradient(155deg, #2f8a4e, #184d2e);
+            background: linear-gradient(155deg, #379b5a, #1d6138);
         }
 
         .player-seat.team-seat-neutral.team-seat-1 .seat-avatar {
-            background: linear-gradient(155deg, #2f8a4e, #184d2e);
+            background: linear-gradient(155deg, #379b5a, #1d6138);
         }
 
         .player-seat.team-seat-enemy .seat-avatar {
-            background: linear-gradient(155deg, #b04242, #5e1d1d);
+            background: linear-gradient(155deg, #c34d4d, #772727);
         }
 
         .player-seat.team-seat-neutral.team-seat-2 .seat-avatar {
-            background: linear-gradient(155deg, #b04242, #5e1d1d);
+            background: linear-gradient(155deg, #c34d4d, #772727);
         }
 
         .player-seat.team-seat-ally .seat-name,
@@ -786,22 +786,22 @@
         }
 
         .player-summary-points {
-            font-size: 0.9rem;
-            font-weight: 800;
+            font-size: 1.4rem;
+            font-weight: 900;
             letter-spacing: 0;
-            color: var(--seat-muted);
+            color: var(--color-text);
             text-transform: uppercase;
         }
 
         .player-summary-card {
-            min-width: 120px;
-            padding: 0.3rem 0.8rem 0.36rem;
+            min-width: 140px;
+            padding: 0.4rem 0.8rem;
             border-radius: 16px;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 0.28rem;
+            gap: 0.5rem;
             background: color-mix(in oklab, var(--color-bg) 62%, rgba(12, 18, 15, 0.2));
             border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
             box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
@@ -809,10 +809,11 @@
         }
 
         .player-summary-name {
-            font-size: 0.86rem;
+            font-size: 0.76rem;
             font-weight: 900;
             letter-spacing: 0;
             text-transform: uppercase;
+            color: var(--color-text);
         }
 
         .hand-cards {
@@ -957,8 +958,8 @@
         .seat-avatar {
             width: var(--avatar-size);
             height: var(--avatar-size);
-            border-radius: 12px;
-            background: linear-gradient(155deg, color-mix(in oklab, var(--color-accent) 88%, white 6%), color-mix(in oklab, var(--color-accent) 72%, black 30%));
+            border-radius: 19px;
+            background: linear-gradient(155deg, color-mix(in oklab, var(--color-accent) 92%, white 8%), color-mix(in oklab, var(--color-accent) 78%, black 22%));
             color: #fff;
             font-weight: 900;
             display: flex;
@@ -977,7 +978,7 @@
             content: "";
             position: absolute;
             inset: -3px;
-            border-radius: 15px;
+            border-radius: 19px;
             padding: 4px;
             background: conic-gradient(from 0deg,
                 rgba(255, 255, 255, 0) calc((1 - var(--turn-progress, 0)) * 1turn),
