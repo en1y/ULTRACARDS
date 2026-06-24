@@ -100,6 +100,10 @@
     min-width: min(100%, 16rem);
 }
 
+.history-card-title .chip {
+    justify-self: start;
+}
+
 .history-card-title h3,
 .history-card-title p,
 .history-card-footer p {
@@ -119,7 +123,6 @@
 }
 
 .history-card-title p,
-.history-card-footer p,
 .history-empty,
 .history-error {
     color: var(--color-text-muted);
@@ -154,11 +157,30 @@
     align-items: center;
     gap: 0.35rem;
     min-height: 1.9rem;
-    padding: 0.3rem 0.55rem;
+    padding: 0.3rem 0.6rem;
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: 0.4rem;
     background: color-mix(in oklab, var(--color-surface) 82%, transparent);
-    font-size: 0.88rem;
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.history-player[data-user-id],
+.history-score[data-user-id] {
+    cursor: pointer;
+    background: color-mix(in oklab, var(--color-accent) 7%, var(--color-bg));
+    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.history-player[data-user-id]:hover,
+.history-player[data-user-id]:focus-visible,
+.history-score[data-user-id]:hover,
+.history-score[data-user-id]:focus-visible {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 16%, var(--color-bg));
+    outline: none;
 }
 
 .history-score.is-winner,
@@ -169,27 +191,53 @@
 
 .history-score strong {
     color: var(--color-text);
+    font-size: 1.15em;
 }
 
 .history-result {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-width: 2rem;
     min-height: 2rem;
-    padding: 0.25rem 0.6rem;
+    padding: 0.25rem 0.5rem;
     border: 1px solid var(--color-border);
-    border-radius: 999px;
-    font-weight: 800;
-    font-size: 0.86rem;
+    border-radius: 0.4rem;
+    font-weight: 900;
+    font-size: 1.2rem;
+    position: relative;
+    transition: border-color 0.12s, background 0.12s;
 }
 
 .history-result.win {
     color: var(--color-success);
-    border-color: color-mix(in oklab, var(--color-success) 70%, var(--color-border));
+    border-color: var(--color-success);
+    background: color-mix(in oklab, var(--color-success) 12%, var(--color-bg));
 }
 
 .history-result.loss {
     color: var(--color-accent);
-    border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-bg));
+}
+
+.history-result:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
 }
 
 .history-actions {

@@ -1,0 +1,11 @@
+<th:block th:fragment="previousRound(gameId)" xmlns:th="http://www.thymeleaf.org">
+    <button class="prev-round-toggle" id="prev-round-toggle" type="button" aria-expanded="false">
+        Last Round
+    </button>
+    <div class="prev-round-panel" id="prev-round-panel" role="region" aria-label="Previous round">
+        <div class="prev-round-title">Last Completed Round</div>
+        <div class="prev-round-cards" id="prev-round-cards">
+            <span class="prev-round-empty">No round recorded yet</span>
+        </div>
+    </div>
+</th:block>

@@ -73,17 +73,16 @@ public class SessionService {
 
     @Transactional
     public UserSession handleSession(String tokenString, HttpServletRequest request) {
-        var currentToken = tokenService.getToken(tokenString);
-        var session = sessionRepository.findByToken(currentToken)
+        var now = Instant.now();
+        var presentedToken = tokenService.getTokenForUpdate(tokenString);
+        var sessionToken = tokenService.resolveReusableToken(presentedToken, now);
+        var session = sessionRepository.findByToken(sessionToken)
                 .orElseThrow(() -> new AccessDeniedException("Session not found"));
-        var token = tokenService.rotateToken(tokenString);
+        var token = tokenService.rotateTokenIfExpired(presentedToken, now);
         session.setToken(token);
-        session.setLastSeenAt(Instant.now());
+        session.setLastSeenAt(now);
         updateSessionByRequest(session, request);
         session = sessionRepository.saveAndFlush(session);
-        if (!currentToken.getId().equals(token.getId())) {
-            tokenService.deleteToken(currentToken);
-        }
         session.setCurrentSession(true);
         return session;
     }

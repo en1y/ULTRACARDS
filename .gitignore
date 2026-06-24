@@ -36,7 +36,6 @@ build/
 /.idea/
 /.envrc
 
-# Graphify outputs
+### Graphify ###
 graphify-out/
-# Codex skill artifacts
-.codex/**
+.codex/

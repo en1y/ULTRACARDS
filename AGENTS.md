@@ -33,3 +33,7 @@ Recent commits use short imperative or past-tense summaries such as `removed orp
 ## Security & Configuration Tips
 
 Do not commit real credentials. Local database defaults live in `server/src/main/resources/application-dev.properties`; production settings belong in `application-prod.properties` or environment variables. Set `MAIL_USERNAME` and `MAIL_PASSWORD` in the shell or IDE run configuration.
+
+## Graphify Usage
+
+If `graphify` is available on `PATH` and `graphify-out/graph.json` exists, agents must use Graphify before reading broad source context for codebase questions. Start with `graphify query "<question>"`, `graphify explain "<symbol>"`, or `graphify path "<A>" "<B>"`, then inspect only the source files surfaced by that scoped result. After code changes, run `graphify update .` when Graphify is available to keep the local graph current.
