@@ -1,7 +1,7 @@
 package com.ultracards.ui.controllers;
 
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.service.games.BriskulaGameHistoryService;
+import com.ultracards.server.service.games.briskula.BriskulaGameHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

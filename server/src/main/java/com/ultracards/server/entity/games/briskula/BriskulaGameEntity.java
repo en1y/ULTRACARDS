@@ -12,20 +12,9 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
 import com.ultracards.templates.cards.AbstractCard;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderColumn;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
 import java.util.*;
@@ -62,6 +51,10 @@ public class BriskulaGameEntity extends GameEntity<BriskulaGame, BriskulaLobbyGa
 
     @Column(name = "ended_at", nullable = false)
     private Instant endedAt;
+
+    @Transient
+    @Getter @Setter
+    private boolean haveTeammateCardBeenDisplayed = false;
 
     protected BriskulaGameEntity() {
     }

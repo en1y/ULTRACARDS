@@ -1,4 +1,4 @@
-package com.ultracards.server.service.games;
+package com.ultracards.server.service.games.briskula;
 
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;

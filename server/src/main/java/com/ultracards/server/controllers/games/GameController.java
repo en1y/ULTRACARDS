@@ -8,7 +8,8 @@ import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
-import com.ultracards.server.service.games.BriskulaGameHistoryService;
+import com.ultracards.server.service.games.briskula.BriskulaGameHistoryService;
+import com.ultracards.server.service.games.briskula.BriskulaGameService;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.templates.game.model.AbstractPlayer;
@@ -32,6 +33,7 @@ public class GameController {
 
     private final GameManager gameManager;
     private final GameService gameService;
+    private final BriskulaGameService briskulaGameService;
     private final BriskulaGameHistoryService briskulaGameHistoryService;
 
     @GetMapping("/{gameId}")
@@ -87,7 +89,7 @@ public class GameController {
     ) {
         var game = gameManager.getGame(user.getId());
         if (game != null) {
-            gameService.playCard(user, card);
+            gameService.playCard(user, card, game);
             if (game.getGameType().equals(GameTypeDTO.Briskula))
                 return ResponseEntity.ok(((BriskulaGameEntity)game).createGameDTO());
             return ResponseEntity.ok().build();
