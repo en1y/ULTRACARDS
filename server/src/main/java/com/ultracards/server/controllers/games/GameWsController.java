@@ -11,7 +11,6 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
-import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
@@ -21,7 +20,7 @@ public class GameWsController {
 
     @MessageMapping("/game/play")
     public void playCard(Principal principal, @Payload @Valid GameCardDTO card) {
-        var userId = UUID.fromString(principal.getName());
+        var userId = Long.valueOf(principal.getName());
         var game = gameManager.getGame(userId);
         if (game == null) return;
         var user = game.getGame().getPlayers().stream()

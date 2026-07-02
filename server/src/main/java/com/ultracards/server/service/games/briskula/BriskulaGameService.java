@@ -15,7 +15,6 @@ import com.ultracards.server.service.games.UserGamesStatsService;
 import com.ultracards.server.service.lobby.LobbyManager;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
@@ -28,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO.*;
@@ -58,8 +56,7 @@ public class BriskulaGameService {
             UserGamesStatsService userGamesStatsService,
             BriskulaGameRepository briskulaGameRepository,
             @Qualifier("timer") TaskScheduler taskScheduler,
-            @Qualifier("openLobby") @Lazy Function<LobbyEntity, Boolean> openLobby,
-            @Qualifier("onBriskulaCardPlayedByConfig") @Lazy Map<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>> onCardPlayedByConfig) {
+            @Qualifier("openLobby") @Lazy Function<LobbyEntity, Boolean> openLobby) {
         this.gameManager = gameManager;
         this.eventPublisher = eventPublisher;
         this.briskulaEventPublisher = briskulaEventPublisher;
@@ -69,11 +66,10 @@ public class BriskulaGameService {
         this.briskulaGameRepository = briskulaGameRepository;
         this.taskScheduler = taskScheduler;
         this.openLobby = openLobby;
-        this.onCardPlayedByConfig = onCardPlayedByConfig;
+        this.onCardPlayedByConfig = createOnCardPlayedByConfig();
     }
 
-    @Bean("onBriskulaCardPlayedByConfig")
-    public Map<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>> onBriskulaCardPlayedByConfig() {
+    private Map<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>> createOnCardPlayedByConfig() {
         var map = new EnumMap<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>>(BriskulaGameConfig.class);
         map.put(BriskulaGameConfig.TWO_PLAYERS, (user, game) -> null);
         map.put(BriskulaGameConfig.TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH, (user, game) -> null);
@@ -122,13 +118,14 @@ public class BriskulaGameService {
             briskulaGame.setPlayingField(newField);
         }
 
-        if (!game.isActive()) return;
+        if (!game.isActive()) {
+            handleEndGame(game);
+            return;
+        }
         setTimer(game);
         eventPublisher.publish(game, UPDATED);
 
         onCardPlayedByConfig.get(game.getPersistedGameConfig()).apply(user, game);
-
-        handleEndGame(game);
     }
 
     private void handleEndGame(BriskulaGameEntity game) {

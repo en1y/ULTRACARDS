@@ -238,8 +238,9 @@ public class LobbyService {
         var closedAt = Instant.now().plusSeconds(lobbyTimer);
         lobby.setClosedAt(closedAt);
         taskScheduler.schedule(() -> {
-            if(!lobby.isStarted() && closedAt.isBefore(Instant.now().plusSeconds(1)))
-                deleteLobby(lobby.getOwner());
+            // stale timers from previous openLobby calls see a newer closedAt and do nothing
+            if (!lobby.isStarted() && closedAt.equals(lobby.getClosedAt()))
+                deleteLobby(lobby);
         }, closedAt);
         return true;
     }
