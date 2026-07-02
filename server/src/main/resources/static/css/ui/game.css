@@ -1607,6 +1607,150 @@
             color: var(--seat-muted);
         }
 
+        /* ===== TEAMMATE HAND BUTTON ===== */
+        /* Single static button/panel (see fragments/game/teammate-hand.html), same
+           structure as the "Last Round" button — fixed to the viewport by default,
+           absolutely positioned inside the table when included there. */
+
+        .teammate-hand-toggle {
+            /* Hidden until the server has revealed the teammate's hand. */
+            display: none;
+            position: fixed;
+            bottom: 1.3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 901;
+            padding: 0.46rem 1.05rem;
+            border-radius: 20px;
+            background: linear-gradient(155deg, #379b5a, #1d6138);
+            border: 1px solid color-mix(in oklab, #dbffe5 60%, transparent);
+            color: #f2fff5;
+            cursor: pointer;
+            font: 900 0.82rem/1 "Trebuchet MS", "Segoe UI", sans-serif;
+            text-transform: uppercase;
+            white-space: nowrap;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+            transition: transform 200ms ease;
+        }
+
+        .teammate-hand-toggle.has-data {
+            display: inline-block;
+            animation: teammate-hand-pulse 1.6s ease-in-out infinite;
+        }
+
+        .teammate-hand-toggle:hover {
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        /* Inside the teammate's seat (renderPlayers moves it there) the button
+           anchors right above the seat's avatar. */
+        .player-seat > .teammate-hand-toggle {
+            position: absolute;
+            top: auto;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 0.4rem;
+            z-index: 8;
+        }
+
+        .player-seat > .teammate-hand-toggle:hover {
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        @keyframes teammate-hand-pulse {
+            0%, 100% { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(55, 155, 90, 0.55); }
+            50% { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 0 0 8px rgba(55, 155, 90, 0); }
+        }
+
+        /* Fixed to the viewport (like .prev-round-panel) rather than confined to the
+           table, so it always paints above the hand regardless of where the toggle
+           button itself lives in the DOM. */
+        .teammate-hand-panel {
+            position: fixed;
+            bottom: 4rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            width: max-content;
+            max-width: min(92vw, 360px);
+            background: color-mix(in oklab, var(--panel-bg) 92%, transparent);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 0.7rem 0.8rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 180ms ease, transform 180ms ease;
+            z-index: 950;
+            box-shadow: var(--panel-shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        /* Inside the table the panel anchors below the top toggle, mirroring the
+           prev-round panel that anchors above its bottom toggle. */
+        .table-surface > .teammate-hand-panel {
+            position: absolute;
+            left: 50%;
+            top: 11%;
+            bottom: auto;
+            width: max-content;
+            max-width: calc(100vw - 2rem);
+            z-index: 9;
+        }
+
+        .teammate-hand-panel.is-open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .teammate-hand-title {
+            font-size: 0.72rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-align: center;
+            color: var(--seat-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .teammate-hand-cards {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .teammate-hand-card-img {
+            width: clamp(52px, 6vh, 72px);
+            aspect-ratio: 300 / 546;
+            height: auto;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+            position: relative;
+            transition: transform 160ms ease;
+        }
+
+        /* Enlarged card pops out over the panel edges (panel/cards keep default
+           overflow: visible, so nothing clips it). */
+        .teammate-hand-card-img:hover {
+            transform: scale(2);
+            z-index: 5;
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4);
+        }
+
+        .teammate-hand-card-img .card-front,
+        .teammate-hand-card-img .card-back {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .teammate-hand-empty {
+            font-size: 0.68rem;
+            color: var(--seat-muted);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .card-inner {
                 transition-duration: 80ms !important;

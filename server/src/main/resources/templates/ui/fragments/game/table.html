@@ -14,6 +14,7 @@
                 <div th:id="${idPrefix + 'table-turn-message'}" class="table-turn-message">Waiting for the next move</div>
             </div>
             <th:block th:replace="~{ui/fragments/game/previous-round :: previousRound(null)}"></th:block>
+            <th:block th:replace="~{ui/fragments/game/teammate-hand :: teammateHand(null)}"></th:block>
             <div class="table-center">
                 <div th:id="${idPrefix + 'trick-area'}"
                      class="trick-area"

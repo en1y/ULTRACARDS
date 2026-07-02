@@ -40,6 +40,7 @@
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
+    window.__INITIAL_HAND__ = /*[[${hand}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
