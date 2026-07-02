@@ -98,7 +98,9 @@
             hands: {
                 self: null,
                 table: null
-            }
+            },
+            teammateCards: null,
+            teammateAutoCloseTimer: null
         };
         const PreviousRoundStore = {
             save(id, data) {
@@ -106,6 +108,29 @@
             },
             load(id) {
                 try { return JSON.parse(localStorage.getItem('uc-prev-round-' + id)); } catch (e) { return null; }
+            }
+        };
+        // Teammate hand only needs to survive this one game, so it's session-scoped
+        // (not localStorage like the previous-round history) and erased when the game ends.
+        const TeammateHandStore = {
+            keyFor(id) { return 'uc-teammate-hand-' + id; },
+            save(id, cards) {
+                try { sessionStorage.setItem(this.keyFor(id), JSON.stringify(cards)); } catch (e) {}
+            },
+            load(id) {
+                try { return JSON.parse(sessionStorage.getItem(this.keyFor(id))); } catch (e) { return null; }
+            },
+            clear(id) {
+                try { sessionStorage.removeItem(this.keyFor(id)); } catch (e) {}
+            },
+            // Drop any leftover entries from other games in this tab's session.
+            clearStale(currentId) {
+                try {
+                    const keep = this.keyFor(currentId);
+                    Array.from({length: sessionStorage.length}, (_, i) => sessionStorage.key(i))
+                        .filter((k) => k && k.startsWith('uc-teammate-hand-') && k !== keep)
+                        .forEach((k) => sessionStorage.removeItem(k));
+                } catch (e) {}
             }
         };
 
@@ -117,11 +142,108 @@
             prevRoundToggle.addEventListener('click', () => {
                 const open = prevRoundPanel.classList.toggle('is-open');
                 prevRoundToggle.setAttribute('aria-expanded', String(open));
-                if (open) renderPrevRoundPanel();
+                if (open) {
+                    closeTeammateHandPanel();
+                    renderPrevRoundPanel();
+                }
             });
         }
 
-        // The "Last Round" button only appears once a completed round is stored.
+        function closePrevRoundPanel() {
+            if (!prevRoundPanel) return;
+            prevRoundPanel.classList.remove('is-open');
+            prevRoundToggle?.setAttribute('aria-expanded', 'false');
+        }
+
+        const teammateHandToggle = document.getElementById('teammate-hand-toggle');
+        const teammateHandPanel = document.getElementById('teammate-hand-panel');
+        const teammateHandCardsEl = document.getElementById('teammate-hand-cards');
+
+        if (teammateHandToggle && teammateHandPanel) {
+            teammateHandToggle.addEventListener('click', () => {
+                // Clicking while the auto-preview timer is running just pins the panel
+                // open (cancels the auto-close) instead of toggling it shut.
+                if (state.teammateAutoCloseTimer) {
+                    clearTimeout(state.teammateAutoCloseTimer);
+                    state.teammateAutoCloseTimer = null;
+                    return;
+                }
+                if (teammateHandPanel.classList.contains('is-open')) {
+                    closeTeammateHandPanel();
+                } else {
+                    openTeammateHandPanel(false);
+                }
+            });
+        }
+
+        // The teammate-hand button only appears once the server has revealed it.
+        function refreshTeammateHandButton() {
+            const hasData = Array.isArray(state.teammateCards) && state.teammateCards.length > 0;
+            teammateHandToggle?.classList.toggle('has-data', hasData);
+        }
+
+        function clearTeammateHand() {
+            state.teammateCards = null;
+            TeammateHandStore.clear(gameId);
+            refreshTeammateHandButton();
+            closeTeammateHandPanel();
+        }
+
+        function closeTeammateHandPanel() {
+            if (state.teammateAutoCloseTimer) {
+                clearTimeout(state.teammateAutoCloseTimer);
+                state.teammateAutoCloseTimer = null;
+            }
+            teammateHandPanel?.classList.remove('is-open');
+            teammateHandToggle?.setAttribute('aria-expanded', 'false');
+        }
+
+        // autoClose: true when triggered by the WS reveal itself (self-closes after a
+        // couple seconds unless the player clicks the button, which pins it open).
+        function openTeammateHandPanel(autoClose) {
+            if (!teammateHandPanel || !teammateHandToggle) return;
+            closePrevRoundPanel();
+            teammateHandPanel.classList.add('is-open');
+            teammateHandToggle.setAttribute('aria-expanded', 'true');
+            renderTeammateHandPanel();
+            if (state.teammateAutoCloseTimer) {
+                clearTimeout(state.teammateAutoCloseTimer);
+                state.teammateAutoCloseTimer = null;
+            }
+            if (autoClose) {
+                state.teammateAutoCloseTimer = setTimeout(() => {
+                    state.teammateAutoCloseTimer = null;
+                    closeTeammateHandPanel();
+                }, 2500);
+            }
+        }
+
+        function renderTeammateHandPanel() {
+            const el = teammateHandCardsEl;
+            if (!el) return;
+            const cards = Array.isArray(state.teammateCards) ? state.teammateCards : [];
+            el.innerHTML = '';
+            if (!cards.length) {
+                el.innerHTML = '<span class="teammate-hand-empty">No cards to show</span>';
+                return;
+            }
+            cards.forEach((card, i) => {
+                const wrap = window.UltracardsGameUi?.renderCardImage({
+                    card,
+                    className: 'teammate-hand-card-img',
+                    alt: `Teammate card ${i + 1}`
+                });
+                if (wrap) {
+                    el.appendChild(wrap);
+                } else {
+                    const img = document.createElement('img');
+                    window.UltracardsGameUi?.applyCardImage(img, window.UltracardsGameUi?.cardUrl(card) || '');
+                    img.alt = `Teammate card ${i + 1}`;
+                    el.appendChild(img);
+                }
+            });
+        }
+
         function refreshPrevRoundButton() {
             if (!prevRoundToggle) return;
             const data = PreviousRoundStore.load(gameId);
@@ -188,8 +310,6 @@
             });
         }
 
-        let refreshTimer = null;
-        let refreshAttempts = 0;
         const chat = window.UltracardsChat?.create({
             initialChat,
             currentUserId,
@@ -254,8 +374,16 @@
             applyGame(initialGame, 'UPDATED', null);
         }
         refreshPrevRoundButton();
-        refreshHand();
-        loadGame();
+        TeammateHandStore.clearStale(gameId);
+        state.teammateCards = TeammateHandStore.load(gameId);
+        // The server reveals teammate hands only once the deck is exhausted, so a
+        // cached hand while the deck still has cards is stale — erase it.
+        if (state.teammateCards && Number(state.deckLeft) > 0) {
+            state.teammateCards = null;
+            TeammateHandStore.clear(gameId);
+        }
+        refreshTeammateHandButton();
+        applyHand(window.__INITIAL_HAND__ || []);
         connectWs();
 
         function connectWs() {
@@ -283,6 +411,23 @@
                         applyGame(payload.gameEntity, payload.gameEvent, payload.result);
                     } catch (err) {
                         console.error('Game event error', err);
+                    }
+                });
+                client.subscribe('/user/queue/game/cards', (msg) => {
+                    try {
+                        applyHand(JSON.parse(msg.body));
+                    } catch (err) {
+                        console.error('Hand event error', err);
+                    }
+                });
+                client.subscribe('/user/queue/game/teammate-cards', (msg) => {
+                    try {
+                        state.teammateCards = JSON.parse(msg.body) || [];
+                        TeammateHandStore.save(gameId, state.teammateCards);
+                        refreshTeammateHandButton();
+                        openTeammateHandPanel(true);
+                    } catch (err) {
+                        console.error('Teammate hand event error', err);
                     }
                 });
                 if (initialGame?.lobbyId) {
@@ -319,77 +464,38 @@
             }
         }
 
-        function loadGame() {
-            fetch(`/api/games/${gameId}`, {credentials: 'include'})
-                .then((res) => res.ok ? res.json() : Promise.reject(res.status))
-                .then((game) => {
-                    if (game) applyGame(game, 'UPDATED', null);
-                })
-        }
-
-        function refreshHand() {
+        function applyHand(cards) {
             if (!dom.hand) return;
-            fetch('/api/games', {credentials: 'include'})
-                .then((res) => res.ok ? res.json() : Promise.reject(res.status))
-                .then((cards) => {
-                    const list = Array.isArray(cards) ? cards : [];
-                    const prevKeys = new Set(state.hand.map(cardKey));
-                    const serverKeys = new Set(list.map(cardKey));
-                    const newCards = [];
-                    state.pending.forEach((key) => {
-                        if (!serverKeys.has(key)) {
-                            state.pending.delete(key);
-                        }
-                    });
-                    state.autoPlayedPending.forEach((key) => {
-                        if (!serverKeys.has(key)) {
-                            state.autoPlayedPending.delete(key);
-                        }
-                    });
-                    list.forEach((card) => {
-                        const key = cardKey(card);
-                        if (!prevKeys.has(key)) {
-                            state.justDealtKeys.add(key);
-                            // Mark as dealing BEFORE syncHand so the card is created
-                            // face-down and excluded from the generic fade-in.
-                            state.dealingKeys.add(key);
-                            newCards.push(card);
-                        }
-                    });
-                    state.hand = list.filter((card) => !state.pending.has(cardKey(card)));
-                    syncHand();
-                    if (newCards.length) {
-                        dealCardsIntoHand(newCards, state.finalTrumpDraw);
-                        state.finalTrumpDraw = false;
-                    }
-                    if (!state.pending.size && refreshTimer) {
-                        clearTimeout(refreshTimer);
-                        refreshTimer = null;
-                        refreshAttempts = 0;
-                    }
-                })
-                .catch(() => {
-                    if (refreshTimer) {
-                        clearTimeout(refreshTimer);
-                        refreshTimer = null;
-                        refreshAttempts = 0;
-                    }
-                });
-        }
-
-        function scheduleHandRefresh(attempts) {
-            if (attempts && attempts > refreshAttempts) refreshAttempts = attempts;
-            if (refreshTimer) return;
-            const run = () => {
-                if (refreshAttempts <= 0) {
-                    refreshTimer = null;
-                    return;
+            const list = Array.isArray(cards) ? cards : [];
+            const prevKeys = new Set(state.hand.map(cardKey));
+            const serverKeys = new Set(list.map(cardKey));
+            const newCards = [];
+            state.pending.forEach((key) => {
+                if (!serverKeys.has(key)) {
+                    state.pending.delete(key);
                 }
-                refreshAttempts -= 1;
-                refreshHand();
-                refreshTimer = setTimeout(run, 900);
-            };
-            refreshTimer = setTimeout(run, 350);
+            });
+            state.autoPlayedPending.forEach((key) => {
+                if (!serverKeys.has(key)) {
+                    state.autoPlayedPending.delete(key);
+                }
+            });
+            list.forEach((card) => {
+                const key = cardKey(card);
+                if (!prevKeys.has(key)) {
+                    state.justDealtKeys.add(key);
+                    // Mark as dealing BEFORE syncHand so the card is created
+                    // face-down and excluded from the generic fade-in.
+                    state.dealingKeys.add(key);
+                    newCards.push(card);
+                }
+            });
+            state.hand = list.filter((card) => !state.pending.has(cardKey(card)));
+            syncHand();
+            if (newCards.length) {
+                dealCardsIntoHand(newCards, state.finalTrumpDraw);
+                state.finalTrumpDraw = false;
+            }
         }
 
         /**
@@ -458,12 +564,7 @@
                 renderPlayers(game);
                 updateTurnIndicator(game);
                 renderCurrentPlayer(game);
-                if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
-                    // Opponent draws fly in via syncBackCards (renderPlayers above).
-                    if (currentUserId) scheduleHandRefresh(4);
-                }
                 updateTurn(game.playersTurn);
-                if (state.pending.size) scheduleHandRefresh(4);
                 if (state.delayedTablePending) {
                     return;
                 }
@@ -508,18 +609,12 @@
             const autoplayedCard = detectAutoPlayedCard(previousPlayedCards, nextPlayedCards);
             if (autoplayedCard) {
                 animateAutoPlayedHandRemoval(autoplayedCard);
-                scheduleHandRefresh(4);
             }
             renderTrick(nextPlayedCards, previousPlayedCards);
             renderPlayers(game);
             updateTurnIndicator(game);
             renderCurrentPlayer(game);
-            if (prevDeckLeft != null && prevDeckLeft > nextDeckLeft) {
-                // Opponent draws fly in via syncBackCards (renderPlayers above).
-                if (currentUserId) scheduleHandRefresh(4);
-            }
             updateTurn(game.playersTurn);
-            if (state.pending.size) scheduleHandRefresh(4);
             if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
                 const winners = formatWinnerText(result.gameWinners, game);
                 state.endState = {
@@ -529,6 +624,7 @@
                 };
                 renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
                 startLobbyReturnCountdown();
+                clearTeammateHand();
             } else if (gameEvent === 'CLOSED') {
                 state.endState = {
                     title: 'Match Result',
@@ -537,6 +633,7 @@
                 };
                 renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
                 startLobbyReturnCountdown();
+                clearTeammateHand();
             } else if (state.endState) {
                 renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
             } else {
@@ -893,6 +990,11 @@
                 seat.classList.remove('team-seat-ally', 'team-seat-enemy', 'team-seat-neutral');
                 seat.classList.remove('team-seat-1', 'team-seat-2');
                 seat.classList.add(`team-seat-${teamTone}`);
+                // The teammate-hand toggle lives inside the teammate's seat, right
+                // above the avatar (moved, not cloned — listeners stay attached).
+                if (teamTone === 'ally' && !isSelf && teammateHandToggle && teammateHandToggle.parentElement !== seat) {
+                    seat.insertBefore(teammateHandToggle, seat.firstChild);
+                }
                 if (teamNumber != null) {
                     seat.classList.add(`team-seat-${teamNumber}`);
                 }
@@ -1121,43 +1223,26 @@
             }
             state.playing = true;
             state.pending.add(cardKey(card));
-            fetch('/api/games', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({cardType: card.cardType, card: card.card})
-            })
-                .then(async (res) => {
-                    if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(text || `play failed: ${res.status}`);
-                    }
-                    return res.json().catch(() => null);
-                })
-                .then((game) => {
-                    state.playing = false;
-                    animateHandRemoval(cardKey(card));
-                    setTimeout(() => {
-                        state.hand = state.hand.filter((entry) => cardKey(entry) !== cardKey(card));
-                        syncHand();
-                    }, 230);
-                    if (game) {
-                        applyGame(game, 'UPDATED', null);
-                    }
-                    scheduleHandRefresh(6);
-                })
-                .catch((err) => {
-                    state.playing = false;
-                    state.pending.delete(cardKey(card));
-                    // Play rejected: discard the flown real card so it doesn't linger,
-                    // then re-create the card cleanly in the hand.
-                    if (state.justPlayed && state.justPlayed.key === cardKey(card)) {
-                        state.justPlayed.el?.remove();
-                        state.justPlayed = null;
-                    }
-                    restoreDraggedCard(cardKey(card));
-                    syncHand();
-                });
+            if (!state.wsClient || !state.wsConnected) {
+                state.playing = false;
+                state.pending.delete(cardKey(card));
+                // No live connection: discard the flown real card so it doesn't linger,
+                // then re-create the card cleanly in the hand.
+                if (state.justPlayed && state.justPlayed.key === cardKey(card)) {
+                    state.justPlayed.el?.remove();
+                    state.justPlayed = null;
+                }
+                restoreDraggedCard(cardKey(card));
+                syncHand();
+                return;
+            }
+            state.wsClient.send('/app/game/play', {}, JSON.stringify({cardType: card.cardType, card: card.card}));
+            state.playing = false;
+            animateHandRemoval(cardKey(card));
+            setTimeout(() => {
+                state.hand = state.hand.filter((entry) => cardKey(entry) !== cardKey(card));
+                syncHand();
+            }, 230);
         }
 
         function setTableDropReady(on) {

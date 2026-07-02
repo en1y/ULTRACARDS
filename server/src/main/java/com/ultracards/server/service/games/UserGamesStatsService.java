@@ -16,6 +16,7 @@ import com.ultracards.server.entity.games.gamestats.UserGamesStats;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.games.UserGamesStatsRepository;
+import com.ultracards.server.service.games.briskula.UserBriskulaStatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

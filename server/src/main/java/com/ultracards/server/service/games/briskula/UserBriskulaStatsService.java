@@ -1,4 +1,4 @@
-package com.ultracards.server.service.games;
+package com.ultracards.server.service.games.briskula;
 
 import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.server.entity.UserEntity;

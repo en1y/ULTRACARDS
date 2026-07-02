@@ -4,7 +4,7 @@ import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.repositories.UserRepository;
-import com.ultracards.server.service.games.UserBriskulaStatsService;
+import com.ultracards.server.service.games.briskula.UserBriskulaStatsService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
