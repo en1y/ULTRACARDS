@@ -37,6 +37,7 @@ import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeD
 public class BriskulaGameService {
     private final GameManager gameManager;
     private final GameEventPublisher eventPublisher;
+    private final BriskulaEventPublisher briskulaEventPublisher;
     private final LobbyManager lobbyManager;
     private final UserBriskulaStatsService userBriskulaStatsService;
     private final UserGamesStatsService userGamesStatsService;
@@ -51,6 +52,7 @@ public class BriskulaGameService {
     public BriskulaGameService(
             GameManager gameManager,
             GameEventPublisher eventPublisher,
+            BriskulaEventPublisher briskulaEventPublisher,
             LobbyManager lobbyManager,
             UserBriskulaStatsService userBriskulaStatsService,
             UserGamesStatsService userGamesStatsService,
@@ -60,6 +62,7 @@ public class BriskulaGameService {
             @Qualifier("onBriskulaCardPlayedByConfig") @Lazy Map<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>> onCardPlayedByConfig) {
         this.gameManager = gameManager;
         this.eventPublisher = eventPublisher;
+        this.briskulaEventPublisher = briskulaEventPublisher;
         this.lobbyManager = lobbyManager;
         this.userBriskulaStatsService = userBriskulaStatsService;
         this.userGamesStatsService = userGamesStatsService;
@@ -78,8 +81,9 @@ public class BriskulaGameService {
         map.put(BriskulaGameConfig.FOUR_PLAYERS_NO_TEAMS, (user, game) -> null);
         map.put(BriskulaGameConfig.FOUR_PLAYERS_WITH_TEAMS, (user, game) -> {
             var briskulaGame = game.getGame();
-            if (briskulaGame.getDeck().getSize() == 0 && game.isHaveTeammateCardBeenDisplayed()) {
-                // TODO: send info per user
+            if (briskulaGame.getDeck().getSize() == 0 && !game.isHaveTeammateCardBeenDisplayed()) {
+                briskulaEventPublisher.publishTeammateHands(game);
+                game.setHaveTeammateCardBeenDisplayed(true);
             }
             return null;
         });
