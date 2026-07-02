@@ -2,6 +2,7 @@ package com.ultracards.server.service.games.briskula;
 
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEventDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameResultDTO;
 import com.ultracards.server.entity.games.GameEntity;
@@ -34,6 +35,19 @@ public class GameEventPublisher {
                 event.setResult(new BriskulaGameResultDTO(res, points));
             }
             messagingTemplate.convertAndSend("/topic/game/" + gameEntity.getId(), event);
+            if (!gameEventDTO.equals(GameEventTypeDTO.RESULTED)) {
+                for (var p : briskulaGame.getGame().getPlayers()) {
+                    var player = (BriskulaPlayerEntity) p;
+                    var cards = player.getHand().getCards().stream()
+                            .map(GameCardDTO::createCardDTO)
+                            .toList();
+                    messagingTemplate.convertAndSendToUser(
+                            player.getUser().getId().toString(),
+                            "/queue/game/cards",
+                            cards
+                    );
+                }
+            }
         }
     }
 }

@@ -97,6 +97,7 @@ public class GameController {
         return ResponseEntity.notFound().build();
     }
 
+    // FIXME: remove the option of deleting a game
     @DeleteMapping
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<Void> deleteGame(
