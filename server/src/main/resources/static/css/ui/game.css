@@ -760,6 +760,10 @@
             padding: 0.18rem 0.85rem 0.22rem;
             width: min(100%, 820px);
             align-self: center;
+            /* Lift the hand clear of the player-summary pill below it. A transform
+               (not top/bottom) so flow layout and card slot math stay untouched;
+               tune the vh offset to raise/lower the hand. */
+            transform: translateY(-5.4vh);
         }
 
         .hand-row {
@@ -1470,7 +1474,7 @@
         .table-surface > .prev-round-toggle {
             position: absolute;
             left: 50%;
-            bottom: 3%;
+            bottom: 10%;
             z-index: 8;
             pointer-events: auto;
         }
@@ -1506,7 +1510,7 @@
         .table-surface > .prev-round-panel {
             position: absolute;
             left: 50%;
-            bottom: 11%;
+            bottom: 20%;
             width: max-content;
             max-width: calc(100vw - 2rem);
             z-index: 9;

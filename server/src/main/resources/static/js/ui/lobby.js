@@ -47,8 +47,7 @@
             configSelect: document.getElementById('lobby-config-select'),
             teamsSection: document.getElementById('lobby-teams-section'),
             teamsSummary: document.getElementById('lobby-teams-summary'),
-            teamRandomize: document.getElementById('lobby-team-randomize'),
-            wsStatus: document.getElementById('ws-status'),
+            randomize: document.getElementById('lobby-randomize'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
             closeWarningText: document.getElementById('lobby-close-warning-text'),
@@ -62,6 +61,7 @@
         };
         let toastHideTimer = null;
         let toastCleanupTimer = null;
+        let connectionLostNotified = false;
         let closeWarningTimer = null;
         let reconnectDisconnectTimer = null;
         let previousLobbySnapshot = state.lobby;
@@ -103,7 +103,7 @@
 
         function connectLobbyWs() {
             if (!window.Stomp) {
-                setWsStatus('Unavailable');
+                showToast('Connection unavailable', 'Live lobby updates are disabled.');
                 return;
             }
 
@@ -116,7 +116,10 @@
             client.connect({}, () => {
                 state.wsConnected = true;
                 clearReconnectDisconnectTimer();
-                setWsStatus('Connected');
+                if (connectionLostNotified) {
+                    connectionLostNotified = false;
+                    showToast('Connection restored', 'Live lobby updates are back.');
+                }
                 client.subscribe(`/topic/lobbies/${state.lobby.id}`, (message) => {
                     try {
                         const payload = JSON.parse(message.body);
@@ -172,7 +175,10 @@
                 });
             }, () => {
                 state.wsConnected = false;
-                setWsStatus('Reconnecting…');
+                if (!connectionLostNotified) {
+                    connectionLostNotified = true;
+                    showToast('Connection lost', 'Trying to reconnect…');
+                }
                 startReconnectDisconnectTimer();
             });
         }
@@ -298,16 +304,16 @@
                 }
             });
 
-            dom.teamRandomize?.addEventListener('click', async () => {
+            dom.randomize?.addEventListener('click', async () => {
                 if (!isCurrentUserHost()) {
                     return;
                 }
 
                 try {
-                    await randomizeLobbyTeams();
+                    await randomizeLobbyOrder();
                 } catch (error) {
                     renderLobby(state.lobby);
-                    showToast('Update failed', 'Unable to randomize teams.');
+                    showToast('Update failed', 'Unable to randomize the player order.');
                 }
             });
 
@@ -641,7 +647,7 @@
         }
 
         function renderTeams(lobby) {
-            if (!dom.teamsSection || !dom.teamsSummary || !dom.teamRandomize) {
+            if (!dom.teamsSection || !dom.teamsSummary) {
                 return;
             }
 
@@ -650,7 +656,9 @@
             if (teamState) {
                 dom.teamsSummary.textContent = formatTeamsSummary(teamState);
             }
-            dom.teamRandomize.hidden = !(teamState && isCurrentUserHost());
+            if (dom.randomize) {
+                dom.randomize.hidden = !(isBriskulaOrderReorderable(lobby) && isCurrentUserHost());
+            }
         }
 
         function resolveGameSettingKey(lobby) {
@@ -757,14 +765,13 @@
             }
         }
 
-        async function randomizeLobbyTeams() {
+        async function randomizeLobbyOrder() {
             const teamState = resolveTeams(state.lobby);
-            if (!teamState) {
-                throw new Error('Teams are not enabled for this lobby');
-            }
-
             const rollbackLobby = JSON.parse(JSON.stringify(state.lobby));
-            const shuffledIds = getOrderedTeamPlayers(teamState).map((player) => String(player.id));
+            const orderedPlayers = teamState
+                ? getOrderedTeamPlayers(teamState)
+                : resolveOrderedLobbyPlayers(state.lobby);
+            const shuffledIds = orderedPlayers.map((player) => String(player.id));
             for (let index = shuffledIds.length - 1; index > 0; index -= 1) {
                 const randomIndex = Math.floor(Math.random() * (index + 1));
                 [shuffledIds[index], shuffledIds[randomIndex]] = [shuffledIds[randomIndex], shuffledIds[index]];
@@ -2052,12 +2059,6 @@
             }
         }
 
-        function setWsStatus(text) {
-            if (dom.wsStatus) {
-                dom.wsStatus.textContent = text;
-            }
-        }
-
         function startReconnectDisconnectTimer() {
             clearReconnectDisconnectTimer();
             reconnectDisconnectTimer = window.setTimeout(() => {
@@ -2080,7 +2081,6 @@
 
         async function disconnectForReconnectTimeout() {
             state.disconnectingForReconnectTimeout = true;
-            setWsStatus('Disconnected');
             updateStatus('Connection did not recover. Leaving the lobby...');
 
             try {

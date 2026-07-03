@@ -684,6 +684,8 @@
         }
 
         .player-avatar {
+            /* flex-basis pinned so the circle never gets squeezed oval in narrow team cards */
+            flex: 0 0 auto;
             width: 2.25rem;
             height: 2.25rem;
             border-radius: 50%;

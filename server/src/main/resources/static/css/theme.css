@@ -125,6 +125,12 @@ textarea {
   gap: 0.45rem;
 }
 
+/* The rule above sets an author `display`, which beats the browser's built-in
+   `[hidden] { display: none }` — icon buttons would ignore the hidden attribute. */
+:where(button, .btn)[hidden] {
+  display: none;
+}
+
 .btn-accent {
   border-color: var(--color-accent);
 }

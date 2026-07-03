@@ -22,6 +22,10 @@
                     <span class="chip">Players</span>
                     <h2>Player list</h2>
                 </div>
+                <button id="lobby-randomize" class="btn" type="button" hidden>
+                    <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+                    <span>Randomize</span>
+                </button>
             </div>
             <div id="players-list" class="players-list">
                 <div class="player-row" th:each="player : ${lobby.players}">
@@ -91,12 +95,6 @@
                     </span>
                     <span class="lobby-code-copy-action">Copy</span>
                 </button>
-                <div class="lobby-meta-row">
-                    <div>
-                        <div class="lobby-meta-label">Connection status:</div>
-                        <div id="ws-status" class="lobby-meta-value">Connecting…</div>
-                    </div>
-                </div>
                 <div id="lobby-teams-section" class="lobby-meta-row lobby-teams-section" hidden>
                     <div class="lobby-teams-content">
                         <div class="lobby-teams-bar">
@@ -104,10 +102,6 @@
                                 <div class="lobby-meta-label">Teams</div>
                                 <div id="lobby-teams-summary" class="lobby-meta-value">Teams will appear here.</div>
                             </div>
-                            <button id="lobby-team-randomize" class="btn" type="button" hidden>
-                                <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
-                                <span>Randomize</span>
-                            </button>
                         </div>
                     </div>
                 </div>
