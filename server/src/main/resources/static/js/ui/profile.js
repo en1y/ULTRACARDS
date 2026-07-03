@@ -804,24 +804,27 @@ function compareStatsEntries(a, b, sortKey = detailedStatsFilters.sort) {
 function renderGameStatsCard(gameType, stats, extraClass = '') {
     const normalized = normalizeGameStats(stats);
     return `
-        <article class="profile-game-card ${escapeHtml(extraClass)}">
+        <article class="profile-game-card profile-game-card--donut ${escapeHtml(extraClass)}">
             <span>${escapeHtml(gameDisplayName(gameType))}</span>
-            <div class="profile-stat-line">
-                <strong>${normalized.played}</strong>
-                <small>played</small>
+            <div class="profile-game-card-row">
+                <div class="profile-stat-donut" style="--win-rate: ${normalized.winRate}" role="img" aria-label="${normalized.winRate}% win rate">
+                    <span>${normalized.winRate}%</span>
+                </div>
+                <div class="profile-game-card-counts">
+                    <div class="profile-stat-line">
+                        <strong>${normalized.played}</strong>
+                        <small>played</small>
+                    </div>
+                    <div class="profile-stat-line">
+                        <strong>${normalized.wins}</strong>
+                        <small>won</small>
+                    </div>
+                    <div class="profile-stat-line">
+                        <strong>${normalized.losses}</strong>
+                        <small>lost</small>
+                    </div>
+                </div>
             </div>
-            <div class="profile-stat-line">
-                <strong>${normalized.wins}</strong>
-                <small>won</small>
-            </div>
-            <div class="profile-stat-line">
-                <strong>${normalized.losses}</strong>
-                <small>lost</small>
-            </div>
-            <div class="profile-win-rate" aria-label="${normalized.winRate}% win rate">
-                <span style="width: ${normalized.winRate}%"></span>
-            </div>
-            <p>${normalized.winRate}% win rate</p>
             <small class="profile-last-played">${escapeHtml(formatLastPlayedLabel(stats?.lastPlayedAt))}</small>
         </article>
     `;

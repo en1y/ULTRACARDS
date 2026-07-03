@@ -253,6 +253,7 @@ textarea {
 
 .modal .actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
   padding: 0 1rem 1rem;
@@ -525,6 +526,16 @@ textarea {
 .footer small {
   display: block;
   text-align: center;
+}
+
+@media (max-width: 760px) {
+  .lobbies-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lobbies-sidebar {
+    position: static;
+  }
 }
 
 @media (max-width: 640px) {

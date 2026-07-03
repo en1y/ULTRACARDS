@@ -517,6 +517,56 @@
     font-weight: 700;
 }
 
+.profile-game-card--donut {
+    line-height: 1.4;
+}
+
+.profile-game-card-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.6rem;
+}
+
+.profile-stat-donut {
+    flex: 0 0 auto;
+    width: 76px;
+    height: 76px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--color-accent) calc(var(--win-rate, 0) * 1%),
+        var(--color-surface-2) 0
+    );
+}
+
+.profile-stat-donut > span {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-bg);
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.profile-game-card-counts {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+}
+
+.profile-game-card-counts .profile-stat-line {
+    margin-top: 0;
+}
+
+.profile-game-card--donut .profile-last-played {
+    margin-top: 0.55rem;
+}
+
 .profile-win-rate {
     width: 100%;
     height: 0.55rem;
@@ -1079,8 +1129,22 @@
         grid-template-columns: 1fr;
     }
 
+    .profile-session-card {
+        gap: 0.65rem;
+        padding: 0.85rem;
+        line-height: 1.45;
+    }
+
     .profile-session-meta {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem 0.75rem;
+    }
+
+    .profile-session-meta-item {
+        min-width: 0;
+        max-width: none;
+        overflow-wrap: anywhere;
     }
 
     .profile-session-actions {

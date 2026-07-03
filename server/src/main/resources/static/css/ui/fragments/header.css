@@ -1532,6 +1532,16 @@ body.friends-drawer-open .uc-header.hidden {
     --header-action-gap: 0.45rem;
   }
 
+  .uc-brand {
+    /* ponytail: shrink instead of ellipsis so the full wordmark fits next to the actions */
+    font-size: clamp(0.95rem, 4.5vw, 1.8rem);
+    padding-inline: 0.5rem;
+  }
+
+  .login-label-suffix {
+    display: none;
+  }
+
   .header-icon-button {
     width: 36px;
     height: 36px;

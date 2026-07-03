@@ -100,7 +100,7 @@
     <div th:unless="${isAuthenticated}">
       <button class="btn btn-accent" type="button" data-action="open-login">
         <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
-        <span>Log In / Sign Up</span>
+        <span>Log In<span class="login-label-suffix"> / Sign Up</span></span>
       </button>
     </div>
 

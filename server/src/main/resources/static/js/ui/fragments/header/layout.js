@@ -3,6 +3,7 @@
 
   window.ucHeader.createHeaderUiPhase = () => {
     let lastScrollY = window.scrollY;
+    let scrolledInDirection = 0;
 
     const setHeaderHidden = (hidden) => {
       const header = document.querySelector('.uc-header');
@@ -14,12 +15,27 @@
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 40) {
+      const delta = currentScrollY - lastScrollY;
+      lastScrollY = currentScrollY;
+
+      // Hysteresis: accumulate travel per direction so 1px jitter and the
+      // mobile URL-bar resize can't flap the header on every scroll event.
+      if ((delta > 0) !== (scrolledInDirection > 0)) {
+        scrolledInDirection = 0;
+      }
+      scrolledInDirection += delta;
+
+      const headerHeight = document.querySelector('.uc-header')?.offsetHeight || 64;
+
+      if (currentScrollY <= headerHeight) {
+        setHeaderHidden(false);
+        return;
+      }
+      if (scrolledInDirection > headerHeight) {
         setHeaderHidden(true);
-      } else if (currentScrollY < lastScrollY || currentScrollY <= 8) {
+      } else if (scrolledInDirection < -24) {
         setHeaderHidden(false);
       }
-      lastScrollY = currentScrollY;
     };
 
     const handleWheel = (event) => {
