@@ -753,12 +753,17 @@
 
             .lobby-title-row,
             .lobby-meta-row,
-            .player-row,
             .team-panel-header,
             .team-board-toolbar,
             .lobby-teams-bar {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            /* .player-row stays a row so the kick button sits on the far right
+               and the tile keeps a single-line height. */
+            .player-row {
+                gap: 0.5rem;
             }
 
             .team-panel {
@@ -767,6 +772,38 @@
 
             .lobby-meta-value {
                 text-align: left;
+            }
+
+            .mobile-chat-toggle {
+                display: grid;
+            }
+
+            /* Lobby chat floats over the page, toggled by the dock button. */
+            .lobby-chat-panel {
+                position: fixed;
+                left: 0.75rem;
+                right: 0.75rem;
+                /* --kb-offset lifts the panel above the on-screen keyboard. */
+                bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px));
+                /* The --kb-offset term matches the one in `bottom`, so even if the
+                   lift overshoots, the panel top stays below the header. */
+                height: min(56vh, 26rem, calc(100dvh - var(--uc-header-h, 64px) - 5.4rem - var(--kb-offset, 0px)));
+                min-height: 0;
+                z-index: 1450;
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(0.6rem);
+                /* Short ease-out on bottom/height: each viewport event re-eases
+                   from the CURRENT position, so the panel chases the keyboard
+                   smoothly without the rubber-band a long ease caused. */
+                transition: opacity 200ms ease, transform 200ms ease,
+                    bottom 160ms ease-out, height 160ms ease-out;
+            }
+
+            body.mobile-chat-open .lobby-chat-panel {
+                opacity: 1;
+                pointer-events: auto;
+                transform: none;
             }
         }
 

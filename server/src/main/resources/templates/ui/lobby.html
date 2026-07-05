@@ -129,6 +129,12 @@
     </aside>
 </main>
 
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" aria-label="Open chat" data-chat-panel=".lobby-chat-panel">
+    <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
+    <span class="mobile-chat-badge" hidden></span>
+</button>
+<script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
+
 <script th:inline="javascript">
     window.__INITIAL_LOBBY__ = /*[[${lobby}]]*/ null;
     window.__INITIAL_LOBBY_CHAT__ = /*[[${chat}]]*/ null;

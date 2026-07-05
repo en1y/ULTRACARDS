@@ -238,10 +238,14 @@
                 top: 7.5rem;
             }
 
-            .lobby-card-footer,
             .lobby-card-head {
                 flex-direction: column;
-                align-items: flex-end;
+                align-items: flex-start;
+            }
+
+            .lobby-card-footer {
+                flex-direction: column;
+                align-items: stretch;
             }
 
             .lobbies-browser {

@@ -517,41 +517,6 @@
     font-weight: 700;
 }
 
-.profile-game-card--donut {
-    line-height: 1.4;
-}
-
-.profile-game-card-row {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 0.6rem;
-}
-
-.profile-stat-donut {
-    flex: 0 0 auto;
-    width: 76px;
-    height: 76px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: conic-gradient(
-        var(--color-accent) calc(var(--win-rate, 0) * 1%),
-        var(--color-surface-2) 0
-    );
-}
-
-.profile-stat-donut > span {
-    width: 58px;
-    height: 58px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--color-bg);
-    font-size: 0.92rem;
-    font-weight: 800;
-}
-
 .profile-game-card-counts {
     flex: 1 1 auto;
     min-width: 0;
@@ -1079,8 +1044,24 @@
     }
 
     .profile-hero {
+        position: relative;
         flex-direction: column;
         align-items: stretch;
+        padding-right: 3.4rem;
+    }
+
+    .profile-refresh-button {
+        position: absolute;
+        top: 0.9rem;
+        right: 0.9rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        border-radius: 50%;
+    }
+
+    .profile-refresh-button span {
+        display: none;
     }
 
     .profile-tabs {
@@ -1112,8 +1093,16 @@
         width: 100%;
     }
 
+    /* The presence pill sits above the buttons and hugs its text. */
+    .profile-friend-actions .profile-friend-presence {
+        align-self: flex-start;
+    }
+
+    /* Column layout must not stretch children — the presence pill should
+       hug its text, not span the card. */
     .profile-friend-profile-summary {
         flex-direction: column;
+        align-items: flex-start;
     }
 
     .profile-actions {
@@ -1135,6 +1124,14 @@
         line-height: 1.45;
     }
 
+    /* In the stacked (column) card the desktop flex-basis values (260px/420px)
+       would become huge fixed heights. */
+    .profile-session-primary,
+    .profile-session-meta {
+        flex: 0 0 auto;
+        min-width: 0;
+    }
+
     .profile-session-meta {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1153,13 +1150,21 @@
         align-items: stretch;
     }
 
+    /* User ID / Roles stay one compact horizontal line on mobile. */
     .profile-summary-card.profile-summary-stack.profile-summary-inline {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.6rem 0.9rem;
+    }
+
+    .profile-summary-inline .summary-label {
+        flex: 0 0 auto;
     }
 
     .profile-summary-inline .summary-value {
         margin-left: 0;
+        text-align: right;
     }
 
     .profile-meta-grid {

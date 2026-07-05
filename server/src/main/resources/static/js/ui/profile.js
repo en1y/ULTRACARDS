@@ -1133,7 +1133,7 @@ function renderDetailedFriendStats(detailedFriend) {
                     </div>
                 </div>
                 <article class="profile-session-card profile-session-card--empty">
-                    <p>No persisted friend matchup stats yet.</p>
+                    <p>No saved friend matchup stats yet.</p>
                 </article>
             </section>
         `;
@@ -1845,43 +1845,10 @@ async function updateProfile(data) {
     document.getElementById('games_won').innerText = data.gamesWon ?? 0;
 
     const perGameType = document.getElementById('per-game-type');
-    perGameType.innerText = '';
-
-    Object.entries(data.userGamesStats?.gameStats || {})
+    perGameType.innerHTML = Object.entries(data.userGamesStats?.gameStats || {})
         .sort((a, b) => compareStatsEntries(a, b, 'recent'))
-        .forEach(([gameType, stats]) => {
-        const normalized = normalizeGameStats(stats);
-        const gameCard = document.createElement('div');
-        gameCard.className = 'profile-game-card';
-
-        const title = document.createElement('span');
-        title.textContent = gameDisplayName(gameType);
-
-        const br1 = document.createElement('br');
-
-        const playedGames = document.createElement('span');
-        playedGames.textContent = `${normalized.played}`;
-
-        const br2 = document.createElement('br');
-
-        const wonGames = document.createElement('span');
-        wonGames.textContent = `${normalized.wins}`;
-
-        const lastPlayed = document.createElement('small');
-        lastPlayed.className = 'profile-last-played';
-        lastPlayed.textContent = formatLastPlayedLabel(stats.lastPlayedAt);
-
-        gameCard.appendChild(title);
-        gameCard.appendChild(br1);
-        gameCard.append('Games played: ');
-        gameCard.appendChild(playedGames);
-        gameCard.appendChild(br2);
-        gameCard.append('Games won: ');
-        gameCard.appendChild(wonGames);
-        gameCard.appendChild(lastPlayed);
-
-        perGameType.appendChild(gameCard);
-    });
+        .map(([gameType, stats]) => renderGameStatsCard(gameType, stats))
+        .join('');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

@@ -582,13 +582,15 @@
                 return;
             }
             const slotTransform = card.style.transform || 'translate3d(0,0,0)';
+            // Cards fly and pop in at FULL size — a scaled-down start made the
+            // back look smaller than the card it lands as.
             if (hasSource && next.width) {
                 const dx = (source.left + (source.width || 0) / 2) - (next.left + next.width / 2);
                 const dy = (source.top + (source.height || 0) / 2) - (next.top + next.height / 2);
                 playAnimation(card, {
                     opacity: [0.35, 1],
                     transform: [
-                        `translate3d(${dx}px, ${dy}px, 0) ${slotTransform} scale(.94)`,
+                        `translate3d(${dx}px, ${dy}px, 0) ${slotTransform}`,
                         slotTransform
                     ],
                     duration: options?.dealDuration ?? MOTION.dealMs,
@@ -599,7 +601,7 @@
             }
             playAnimation(card, {
                 opacity: [0, 1],
-                transform: [`${slotTransform} scale(.92)`, slotTransform],
+                transform: [slotTransform, slotTransform],
                 duration: MOTION.quickMs,
                 ease: MOTION.ease
             });
@@ -1140,6 +1142,14 @@
             const target = pickCard(x, y);
             if (target) raise(target);
             else lower();
+        });
+        // Touch has no hover: without this, drag-start would use a STALE raised card
+        // from a previous interaction and play the wrong card. Re-pick at touch point.
+        element.addEventListener('pointerdown', (event) => {
+            if (options?.isActive && !options.isActive()) return;
+            const x = Number(event.clientX ?? event.pageX ?? 0);
+            const y = Number(event.clientY ?? event.pageY ?? 0);
+            raise(pickCard(x, y));
         });
         element.addEventListener('pointerleave', lower);
     }

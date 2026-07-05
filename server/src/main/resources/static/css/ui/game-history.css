@@ -198,7 +198,37 @@
     margin-left: -18px;
     cursor: zoom-in;
     overflow: hidden;
-    transform: translateY(var(--slot-y, 0px)) rotate(var(--slot-rot, 0deg));
+    /* --deal-* composes in so step animations move the REAL card in place —
+       it keeps its z-order inside the fan (a left card stays under its right
+       neighbour) and lands exactly on its slot, no clone handoff. */
+    transform: translate3d(var(--deal-x, 0px), var(--deal-y, 0px), 0)
+        translateY(var(--slot-y, 0px))
+        rotate(calc(var(--slot-rot, 0deg) + var(--deal-rot, 0deg)))
+        scale(var(--deal-scale, 1));
+}
+
+/* Keep the card's own fan z-order while it flies (a returning left card
+   belongs UNDER its right neighbours); just stop the CSS transition from
+   fighting the tween. */
+.is-replay .seat-card.is-flying,
+.is-replay .seat-card.is-dealing {
+    transition: none;
+}
+
+/* Seat regions paint above the felt (replay-mid), so an in-place card flying
+   deck→hand crosses the table on top of it rather than underneath. */
+.replay-region {
+    position: relative;
+    z-index: 2;
+}
+
+.replay-mid .table-wrap {
+    position: relative;
+    z-index: 1;
+}
+
+.replay-mid .replay-region {
+    z-index: 2;
 }
 
 .is-replay .seat-card .card-front,
@@ -235,4 +265,120 @@
     z-index: 1000;
     border-radius: 10px;
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Mobile replay: shrink the omniscient hands and pare the controls down to
+   round title + prev/next + scrubber (scores are already on the table). */
+@media (max-width: 900px) {
+    .is-replay {
+        --avatar-size: clamp(28px, 8vw, 40px);
+    }
+
+    .is-replay .seat-card {
+        width: 32px;
+        margin-left: -13px;
+    }
+
+    .is-replay .seat-cards {
+        min-width: calc(32px + (var(--max-hand, 4) - 1) * 19px);
+        min-height: 64px;
+    }
+
+    .replay-arena {
+        max-height: calc(100svh - var(--header-height, 112px) - 9rem);
+        gap: 0.25rem;
+        justify-content: flex-start;
+    }
+
+    .replay-region {
+        gap: 0.5rem;
+    }
+
+    /* Replay felt gets the whole width — seats overlap it (they paint above,
+       z 2) rather than squeezing it so small the trump/deck cluster clips. */
+    .game-layout.is-replay,
+    .game-layout.is-replay.is-two-player,
+    .game-layout.is-replay.is-three-player,
+    .game-layout.is-replay.is-four-player {
+        --table-size: min(calc(100vw - 1rem), calc(100svh - var(--header-height, 112px) - 13rem), 520px);
+    }
+
+    .replay-mid {
+        gap: 0.4rem;
+        /* Ride the felt up under the top seat (overlapping it is fine)... */
+        margin-top: calc(var(--table-size, 300px) * -0.12);
+    }
+
+    /* Let the felt's box extend beneath the side seats instead of being
+       flex-squeezed between them. */
+    .replay-mid .table-wrap {
+        margin-inline: -9vw;
+    }
+
+    /* ...spending the freed space below, so cards/deck spilling past the felt
+       edge can never sit on the bottom player's hand. */
+    #replay-seats-bottom {
+        margin-top: clamp(8px, 2vh, 20px);
+    }
+
+    /* Compact control strip: round title + prev/next + scrubber only. */
+    .history-replay-panel {
+        width: 100%;
+        height: auto;
+        gap: 0.4rem;
+        padding: 0.5rem 0.7rem 0.65rem;
+    }
+
+    .history-replay-panel .history-replay-eyebrow {
+        display: none;
+    }
+
+    #replay-step-title {
+        margin: 0;
+        font-size: 1.05rem;
+    }
+
+    .history-replay-controls .btn {
+        min-height: 0;
+        padding: 0.42rem 0.6rem;
+    }
+
+    .history-replay-head,
+    .history-replay-score-section,
+    .history-replay-team-list {
+        display: none;
+    }
+
+    .history-replay-controls {
+        gap: 0.45rem;
+    }
+
+    /* Bottom seat reads felt-first: cards + points on top, avatar + name below,
+       so the avatar no longer overlaps the table edge. */
+    #replay-seats-bottom .player-seat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #replay-seats-bottom .seat-cards {
+        order: 1;
+    }
+
+    #replay-seats-bottom .seat-points {
+        order: 2;
+    }
+
+    #replay-seats-bottom .seat-avatar {
+        order: 3;
+        margin-top: 0.3rem;
+    }
+
+    #replay-seats-bottom .seat-name {
+        order: 4;
+    }
+
+    #replay-seats-bottom .seat-team-badge {
+        order: 5;
+    }
 }

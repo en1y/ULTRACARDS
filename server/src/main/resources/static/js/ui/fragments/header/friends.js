@@ -266,6 +266,9 @@
       }
       if (chatShell) {
         chatShell.hidden = false;
+        // The chat lives at the bottom of the scrollable drawer — bring its
+        // header (with the close button) into view when it opens.
+        requestAnimationFrame(() => chatShell.scrollIntoView({ block: 'start', behavior: 'smooth' }));
       }
 
       renderGroups();

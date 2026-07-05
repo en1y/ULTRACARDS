@@ -71,6 +71,7 @@
             playing: false,
             deckLeft: null,
             pending: new Set(),
+            pendingAt: new Map(),
             autoPlayedPending: new Set(),
             handEls: new Map(),
             trickEls: new Map(),
@@ -472,7 +473,15 @@
             const newCards = [];
             state.pending.forEach((key) => {
                 if (!serverKeys.has(key)) {
+                    // Server no longer lists the card: the play was accepted.
                     state.pending.delete(key);
+                    state.pendingAt.delete(key);
+                } else if (Date.now() - (state.pendingAt.get(key) || 0) > 2500) {
+                    // Server STILL lists the card well past the play round-trip:
+                    // the play never landed. The incoming update wins over the
+                    // local cache — unhide the card instead of losing it forever.
+                    state.pending.delete(key);
+                    state.pendingAt.delete(key);
                 }
             });
             state.autoPlayedPending.forEach((key) => {
@@ -940,6 +949,7 @@
             const players = buildPlayers(game);
             const teamState = resolveTeams(game);
             gameLayout?.classList.toggle('is-two-player', players.length === 2);
+            gameLayout?.classList.toggle('is-three-player', players.length === 3);
             gameLayout?.classList.toggle('is-four-player', players.length === 4);
             gameLayout?.classList.toggle('is-team-game', !!teamState);
             const existingSeats = new Map();
@@ -1171,6 +1181,7 @@
             }
             state.playing = true;
             state.pending.add(cardKey(card));
+            state.pendingAt.set(cardKey(card), Date.now());
             state.handEls.delete(cardKey(card));
             // Lift the REAL card into the overlay and fly it to the trick slot with the
             // same seamless handoff as a drag-drop play (no fade, no reappear).
@@ -1223,6 +1234,7 @@
             }
             state.playing = true;
             state.pending.add(cardKey(card));
+            state.pendingAt.set(cardKey(card), Date.now());
             if (!state.wsClient || !state.wsConnected) {
                 state.playing = false;
                 state.pending.delete(cardKey(card));
@@ -1290,6 +1302,7 @@
                 // Exclude from the hand right away so a mid-flight syncHand can't
                 // re-create a duplicate while the card flies to the table.
                 state.pending.add(cardKey(card));
+            state.pendingAt.set(cardKey(card), Date.now());
                 // Fly the REAL card to the trick slot WITHOUT fading, and keep it there
                 // until renderTrick draws the played card at the same spot — then it is
                 // removed. No disappear/reappear, and it lands on the exact slot.
@@ -1998,7 +2011,9 @@
                     '--deal-x': `${dx}px`,
                     '--deal-y': `${dy}px`,
                     '--deal-rot': `${-10 + index * 4}deg`,
-                    '--deal-scale': 0.9
+                    // Full size from the first frame — a 0.9 start made the card
+                    // back visibly smaller than the card it lands as.
+                    '--deal-scale': 1
                 });
                 gsap.to(el, {
                     '--deal-x': '0px',

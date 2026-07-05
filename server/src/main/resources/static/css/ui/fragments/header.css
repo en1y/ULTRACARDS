@@ -610,14 +610,24 @@ body.friends-drawer-open .uc-header.hidden {
   background: color-mix(in oklab, var(--color-surface) 58%, var(--color-bg));
 }
 
+/* Inside a game card the played/won/lost tiles collapse to one compact row
+   each (number right, label left) so the card stays short next to the donut. */
 .header-user-game-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.35rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.15rem;
 }
 
 .header-user-game-stats .header-user-profile-stat {
-  padding: 0.45rem;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.1rem 0.2rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .header-user-game-stats .header-user-profile-stat strong {
@@ -982,12 +992,12 @@ body.friends-drawer-open .uc-header.hidden {
 
 .friends-drawer {
   position: fixed;
-  top: var(--header-height);
+  top: var(--uc-header-h, var(--header-height));
   right: 0;
   z-index: 900;
   width: var(--friends-drawer-width);
-  height: calc(100vh - var(--header-height));
-  height: calc(100svh - var(--header-height));
+  height: calc(100vh - var(--uc-header-h, var(--header-height)));
+  height: calc(100svh - var(--uc-header-h, var(--header-height)));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1255,14 +1265,21 @@ body.friends-drawer-open .uc-header.hidden {
 .friend-chat-shell .chat-message {
   display: grid;
   gap: 0.2rem;
+  justify-items: start;
   justify-self: start;
   width: fit-content;
   max-width: min(100%, 18rem);
 }
 
 .friend-chat-shell .chat-message.is-own {
+  justify-items: end;
   justify-self: end;
   align-self: flex-end;
+}
+
+/* The bubble hugs its text — never stretched to the meta row's width. */
+.friend-chat-shell .chat-bubble {
+  width: fit-content;
 }
 
 .friend-chat-shell .chat-message.is-new {
@@ -1594,24 +1611,56 @@ body.friends-drawer-open .uc-header.hidden {
     justify-items: start;
   }
 
-  .header-user-profile-stats,
-  .header-user-game-stats {
+  .header-user-profile-stats {
     grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .header-user-profile-stats .header-user-profile-stat {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .header-user-profile-stats .header-user-profile-stat strong {
+    font-size: 1.05rem;
   }
 
   .friends-drawer {
     width: 100vw;
-  }
-
-  .friend-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .friend-actions {
-    justify-content: space-between;
+    /* The keyboard overlays the page (layout never resizes); shrink the drawer
+       by the published keyboard height so its chat input stays above it. */
+    height: calc(100dvh - var(--uc-header-h, var(--header-height)) - var(--kb-offset, 0px));
+    transition: transform 0.22s ease, height 160ms ease-out;
   }
 
   .friend-chat-shell .chat-form {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .friend-chat-shell .chat-form button {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .friend-chat-shell .chat-form button span {
+    display: none;
+  }
+
+  /* Full-width drawer has room: keep name left, action icons right on ONE line
+     instead of wrapping the icons onto a second row. */
+  .friend-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .friend-actions {
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 }

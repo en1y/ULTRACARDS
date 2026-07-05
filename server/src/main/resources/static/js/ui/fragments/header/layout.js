@@ -51,10 +51,21 @@
       }
     };
 
+    // The mobile header is two rows tall (~112px) while CSS assumes 64px;
+    // publish the real height so overlays (friends drawer) anchor below it.
+    const publishHeaderHeight = () => {
+      const header = document.querySelector('.uc-header');
+      if (header) {
+        document.documentElement.style.setProperty('--uc-header-h', `${header.offsetHeight}px`);
+      }
+    };
+
     return {
       init() {
         window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('wheel', handleWheel, { passive: true });
+        publishHeaderHeight();
+        window.addEventListener('resize', publishHeaderHeight);
       }
     };
   };

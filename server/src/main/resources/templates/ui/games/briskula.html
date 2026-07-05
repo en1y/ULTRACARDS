@@ -38,6 +38,12 @@
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
 
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" aria-label="Open chat" data-chat-panel=".chat-sidebar">
+    <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
+    <span class="mobile-chat-badge" hidden></span>
+</button>
+<script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
+
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
