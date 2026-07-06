@@ -54,6 +54,11 @@
             <img class="uc-icon" data-icon="profile_icon" th:src="@{/pics/light/profile_icon.svg}" alt="" aria-hidden="true" />
             <span>Profile</span>
           </a>
+          <button class="menu-item" type="button" role="menuitem" data-action="toggle-game-ui"
+                  title="How the game table is laid out on phones">
+            <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+            <span data-game-ui-label>Mobile table: Fullscreen</span>
+          </button>
           <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
             <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />
             <span>Log out</span>

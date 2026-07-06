@@ -43,6 +43,22 @@
         const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
         const gameLayout = document.querySelector('.game-layout');
 
+        // Fullscreen mobile table (the default phone look; 'classic' keeps the
+        // old oval felt). theme-preload.js sets html[data-game-ui] before paint.
+        const mobileQuery = window.matchMedia('(max-width: 900px)');
+
+        function isFullscreenMobile() {
+            return mobileQuery.matches && document.documentElement.getAttribute('data-game-ui') !== 'classic';
+        }
+
+        // The fullscreen hand is a wide, strongly-arced fan (edge-to-edge like a
+        // real held hand); classic keeps the flat desktop-ish spread.
+        function handLayoutParams() {
+            return isFullscreenMobile()
+                ? {type: 'fan', slotTotal: 3, spacingScale: 0.62, maxTilt: 13, yArc: 14, baseOffsetY: 0}
+                : {type: 'fan', slotTotal: 3, spacingScale: 0.4, maxTilt: 6, yArc: 5, baseOffsetY: 2};
+        }
+
         const dom = {
             ring: document.getElementById('player-ring'),
             trick: document.getElementById('trick-area'),
@@ -327,14 +343,7 @@
             emptyText: 'Why so scared to talk?'
         });
 
-        state.hands.self = window.UltracardsGameUi?.registerHand(dom.hand, {
-            type: 'fan',
-            slotTotal: 3,
-            spacingScale: 0.4,
-            maxTilt: 6,
-            yArc: 5,
-            baseOffsetY: 2
-        });
+        state.hands.self = window.UltracardsGameUi?.registerHand(dom.hand, handLayoutParams());
         state.hands.table = window.UltracardsGameUi?.registerHand(dom.trick, {
             type: 'center',
             spacingScale: 0.45,
@@ -369,7 +378,17 @@
             }
         });
         if (dom.tableSurface) setupDropZone(dom.tableSurface);
-        window.addEventListener('resize', () => positionSeats(dom.ring));
+
+        // Seats + hand fan depend on the layout mode; refresh them when the
+        // viewport crosses the mobile breakpoint or the user flips the setting.
+        function refreshLayoutMode() {
+            positionSeats(dom.ring);
+            if (state.hands.self) window.UltracardsGameUi?.layoutZone(state.hands.self, undefined, handLayoutParams());
+            if (state.game) renderPlayers(state.game);
+        }
+
+        window.addEventListener('resize', refreshLayoutMode);
+        document.addEventListener('uc:game-ui-changed', refreshLayoutMode);
 
         if (initialGame != null) {
             applyGame(initialGame, 'UPDATED', null);
@@ -426,6 +445,9 @@
                         state.teammateCards = JSON.parse(msg.body) || [];
                         TeammateHandStore.save(gameId, state.teammateCards);
                         refreshTeammateHandButton();
+                        // Fullscreen mobile mirrors the reveal onto the teammate's
+                        // seat as face-up cards (renderPlayers picks it up).
+                        if (state.game) renderPlayers(state.game);
                         openTeammateHandPanel(true);
                     } catch (err) {
                         console.error('Teammate hand event error', err);
@@ -519,6 +541,19 @@
             }
             const previousPlayedCards = Array.isArray(state.game?.playedCards) ? state.game.playedCards : [];
             const nextPlayedCards = Array.isArray(game.playedCards) ? game.playedCards : [];
+            // A revealed teammate card showing up on the table was just played by
+            // the teammate (deck cards are unique) — drop it from the reveal so the
+            // mirrored hand and panel stay accurate for the remaining tricks.
+            if (Array.isArray(state.teammateCards) && state.teammateCards.length && nextPlayedCards.length) {
+                const playedKeys = new Set(nextPlayedCards.map(cardKey));
+                const remaining = state.teammateCards.filter((card) => !playedKeys.has(cardKey(card)));
+                if (remaining.length !== state.teammateCards.length) {
+                    state.teammateCards = remaining;
+                    TeammateHandStore.save(gameId, remaining);
+                    refreshTeammateHandButton();
+                    if (teammateHandPanel?.classList.contains('is-open')) renderTeammateHandPanel();
+                }
+            }
             // Capture the in-trick player order BEFORE state.game is reassigned. Once a
             // trick completes the backend rotates playersOrder (winner first), so the
             // incoming `game` no longer matches the played-card order — this does.
@@ -1041,7 +1076,17 @@
                 const cardsCount = player.cards != null ? player.cards : (player.points ?? 0);
                 const cards = seat.querySelector('.seat-cards');
                 if (cards) {
-                    syncSeatCards(cards, cardsCount, seat.dataset.seatSide || 'center');
+                    // 2v2 endgame reveal (fullscreen mobile): the teammate's seat
+                    // shows their actual cards face-up instead of anonymous backs.
+                    const revealed = teamTone === 'ally' && !isSelf && isFullscreenMobile()
+                        && Array.isArray(state.teammateCards) && state.teammateCards.length
+                        ? state.teammateCards
+                        : null;
+                    if (revealed) {
+                        renderTeammateSeatCards(cards, revealed);
+                    } else {
+                        syncSeatCards(cards, cardsCount, seat.dataset.seatSide || 'center');
+                    }
                 }
 
                 const points = seat.querySelector('.seat-points');
@@ -1121,13 +1166,7 @@
                 orderedForLayout.forEach((el) => dom.hand.appendChild(el));
             }, {
                 cards: orderedForLayout,
-                layout: {
-                    type: 'fan',
-                    spacingScale: 0.4,
-                    maxTilt: 6,
-                    yArc: 5,
-                    baseOffsetY: 2
-                }
+                layout: handLayoutParams()
             });
         }
 
@@ -1378,11 +1417,17 @@
         function isPointInTableTarget(x, y) {
             const target = dom.tableSurface || dom.dropZone || dom.trick;
             const rect = target?.getBoundingClientRect();
-            return !!rect
+            const inside = !!rect
                 && x >= rect.left
                 && x <= rect.right
                 && y >= rect.top
                 && y <= rect.bottom;
+            if (!inside) return false;
+            // Fullscreen mobile: the felt extends under the hand strip — releasing
+            // a card back over the hand must NOT play it. (Classic layouts keep the
+            // hand below the felt, so this never triggers there.)
+            const handRect = dom.hand?.closest('.hand-row')?.getBoundingClientRect();
+            return !(handRect && handRect.height > 0 && y >= handRect.top);
         }
 
         // Stable number of fixed slots for the trick row = the trick size (players for
@@ -1653,6 +1698,28 @@
         function getSeatSlot(index, count, isSelf) {
             if (isSelf) {
                 return {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'};
+            }
+            if (isFullscreenMobile()) {
+                // Full-bleed felt: the classic ring hangs side seats at -3%/103%,
+                // which would put them off screen — keep everyone fully visible.
+                if (count <= 2) {
+                    return {x: 50, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'};
+                }
+                if (count === 3) {
+                    const slots = [
+                        {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
+                        {x: 26, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'},
+                        {x: 74, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'}
+                    ];
+                    return slots[index] || slots[1];
+                }
+                const slots = [
+                    {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
+                    {x: 13, y: 26, nudgeX: 0, nudgeY: 0, side: 'left'},
+                    {x: 50, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'},
+                    {x: 87, y: 26, nudgeX: 0, nudgeY: 0, side: 'right'}
+                ];
+                return slots[index] || slots[index % slots.length];
             }
             if (count <= 2) {
                 return {x: 50, y: 10, nudgeX: 0, nudgeY: 'var(--seat-top-nudge-y)', side: 'top'};
@@ -1929,7 +1996,36 @@
             return [...new Set(keys)];
         }
 
+        // Creative 2v2 endgame reveal: replace the teammate's anonymous backs with
+        // their actual cards, fanned face-up in the seat with a staggered pop-in.
+        function renderTeammateSeatCards(cardsEl, cards) {
+            const sig = cards.map(cardKey).join('|');
+            if (cardsEl.dataset.revealSig === sig) return;
+            cardsEl.dataset.revealSig = sig;
+            cardsEl.replaceChildren();
+            const total = cards.length;
+            cards.forEach((card, i) => {
+                const el = window.UltracardsGameUi?.renderCardImage({
+                    card,
+                    className: 'seat-card teammate-open-card',
+                    alt: 'Teammate card'
+                });
+                if (!el) return;
+                const centered = i - (total - 1) / 2;
+                el.style.transform = `translateY(${(Math.abs(centered) * 1.5).toFixed(1)}px) rotate(${(centered * 6).toFixed(1)}deg)`;
+                el.style.zIndex = String(i + 1);
+                el.style.setProperty('--reveal-i', String(i));
+                cardsEl.appendChild(el);
+            });
+        }
+
         function syncSeatCards(cardsEl, cardsCount, seatSide) {
+            // Returning from a teammate reveal (mode switched / reveal cleared):
+            // the face-up cards can't be reused as backs — rebuild from scratch.
+            if (cardsEl.dataset.revealSig) {
+                delete cardsEl.dataset.revealSig;
+                cardsEl.replaceChildren();
+            }
             // Newly drawn seat cards fly in from the deck to their slot (generic deal
             // animation in syncBackCards) — same fly-in the main hand uses.
             const rawDeck = dom.deckTower?.getBoundingClientRect();

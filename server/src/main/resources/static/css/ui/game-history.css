@@ -382,3 +382,71 @@
         order: 5;
     }
 }
+
+/* ===== FULLSCREEN MOBILE REPLAY (html[data-game-ui="fullscreen"]) =====
+   Mirrors the live game's fullscreen phone look: the felt fills the viewport
+   below the header, the deck rides the RIGHT edge, seats overlay the felt,
+   and the replay controls float as a bottom bar. game.css already restyles
+   .game-layout/.table-surface/.deck-stack for this mode; the rules here only
+   cover replay-specific structure. Desktop is unaffected. */
+
+@media (max-width: 900px) {
+    html[data-game-ui="fullscreen"] .replay-arena {
+        position: relative;
+        height: 100%;
+        max-height: none;
+        justify-content: space-between;
+        gap: 0;
+        padding: 0.4rem 0 7rem;
+        z-index: 1;
+    }
+
+    html[data-game-ui="fullscreen"] .replay-mid {
+        margin-top: 0;
+        width: 100%;
+        flex: 1 1 auto;
+        justify-content: space-between;
+        padding-inline: 0.4rem;
+    }
+
+    /* Beats the base `.replay-mid .table-wrap` (relative, padded, z 1):
+       the felt becomes the full-viewport backdrop behind the seat regions. */
+    html[data-game-ui="fullscreen"] .replay-mid .table-wrap {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: 0;
+        z-index: 0;
+    }
+
+    html[data-game-ui="fullscreen"] #replay-seats-bottom {
+        margin-top: 0;
+    }
+
+    /* The bottom player is "you": give their face-up hand real-hand sizing. */
+    html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-card {
+        width: clamp(52px, 15vw, 72px);
+        margin-left: calc(clamp(52px, 15vw, 72px) * -0.42);
+    }
+
+    html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-cards {
+        min-width: 0;
+        min-height: calc(clamp(52px, 15vw, 72px) * 1.82);
+    }
+
+    /* Keep the deck clear of the side seats (3-4 player replays). */
+    html[data-game-ui="fullscreen"] .is-replay .deck-stack {
+        top: 58%;
+    }
+
+    /* Controls become a floating bar over the felt's bottom edge. */
+    html[data-game-ui="fullscreen"] .history-replay-panel {
+        position: absolute;
+        left: 0.5rem;
+        right: 0.5rem;
+        bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+        width: auto;
+        height: auto;
+        z-index: 6;
+    }
+}

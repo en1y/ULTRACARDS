@@ -1840,3 +1840,197 @@
                 transition-duration: 80ms !important;
             }
         }
+
+        /* ===== FULLSCREEN MOBILE TABLE (html[data-game-ui="fullscreen"]) =====
+           The default phone look: the felt fills the whole viewport below the
+           header (no oval), the deck tucks into the RIGHT screen edge with the
+           trump peeking out beneath it, opponents sit along the top with their
+           backs fanned behind the avatar, and the player's hand is a large fan
+           across the bottom. Colors/vars are untouched — layout only. The
+           'classic' setting (header menu) keeps the pre-existing mobile look.
+           Desktop (>900px) is never affected. */
+
+        @media (max-width: 900px) {
+            html[data-game-ui="fullscreen"] .game-layout,
+            html[data-game-ui="fullscreen"] .game-layout.is-two-player,
+            html[data-game-ui="fullscreen"] .game-layout.is-three-player,
+            html[data-game-ui="fullscreen"] .game-layout.is-four-player {
+                --table-size: min(100vw, 560px);
+                --hand-card-width: clamp(92px, 26vw, 136px);
+                --trick-card-width: clamp(62px, 19vw, 96px);
+                --deck-cluster-width: clamp(84px, 12vh, 120px);
+                --deck-cluster-height: clamp(120px, 19vh, 180px);
+                --deck-tower-width: clamp(56px, 8vh, 78px);
+                --deck-tower-height: clamp(78px, 11.2vh, 108px);
+                --deck-card-width: clamp(52px, 7.4vh, 72px);
+                --trump-card-width: clamp(50px, 7vh, 68px);
+                --trump-card-hover-width: clamp(58px, 8.2vh, 80px);
+                display: block;
+                position: relative;
+                width: 100%;
+                height: calc(100svh - var(--header-height));
+                padding: 0;
+            }
+
+            html[data-game-ui="fullscreen"] .game-layout:not(.is-replay) {
+                --avatar-size: clamp(44px, 12vw, 56px);
+            }
+
+            html[data-game-ui="fullscreen"] #game-container {
+                height: 100%;
+            }
+
+            html[data-game-ui="fullscreen"] .game-shell {
+                display: block;
+                position: relative;
+                height: 100%;
+            }
+
+            html[data-game-ui="fullscreen"] .table-wrap {
+                position: absolute;
+                inset: 0;
+                padding: 0;
+                background: none;
+            }
+
+            html[data-game-ui="fullscreen"] .table-surface {
+                width: 100%;
+                height: 100%;
+                max-width: none;
+                min-height: 0;
+                aspect-ratio: auto;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            html[data-game-ui="fullscreen"] .table-rim {
+                display: none;
+            }
+
+            html[data-game-ui="fullscreen"] .table-felt {
+                inset: 0;
+                border-radius: 0;
+            }
+
+            /* --- Player hand: big fan pinned to the bottom, over the felt --- */
+
+            html[data-game-ui="fullscreen"] .hand-row {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                margin: 0;
+                gap: 0.1rem;
+                padding-bottom: calc(0.3rem + env(safe-area-inset-bottom, 0px));
+                z-index: 8;
+            }
+
+            html[data-game-ui="fullscreen"] .hand-zone {
+                transform: none;
+                width: 100%;
+                padding: 0.1rem 0.35rem;
+            }
+
+            html[data-game-ui="fullscreen"] .hand-cards {
+                width: 100%;
+                max-width: none;
+                min-height: calc(var(--hand-card-width) * 1.48);
+            }
+
+            /* --- Opponent seats: backs fanned behind the avatar --- */
+
+            html[data-game-ui="fullscreen"] .player-ring .player-seat {
+                width: clamp(88px, 26vw, 128px);
+            }
+
+            html[data-game-ui="fullscreen"] .player-ring .seat-avatar {
+                z-index: 2;
+            }
+
+            html[data-game-ui="fullscreen"] .player-ring .seat-cards {
+                position: absolute;
+                top: calc(var(--avatar-size) * -0.45);
+                left: 50%;
+                margin: 0;
+                transform: translateX(-50%) rotate(var(--hand-rotate));
+                z-index: 1;
+            }
+
+            html[data-game-ui="fullscreen"] .player-ring .seat-card {
+                width: clamp(24px, 8vw, 34px);
+                margin-left: -10px;
+            }
+
+            /* Teammate's revealed hand (2v2, deck exhausted): face-up minis. */
+            html[data-game-ui="fullscreen"] .player-ring .seat-card.teammate-open-card {
+                width: clamp(34px, 11vw, 46px);
+                margin-left: -12px;
+            }
+
+            /* --- Deck: tucked into the RIGHT screen edge, trump peeking out --- */
+
+            html[data-game-ui="fullscreen"] .deck-stack {
+                right: 0;
+                top: 52%;
+                transform: translate(30%, -50%);
+            }
+
+            html[data-game-ui="fullscreen"] .deck-stack.is-empty {
+                transform: translate(30%, -50%) scale(0.9);
+            }
+
+            /* Count sits beside the deck (toward the table), not under it. */
+            html[data-game-ui="fullscreen"] .deck-count-bubble {
+                top: 50%;
+                left: auto;
+                right: 100%;
+                transform: translateY(-50%);
+                margin-right: 4px;
+            }
+
+            /* --- Table center / messaging --- */
+
+            html[data-game-ui="fullscreen"] .trick-area {
+                min-width: 0;
+                min-height: 0;
+                width: min(62vw, 320px);
+                height: min(38vw, 200px);
+            }
+
+            html[data-game-ui="fullscreen"] .table-turn-overlay {
+                left: 12%;
+                right: 12%;
+                bottom: 31%;
+            }
+
+            /* --- Round-history toggle rides the LEFT edge (deck mirrors right) --- */
+
+            html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-toggle {
+                left: 0.55rem;
+                right: auto;
+                bottom: 42%;
+                transform: none;
+            }
+
+            html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-toggle:hover {
+                transform: translateY(-2px);
+            }
+
+            html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-panel {
+                bottom: 34%;
+            }
+        }
+
+        /* Reveal pop-in for the teammate's face-up seat cards (class is only
+           applied in fullscreen mobile mode). */
+        .seat-card.teammate-open-card {
+            animation: teammate-card-reveal 380ms cubic-bezier(.2, .8, .3, 1.15) backwards;
+            animation-delay: calc(var(--reveal-i, 0) * 70ms);
+        }
+
+        @keyframes teammate-card-reveal {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.5);
+            }
+        }

@@ -60,8 +60,42 @@ const toggleTheme = () => {
     applyTheme(nextTheme);
 };
 
+// Mobile game-table style setting ('fullscreen' default | 'classic'), stored in
+// localStorage; theme-preload.js applies it before first paint, this keeps the
+// header menu label in sync and lets the user flip it.
+const gameUiKey = 'uc-game-ui';
+
+const getGameUiMode = () => (localStorage.getItem(gameUiKey) === 'classic' ? 'classic' : 'fullscreen');
+
+const syncGameUiLabel = () => {
+    document.querySelectorAll('[data-game-ui-label]').forEach((label) => {
+        label.textContent = `Mobile table: ${getGameUiMode() === 'classic' ? 'Classic' : 'Fullscreen'}`;
+    });
+};
+
+const applyGameUiMode = (mode) => {
+    localStorage.setItem(gameUiKey, mode);
+    root.setAttribute('data-game-ui', mode);
+    syncGameUiLabel();
+    // Live game pages re-fan hands / re-seat players on this.
+    document.dispatchEvent(new CustomEvent('uc:game-ui-changed', {detail: {mode}}));
+};
+
+const bindGameUiToggle = () => {
+    const button = document.querySelector('[data-action="toggle-game-ui"]');
+    if (!button || button.dataset.gameUiBound === 'true') {
+        return;
+    }
+    button.addEventListener('click', () => {
+        applyGameUiMode(getGameUiMode() === 'classic' ? 'fullscreen' : 'classic');
+    });
+    button.dataset.gameUiBound = 'true';
+};
+
 // A cool way to add methods to the window
 window.getPreferredTheme = getPreferredTheme;
+window.getGameUiMode = getGameUiMode;
+window.applyGameUiMode = applyGameUiMode;
 window.syncThemeUi = syncThemeUi;
 window.applyTheme = applyTheme;
 window.toggleTheme = toggleTheme;
@@ -81,10 +115,14 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         bindThemeToggle();
         syncThemeUi();
+        bindGameUiToggle();
+        syncGameUiLabel();
     }, { once: true });
 } else {
     bindThemeToggle();
     syncThemeUi();
+    bindGameUiToggle();
+    syncGameUiLabel();
 }
 
 // Mobile keyboard handling. The keyboard OVERLAYS the page (default viewport
