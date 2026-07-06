@@ -20,6 +20,10 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 14px;
+  /* Runtime-updated by JS (layout.js / theme.js); declared here so the values
+     resolve before the scripts run. */
+  --uc-header-h: 64px;
+  --kb-offset: 0px;
 }
 
 [data-theme="dark"] {
@@ -53,7 +57,6 @@ html {
 }
 
 body {
-  min-height: 100vh;
   min-height: 100svh;
   margin: 0;
   display: flex;
