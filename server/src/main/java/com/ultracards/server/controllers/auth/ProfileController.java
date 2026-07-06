@@ -123,7 +123,7 @@ public class ProfileController {
     public ResponseEntity<?> deleteSessions(
             @AuthenticationPrincipal UserEntity user,
             @RequestAttribute("token") String token,
-            @Valid UserSessionDTO userSession
+            @RequestBody @Valid UserSessionDTO userSession
     ) {
         var deleteSession = sessionService.getSession(userSession.getId());
         if (deleteSession.getUserId().equals(user.getId())) {

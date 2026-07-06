@@ -23,12 +23,12 @@ public class ServerService {
     public ServerService(RestTemplate restTemplate,
                          @Qualifier("serverUrl")  String serverUrl) {
         this.restTemplate = restTemplate;
-        this.serverUrl = serverUrl;
+        this.serverUrl = serverUrl.endsWith("/") ? serverUrl : serverUrl + "/";
     }
 
     public ServerConnectionStatus isTheServerUp() {
 
-        var url = URI.create(serverUrl + "/active").toString();
+        var url = URI.create(serverUrl + "active").toString();
 
         try {
             var res = restTemplate.exchange(url, HttpMethod.GET, null, Void.class);
