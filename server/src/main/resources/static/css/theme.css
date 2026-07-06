@@ -516,6 +516,22 @@ textarea {
   gap: 0.75rem;
 }
 
+/* Firefox (Gecko) recomposites backdrop-filter on every scroll frame instead
+   of caching the layer like Chromium — with the header + drawers blurred it
+   makes the whole app scroll-lag. Drop the blurs there and use solid
+   backgrounds; purely cosmetic, no functionality lost. */
+@supports (-moz-appearance: none) {
+  * {
+    backdrop-filter: none !important;
+  }
+
+  .uc-header,
+  .friends-drawer-head,
+  .mobile-chat-toggle {
+    background: var(--color-bg);
+  }
+}
+
 /* Phone landscape blocker: browsers can't lock orientation outside a PWA, so
    cover the page instead. Only game pages (live game + replay, body.game-page)
    need portrait; tablets (landscape height >= 500px) and desktops (pointer:
@@ -587,11 +603,11 @@ textarea {
   display: none;
   position: fixed;
   left: 1rem;
-  /* Rides above the on-screen keyboard (--kb-offset) so the chat can always
-     be closed while typing. */
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px));
+  /* Closed-state anchor; while the chat is OPEN, mobileChatDock.js pins the
+     button to the bottom of the visualViewport (above the keyboard) via an
+     inline `top`, so it stays tappable to close the chat while typing. */
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   z-index: 1460;
-  transition: bottom 160ms ease-out;
   width: 52px;
   height: 52px;
   padding: 0;

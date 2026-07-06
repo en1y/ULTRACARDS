@@ -30,6 +30,9 @@
   background: color-mix(in oklab, var(--color-bg) 85%, transparent);
   border-bottom: 1px solid var(--color-border);
   transition: transform 0.25s ease, background 0.2s ease, border-color 0.2s ease;
+  /* Own compositor layer: the blurred, transform-animated header must not
+     force repaints of itself (or the page) on every scroll frame. */
+  will-change: transform;
 }
 
 .uc-header.hidden {
@@ -1012,11 +1015,17 @@ body.friends-drawer-open .uc-header.hidden {
   border-left: 1px solid var(--color-border);
   box-shadow: -18px 0 42px var(--color-shadow);
   transform: translateX(105%);
-  transition: transform 0.22s ease;
+  /* visibility flips AFTER the slide-out so the close animation still plays;
+     while closed the drawer (its gradient, 42px shadow and blurred head) costs
+     zero paint per scroll frame — it lagged scrolling on Firefox Android. */
+  visibility: hidden;
+  transition: transform 0.22s ease, visibility 0s linear 0.22s;
 }
 
 .friends-shell.open .friends-drawer {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.22s ease, visibility 0s;
 }
 
 .friends-drawer-head {

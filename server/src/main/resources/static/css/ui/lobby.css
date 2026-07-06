@@ -783,21 +783,17 @@
                 position: fixed;
                 left: 0.75rem;
                 right: 0.75rem;
-                /* --kb-offset lifts the panel above the on-screen keyboard. */
-                bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px));
-                /* The --kb-offset term matches the one in `bottom`, so even if the
-                   lift overshoots, the panel top stays below the header. */
-                height: min(56vh, 26rem, calc(100dvh - var(--uc-header-h, 64px) - 5.4rem - var(--kb-offset, 0px)));
+                /* Closed-state anchor only; while OPEN, mobileChatDock.js sets
+                   inline top/height straight from the visualViewport so the panel
+                   is always fully visible (keyboard, URL bar, scroll, zoom). */
+                bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+                height: min(56vh, 26rem);
                 min-height: 0;
                 z-index: 1450;
                 opacity: 0;
                 pointer-events: none;
                 transform: translateY(0.6rem);
-                /* Short ease-out on bottom/height: each viewport event re-eases
-                   from the CURRENT position, so the panel chases the keyboard
-                   smoothly without the rubber-band a long ease caused. */
-                transition: opacity 200ms ease, transform 200ms ease,
-                    bottom 160ms ease-out, height 160ms ease-out;
+                transition: opacity 200ms ease, transform 200ms ease;
             }
 
             body.mobile-chat-open .lobby-chat-panel {

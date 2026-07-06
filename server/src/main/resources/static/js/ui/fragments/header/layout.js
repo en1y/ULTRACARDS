@@ -5,12 +5,29 @@
     let lastScrollY = window.scrollY;
     let scrolledInDirection = 0;
 
-    const setHeaderHidden = (hidden) => {
-      const header = document.querySelector('.uc-header');
-      if (!header) {
+    // Cached DOM/metrics: the scroll handler must NEVER query the DOM or read
+    // layout (offsetHeight forces a reflow per scroll event = janky scrolling).
+    let headerEl = null;
+    let headerHeight = 64;
+    let headerHidden = false;
+
+    // The mobile header is two rows tall (~112px) while CSS assumes 64px;
+    // measure once (and on resize) and publish it for overlays (friends drawer).
+    const refreshHeaderMetrics = () => {
+      headerEl = headerEl || document.querySelector('.uc-header');
+      if (!headerEl) {
         return;
       }
-      header.classList.toggle('hidden', hidden);
+      headerHeight = headerEl.offsetHeight || 64;
+      document.documentElement.style.setProperty('--uc-header-h', `${headerHeight}px`);
+    };
+
+    const setHeaderHidden = (hidden) => {
+      if (!headerEl || headerHidden === hidden) {
+        return;   // no redundant class writes → no needless style recalc
+      }
+      headerHidden = hidden;
+      headerEl.classList.toggle('hidden', hidden);
     };
 
     const handleScroll = () => {
@@ -24,8 +41,6 @@
         scrolledInDirection = 0;
       }
       scrolledInDirection += delta;
-
-      const headerHeight = document.querySelector('.uc-header')?.offsetHeight || 64;
 
       if (currentScrollY <= headerHeight) {
         setHeaderHidden(false);
@@ -51,21 +66,12 @@
       }
     };
 
-    // The mobile header is two rows tall (~112px) while CSS assumes 64px;
-    // publish the real height so overlays (friends drawer) anchor below it.
-    const publishHeaderHeight = () => {
-      const header = document.querySelector('.uc-header');
-      if (header) {
-        document.documentElement.style.setProperty('--uc-header-h', `${header.offsetHeight}px`);
-      }
-    };
-
     return {
       init() {
+        refreshHeaderMetrics();
         window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('wheel', handleWheel, { passive: true });
-        publishHeaderHeight();
-        window.addEventListener('resize', publishHeaderHeight);
+        window.addEventListener('resize', refreshHeaderMetrics);
       }
     };
   };
