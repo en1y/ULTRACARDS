@@ -54,6 +54,11 @@
             <img class="uc-icon" data-icon="profile_icon" th:src="@{/pics/light/profile_icon.svg}" alt="" aria-hidden="true" />
             <span>Profile</span>
           </a>
+          <button class="menu-item" type="button" role="menuitem" data-action="toggle-game-ui"
+                  title="How the game table is laid out on phones">
+            <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+            <span data-game-ui-label>Table display: Fullscreen</span>
+          </button>
           <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
             <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />
             <span>Log out</span>
@@ -73,10 +78,6 @@
             <h2>Friends</h2>
             <p data-friends-summary>Loading</p>
           </div>
-          <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close friends"
-                  data-friends-close>
-            <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
-          </button>
         </div>
 
         <div class="friends-status" data-friends-status aria-live="polite"></div>
@@ -100,7 +101,7 @@
     <div th:unless="${isAuthenticated}">
       <button class="btn btn-accent" type="button" data-action="open-login">
         <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
-        <span>Log In / Sign Up</span>
+        <span>Log In<span class="login-label-suffix"> / Sign Up</span></span>
       </button>
     </div>
 

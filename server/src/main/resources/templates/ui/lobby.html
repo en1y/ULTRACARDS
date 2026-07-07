@@ -2,6 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -127,6 +128,12 @@
     <p id="lobby-toast-text" class="lobby-toast-text">Configuration changed.</p>
     </aside>
 </main>
+
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" aria-label="Open chat" data-chat-panel=".lobby-chat-panel">
+    <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
+    <span class="mobile-chat-badge" hidden></span>
+</button>
+<script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
 
 <script th:inline="javascript">
     window.__INITIAL_LOBBY__ = /*[[${lobby}]]*/ null;

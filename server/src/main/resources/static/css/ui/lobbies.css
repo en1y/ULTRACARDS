@@ -217,6 +217,18 @@
             color: color-mix(in oklab, var(--color-text) 78%, transparent);
         }
 
+        /* Collapse the list + join-code columns before they crush each other;
+           the sidebar column stacks at 760px (theme.css). */
+        @media (max-width: 900px) {
+            .lobbies-browser {
+                grid-template-columns: 1fr;
+            }
+
+            .lobbies-code-join {
+                position: static;
+            }
+        }
+
         @media (max-width: 640px) {
             .lobbies-page {
                 padding-top: 0.5rem;
@@ -226,10 +238,14 @@
                 top: 7.5rem;
             }
 
-            .lobby-card-footer,
             .lobby-card-head {
                 flex-direction: column;
-                align-items: flex-end;
+                align-items: flex-start;
+            }
+
+            .lobby-card-footer {
+                flex-direction: column;
+                align-items: stretch;
             }
 
             .lobbies-browser {

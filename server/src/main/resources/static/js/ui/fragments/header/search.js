@@ -654,6 +654,18 @@
       return tile;
     };
 
+    const createWinRateDonut = (normalized) => {
+      const donut = document.createElement('div');
+      donut.className = 'profile-stat-donut';
+      donut.style.setProperty('--win-rate', String(normalized.winRate));
+      donut.setAttribute('role', 'img');
+      donut.setAttribute('aria-label', `${normalized.winRate}% win rate`);
+      const value = document.createElement('span');
+      value.textContent = `${normalized.winRate}%`;
+      donut.append(value);
+      return donut;
+    };
+
     const createGameCard = (gameType, stats) => {
       const normalized = normalizeGameStats(stats);
       const card = document.createElement('article');
@@ -670,18 +682,14 @@
           createStatTile('lost', normalized.losses)
       );
 
-      const rate = document.createElement('div');
-      rate.className = 'header-user-win-rate';
-      rate.setAttribute('aria-label', `${normalized.winRate}% win rate`);
-
-      const bar = document.createElement('span');
-      bar.style.width = `${normalized.winRate}%`;
-      rate.append(bar);
+      const row = document.createElement('div');
+      row.className = 'profile-game-card-row';
+      row.append(createWinRateDonut(normalized), statsLine);
 
       const footer = document.createElement('small');
-      footer.textContent = `${normalized.winRate}% win rate - ${formatLastPlayedLabel(stats?.lastPlayedAt)}`;
+      footer.textContent = formatLastPlayedLabel(stats?.lastPlayedAt);
 
-      card.append(title, statsLine, rate, footer);
+      card.append(title, row, footer);
       return card;
     };
 
@@ -714,7 +722,7 @@
       });
 
       if (!entries.length) {
-        grid.append(createProfileState('No persisted friend matchup stats yet.'));
+        grid.append(createProfileState('No saved friend matchup stats yet.'));
       } else {
         for (const { gameType, stat } of entries) {
           const normalized = normalizeGameStats(stat);
@@ -732,18 +740,14 @@
               createStatTile('lost', normalized.losses)
           );
 
-          const rate = document.createElement('div');
-          rate.className = 'header-user-win-rate';
-          rate.setAttribute('aria-label', `${normalized.winRate}% win rate`);
-
-          const bar = document.createElement('span');
-          bar.style.width = `${normalized.winRate}%`;
-          rate.append(bar);
+          const row = document.createElement('div');
+          row.className = 'profile-game-card-row';
+          row.append(createWinRateDonut(normalized), statsLine);
 
           const footer = document.createElement('small');
-          footer.textContent = `${normalized.winRate}% win rate - ${friendMatchupTypeLabel(stat?.matchupType)} - ${formatLastPlayedLabel(stat?.lastPlayedAt)}`;
+          footer.textContent = `${friendMatchupTypeLabel(stat?.matchupType)} - ${formatLastPlayedLabel(stat?.lastPlayedAt)}`;
 
-          card.append(cardTitle, statsLine, rate, footer);
+          card.append(cardTitle, row, footer);
           grid.append(card);
         }
       }

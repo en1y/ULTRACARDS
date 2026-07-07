@@ -340,10 +340,12 @@
     };
 
     // ---- step transitions ----
+    const cardRot = (el) => (Number.parseFloat(el.style.getPropertyValue('--slot-rot')) || 0)
+        + (Number.parseFloat(el.style.getPropertyValue('--spin')) || 0);
     const snapshotRects = () => {
         const map = new Map();
         const add = (el) => {
-            if (el.dataset.cardKey) map.set(el.dataset.cardKey, el.getBoundingClientRect());
+            if (el.dataset.cardKey) map.set(el.dataset.cardKey, {rect: el.getBoundingClientRect(), rot: cardRot(el)});
         };
         state.seats.forEach((seat) => seat.querySelectorAll('.seat-cards .card-wrap').forEach(add));
         dom.trick?.querySelectorAll('.trick-card').forEach(add);
@@ -359,18 +361,65 @@
     };
     const deckRect = () => dom.deckTower?.getBoundingClientRect() || dom.deckStack?.getBoundingClientRect();
 
-    const flySeatCard = (el, fromRect) => {
-        if (!el || !fromRect) return Promise.resolve();
-        el.style.opacity = '0';
-        return Promise.resolve(ui.animateCardBetweenZones({
-            sourceRect: fromRect,
-            toEl: el,
-            card: {cardType: el.dataset.cardType, card: el.dataset.cardCode},
-            toRot: el.style.getPropertyValue('--slot-rot') || '0deg',
-            toScale: 1,
-            duration: 360,
-            onDone: () => { el.style.opacity = ''; }
+    // Fly the REAL card in place via its --deal-* transform vars (same mechanism
+    // as the live game's deal). No overlay clone: the card keeps its own z-order
+    // inside the fan (a left card stays under its right neighbour) and lands
+    // exactly on its slot — there is no clone→card handoff to snap.
+    // `src` = {rect, rot} from the before-snapshot (or a plain rect for the deck).
+    const flyReplayCard = (el, src) => {
+        const fromRect = src?.rect || src;
+        if (!el || !fromRect || !fromRect.width) return Promise.resolve();
+        el.style.opacity = '';   // fresh deal cards are pre-hidden until their flight starts
+        return Promise.resolve(ui.crossHandTransfer({
+            cardEl: el,
+            fromRect,
+            faceDown: false,
+            // Start at the source's orientation relative to the destination slot.
+            spin: (src?.rot || 0) - cardRot(el),
+            fromScale: 1,
+            duration: 340,
+            ease: 'power2.out'
         }));
+    };
+
+    // FLIP the cards whose slot merely shifted (the fan re-spreads when a card
+    // enters/leaves a hand): glide them from their old screen position instead of
+    // letting the rebuilt fan snap into place.
+    const glideSurvivors = (before, skipKey) => {
+        const gsapApi = window.gsap;
+        if (!gsapApi) return Promise.resolve();
+        const tweens = [];
+        const glide = (el) => {
+            const key = el.dataset.cardKey;
+            if (!key || key === skipKey || !before.has(key)) return;
+            const now = el.getBoundingClientRect();
+            const old = before.get(key).rect;
+            const dx = (old.left + old.width / 2) - (now.left + now.width / 2);
+            const dy = (old.top + old.height / 2) - (now.top + now.height / 2);
+            if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5) return;
+            // gsap decomposes the CSS-var transform into its own x/y — tween back
+            // to THAT base, not to 0, or the card lands minus its slot offset and
+            // pops when clearProps restores the stylesheet transform.
+            const baseX = Number(gsapApi.getProperty(el, 'x')) || 0;
+            const baseY = Number(gsapApi.getProperty(el, 'y')) || 0;
+            el.style.transition = 'none';   // the CSS transform transition would fight the tween
+            tweens.push(new Promise((resolve) => {
+                gsapApi.fromTo(el, {x: baseX + dx, y: baseY + dy}, {
+                    x: baseX,
+                    y: baseY,
+                    duration: 0.28,
+                    ease: 'power2.out',
+                    clearProps: 'transform',
+                    onComplete() {
+                        el.style.transition = '';
+                        resolve();
+                    }
+                });
+            }));
+        };
+        state.seats.forEach((seat) => seat.querySelectorAll('.seat-cards .card-wrap').forEach(glide));
+        dom.trick?.querySelectorAll('.trick-card').forEach(glide);
+        return Promise.all(tweens);
     };
 
     const classify = (from, to) => {
@@ -415,13 +464,15 @@
             if (kind === 'forward') {
                 const key = ckey(plays[fromStep.playCount]?.card);
                 const card = findTrickCard(key);
-                if (card && before.has(key)) {
-                    await Promise.resolve(ui.crossHandTransfer({cardEl: card, fromRect: before.get(key), faceDown: false, duration: 320}));
-                }
+                const glides = glideSurvivors(before, key);
+                if (card && before.has(key)) await flyReplayCard(card, before.get(key));
+                await glides;
             } else if (kind === 'backward') {
                 const key = ckey(plays[fromStep.playCount - 1]?.card);
                 const card = findSeatCard(key);
-                if (card && before.has(key)) await flySeatCard(card, before.get(key));
+                const glides = glideSurvivors(before, key);
+                if (card && before.has(key)) await flyReplayCard(card, before.get(key));
+                await glides;
             } else if (kind === 'deal') {
                 const from = deckRect();
                 const fresh = [];
@@ -432,7 +483,7 @@
                     }
                 }));
                 await Promise.all(fresh.map((el, i) => new Promise((resolve) => setTimeout(
-                    () => flySeatCard(el, from).then(resolve), i * 55))));
+                    () => flyReplayCard(el, from).then(resolve), i * 55))));
             }
         } catch (_) { /* render already shows the correct state; ignore fly errors */ }
 

@@ -539,7 +539,6 @@
                             </div>
                             <div class="player-role">
                                 ${escapeHtml(role)}
-                                <span class="player-team-chip player-team-chip-${tone}">${escapeHtml(getTeamDisplayName(teamNumber))}</span>
                             </div>
                         </div>
                     </div>
@@ -880,11 +879,6 @@
                 card.dataset.teamOrderIndex = String(teamNumber === 1 ? index : teamState.team1Capacity + index);
                 card.classList.remove('team-player-card-ally', 'team-player-card-enemy', 'team-player-card-neutral');
                 card.classList.add(`team-player-card-${tone}`);
-                const chip = card.querySelector('.player-team-chip');
-                if (chip) {
-                    chip.className = `player-team-chip player-team-chip-${tone}`;
-                    chip.textContent = getTeamDisplayName(teamNumber);
-                }
             });
         }
 
@@ -2061,6 +2055,13 @@
 
         function startReconnectDisconnectTimer() {
             clearReconnectDisconnectTimer();
+            // A backgrounded mobile tab suspends JS and drops the socket; counting
+            // that as "failed to reconnect" kicked users out of the lobby. Only
+            // count disconnect time while the page is visible — the visibilitychange
+            // listener restarts the countdown when the user comes back.
+            if (document.hidden) {
+                return;
+            }
             reconnectDisconnectTimer = window.setTimeout(() => {
                 if (state.wsConnected || state.disconnectingForReconnectTimeout) {
                     return;
@@ -2069,6 +2070,14 @@
                 disconnectForReconnectTimeout();
             }, reconnectDisconnectDelayMs);
         }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearReconnectDisconnectTimer();
+            } else if (!state.wsConnected && !state.disconnectingForReconnectTimeout) {
+                startReconnectDisconnectTimer();
+            }
+        });
 
         function clearReconnectDisconnectTimer() {
             if (!reconnectDisconnectTimer) {

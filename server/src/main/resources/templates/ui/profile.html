@@ -2,6 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -94,18 +95,35 @@
             <div class="profile-history-stats">
                 <div class="profile-summary-card profile-summary-stack">
                     <span class="summary-label">Games played</span>
-                    <span class="summary-value" th:text="${profile.getGamesPlayed()}" id="games_played">0</span>
+                    <span class="summary-value" th:text="${profile.getGamesPlayed()} ?: 0" id="games_played">0</span>
                 </div>
                 <div class="profile-summary-card profile-summary-stack">
                     <span class="summary-label">Games won</span>
-                    <span class="summary-value" th:text="${profile.getGamesWon()}" id="games_won">0</span>
+                    <span class="summary-value" th:text="${profile.getGamesWon()} ?: 0" id="games_won">0</span>
                 </div>
             </div>
             <div id="per-game-type" class="profile-game-grid">
-                <div class="profile-game-card" th:each="game: ${profile.getUserGamesStats() != null ? profile.getUserGamesStats().getGameStats() : null}">
-                    <span th:text="${game.getKey()}"></span> <br>
-                    Games played: <span th:text="${game.getValue().getPlayed()}"></span> <br>
-                    Games won: <span th:text="${game.getValue().getWins()}"></span>
+                <div class="profile-game-card profile-game-card--donut"
+                     th:each="game: ${profile.getUserGamesStats() != null ? profile.getUserGamesStats().getGameStats() : null}"
+                     th:with="winRate=${game.getValue().getPlayed() > 0 ? (game.getValue().getWins() * 100 + game.getValue().getPlayed() / 2) / game.getValue().getPlayed() : 0}">
+                    <span th:text="${game.getKey()}"></span>
+                    <div class="profile-game-card-row">
+                        <div class="profile-stat-donut" role="img"
+                             th:style="'--win-rate: ' + ${winRate}"
+                             th:attr="aria-label=${winRate + '% win rate'}">
+                            <span th:text="${winRate + '%'}"></span>
+                        </div>
+                        <div class="profile-game-card-counts">
+                            <div class="profile-stat-line">
+                                <strong th:text="${game.getValue().getPlayed()}">0</strong>
+                                <small>played</small>
+                            </div>
+                            <div class="profile-stat-line">
+                                <strong th:text="${game.getValue().getWins()}">0</strong>
+                                <small>won</small>
+                            </div>
+                        </div>
+                    </div>
                     <small class="profile-last-played"
                            th:attr="data-last-played-at=${game.getValue().getLastPlayedAt()}"
                            th:text="${game.getValue().getLastPlayedAt() != null ? 'Last played: Loading...' : 'Never played'}"></small>

@@ -753,12 +753,17 @@
 
             .lobby-title-row,
             .lobby-meta-row,
-            .player-row,
             .team-panel-header,
             .team-board-toolbar,
             .lobby-teams-bar {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            /* .player-row stays a row so the kick button sits on the far right
+               and the tile keeps a single-line height. */
+            .player-row {
+                gap: 0.5rem;
             }
 
             .team-panel {
@@ -767,6 +772,34 @@
 
             .lobby-meta-value {
                 text-align: left;
+            }
+
+            .mobile-chat-toggle {
+                display: grid;
+            }
+
+            /* Lobby chat floats over the page, toggled by the dock button. */
+            .lobby-chat-panel {
+                position: fixed;
+                left: 0.75rem;
+                right: 0.75rem;
+                /* Closed-state anchor only; while OPEN, mobileChatDock.js sets
+                   inline top/height straight from the visualViewport so the panel
+                   is always fully visible (keyboard, URL bar, scroll, zoom). */
+                bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+                height: min(56vh, 26rem);
+                min-height: 0;
+                z-index: 1450;
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(0.6rem);
+                transition: opacity 200ms ease, transform 200ms ease;
+            }
+
+            body.mobile-chat-open .lobby-chat-panel {
+                opacity: 1;
+                pointer-events: auto;
+                transform: none;
             }
         }
 

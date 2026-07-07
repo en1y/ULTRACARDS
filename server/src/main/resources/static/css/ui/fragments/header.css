@@ -30,6 +30,9 @@
   background: color-mix(in oklab, var(--color-bg) 85%, transparent);
   border-bottom: 1px solid var(--color-border);
   transition: transform 0.25s ease, background 0.2s ease, border-color 0.2s ease;
+  /* Own compositor layer: the blurred, transform-animated header must not
+     force repaints of itself (or the page) on every scroll frame. */
+  will-change: transform;
 }
 
 .uc-header.hidden {
@@ -610,14 +613,24 @@ body.friends-drawer-open .uc-header.hidden {
   background: color-mix(in oklab, var(--color-surface) 58%, var(--color-bg));
 }
 
+/* Inside a game card the played/won/lost tiles collapse to one compact row
+   each (number right, label left) so the card stays short next to the donut. */
 .header-user-game-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.35rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.15rem;
 }
 
 .header-user-game-stats .header-user-profile-stat {
-  padding: 0.45rem;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.1rem 0.2rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .header-user-game-stats .header-user-profile-stat strong {
@@ -982,12 +995,11 @@ body.friends-drawer-open .uc-header.hidden {
 
 .friends-drawer {
   position: fixed;
-  top: var(--header-height);
+  top: var(--uc-header-h, var(--header-height));
   right: 0;
   z-index: 900;
   width: var(--friends-drawer-width);
-  height: calc(100vh - var(--header-height));
-  height: calc(100svh - var(--header-height));
+  height: calc(100svh - var(--uc-header-h, var(--header-height)));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1002,11 +1014,17 @@ body.friends-drawer-open .uc-header.hidden {
   border-left: 1px solid var(--color-border);
   box-shadow: -18px 0 42px var(--color-shadow);
   transform: translateX(105%);
-  transition: transform 0.22s ease;
+  /* visibility flips AFTER the slide-out so the close animation still plays;
+     while closed the drawer (its gradient, 42px shadow and blurred head) costs
+     zero paint per scroll frame — it lagged scrolling on Firefox Android. */
+  visibility: hidden;
+  transition: transform 0.22s ease, visibility 0s linear 0.22s;
 }
 
 .friends-shell.open .friends-drawer {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.22s ease, visibility 0s;
 }
 
 .friends-drawer-head {
@@ -1255,14 +1273,21 @@ body.friends-drawer-open .uc-header.hidden {
 .friend-chat-shell .chat-message {
   display: grid;
   gap: 0.2rem;
+  justify-items: start;
   justify-self: start;
   width: fit-content;
   max-width: min(100%, 18rem);
 }
 
 .friend-chat-shell .chat-message.is-own {
+  justify-items: end;
   justify-self: end;
   align-self: flex-end;
+}
+
+/* The bubble hugs its text — never stretched to the meta row's width. */
+.friend-chat-shell .chat-bubble {
+  width: fit-content;
 }
 
 .friend-chat-shell .chat-message.is-new {
@@ -1400,6 +1425,15 @@ body.friends-drawer-open .uc-header.hidden {
   height: 14px;
 }
 
+/* Theme toggle is a mobile-only control; on desktop (matching the header's own
+   880px mobile breakpoint) it's hidden. Scoped to the main toggle so the
+   notification-popup toggle inside the tray is unaffected. */
+@media (min-width: 881px) {
+  .theme-toggle[data-action="toggle-theme"] {
+    display: none;
+  }
+}
+
 [data-theme="dark"] .theme-toggle:not(.notification-popup-toggle) .theme-toggle-thumb {
   transform: translateX(26px);
 }
@@ -1532,6 +1566,16 @@ body.friends-drawer-open .uc-header.hidden {
     --header-action-gap: 0.45rem;
   }
 
+  .uc-brand {
+    /* ponytail: shrink instead of ellipsis so the full wordmark fits next to the actions */
+    font-size: clamp(0.95rem, 4.5vw, 1.8rem);
+    padding-inline: 0.5rem;
+  }
+
+  .login-label-suffix {
+    display: none;
+  }
+
   .header-icon-button {
     width: 36px;
     height: 36px;
@@ -1584,24 +1628,56 @@ body.friends-drawer-open .uc-header.hidden {
     justify-items: start;
   }
 
-  .header-user-profile-stats,
-  .header-user-game-stats {
+  .header-user-profile-stats {
     grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .header-user-profile-stats .header-user-profile-stat {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .header-user-profile-stats .header-user-profile-stat strong {
+    font-size: 1.05rem;
   }
 
   .friends-drawer {
     width: 100vw;
-  }
-
-  .friend-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .friend-actions {
-    justify-content: space-between;
+    /* The keyboard overlays the page (layout never resizes); shrink the drawer
+       by the published keyboard height so its chat input stays above it. */
+    height: calc(100dvh - var(--uc-header-h, var(--header-height)) - var(--kb-offset, 0px));
+    transition: transform 0.22s ease, height 160ms ease-out;
   }
 
   .friend-chat-shell .chat-form {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .friend-chat-shell .chat-form button {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .friend-chat-shell .chat-form button span {
+    display: none;
+  }
+
+  /* Full-width drawer has room: keep name left, action icons right on ONE line
+     instead of wrapping the icons onto a second row. */
+  .friend-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .friend-actions {
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 }
