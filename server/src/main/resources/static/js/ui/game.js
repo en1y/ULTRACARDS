@@ -425,10 +425,11 @@
         const baseHeight = resolved.options.cardHeight || sample?.offsetHeight || baseWidth * 1.38;
         const available = Math.max(rect.width - baseWidth, baseWidth);
         const zoneType = resolved.options.type || resolved.options.zoneType || element.dataset.zoneType;
-        // Optional FIXED slot count: when set, cards occupy fixed slots (by index)
-        // that never re-center as more cards are added — so e.g. a played card flies
-        // straight to its side slot instead of centering first. Hand zones omit it.
-        const slots = Math.max(Number(resolved.options.slotTotal) || 0, total);
+        // Optional fixed slot count reserves the full footprint. Fan zones still center
+        // partial hands, so 1-2 cards do not sit in the left side of a 3-card fan.
+        const fixedSlots = Number(resolved.options.slotTotal) || 0;
+        const slots = Math.max(fixedSlots, total);
+        const positionSlots = zoneType === 'fan' ? Math.max(total, 1) : slots;
         // Tighter, overlap-based spacing — flexible for any card count.
         const spacingScale = resolved.options.spacingScale ?? (zoneType === 'center' ? 0.45 : 0.4);
         const naturalSpacing = baseWidth * spacingScale;
@@ -445,8 +446,8 @@
         }
 
         layoutItems.forEach((item, index) => {
-            const centered = index - ((slots - 1) / 2);
-            const normalized = slots > 1 ? centered / ((slots - 1) / 2) : 0;
+            const centered = index - ((positionSlots - 1) / 2);
+            const normalized = positionSlots > 1 ? centered / ((positionSlots - 1) / 2) : 0;
             const x = centered * spacing;
             const y = Math.abs(normalized) * yArc + baseOffsetY;
             const rotation = normalized * maxTilt;
@@ -1247,12 +1248,11 @@
             revealCardFace(cardEl, cardData);
             return Promise.resolve();
         }
-        if (prefersReducedMotion()) {
+        if (prefersReducedMotion() || !gsap) {
             revealCardFace(cardEl, cardData);
-            return Promise.resolve();
-        }
-        if (!gsap) {
-            revealCardFace(cardEl, cardData);
+            // showBack() may have left an inline rotateY(0) on .card-inner; without
+            // a flip tween to overwrite it, it would keep the back on top forever.
+            inner.style.transform = '';
             return Promise.resolve();
         }
         const dur = 0.20;

@@ -67,6 +67,10 @@
         return !nonTextTypes.has(target.type);
     }
 
+    function isTouchPrimary() {
+        return window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
+    }
+
     function create(config) {
         const state = {
             chat: config.initialChat || {messages: [], isOpen: true},
@@ -102,10 +106,11 @@
         }
 
         function syncComposer() {
-            const disabled = !state.chat?.isOpen || state.sending;
-            dom.input.disabled = disabled;
+            const closed = !state.chat?.isOpen;
+            dom.input.disabled = closed;
+            dom.input.readOnly = false;
             dom.input.placeholder = state.chat?.isOpen ? 'Send a message' : 'Chat is closed';
-            dom.send.disabled = disabled;
+            dom.send.disabled = closed || state.sending;
         }
 
         function showMessageTooLongPopup() {
@@ -250,7 +255,9 @@
                 if (!response.ok) {
                     throw new Error(`chat failed: ${response.status}`);
                 }
-                dom.input.value = '';
+                if (dom.input.value.trim() === message) {
+                    dom.input.value = '';
+                }
                 const contentType = response.headers.get('Content-Type') || '';
                 if (contentType.includes('application/json')) {
                     state.chat = await response.json();
@@ -260,7 +267,7 @@
             } finally {
                 state.sending = false;
                 syncComposer();
-                if (shouldRefocus) {
+                if (shouldRefocus && !isTouchPrimary()) {
                     dom.input.focus();
                 }
             }
@@ -269,6 +276,12 @@
         dom.form.addEventListener('submit', async (event) => {
             event.preventDefault();
             await sendMessage();
+        });
+
+        dom.send.addEventListener('pointerdown', (event) => {
+            if (isTouchPrimary() && document.activeElement === dom.input) {
+                event.preventDefault();
+            }
         });
 
         dom.input.addEventListener('input', () => {

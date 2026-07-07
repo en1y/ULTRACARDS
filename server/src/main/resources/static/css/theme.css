@@ -121,6 +121,17 @@ textarea {
   transform: translateY(1px);
 }
 
+@media (hover: none) and (pointer: coarse) {
+  :where(a, button, .btn, [role="button"]) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :where(a, button, .btn, [role="button"]):focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
 :where(button, .btn):has(.uc-icon) {
   display: inline-flex;
   align-items: center;

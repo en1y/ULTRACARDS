@@ -397,7 +397,7 @@
         max-height: none;
         justify-content: space-between;
         gap: 0;
-        padding: 0.4rem 0 7rem;
+        padding: 0.4rem 0 8.5rem;
         z-index: 1;
     }
 
@@ -419,33 +419,93 @@
         z-index: 0;
     }
 
+    /* Full-width so the hand can centre while the identity badge anchors to the
+       far-left screen edge (the region otherwise shrinks to hug the hand). */
     html[data-game-ui="fullscreen"] #replay-seats-bottom {
         margin-top: 0;
+        width: 100%;
     }
 
-    /* The bottom player is "you": give their face-up hand real-hand sizing. */
+    /* The bottom player is "you": a wide face-up hand pinned to the bottom, with
+       the avatar + username + points grouped as a compact badge on the LEFT
+       (rather than stacked beneath the hand). Mirrors the live self-summary. */
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .player-seat {
+        position: relative;
+        display: block;
+        width: 100%;
+        padding-bottom: 0.2rem;
+    }
+
     html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-card {
         width: clamp(52px, 15vw, 72px);
         margin-left: calc(clamp(52px, 15vw, 72px) * -0.42);
     }
 
+    /* The -0.42 rule above out-specifies the base first-child reset, so restore
+       it or the whole hand shifts off-centre (first card pulled left). */
+    html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-card:first-child {
+        margin-left: 0;
+    }
+
     html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-cards {
         min-width: 0;
         min-height: calc(clamp(52px, 15vw, 72px) * 1.82);
+        justify-content: center;
+        margin: 0 auto;
     }
 
-    /* Keep the deck clear of the side seats (3-4 player replays). */
+    /* Identity badge: avatar at far left, name above points to its right. */
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .seat-avatar {
+        position: absolute;
+        left: 0.6rem;
+        bottom: 0.5rem;
+        margin: 0;
+        z-index: 3;
+    }
+
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .seat-name {
+        position: absolute;
+        left: calc(1.05rem + var(--avatar-size));
+        bottom: calc(0.5rem + var(--avatar-size) * 0.52);
+        margin: 0;
+        max-width: 40vw;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        z-index: 3;
+    }
+
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .seat-points {
+        position: absolute;
+        left: calc(1.05rem + var(--avatar-size));
+        bottom: 0.5rem;
+        margin: 0;
+        justify-content: flex-start;
+        z-index: 3;
+    }
+
+    /* The play area (trick + deck) sits in the gap between the top seat and the
+       bottom player's face-up hand — otherwise both drop into that hand. */
+    html[data-game-ui="fullscreen"] .is-replay .table-center {
+        top: 40%;
+    }
+
     html[data-game-ui="fullscreen"] .is-replay .deck-stack {
-        top: 58%;
+        top: 40%;
+    }
+
+    html[data-game-ui="fullscreen"] .is-replay.is-two-player .deck-stack,
+    html[data-game-ui="fullscreen"] .is-replay.is-four-player .deck-stack {
+        top: 16%;
     }
 
     /* Controls become a floating bar over the felt's bottom edge. */
     html[data-game-ui="fullscreen"] .history-replay-panel {
         position: absolute;
         left: 0.5rem;
-        right: 0.5rem;
         bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
-        width: auto;
+        width: calc(100% - 1rem);
         height: auto;
         z-index: 6;
     }

@@ -681,15 +681,33 @@
             width: 252px;
             height: 252px;
             padding: 1.15rem 1.35rem;
-            border: 1px solid rgba(240, 180, 77, 0.7);
+            border: 1px solid rgba(240, 180, 77, 0.8);
             background:
-                radial-gradient(circle at 30% 28%, rgba(255, 229, 156, 0.28), transparent 52%),
-                linear-gradient(155deg, rgba(102, 42, 20, 0.94), rgba(34, 12, 8, 0.92));
+                radial-gradient(circle at 50% 30%, rgba(255, 233, 165, 0.34), transparent 55%),
+                linear-gradient(160deg, rgba(120, 52, 24, 0.96), rgba(30, 11, 7, 0.95));
             color: #fff4d3;
             box-shadow:
-                0 0 0 8px rgba(240, 180, 77, 0.14),
-                0 24px 48px rgba(0, 0, 0, 0.34);
+                0 0 0 6px rgba(240, 180, 77, 0.16),
+                0 0 34px 6px rgba(240, 180, 77, 0.26),
+                0 24px 48px rgba(0, 0, 0, 0.4);
             z-index: 5;
+            overflow: visible;
+            /* Smooth pop-in, then a gently breathing golden halo. */
+            animation:
+                result-pop 520ms cubic-bezier(.2, .86, .28, 1.12) both,
+                result-halo 2.6s ease-in-out 560ms infinite;
+        }
+
+        /* Trophy medallion crowning the result disc. */
+        .drop-zone.is-result::before {
+            content: "🏆";
+            position: absolute;
+            top: -0.85rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+            animation: result-trophy 2.6s ease-in-out 560ms infinite;
         }
 
         .drop-zone.is-result.ready {
@@ -710,7 +728,7 @@
             line-height: 1.24;
             font-weight: 900;
             color: #fffaf1;
-            text-shadow: 0 4px 18px rgba(0, 0, 0, 0.32);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 0 18px rgba(240, 180, 77, 0.35);
         }
 
         .drop-zone-meta {
@@ -1394,6 +1412,50 @@
             }
         }
 
+        /* ===== WINNER RESULT MEDALLION ===== */
+
+        @keyframes result-pop {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.55);
+            }
+            60% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes result-halo {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 6px rgba(240, 180, 77, 0.16),
+                    0 0 34px 6px rgba(240, 180, 77, 0.26),
+                    0 24px 48px rgba(0, 0, 0, 0.4);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 10px rgba(240, 180, 77, 0.22),
+                    0 0 52px 12px rgba(240, 180, 77, 0.42),
+                    0 24px 48px rgba(0, 0, 0, 0.4);
+            }
+        }
+
+        @keyframes result-trophy {
+            0%, 100% { transform: translateX(-50%) translateY(0) rotate(-4deg); }
+            50% { transform: translateX(-50%) translateY(-3px) rotate(4deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .drop-zone.is-result,
+            .drop-zone.is-result::before {
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
+
         /* ===== CARD FLIP STRUCTURE ===== */
 
         .card-wrap {
@@ -1872,8 +1934,19 @@
                 padding: 0;
             }
 
+            /* The board fills the viewport — lock the page so there's nothing to
+               scroll to (the footer is hidden). Classic mode keeps its footer. */
+            html[data-game-ui="fullscreen"] body.game-page {
+                overflow: hidden;
+                height: 100svh;
+            }
+
+            html[data-game-ui="fullscreen"] body.game-page .footer {
+                display: none;
+            }
+
             html[data-game-ui="fullscreen"] .game-layout:not(.is-replay) {
-                --avatar-size: clamp(44px, 12vw, 56px);
+                --avatar-size: clamp(38px, 9.5vw, 48px);
             }
 
             html[data-game-ui="fullscreen"] #game-container {
@@ -1937,37 +2010,71 @@
                 min-height: calc(var(--hand-card-width) * 1.48);
             }
 
-            /* --- Opponent seats: backs fanned behind the avatar --- */
+            /* --- Opponent seats: a compact cluster — avatar on top, name, then
+               the card-backs fanned BELOW it (toward the table), points last.
+               Cards flow under the avatar (never above it). --- */
 
             html[data-game-ui="fullscreen"] .player-ring .player-seat {
-                width: clamp(88px, 26vw, 128px);
+                width: clamp(84px, 24vw, 118px);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            html[data-game-ui="fullscreen"] .player-ring .seat-name {
+                font-size: 0.66rem;
+                margin-top: 0.3rem;
+                order: 1;
             }
 
             html[data-game-ui="fullscreen"] .player-ring .seat-avatar {
-                z-index: 2;
+                order: 0;
             }
 
+            html[data-game-ui="fullscreen"] .player-ring .seat-team-badge {
+                order: 2;
+            }
+
+            /* Card-backs sit directly beneath the avatar/name (order 3), points
+               below them (order 4). No 180° flip here (classic uses it because
+               seats ring an oval table) — in the flat top layout that just tilts
+               the fan off to the side, so keep it a plain downward fan centred
+               under the avatar. */
             html[data-game-ui="fullscreen"] .player-ring .seat-cards {
-                position: absolute;
-                top: calc(var(--avatar-size) * -0.45);
-                left: 50%;
-                margin: 0;
-                transform: translateX(-50%) rotate(var(--hand-rotate));
-                z-index: 1;
+                order: 3;
+                margin: 0.55rem 0 0;
+                transform: none;
+            }
+
+            html[data-game-ui="fullscreen"] .player-ring .seat-points {
+                order: 4;
+                margin-top: 0.3rem;
             }
 
             html[data-game-ui="fullscreen"] .player-ring .seat-card {
-                width: clamp(24px, 8vw, 34px);
-                margin-left: -10px;
+                width: clamp(26px, 7vw, 34px);
+                margin-left: -15px;
+            }
+
+            /* This rule out-specifies the base `.seat-card:first-child` reset, so
+               without restoring it the FIRST card also gets pulled -15px and the
+               whole fan shifts off-centre (sticking out to the left). */
+            html[data-game-ui="fullscreen"] .player-ring .seat-card:first-child {
+                margin-left: 0;
             }
 
             /* Teammate's revealed hand (2v2, deck exhausted): face-up minis. */
             html[data-game-ui="fullscreen"] .player-ring .seat-card.teammate-open-card {
-                width: clamp(34px, 11vw, 46px);
-                margin-left: -12px;
+                width: clamp(32px, 9vw, 44px);
+                margin-left: -13px;
             }
 
-            /* --- Deck: tucked into the RIGHT screen edge, trump peeking out --- */
+            html[data-game-ui="fullscreen"] .player-ring .seat-card.teammate-open-card:first-child {
+                margin-left: 0;
+            }
+
+            /* --- Deck: tucked into the RIGHT screen edge (hangs slightly off it),
+               trump peeking toward the table, count beneath the pile. --- */
 
             html[data-game-ui="fullscreen"] .deck-stack {
                 right: 0;
@@ -1979,13 +2086,15 @@
                 transform: translate(30%, -50%) scale(0.9);
             }
 
-            /* Count sits beside the deck (toward the table), not under it. */
+            /* Deck hangs off the right edge, so anchor the count to the LEFT of the
+               pile (toward the table) where it stays fully on-screen and clear of
+               the trump that peeks out below-left. */
             html[data-game-ui="fullscreen"] .deck-count-bubble {
-                top: 50%;
+                top: auto;
+                bottom: 0;
                 left: auto;
-                right: 100%;
-                transform: translateY(-50%);
-                margin-right: 4px;
+                right: calc(var(--deck-tower-width) - 6px);
+                transform: none;
             }
 
             /* --- Table center / messaging --- */
@@ -2000,15 +2109,35 @@
             html[data-game-ui="fullscreen"] .table-turn-overlay {
                 left: 12%;
                 right: 12%;
+                /* Sit well above the bottom hand fan (which can rise when a card is
+                   raised/dragged) so the pill is never hidden behind the cards. */
                 bottom: 31%;
             }
 
-            /* --- Round-history toggle rides the LEFT edge (deck mirrors right) --- */
+            /* --- Self summary: compact pill in the top-left corner (mirrors the
+               opponent top-centre), out of the hand's way. --- */
+
+            html[data-game-ui="fullscreen"] .player-summary {
+                position: fixed;
+                top: calc(var(--header-height) + 0.4rem);
+                left: 0.5rem;
+                margin: 0;
+                z-index: 9;
+            }
+
+            html[data-game-ui="fullscreen"] .player-summary-card {
+                min-width: 0;
+                padding: 0.26rem 0.55rem;
+                gap: 0.4rem;
+            }
+
+            /* --- Round-history toggle: top-right corner; panel drops beneath it. --- */
 
             html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-toggle {
-                left: 0.55rem;
-                right: auto;
-                bottom: 42%;
+                left: auto;
+                right: 0.55rem;
+                top: 0.55rem;
+                bottom: auto;
                 transform: none;
             }
 
@@ -2017,7 +2146,38 @@
             }
 
             html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-panel {
-                bottom: 34%;
+                top: 3.1rem;
+                bottom: auto;
+            }
+
+            /* Top seats hug the screen edge — the teammate toggle hangs BELOW
+               the seat instead of poking up into the page header. High z-index so
+               nothing on the felt can ever cover it (always tappable). */
+            html[data-game-ui="fullscreen"] .player-seat > .teammate-hand-toggle {
+                bottom: auto;
+                top: 100%;
+                margin-bottom: 0;
+                margin-top: 0.4rem;
+                z-index: 14;
+            }
+
+            /* Teammate's hand opens as a bottom sheet near the player's own hand
+               (was anchored up by the teammate's seat) so the two are easy to
+               compare. Spans the width, slides up from the bottom. */
+            html[data-game-ui="fullscreen"] .table-surface > .teammate-hand-panel {
+                position: fixed;
+                left: 0.75rem;
+                right: 0.75rem;
+                top: auto;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 12rem);
+                width: auto;
+                max-width: none;
+                transform: translateY(10px);
+                z-index: 960;
+            }
+
+            html[data-game-ui="fullscreen"] .teammate-hand-panel.is-open {
+                transform: translateY(0);
             }
         }
 

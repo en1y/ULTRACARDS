@@ -177,13 +177,12 @@
         const teammateHandCardsEl = document.getElementById('teammate-hand-cards');
 
         if (teammateHandToggle && teammateHandPanel) {
+            // Predictable toggle: any tap cancels the auto-close preview and flips the
+            // panel open/closed, so the button always visibly responds.
             teammateHandToggle.addEventListener('click', () => {
-                // Clicking while the auto-preview timer is running just pins the panel
-                // open (cancels the auto-close) instead of toggling it shut.
                 if (state.teammateAutoCloseTimer) {
                     clearTimeout(state.teammateAutoCloseTimer);
                     state.teammateAutoCloseTimer = null;
-                    return;
                 }
                 if (teammateHandPanel.classList.contains('is-open')) {
                     closeTeammateHandPanel();
@@ -403,6 +402,11 @@
             TeammateHandStore.clear(gameId);
         }
         refreshTeammateHandButton();
+        // The initial applyGame ran before the cached reveal was loaded — re-render
+        // the seats so the teammate's face-up cards show right away.
+        if (state.game && Array.isArray(state.teammateCards) && state.teammateCards.length) {
+            renderPlayers(state.game);
+        }
         applyHand(window.__INITIAL_HAND__ || []);
         connectWs();
 
@@ -719,7 +723,9 @@
 
         function renderCenterResult(title, winnersText, metaText) {
             if (!dom.dropZone) return;
+            const entering = !dom.dropZone.classList.contains('is-result');
             dom.dropZone.classList.remove('ready');
+            if (entering) void dom.dropZone.offsetWidth;
             dom.dropZone.classList.add('is-result');
             dom.dropZone.innerHTML = `
                 <div class="drop-zone-title">${title || 'Match Result'}</div>
@@ -1703,21 +1709,21 @@
                 // Full-bleed felt: the classic ring hangs side seats at -3%/103%,
                 // which would put them off screen — keep everyone fully visible.
                 if (count <= 2) {
-                    return {x: 50, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'};
+                    return {x: 50, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'};
                 }
                 if (count === 3) {
                     const slots = [
                         {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
-                        {x: 26, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'},
-                        {x: 74, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'}
+                        {x: 26, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'},
+                        {x: 74, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'}
                     ];
                     return slots[index] || slots[1];
                 }
                 const slots = [
                     {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
-                    {x: 13, y: 26, nudgeX: 0, nudgeY: 0, side: 'left'},
-                    {x: 50, y: 9, nudgeX: 0, nudgeY: 0, side: 'top'},
-                    {x: 87, y: 26, nudgeX: 0, nudgeY: 0, side: 'right'}
+                    {x: 14, y: 30, nudgeX: 0, nudgeY: 0, side: 'left'},
+                    {x: 50, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'},
+                    {x: 86, y: 30, nudgeX: 0, nudgeY: 0, side: 'right'}
                 ];
                 return slots[index] || slots[index % slots.length];
             }
