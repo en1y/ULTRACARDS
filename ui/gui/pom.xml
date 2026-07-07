@@ -20,6 +20,13 @@
     </properties>
 
     <dependencies>
+        <!--        Gateway client dependencies       -->
+        <dependency>
+            <groupId>en1y.ultracards</groupId>
+            <artifactId>game-gateway</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!--        Games dependencies       -->
         <dependency>
             <groupId>en1y.ultracards.games</groupId>

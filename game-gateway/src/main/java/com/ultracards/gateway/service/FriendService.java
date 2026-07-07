@@ -50,6 +50,10 @@ public class FriendService {
     }
 
     public List<FriendDTO> getBlockedFriends() {
+        return getBlockedUsers();
+    }
+
+    public List<FriendDTO> getBlockedUsers() {
         var response = restTemplate.exchange(
                 serverUrl + "api/friends/blocked",
                 HttpMethod.GET,

@@ -30,7 +30,7 @@ public class AuthenticationService {
                                  ClientTokenHolder clientTokenHolder,
                                  TokenManager tokenManager) {
         this.restTemplate = restTemplate;
-        this.serverUrl = serverUrl;
+        this.serverUrl = serverUrl.endsWith("/") ? serverUrl : serverUrl + "/";
         this.clientTokenHolder = clientTokenHolder;
         this.tokenManager = tokenManager;
     }
@@ -53,7 +53,7 @@ public class AuthenticationService {
             @NotBlank String username) {
         var entity = new HttpEntity<>(new UsernameDTO(username), tokenManager.authHeaders(tokenHolder));
         var response = restTemplate.exchange(
-                serverUrl + "api/auth/username",
+                serverUrl + "api/profile/username",
                 HttpMethod.PUT,
                 entity,
                 UsernameDTO.class
@@ -66,7 +66,7 @@ public class AuthenticationService {
     public UsernameDTO getUsername (@NotNull ClientTokenHolder tokenHolder) {
         var entity = new HttpEntity<>(tokenManager.authHeaders(tokenHolder));
         var response = restTemplate.exchange(
-                serverUrl + "api/auth/username",
+                serverUrl + "api/profile/username",
                 HttpMethod.GET,
                 entity,
                 UsernameDTO.class
@@ -140,7 +140,7 @@ public class AuthenticationService {
         var entity = new HttpEntity<>(tokenManager.authHeaders(tokenHolder));
 
         var response = restTemplate.exchange(
-                serverUrl + "api/auth/profile",
+                serverUrl + "api/profile",
                 HttpMethod.GET,
                 entity,
                 ProfileDTO.class
@@ -161,7 +161,7 @@ public class AuthenticationService {
     ) {
         var entity = new HttpEntity<>(profileDTO, tokenManager.jsonHeaders(tokenHolder));
         var response = restTemplate.postForEntity(
-                serverUrl + "api/auth/profile",
+                serverUrl + "api/profile",
                 entity,
                 ProfileDTO.class
         );
