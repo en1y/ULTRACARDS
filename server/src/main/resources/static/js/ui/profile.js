@@ -1,11 +1,3 @@
-(() => {
-    const storageKey = 'uc-theme';
-    const savedTheme = localStorage.getItem(storageKey);
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = savedTheme || (systemDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-})();
-
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PROFILE_STATUS_TIMEOUT_MS = 3200;
 let profileStatusTimer = null;
@@ -254,26 +246,6 @@ function setSessionsStatus(message, type) {
 
 function clearSessionsStatus() {
     clearAnimatedStatus('session-toast');
-}
-
-function formatInstant(value) {
-    if (!value) {
-        return 'Unavailable';
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return 'Unavailable';
-    }
-
-    return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    }).format(date);
 }
 
 function formatSessionCardInstant(value) {

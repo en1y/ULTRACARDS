@@ -1,12 +1,4 @@
 (() => {
-            const storageKey = 'uc-theme';
-            const savedTheme = localStorage.getItem(storageKey);
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (systemDark ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-
-(() => {
         const lobbyPage = document.getElementById('lobby-page');
         const initialLobby = window.__INITIAL_LOBBY__ ?? null;
         const initialChat = window.__INITIAL_LOBBY_CHAT__ ?? null;
@@ -1445,14 +1437,6 @@
             if (previousRects) {
                 animatePlayerCardsFromRects(previousRects);
             }
-        }
-
-        function capturePlayerListSignature() {
-            const cards = dom.players?.querySelectorAll('[data-player-card]');
-            if (!cards?.length) {
-                return null;
-            }
-            return [...cards].map((card) => card.dataset.playerCard).join(',');
         }
 
         function buildPlayerListSignature(orderedPlayersOrIds) {

@@ -1,10 +1,4 @@
 (() => {
-    const storageKey = 'uc-theme';
-    const savedTheme = localStorage.getItem(storageKey);
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = savedTheme || (systemDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-
     // Reclaim space from the old localStorage card-image cache (now browser-cached).
     try {
         for (let i = localStorage.length - 1; i >= 0; i--) {
