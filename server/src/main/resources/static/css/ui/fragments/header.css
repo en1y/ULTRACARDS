@@ -1531,6 +1531,12 @@ body.friends-drawer-open .uc-header.hidden {
   background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
 }
 
+@media (min-width: 881px) {
+  .profile-dropdown .game-ui-menu-item {
+    display: none;
+  }
+}
+
 .uc-header button:hover,
 .uc-header .btn:hover,
 .uc-header .uc-brand:hover {
