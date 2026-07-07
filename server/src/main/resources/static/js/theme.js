@@ -64,16 +64,24 @@ const toggleTheme = () => {
 // localStorage; theme-preload.js applies it before first paint, this keeps the
 // header menu label in sync and lets the user flip it.
 const gameUiKey = 'uc-game-ui';
+const gameUiDefaultKey = 'uc-game-ui-default-fullscreen-v1';
 
-const getGameUiMode = () => (localStorage.getItem(gameUiKey) === 'classic' ? 'classic' : 'fullscreen');
+const getGameUiMode = () => {
+    if (localStorage.getItem(gameUiDefaultKey) !== '1') {
+        localStorage.setItem(gameUiKey, 'fullscreen');
+        localStorage.setItem(gameUiDefaultKey, '1');
+    }
+    return localStorage.getItem(gameUiKey) === 'classic' ? 'classic' : 'fullscreen';
+};
 
 const syncGameUiLabel = () => {
     document.querySelectorAll('[data-game-ui-label]').forEach((label) => {
-        label.textContent = `Mobile table: ${getGameUiMode() === 'classic' ? 'Classic' : 'Fullscreen'}`;
+        label.textContent = `Table display: ${getGameUiMode() === 'classic' ? 'Classic' : 'Fullscreen'}`;
     });
 };
 
 const applyGameUiMode = (mode) => {
+    localStorage.setItem(gameUiDefaultKey, '1');
     localStorage.setItem(gameUiKey, mode);
     root.setAttribute('data-game-ui', mode);
     syncGameUiLabel();
