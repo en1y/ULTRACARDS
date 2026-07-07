@@ -1,28 +1,24 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.games.games.GameEntityDTO;
-import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
-import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
+import com.ultracards.gateway.dto.games.chat.ChatDTO;
+import com.ultracards.gateway.dto.games.chat.ChatMessageDTO;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-import java.util.UUID;
-
 @Service
-public class GameService {
+public class ChatService {
     private final RestTemplate restTemplate;
     private final String serverUrl;
     private final ClientTokenHolder tokenHolder;
     private final TokenManager tokenManager;
 
     @Autowired
-    public GameService(RestTemplate restTemplate,
+    public ChatService(RestTemplate restTemplate,
                        @Qualifier("serverUrl") String serverUrl,
                        ClientTokenHolder tokenHolder,
                        TokenManager tokenManager) {
@@ -32,61 +28,61 @@ public class GameService {
         this.tokenManager = tokenManager;
     }
 
-    public GameService(RestTemplate restTemplate,
+    public ChatService(RestTemplate restTemplate,
                        @Qualifier("serverUrl") String serverUrl,
                        ClientTokenHolder tokenHolder) {
         this(restTemplate, serverUrl, tokenHolder, new TokenManager(tokenHolder));
     }
 
-    public BriskulaGameHistoryDTO getGame(UUID gameId) {
-        return getGameHistory(gameId);
-    }
-
-    public BriskulaGameHistoryDTO getGameHistory(UUID gameId) {
+    public ChatDTO getLobbyChat() {
         var response = restTemplate.exchange(
-                serverUrl + "api/games/history/" + gameId,
+                serverUrl + "api/chat",
                 HttpMethod.GET,
                 new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                BriskulaGameHistoryDTO.class
+                ChatDTO.class
         );
         tokenManager.updateToken(tokenHolder, response);
         return response.getBody();
     }
 
-    public GameEntityDTO getGameByLobby(UUID lobbyId) {
-        var response = restTemplate.exchange(
-                serverUrl + "api/games/lobby/" + lobbyId,
-                HttpMethod.GET,
-                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                GameEntityDTO.class
-        );
-        tokenManager.updateToken(tokenHolder, response);
-        return response.getBody();
-    }
-
-    public List<ShortGameHistoryDTO> getPastGames() {
-        return getPastGames(0, "both", "latest");
-    }
-
-    public List<ShortGameHistoryDTO> getPastGames(int offset, String result, String timeSort) {
-        var response = restTemplate.exchange(
-                serverUrl + "api/games/history?offset=" + offset + "&result=" + result + "&timeSort=" + timeSort,
-                HttpMethod.GET,
-                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                new ParameterizedTypeReference<List<ShortGameHistoryDTO>>() {}
-        );
-        tokenManager.updateToken(tokenHolder, response);
-        return response.getBody();
-    }
-
-    public boolean deleteGame() {
-        var response = restTemplate.exchange(
-                serverUrl + "api/games",
-                HttpMethod.DELETE,
-                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+    public boolean sendLobbyMessage(@Valid ChatMessageDTO message) {
+        var response = restTemplate.postForEntity(
+                serverUrl + "api/chat",
+                new HttpEntity<>(message, tokenManager.jsonHeaders(tokenHolder)),
                 Void.class
         );
         tokenManager.updateToken(tokenHolder, response);
         return response.getStatusCode().is2xxSuccessful();
+    }
+
+    public ChatDTO getFriendChat(Long friendUserId) {
+        var response = restTemplate.exchange(
+                serverUrl + "api/chat/friends/" + friendUserId,
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                ChatDTO.class
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
+    }
+
+    public ChatDTO sendFriendMessage(Long friendUserId, @Valid ChatMessageDTO message) {
+        var response = restTemplate.postForEntity(
+                serverUrl + "api/chat/friends/" + friendUserId,
+                new HttpEntity<>(message, tokenManager.jsonHeaders(tokenHolder)),
+                ChatDTO.class
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
+    }
+
+    public ChatDTO readAllFriendMessages(Long friendUserId) {
+        var response = restTemplate.postForEntity(
+                serverUrl + "api/chat/friends/" + friendUserId + "/read-all",
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                ChatDTO.class
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
     }
 }
