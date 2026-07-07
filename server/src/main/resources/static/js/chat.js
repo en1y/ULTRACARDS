@@ -138,24 +138,6 @@
                 && !isTextEntryTarget(event.target);
         }
 
-        function scrollToBottom() {
-            const applyScroll = () => {
-                dom.messages.scrollTo({
-                    top: dom.messages.scrollHeight,
-                    left: 0,
-                    behavior: 'smooth'
-                });
-            };
-
-            applyScroll();
-            window.requestAnimationFrame(() => {
-                applyScroll();
-                window.requestAnimationFrame(applyScroll);
-            });
-            window.setTimeout(applyScroll, 0);
-            window.setTimeout(applyScroll, 120);
-        }
-
         function scheduleInitialAutoScroll() {
             if (!state.initialAutoScroll) {
                 return;

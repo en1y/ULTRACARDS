@@ -158,7 +158,6 @@
             || (wrap.dataset.cardCode ? {cardType: wrap.dataset.cardType, card: wrap.dataset.cardCode} : null);
         wrap.cardApi = {
             el: wrap,
-            reveal(c) { revealCardFace(wrap, resolveCardData(c)); },
             flip(c) { return flipCardReveal(wrap, resolveCardData(c)); },
             showBack() {
                 wrap.dataset.cardFace = 'false';
@@ -166,8 +165,7 @@
                     if (gsap) gsap.set(inner, {rotateY: 0});
                     else inner.style.transform = 'rotateY(0deg)';
                 }
-            },
-            isFaceUp() { return wrap.dataset.cardFace === 'true'; }
+            }
         };
         return wrap;
     }
@@ -480,20 +478,6 @@
         return layoutItems.map((item) => item.el);
     }
 
-    function captureRects(zone) {
-        const resolved = getZone(zone);
-        if (!resolved) return new Map();
-        const rects = new Map();
-        Array.from(resolved.element.children).forEach((el) => {
-            if (el.nodeType !== 1) return;
-            rects.set(el, {
-                rect: el.getBoundingClientRect(),
-                transform: getComputedStyle(el).transform === 'none' ? '' : getComputedStyle(el).transform
-            });
-        });
-        return rects;
-    }
-
     function animateFromRect(el, firstRect, lastRect, duration) {
         if (!el || !firstRect || !lastRect) return Promise.resolve();
         const dx = firstRect.left - lastRect.left;
@@ -694,13 +678,6 @@
         clone.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0) rotate(${options?.fromRot || '0deg'})`;
         ensureOverlayLayer().appendChild(clone);
         return {clone, rect};
-    }
-
-    function getReservedTargetRect(toZone, toIndex) {
-        const resolved = getZone(toZone);
-        if (!resolved) return null;
-        const placeholder = reserveSlot(resolved, toIndex);
-        return placeholder?.getBoundingClientRect() || resolved.element.getBoundingClientRect();
     }
 
     function animateOverlayToRect(clone, fromRect, toRect, options) {
@@ -1220,7 +1197,7 @@
         return interactable;
     }
 
-    function markCardReturning(hand, cardKeyValue, options) {
+    function markCardReturning(hand, cardKeyValue) {
         if (!hand || !cardKeyValue) return;
         const el = hand.querySelector(`[data-card-key="${CSS.escape(cardKeyValue)}"]`);
         if (!el) return;

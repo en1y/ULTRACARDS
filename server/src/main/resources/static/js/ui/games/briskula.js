@@ -1176,10 +1176,6 @@
             });
         }
 
-        function applyHandFan(cards) {
-            window.UltracardsGameUi?.applyHandFan(cards);
-        }
-
         function createHandCard(card, isTurn) {
             const wrap = window.UltracardsGameUi?.createCard({
                 card,
@@ -1974,10 +1970,6 @@
             return window.UltracardsGameUi?.italianCardUrl(code) || '';
         }
 
-        function italianBackUrl() {
-            return window.UltracardsGameUi?.cardBackUrl('ITALIAN') || '/api/cards/italian/back';
-        }
-
         function playerSeatKey(player) {
             if (!player) return '';
             if (player.id != null) return `id:${player.id}`;
@@ -2131,10 +2123,6 @@
                 // the card can never be left mid-deal (stuck offset, stranded).
                 setTimeout(() => finish(el, card, isLast), 520 + index * 80 + 350);
             });
-        }
-
-        function createDealFlipCard(incomingCard) {
-            return window.UltracardsGameUi?.createDealFlipCard(incomingCard, 'ITALIAN') || document.createElement('div');
         }
 
         function parsePlayerKey(key) {
