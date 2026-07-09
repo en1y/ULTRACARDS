@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,12 +20,12 @@
         <aside class="card lobby-panel lobby-members-panel">
             <div class="lobby-title-row">
                 <div>
-                    <span class="chip">Players</span>
-                    <h2>Player list</h2>
+                    <span class="chip" th:text="#{lobby.players.chip}">Players</span>
+                    <h2 th:text="#{lobby.playerList}">Player list</h2>
                 </div>
                 <button id="lobby-randomize" class="btn" type="button" hidden>
                     <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
-                    <span>Randomize</span>
+                    <span th:text="#{lobby.randomize}">Randomize</span>
                 </button>
             </div>
             <div id="players-list" class="players-list">
@@ -34,15 +34,15 @@
                         <div class="player-avatar" th:text="${player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'U'}">U</div>
                         <div>
                             <div class="player-name">
-                                <span th:text="${player.name != null ? player.name : 'User ' + player.id}">Player</span>
-                                <span class="player-self-tag" th:if="${player.name == username}">(you)</span>
+                                <span th:text="${player.name != null ? player.name : #messages.msg('lobby.userFallback', player.id)}">Player</span>
+                                <span class="player-self-tag" th:if="${player.name == username}" th:text="#{lobby.you}">(you)</span>
                             </div>
                             <div class="player-role"
-                                 th:text="${lobby.host != null and player.id == lobby.host.id ? 'Host' : 'Player'}">Player</div>
+                                 th:text="${lobby.host != null and player.id == lobby.host.id ? #messages.msg('lobby.host') : #messages.msg('common.player')}">Player</div>
                         </div>
                     </div>
                 </div>
-                <div class="lobby-empty" th:if="${#sets.isEmpty(lobby.players)}">No players in this lobby.</div>
+                <div class="lobby-empty" th:if="${#sets.isEmpty(lobby.players)}" th:text="#{lobby.noPlayers}">No players in this lobby.</div>
             </div>
         </aside>
 
@@ -53,83 +53,83 @@
                     <h1 id="lobby-name" th:text="${lobby.name}">ULTRAlobby</h1>
                 </div>
                 <span class="chip" id="lobby-player-chip"
-                      th:text="${#sets.size(lobby.players) + ' / ' + (lobby.gameConfig != null and lobby.gameConfig.numberOfPlayers != null ? lobby.gameConfig.numberOfPlayers : lobby.maxPlayers) + ' players'}">1 / 2 players</span>
+                      th:text="#{lobby.playerCount(${#sets.size(lobby.players)}, ${lobby.gameConfig != null and lobby.gameConfig.numberOfPlayers != null ? lobby.gameConfig.numberOfPlayers : lobby.maxPlayers})}">1 / 2 players</span>
             </div>
 
             <div class="lobby-meta">
                 <div class="lobby-meta-row">
                     <div>
-                        <div class="lobby-meta-label">Host</div>
+                        <div class="lobby-meta-label" th:text="#{lobby.host}">Host</div>
                         <div id="lobby-host" class="lobby-meta-value" th:text="${lobby.host.name}">Host</div>
                     </div>
-                    <span class="chip">Owner</span>
+                    <span class="chip" th:text="#{lobby.owner}">Owner</span>
                 </div>
                 <div class="lobby-meta-row">
                     <div>
-                        <div class="lobby-meta-label">Configuration</div>
+                        <div class="lobby-meta-label" th:text="#{lobby.configuration}">Configuration</div>
                         <div id="lobby-config" class="lobby-meta-value"
                              th:text="${lobby.gameType.name() == 'Briskula' and lobby.gameConfig != null
-                                ? lobby.gameConfig.numberOfPlayers + ' players • ' + lobby.gameConfig.cardsInHandNum + ' cards each' + (lobby.gameConfig.numberOfPlayers == 4 ? (lobby.gameConfig.teamsEnabled ? ' • Teams enabled' : ' • No teams') : '')
-                                : 'Standard rules'}">Loading…</div>
+                                ? #messages.msg('lobby.config.base', lobby.gameConfig.numberOfPlayers, lobby.gameConfig.cardsInHandNum) + (lobby.gameConfig.numberOfPlayers == 4 ? (lobby.gameConfig.teamsEnabled ? #messages.msg('lobby.config.teamsEnabled') : #messages.msg('lobby.config.noTeams')) : '')
+                                : #messages.msg('lobby.config.standard')}">Loading…</div>
                         <div id="lobby-config-editor" class="lobby-config-editor field" hidden>
-                            <label for="lobby-config-select">Change configuration</label>
+                            <label for="lobby-config-select" th:text="#{lobby.changeConfig}">Change configuration</label>
                             <select id="lobby-config-select"></select>
                         </div>
                     </div>
                 </div>
                 <div class="lobby-meta-row lobby-visibility-row">
                     <div>
-                        <div class="lobby-meta-label">Visibility</div>
-                        <div id="lobby-visibility-value" class="lobby-meta-value">Public lobby</div>
+                        <div class="lobby-meta-label" th:text="#{createLobby.visibility}">Visibility</div>
+                        <div id="lobby-visibility-value" class="lobby-meta-value" th:text="#{createLobby.visibility.publicLobby}">Public lobby</div>
                     </div>
                     <label id="lobby-visibility-control" class="lobby-visibility-control" for="lobby-public-toggle" hidden>
                         <input id="lobby-public-toggle" type="checkbox">
                         <span class="visibility-switch" aria-hidden="true"></span>
-                        <span id="lobby-public-toggle-label">Public</span>
+                        <span id="lobby-public-toggle-label" th:text="#{createLobby.visibility.public}">Public</span>
                     </label>
                 </div>
                 <button id="lobby-code-tile" class="lobby-meta-row lobby-code-tile" type="button">
                     <span>
-                        <span class="lobby-meta-label">Invite code</span>
+                        <span class="lobby-meta-label" th:text="#{common.inviteCode}">Invite code</span>
                         <span id="lobby-code" class="lobby-meta-value lobby-code-value" th:text="${lobby.lobbyCode}">KAKLONZ</span>
-                        <span class="lobby-code-help">Share this code with players who should join directly.</span>
+                        <span class="lobby-code-help" th:text="#{lobby.codeHelp}">Share this code with players who should join directly.</span>
                     </span>
-                    <span class="lobby-code-copy-action">Copy</span>
+                    <span class="lobby-code-copy-action" th:text="#{lobby.copy}">Copy</span>
                 </button>
                 <div id="lobby-teams-section" class="lobby-meta-row lobby-teams-section" hidden>
                     <div class="lobby-teams-content">
                         <div class="lobby-teams-bar">
                             <div>
-                                <div class="lobby-meta-label">Teams</div>
-                                <div id="lobby-teams-summary" class="lobby-meta-value">Teams will appear here.</div>
+                                <div class="lobby-meta-label" th:text="#{lobby.teams}">Teams</div>
+                                <div id="lobby-teams-summary" class="lobby-meta-value" th:text="#{lobby.teamsPlaceholder}">Teams will appear here.</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="lobby-status" class="lobby-status">Waiting for players…</div>
+            <div id="lobby-status" class="lobby-status" th:text="#{lobby.status.waiting}">Waiting for players…</div>
             <div id="lobby-close-warning" class="lobby-close-warning" aria-live="assertive" hidden>
-                <p class="lobby-close-warning-title">Your lobby is gonna close soon</p>
-                <p id="lobby-close-warning-text" class="lobby-close-warning-text">Closing in 30 seconds.</p>
+                <p class="lobby-close-warning-title" th:text="#{lobby.closeWarning.title}">Your lobby is gonna close soon</p>
+                <p id="lobby-close-warning-text" class="lobby-close-warning-text" th:text="#{lobby.closeWarning.closingIn('30')}">Closing in 30 seconds.</p>
             </div>
 
             <div class="lobby-actions">
-                <button id="start-button" class="btn btn-accent" type="button">Start lobby</button>
-                <button id="leave-button" class="btn" type="button">Leave lobby</button>
-                <button id="delete-button" class="btn danger" type="button">Delete lobby</button>
+                <button id="start-button" class="btn btn-accent" type="button" th:text="#{lobby.start}">Start lobby</button>
+                <button id="leave-button" class="btn" type="button" th:text="#{lobby.leave}">Leave lobby</button>
+                <button id="delete-button" class="btn danger" type="button" th:text="#{lobby.delete}">Delete lobby</button>
             </div>
         </article>
 
-        <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel lobby-chat-panel', 'chat-header', 'Lobby chat', 'Too scared to send a message?', ${chat}, true, ${username}, null, 'chat')}"></th:block>
+        <th:block th:replace="~{ui/fragments/chat :: chatPanel('card lobby-panel chat-panel lobby-chat-panel', 'chat-header', #{chat.lobbyTitle}, #{chat.lobbyEmpty}, ${chat}, true, ${username}, null, 'chat')}"></th:block>
     </section>
     <aside id="lobby-toast" class="lobby-toast" aria-live="polite" aria-atomic="true" hidden>
-    <p id="lobby-toast-title" class="lobby-toast-title">Lobby update</p>
-    <p id="lobby-toast-text" class="lobby-toast-text">Configuration changed.</p>
+    <p id="lobby-toast-title" class="lobby-toast-title" th:text="#{lobby.toast.update}">Lobby update</p>
+    <p id="lobby-toast-text" class="lobby-toast-text" th:text="#{lobby.toast.configChanged}">Configuration changed.</p>
     </aside>
 </main>
 
-<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" aria-label="Open chat" data-chat-panel=".lobby-chat-panel">
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" th:aria-label="#{chat.open}" data-chat-panel=".lobby-chat-panel">
     <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
     <span class="mobile-chat-badge" hidden></span>
 </button>

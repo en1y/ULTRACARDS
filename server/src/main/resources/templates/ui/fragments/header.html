@@ -14,6 +14,16 @@
   </header>
 
   <th:block th:replace="~{ui/fragments/header/auth-modal :: authModal}"></th:block>
+  <script th:inline="javascript">
+    window.__I18N__ = /*[[${i18n}]]*/ {};
+    window.t = (key, ...args) => {
+      let message = (window.__I18N__ || {})[key] || key;
+      args.forEach((arg, index) => {
+        message = message.replaceAll('{' + index + '}', arg);
+      });
+      return message;
+    };
+  </script>
   <script th:if="${isAuthenticated}" th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/chat.js}"></script>
   <script th:src="@{/js/gameTypes.js}"></script>
@@ -22,6 +32,7 @@
   <script th:src="@{/js/ui/fragments/header/profile-popup.js}"></script>
   <script th:src="@{/js/ui/fragments/header/search.js}"></script>
   <script th:src="@{/js/ui/fragments/header/profile-menu.js}"></script>
+  <script th:src="@{/js/ui/fragments/header/language.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/notifications.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/friends.js}"></script>
   <script th:src="@{/js/ui/fragments/header/auth-modal.js}"></script>

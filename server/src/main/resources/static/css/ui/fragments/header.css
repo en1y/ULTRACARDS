@@ -1453,6 +1453,19 @@ body.friends-drawer-open .uc-header.hidden {
   width: 100%;
 }
 
+/* Language selector reuses the profile dropdown/menu-item styles. */
+.language-menu {
+  position: relative;
+}
+
+.language-menu.open .language-dropdown {
+  display: grid;
+}
+
+.language-dropdown .menu-item.active {
+  border-color: var(--color-accent);
+}
+
 .profile-chip {
   width: 100%;
   max-width: 14rem;
