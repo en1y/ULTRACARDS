@@ -49,7 +49,7 @@
         <article class="card lobby-panel lobby-settings-panel">
             <div class="lobby-title-row">
                 <div>
-                    <span class="chip" id="lobby-type-chip" th:text="${lobby.gameType}">Briskula</span>
+                    <span class="chip" id="lobby-type-chip" th:text="${#messages.msg('game.' + #strings.toLowerCase(lobby.gameType.name()))}">Брішкула</span>
                     <h1 id="lobby-name" th:text="${lobby.name}">ULTRAlobby</h1>
                 </div>
                 <span class="chip" id="lobby-player-chip"
@@ -62,7 +62,6 @@
                         <div class="lobby-meta-label" th:text="#{lobby.host}">Host</div>
                         <div id="lobby-host" class="lobby-meta-value" th:text="${lobby.host.name}">Host</div>
                     </div>
-                    <span class="chip" th:text="#{lobby.owner}">Owner</span>
                 </div>
                 <div class="lobby-meta-row">
                     <div>

@@ -26,8 +26,7 @@
   z-index: 1000;
   display: grid;
   justify-items: center;
-  backdrop-filter: blur(6px);
-  background: color-mix(in oklab, var(--color-bg) 85%, transparent);
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   transition: transform 0.25s ease, background 0.2s ease, border-color 0.2s ease;
   /* Own compositor layer: the blurred, transform-animated header must not
@@ -1018,13 +1017,13 @@ body.friends-drawer-open .uc-header.hidden {
      while closed the drawer (its gradient, 42px shadow and blurred head) costs
      zero paint per scroll frame — it lagged scrolling on Firefox Android. */
   visibility: hidden;
-  transition: transform 0.22s ease, visibility 0s linear 0.22s;
+  transition: visibility 0s linear 0.22s;
 }
 
 .friends-shell.open .friends-drawer {
-  transform: translateX(0);
+  transform: none;
   visibility: visible;
-  transition: transform 0.22s ease, visibility 0s;
+  transition: visibility 0s;
 }
 
 .friends-drawer-head {
@@ -1034,7 +1033,6 @@ body.friends-drawer-open .uc-header.hidden {
   margin: -0.9rem -0.9rem 0;
   padding: 0.95rem 0.9rem 0.8rem;
   background: color-mix(in oklab, var(--color-bg) 88%, transparent);
-  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1324,13 +1322,17 @@ body.friends-drawer-open .uc-header.hidden {
 
 .friend-chat-shell .chat-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
+.friend-chat-shell .chat-form button {
+  justify-self: end;
+}
+
 .friend-chat-shell .chat-form textarea {
-  min-height: 44px;
-  max-height: 96px;
+  min-height: 92px;
+  max-height: 92px;
   resize: vertical;
 }
 
@@ -1678,7 +1680,7 @@ body.friends-drawer-open .uc-header.hidden {
   }
 
   .friend-chat-shell .chat-form {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     align-items: end;
   }
 

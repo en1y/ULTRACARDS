@@ -129,7 +129,7 @@
         }
 
         const selectedGame = getGameTypeSettings(gameType);
-        const title = gameType.charAt(0).toUpperCase() + gameType.slice(1);
+        const title = getGameTypeDisplayName(gameType);
         if (!selectedGame || !Object.keys(selectedGame).length) {
             setSettingsContent(buildSettingsNotice(title, t('createLobby.status.gameUnavailable')));
             syncCreateState();

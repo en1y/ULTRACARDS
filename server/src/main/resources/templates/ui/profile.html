@@ -106,7 +106,7 @@
                 <div class="profile-game-card profile-game-card--donut"
                      th:each="game: ${profile.getUserGamesStats() != null ? profile.getUserGamesStats().getGameStats() : null}"
                      th:with="winRate=${game.getValue().getPlayed() > 0 ? (game.getValue().getWins() * 100 + game.getValue().getPlayed() / 2) / game.getValue().getPlayed() : 0}">
-                    <span th:text="${game.getKey()}"></span>
+                    <span th:text="${#messages.msg('game.' + #strings.toLowerCase(game.getKey()))}">Брішкула</span>
                     <div class="profile-game-card-row">
                         <div class="profile-stat-donut" role="img"
                              th:style="'--win-rate: ' + ${winRate}"

@@ -198,17 +198,21 @@
 
         .chat-form {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1fr);
             gap: 0.75rem;
             align-items: end;
+        }
+
+        .chat-form button {
+            justify-self: end;
         }
 
         .chat-form textarea {
             width: 100%;
             box-sizing: border-box;
-            height: calc(2.8em + 1.6rem);
-            min-height: calc(2.8em + 1.6rem);
-            max-height: calc(2.8em + 1.6rem);
+            height: calc(4.2em + 1.6rem);
+            min-height: calc(4.2em + 1.6rem);
+            max-height: calc(4.2em + 1.6rem);
             resize: none;
             padding: 0.8rem 0.9rem;
             border-radius: var(--radius-md);

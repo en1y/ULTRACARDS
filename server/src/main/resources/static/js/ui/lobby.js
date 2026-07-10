@@ -371,7 +371,7 @@
             }
 
             if (dom.name) dom.name.textContent = lobby.name || 'ULTRAlobby';
-            if (dom.gameType) dom.gameType.textContent = lobby.gameType || 'Lobby';
+            if (dom.gameType) dom.gameType.textContent = getGameTypeDisplayName(lobby.gameType) || t('game.unknown');
             if (dom.playerChip) dom.playerChip.textContent = formatLobbyPlayerCounter(lobby, players.length);
             if (dom.host) dom.host.textContent = lobby.host?.name || 'Unknown';
             if (dom.config) dom.config.textContent = describeConfig(lobby);

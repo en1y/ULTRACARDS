@@ -13,7 +13,7 @@
         if (Number.isNaN(date.getTime())) {
             return value;
         }
-        return new Intl.DateTimeFormat(undefined, {
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
             hour: '2-digit',
             minute: '2-digit',
             hour12: false

@@ -48,6 +48,7 @@
         });
 
         document.addEventListener('uc:notifications-open', closeMenu);
+        document.addEventListener('uc:language-open', closeMenu);
 
         logoutButton?.addEventListener('click', async () => {
           closeMenu();

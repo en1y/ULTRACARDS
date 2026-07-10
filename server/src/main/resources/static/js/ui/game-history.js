@@ -68,7 +68,7 @@
         if (!value) return t('history.unknownTime');
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return t('history.unknownTime');
-        return new Intl.DateTimeFormat(undefined, {dateStyle: 'medium', timeStyle: 'short', hour12: false}).format(date);
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {dateStyle: 'medium', timeStyle: 'short', hour12: false}).format(date);
     };
     const settingsText = (config = {}) => {
         const players = config.numberOfPlayers || '?';

@@ -26,7 +26,7 @@
     if (!value) return t('history.unknownTime');
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t('history.unknownTime');
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
       dateStyle: 'medium',
       timeStyle: 'short',
       hour12: false
@@ -96,7 +96,7 @@
       <article class="card history-card" data-game-id="${escapeHtml(game.id)}">
         <div class="history-card-head">
           <div class="history-card-title">
-            <span class="chip">${escapeHtml(game.gameType || t('history.unknown'))}</span>
+          <span class="chip">${escapeHtml(getGameTypeDisplayName(game.gameType) || t('history.unknown'))}</span>
             <h3>${escapeHtml(game.name || 'Briskula')}</h3>
             <div class="history-meta">
               <span>${formatDate(game.endedAt || game.createdAt)}</span>

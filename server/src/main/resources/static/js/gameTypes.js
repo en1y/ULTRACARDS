@@ -97,7 +97,8 @@ function titleCaseGameName(value) {
 }
 
 function getGameTypeDisplayName(gameType) {
-    return titleCaseGameName(gameType);
+    const key = String(gameType || '').toLowerCase();
+    return t(`game.${key}`) === `game.${key}` ? titleCaseGameName(gameType) : t(`game.${key}`);
 }
 
 function resolveBriskulaGameConfigKey(config) {

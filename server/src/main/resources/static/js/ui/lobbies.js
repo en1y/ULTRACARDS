@@ -92,7 +92,7 @@ const gameSettingsAnimationDurationMs = 420;
                 return;
             }
 
-            const title = gameType.charAt(0).toUpperCase() + gameType.slice(1);
+            const title = getGameTypeDisplayName(gameType);
             const selectId = settingsElement.id === 'create-game-settings' ? 'create-properties' : 'properties';
             if (!Object.keys(selectedGame).length) {
                 const text = settingsElement.id === 'create-game-settings'
@@ -273,7 +273,7 @@ const gameSettingsAnimationDurationMs = 420;
                     <article class="card lobby-card" data-id="${escapeHtml(lobby.id)}">
                         <div class="lobby-card-head">
                             <div class="lobby-card-title">
-                                <span class="chip">${escapeHtml(lobby.gameType || t('history.unknown'))}</span>
+                                <span class="chip">${escapeHtml(getGameTypeDisplayName(lobby.gameType) || t('history.unknown'))}</span>
                                 <h3>${escapeHtml(lobby.name || t('lobbies.lobbyFallback', lobby.id))}</h3>
                                 <p class="lobby-card-subtitle">${t('lobbies.hostLabel', escapeHtml(lobby.host?.name || t('history.unknown')))}</p>
                             </div>

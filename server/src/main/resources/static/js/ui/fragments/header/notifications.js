@@ -710,6 +710,7 @@
 
         document.addEventListener('uc:notifications-refresh', loadUnreadNotifications);
         document.addEventListener('uc:profile-menu-open', () => setTrayOpen(false));
+        document.addEventListener('uc:language-open', () => setTrayOpen(false));
       }
     };
   };

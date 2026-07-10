@@ -258,7 +258,7 @@ function formatSessionCardInstant(value) {
         return t('profilePage.unavailable');
     }
 
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
@@ -307,11 +307,15 @@ function formatLastPlayedAt(value) {
         return t('profile.neverPlayed');
     }
 
+    const lang = document.documentElement.lang || 'en';
     if (isSameMondayWeek(date, new Date())) {
-        return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(date);
+        return new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(date);
     }
 
-    const month = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(date);
+    if (lang !== 'en') {
+        return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' }).format(date);
+    }
+    const month = new Intl.DateTimeFormat(lang, { month: 'long' }).format(date);
     return `${ordinalDay(date.getDate())} ${month}`;
 }
 
@@ -329,7 +333,7 @@ function formatHistoryDate(value) {
         return t('history.unknownTime');
     }
 
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
         dateStyle: 'medium',
         timeStyle: 'short',
         hour12: false
@@ -352,7 +356,9 @@ function lastPlayedTime(value) {
 }
 
 function sessionLabel(session) {
-    const client = session.clientType || null;
+    const client = String(session.clientType || '').toLowerCase() === 'browser'
+        ? t('profilePage.browser')
+        : session.clientType || null;
     const os = session.os || null;
 
     if (client && os) {
@@ -692,6 +698,14 @@ async function refreshSessions({ clearStatus = true } = {}) {
 }
 
 function gameDisplayName(gameType) {
+    // Briskula config keys (TWO_PLAYERS, FOUR_PLAYERS_WITH_TEAMS, ...) flow
+    // through here too — show their translated config name, not a title-cased
+    // enum key.
+    if (typeof window.resolveBriskulaGameSettingKey === 'function'
+        && typeof window.getGameConfigDisplayName === 'function'
+        && window.resolveBriskulaGameSettingKey(gameType)) {
+        return window.getGameConfigDisplayName('briskula', gameType);
+    }
     if (typeof window.getGameTypeDisplayName === 'function') {
         return window.getGameTypeDisplayName(gameType);
     }
@@ -1021,7 +1035,7 @@ function renderDetailedStats(data) {
         <article class="profile-stats-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">Briskula</p>
+                    <p class="section-kicker">${t('game.briskula')}</p>
                     <h2>${t('profilePage.byGameSetting')}</h2>
                 </div>
             </div>

@@ -12,6 +12,7 @@
     const currentLanguage = document.documentElement.lang || 'en';
 
     const openMenu = () => {
+      document.dispatchEvent(new CustomEvent('uc:language-open'));
       menu.classList.add('open');
       trigger?.setAttribute('aria-expanded', 'true');
       panel?.setAttribute('aria-hidden', 'false');
@@ -55,6 +56,9 @@
             closeMenu();
           }
         });
+
+        document.addEventListener('uc:notifications-open', closeMenu);
+        document.addEventListener('uc:profile-menu-open', closeMenu);
       }
     };
   };

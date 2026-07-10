@@ -1616,11 +1616,8 @@
             if (!Array.isArray(winners) || !winners.length) {
                 return t('history.noWinner');
             }
-            const teamState = resolveTeams(game);
-            if (teamState && winners.length > 1) {
-                return t('briskula.winningTeam', formatPlayerList(winners));
-            }
-            return winners.map((winner) => winner.name).join(', ');
+            const winnerLabel = winners.length === 1 ? t('history.winner') : t('history.winners');
+            return `${winnerLabel}: ${winners.map((winner) => winner.name).join(', ')}`;
         }
 
         function buildResultMetaText(winners, game) {

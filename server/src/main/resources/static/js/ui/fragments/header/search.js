@@ -350,10 +350,10 @@
       }
 
       if (isSameMondayWeek(date, new Date())) {
-        return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(date);
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { weekday: 'long' }).format(date);
       }
 
-      const month = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(date);
+      const month = new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long' }).format(date);
       return `${ordinalDay(date.getDate())} ${month}`;
     };
 
@@ -369,7 +369,7 @@
       if (Number.isNaN(date.getTime())) {
         return t('history.unknownTime');
       }
-      return new Intl.DateTimeFormat(undefined, {
+      return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
         dateStyle: 'medium',
         timeStyle: 'short',
         hour12: false
@@ -912,10 +912,10 @@
       name.textContent = profile?.username || t('search.unknownUser');
 
       const id = document.createElement('p');
-      id.textContent = `User ID #${profile?.id ?? '-'}`;
+      id.textContent = `${t('profile.userId')} #${profile?.id ?? '-'}`;
 
       const roles = document.createElement('p');
-      roles.textContent = `Roles: ${(profile?.roles || ['USER']).join(', ')}`;
+      roles.textContent = `${t('profile.roles')}: ${(profile?.roles || ['USER']).join(', ')}`;
 
       identity.append(name, id, roles);
 
