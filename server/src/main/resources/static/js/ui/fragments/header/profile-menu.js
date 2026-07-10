@@ -51,7 +51,7 @@
 
         logoutButton?.addEventListener('click', async () => {
           closeMenu();
-          if (!window.confirm('This will log you out and clear your session. Are you sure?')) {
+          if (!window.confirm(t('header.logout.confirm'))) {
             return;
           }
 

@@ -69,7 +69,7 @@
             bubbleClass: 'chat-bubble',
             timeClass: 'chat-time',
             emptyClass: 'chat-empty',
-            emptyText: 'Too scared to send a message?'
+            emptyText: t('chat.lobbyEmpty')
         });
 
         renderLobby(state.lobby);
@@ -89,13 +89,13 @@
                     });
                 })
                 .catch(() => {
-                    updateStatus('Unable to load current profile.');
+                    updateStatus(t('lobbyPage.profileLoadFailed'));
                 });
         }
 
         function connectLobbyWs() {
             if (!window.Stomp) {
-                showToast('Connection unavailable', 'Live lobby updates are disabled.');
+                showToast(t('lobbyPage.toast.connUnavailable.title'), t('lobbyPage.toast.connUnavailable.body'));
                 return;
             }
 
@@ -110,13 +110,13 @@
                 clearReconnectDisconnectTimer();
                 if (connectionLostNotified) {
                     connectionLostNotified = false;
-                    showToast('Connection restored', 'Live lobby updates are back.');
+                    showToast(t('lobbyPage.toast.connRestored.title'), t('lobbyPage.toast.connRestored.body'));
                 }
                 client.subscribe(`/topic/lobbies/${state.lobby.id}`, (message) => {
                     try {
                         const payload = JSON.parse(message.body);
                         if (payload && payload.gameId) {
-                            updateStatus(`Game started. Game id: ${payload.gameId}`);
+                            updateStatus(t('lobbyPage.gameStartedId', payload.gameId));
                             redirectToGame(payload.gameId);
                             return;
                         }
@@ -146,7 +146,7 @@
                             }
                             notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
                             if (payload.type === 'STARTED') {
-                                showToast('Game started', 'The lobby has started a game.');
+                                showToast(t('lobbyPage.toast.gameStarted.title'), t('lobbyPage.toast.gameStarted.body'));
                                 redirectToResolvedGame();
                             }
                         }
@@ -169,7 +169,7 @@
                 state.wsConnected = false;
                 if (!connectionLostNotified) {
                     connectionLostNotified = true;
-                    showToast('Connection lost', 'Trying to reconnect…');
+                    showToast(t('lobbyPage.toast.connLost.title'), t('lobbyPage.toast.connLost.body'));
                 }
                 startReconnectDisconnectTimer();
             });
@@ -179,15 +179,15 @@
             dom.lobbyCodeTile?.addEventListener('click', async () => {
                 const lobbyCode = String(state.lobby?.lobbyCode || '').trim();
                 if (!lobbyCode) {
-                    showToast('Copy failed', 'This lobby does not have a share code yet.');
+                    showToast(t('lobbyPage.toast.copyFailed.title'), t('lobbyPage.toast.copyFailed.noCode'));
                     return;
                 }
 
                 try {
                     await copyToClipboard(lobbyCode);
-                    showToast('Lobby code copied', `${lobbyCode} is now in your clipboard.`);
+                    showToast(t('lobbyPage.toast.codeCopied.title'), t('lobbyPage.toast.codeCopied.body', lobbyCode));
                 } catch (error) {
-                    showToast('Copy failed', 'Unable to copy the lobby code.');
+                    showToast(t('lobbyPage.toast.copyFailed.title'), t('lobbyPage.toast.copyFailed.body'));
                 }
             });
 
@@ -195,7 +195,7 @@
                 if (!isLobbyReadyToStart(state.lobby)) {
                     const message = buildStartBlockedMessage(state.lobby);
                     updateStatus(message);
-                    showToast('Lobby is not ready', message);
+                    showToast(t('lobbyPage.toast.notReady.title'), message);
                     return;
                 }
 
@@ -207,10 +207,10 @@
                     if (!response.ok) {
                         throw new Error('Failed to start lobby');
                     }
-                    updateStatus('Starting game…');
+                    updateStatus(t('lobbyPage.startingGame'));
                     redirectToResolvedGame();
                 } catch (error) {
-                    updateStatus('Unable to start the lobby.');
+                    updateStatus(t('lobbyPage.startFailed'));
                 }
             });
 
@@ -219,7 +219,7 @@
                     await leaveCurrentLobby();
                     window.location.href = '/';
                 } catch (error) {
-                    updateStatus('Unable to leave the lobby.');
+                    updateStatus(t('lobbyPage.leaveFailed'));
                 }
             });
 
@@ -234,7 +234,7 @@
                     }
                     window.location.href = '/';
                 } catch (error) {
-                    updateStatus('Unable to delete the lobby.');
+                    updateStatus(t('lobbyPage.deleteFailed'));
                 }
             });
 
@@ -262,7 +262,7 @@
                         throw new Error('Failed to kick player');
                     }
                 } catch (error) {
-                    updateStatus('Unable to kick that player.');
+                    updateStatus(t('lobbyPage.kickFailed'));
                 }
             });
 
@@ -275,7 +275,7 @@
                     await updateLobbyConfiguration(dom.configSelect.value);
                 } catch (error) {
                     renderConfigEditor(state.lobby, true);
-                    showToast('Update failed', 'Unable to update the lobby configuration.');
+                    showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.config'));
                 }
             });
 
@@ -292,7 +292,7 @@
                 } catch (error) {
                     state.lobby = previousLobby;
                     syncLobbyVisibility(state.lobby, true);
-                    showToast('Update failed', 'Unable to update lobby visibility.');
+                    showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.visibility'));
                 }
             });
 
@@ -305,7 +305,7 @@
                     await randomizeLobbyOrder();
                 } catch (error) {
                     renderLobby(state.lobby);
-                    showToast('Update failed', 'Unable to randomize the player order.');
+                    showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.randomize'));
                 }
             });
 
@@ -437,12 +437,12 @@
             }
 
             if (!players.length) {
-                dom.players.innerHTML = '<div class="lobby-empty">No players in this lobby.</div>';
+                dom.players.innerHTML = `<div class="lobby-empty">${t('lobby.noPlayers')}</div>`;
                 return;
             }
 
             const helper = isHost && isBriskulaOrderReorderable(state.lobby)
-                ? '<p class="team-board-helper">Drag and drop the players to rearrange order</p>'
+                ? `<p class="team-board-helper">${t('lobbyPage.dragHint')}</p>`
                 : '';
             dom.players.innerHTML = helper + players.map((player) => {
                 const playerId = String(player.id);
@@ -450,7 +450,7 @@
                 const current = currentUserId && currentUserId === playerId;
                 const canKick = isHost && !owner;
                 const initial = (player.name || 'U').charAt(0).toUpperCase();
-                const role = owner ? 'Host' : 'Player';
+                const role = owner ? t('lobby.host') : t('common.player');
                 const reorderable = isHost && isBriskulaOrderReorderable(state.lobby) ? ' player-row-reorderable' : '';
 
                 return `
@@ -459,8 +459,8 @@
                             <div class="player-avatar">${escapeHtml(initial)}</div>
                             <div>
                                 <div class="player-name">
-                                    <span>${escapeHtml(player.name || `User ${player.id}`)}</span>
-                                    ${current ? '<span class="player-self-tag">(you)</span>' : ''}
+                                    <span>${escapeHtml(player.name || t('lobby.userFallback', player.id))}</span>
+                                    ${current ? `<span class="player-self-tag">${t('lobby.you')}</span>` : ''}
                                 </div>
                                 <div class="player-role">${escapeHtml(role)}</div>
                             </div>
@@ -478,8 +478,8 @@
                     <div class="team-board-toolbar">
                         <p class="team-board-helper">
                             ${isHost
-                                ? 'Drag and drop the players to rearrange order and teams'
-                                : 'Ask the host to change the teams if you will'}
+                                ? t('lobbyPage.dragHintTeams')
+                                : t('lobbyPage.askHost')}
                         </p>
                     </div>
                     ${renderTeamPanel(teamState, 1, currentUserId)}
@@ -500,11 +500,11 @@
                     <div class="team-panel-header">
                         <div>
                             <div class="team-panel-title">${escapeHtml(getTeamDisplayName(teamNumber))}</div>
-                            <div class="team-panel-meta" data-team-panel-meta="${teamNumber}">${team.length}/${capacity} players</div>
+                            <div class="team-panel-meta" data-team-panel-meta="${teamNumber}">${t('lobby.playerCount', team.length, capacity)}</div>
                         </div>
                     </div>
                     <div class="team-panel-body" data-team-panel="${teamNumber}">
-                        ${cards || '<div class="team-drop-hint">Waiting for players</div>'}
+                        ${cards || `<div class="team-drop-hint">${t('lobbyPage.waitingShort')}</div>`}
                     </div>
                 </section>
             `;
@@ -516,7 +516,7 @@
             const current = state.currentUser?.id != null && String(state.currentUser.id) === playerId;
             const canKick = isCurrentUserHost() && !owner;
             const initial = (player.name || 'U').charAt(0).toUpperCase();
-            const role = owner ? 'Host' : 'Player';
+            const role = owner ? t('lobby.host') : t('common.player');
             const splitIndex = teamState.team1Capacity;
             const orderIndex = teamNumber === 1 ? index : splitIndex + index;
 
@@ -526,8 +526,8 @@
                         <div class="player-avatar">${escapeHtml(initial)}</div>
                         <div>
                             <div class="player-name">
-                                <span>${escapeHtml(player.name || `User ${player.id}`)}</span>
-                                ${current ? '<span class="player-self-tag">(you)</span>' : ''}
+                                <span>${escapeHtml(player.name || t('lobby.userFallback', player.id))}</span>
+                                ${current ? `<span class="player-self-tag">${t('lobby.you')}</span>` : ''}
                             </div>
                             <div class="player-role">
                                 ${escapeHtml(role)}
@@ -541,7 +541,7 @@
 
         function renderKickAction(canKick, playerId) {
             if (canKick) {
-                return `<button class="btn danger" type="button" data-kick-player="${playerId}">Kick</button>`;
+                return `<button class="btn danger" type="button" data-kick-player="${playerId}">${t('lobbyPage.kick')}</button>`;
             }
             return '';
         }
@@ -562,21 +562,21 @@
 
         function describeConfig(lobby) {
             if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
-                return 'Standard rules';
+                return t('lobby.config.standard');
             }
 
             const config = lobby.gameConfig;
             const parts = [];
             if (config.numberOfPlayers != null) {
-                parts.push(`${config.numberOfPlayers} players`);
+                parts.push(t('history.playersCount', config.numberOfPlayers));
             }
             if (config.cardsInHandNum != null) {
-                parts.push(`${config.cardsInHandNum} cards each`);
+                parts.push(t('lobbyPage.cardsEach', config.cardsInHandNum));
             }
             if (config.numberOfPlayers === 4) {
-                parts.push(config.teamsEnabled ? 'Teams enabled' : 'No teams');
+                parts.push(config.teamsEnabled ? t('lobbyPage.teamsEnabled') : t('lobbyPage.noTeams'));
             }
-            return parts.join(' • ') || 'Standard rules';
+            return parts.join(' • ') || t('lobby.config.standard');
         }
 
         function isLobbyPublic(lobby) {
@@ -596,12 +596,12 @@
 
         function syncLobbyVisibility(lobby, isHost) {
             const publicLobby = isLobbyPublic(lobby);
-            setAnimatedVisibilityText(dom.visibilityValue, publicLobby ? 'Public lobby' : 'Private lobby');
+            setAnimatedVisibilityText(dom.visibilityValue, publicLobby ? t('createLobby.visibility.publicLobby') : t('createLobby.visibility.privateLobby'));
             setAnimatedVisibilityText(
                 dom.visibilityHelp,
                 publicLobby
-                    ? 'This lobby appears in the public browser.'
-                    : 'This lobby requires the invite code.'
+                    ? t('lobbyPage.publicHelp')
+                    : t('lobbyPage.privateHelp')
             );
             if (dom.visibilityControl) {
                 dom.visibilityControl.hidden = !isHost;
@@ -860,10 +860,10 @@
 
             shell.classList.remove('team-panel-ally', 'team-panel-enemy', 'team-panel-neutral');
             shell.classList.add(`team-panel-${tone}`);
-            meta.textContent = `${count}/${capacity} players`;
+            meta.textContent = t('lobby.playerCount', count, capacity);
             const badge = shell.querySelector('.team-panel-badge');
             if (badge) {
-                badge.textContent = tone === 'ally' ? 'Your side' : (tone === 'enemy' ? 'Opposition' : 'Team');
+                badge.textContent = tone === 'ally' ? t('lobbyPage.yourSide') : (tone === 'enemy' ? t('lobbyPage.opposition') : t('lobbyPage.team'));
             }
 
             body.querySelectorAll('[data-team-player-card]').forEach((card, index) => {
@@ -1145,7 +1145,7 @@
                 state.lobby = rollbackLobby;
                 previousLobbySnapshot = rollbackLobby;
                 renderLobby(state.lobby);
-                showToast('Update failed', 'Unable to update team assignments.');
+                showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.teams'));
             }
         }
 
@@ -1170,7 +1170,7 @@
                 state.lobby = rollbackLobby;
                 previousLobbySnapshot = rollbackLobby;
                 renderLobby(state.lobby);
-                showToast('Update failed', 'Unable to update player order.');
+                showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.order'));
             }
         }
 
@@ -1776,7 +1776,7 @@
         }
 
         function getTeamDisplayName(teamNumber) {
-            return teamNumber === 1 ? '1st team' : '2nd team';
+            return teamNumber === 1 ? t('lobbyPage.team1') : t('lobbyPage.team2');
         }
 
         function formatTeamsSummary(teamState) {
@@ -1785,9 +1785,9 @@
 
         function formatTeamNames(team) {
             if (!team.length) {
-                return 'Waiting for players';
+                return t('lobbyPage.waitingShort');
             }
-            return team.map((player) => player.name || `User ${player.id}`).join(', ');
+            return team.map((player) => player.name || t('lobby.userFallback', player.id)).join(', ');
         }
 
         function isCurrentUserHost() {
@@ -1812,11 +1812,11 @@
         function formatLobbyPlayerCounter(lobby, playerCount) {
             const teamState = resolveTeams(lobby);
             if (teamState) {
-                return `${teamState.team1.length + teamState.team2.length} / ${teamState.totalCapacity} players`;
+                return t('lobby.playerCount', teamState.team1.length + teamState.team2.length, teamState.totalCapacity);
             }
 
             const capacity = resolveLobbyCapacity(lobby);
-            return `${playerCount} / ${capacity || playerCount} players`;
+            return t('lobby.playerCount', playerCount, capacity || playerCount);
         }
 
         function isLobbyReadyToStart(lobby, playerCount = resolveOrderedLobbyPlayers(lobby).length) {
@@ -1828,9 +1828,9 @@
             const requiredPlayers = Number(lobby?.minPlayers || resolveLobbyCapacity(lobby));
             const missingPlayers = Math.max((Number.isFinite(requiredPlayers) ? requiredPlayers : 0) - playerCount, 0);
             if (missingPlayers > 0) {
-                return `Waiting for ${missingPlayers} more player${missingPlayers === 1 ? '' : 's'} before the lobby can start.`;
+                return missingPlayers === 1 ? t('lobbyPage.waitingMoreOne', missingPlayers) : t('lobbyPage.waitingMoreMany', missingPlayers);
             }
-            return 'The lobby is not ready to start yet.';
+            return t('lobbyPage.notReadyYet');
         }
 
         function buildLobbyStatus(lobby, playerCount) {
@@ -1838,9 +1838,9 @@
                 return buildStartBlockedMessage(lobby, playerCount);
             }
             if (playerCount < resolveLobbyCapacity(lobby)) {
-                return 'Minimum player count reached. The host can start the lobby now.';
+                return t('lobbyPage.minReached');
             }
-            return 'Start the lobby!';
+            return t('lobbyPage.startNow');
         }
 
         function updateStatus(text) {
@@ -1883,11 +1883,11 @@
 
             const secondsLeft = Math.max(1, Math.ceil(remainingMs / 1000));
             dom.closeWarning.hidden = false;
-            dom.closeWarningText.textContent = `Closing in ${secondsLeft} second${secondsLeft === 1 ? '' : 's'}.`;
+            dom.closeWarningText.textContent = secondsLeft === 1 ? t('lobbyPage.closingInOne', secondsLeft) : t('lobby.closeWarning.closingIn', secondsLeft);
 
             if (!state.closeWarningVisible) {
                 state.closeWarningVisible = true;
-                showToast('Lobby closing soon', 'Your lobby is gonna close soon.');
+                showToast(t('lobbyPage.toast.closingSoon.title'), t('lobbyPage.toast.closingSoon.body'));
             }
         }
 
@@ -1905,7 +1905,7 @@
 
             const notice = {
                 lobbyId: lobby?.id || state.lobby?.id,
-                lobbyName: lobby?.name || state.lobby?.name || 'Your lobby',
+                lobbyName: lobby?.name || state.lobby?.name || t('lobbies.yourLobby'),
                 closedAt: Date.now()
             };
 
@@ -1974,15 +1974,15 @@
             const nextCount = Array.isArray(nextLobby.players) ? nextLobby.players.length : 0;
 
             if (type === 'UPDATED' && previousConfig !== nextConfig) {
-                showToast('Configuration updated', `New setup: ${nextConfig}`);
+                showToast(t('lobbyPage.toast.configUpdated.title'), t('lobbyPage.toast.configUpdated.body', nextConfig));
                 return;
             }
 
             if (type === 'UPDATED' && previousCount !== null && previousCount !== nextCount) {
                 if (nextCount > previousCount) {
-                    showToast('Player joined', `${nextCount}/${nextLobby.maxPlayers} players are now in the lobby.`);
+                    showToast(t('lobbyPage.toast.playerJoined.title'), t('lobbyPage.toast.playerJoined.body', nextCount, nextLobby.maxPlayers));
                 } else {
-                    showToast('Player left', `${nextCount}/${nextLobby.maxPlayers} players remain in the lobby.`);
+                    showToast(t('lobbyPage.toast.playerLeft.title'), t('lobbyPage.toast.playerLeft.body', nextCount, nextLobby.maxPlayers));
                 }
             }
         }
@@ -2074,7 +2074,7 @@
 
         async function disconnectForReconnectTimeout() {
             state.disconnectingForReconnectTimeout = true;
-            updateStatus('Connection did not recover. Leaving the lobby...');
+            updateStatus(t('lobbyPage.connGone'));
 
             try {
                 await leaveCurrentLobby();

@@ -38,8 +38,8 @@
             return;
         }
 
-        setAnimatedText(visibilityText, publicInput.checked ? 'Public lobby' : 'Private lobby');
-        setAnimatedText(visibilityLabel, publicInput.checked ? 'Public' : 'Private');
+        setAnimatedText(visibilityText, publicInput.checked ? t('createLobby.visibility.publicLobby') : t('createLobby.visibility.privateLobby'));
+        setAnimatedText(visibilityLabel, publicInput.checked ? t('createLobby.visibility.public') : t('createLobby.visibility.private'));
     }
 
     function setSettingsContent(nodes) {
@@ -66,14 +66,14 @@
     function buildSettingsSelect(title, settings) {
         const titleElement = document.createElement('h3');
         titleElement.className = 'create-lobby-settings-title';
-        titleElement.textContent = `${title} settings`;
+        titleElement.textContent = t('createLobby.settingsTitle', title);
 
         const field = document.createElement('div');
         field.className = 'field';
 
         const label = document.createElement('label');
         label.setAttribute('for', 'create-properties');
-        label.textContent = 'Game configuration';
+        label.textContent = t('createLobby.gameConfiguration');
 
         const select = document.createElement('select');
         select.id = 'create-properties';
@@ -92,7 +92,7 @@
     function buildSettingsNotice(title, text) {
         const titleElement = document.createElement('h3');
         titleElement.className = 'create-lobby-settings-title';
-        titleElement.textContent = `${title} settings`;
+        titleElement.textContent = t('createLobby.settingsTitle', title);
 
         const notice = document.createElement('p');
         notice.className = 'create-lobby-settings-note';
@@ -108,16 +108,16 @@
 
         submitButton.disabled = !canCreate;
         if (canCreate) {
-            setStatus('Create the lobby!');
+            setStatus(t('createLobby.status.ready'));
             return;
         }
 
         if (gameType === 'all') {
-            setStatus('Pick a game to continue.');
+            setStatus(t('createLobby.status.pickGame'));
             return;
         }
 
-        setStatus('Lobby creation is not available for this setup.', 'error');
+        setStatus(t('createLobby.status.unavailable'), 'error');
     }
 
     function applyGameTypeSettings() {
@@ -131,7 +131,7 @@
         const selectedGame = getGameTypeSettings(gameType);
         const title = gameType.charAt(0).toUpperCase() + gameType.slice(1);
         if (!selectedGame || !Object.keys(selectedGame).length) {
-            setSettingsContent(buildSettingsNotice(title, 'Lobby creation is not available for this game yet.'));
+            setSettingsContent(buildSettingsNotice(title, t('createLobby.status.gameUnavailable')));
             syncCreateState();
             return;
         }
@@ -147,7 +147,7 @@
             publicInput.checked = true;
         }
         setSettingsContent([]);
-        submitButton.textContent = 'Create Lobby';
+        submitButton.textContent = t('createLobby.submit');
         syncVisibilityText();
         syncCreateState();
     }
@@ -168,24 +168,24 @@
         const settingKey = document.getElementById('create-properties')?.value || '';
 
         if (!gameType || gameType === 'all') {
-            setStatus('Choose a game type first.', 'error');
+            setStatus(t('createLobby.status.chooseType'), 'error');
             gameTypeSelect.focus();
             return;
         }
 
         if (!settingKey) {
-            setStatus('Choose a game configuration first.', 'error');
+            setStatus(t('createLobby.status.chooseConfig'), 'error');
             return;
         }
 
         if (!supportsLobbyCreation(gameType, settingKey)) {
-            setStatus('Lobby creation is not implemented for that game type yet.', 'error');
+            setStatus(t('createLobby.status.notImplemented'), 'error');
             return;
         }
 
         submitButton.disabled = true;
-        submitButton.textContent = 'Creating...';
-        setStatus('Creating lobby...', 'success');
+        submitButton.textContent = t('createLobby.creating');
+        setStatus(t('createLobby.creatingLobby'), 'success');
 
         try {
             const response = await fetch('/api/lobby/create', {
@@ -199,7 +199,7 @@
 
             if (!response.ok) {
                 const message = (await response.text()).trim();
-                throw new Error(message || 'Failed to create new lobby.');
+                throw new Error(message || t('createLobby.failed'));
             }
 
             const createdLobby = await response.json();
@@ -209,8 +209,8 @@
 
             window.location.href = '/lobbies';
         } catch (error) {
-            setStatus(error?.message || 'Failed to create new lobby.', 'error');
-            submitButton.textContent = 'Create Lobby';
+            setStatus(error?.message || t('createLobby.failed'), 'error');
+            submitButton.textContent = t('createLobby.submit');
             submitButton.disabled = !supportsLobbyCreation(gameType, settingKey);
         }
     }

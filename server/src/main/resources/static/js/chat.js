@@ -109,12 +109,12 @@
             const closed = !state.chat?.isOpen;
             dom.input.disabled = closed;
             dom.input.readOnly = false;
-            dom.input.placeholder = state.chat?.isOpen ? 'Send a message' : 'Chat is closed';
+            dom.input.placeholder = state.chat?.isOpen ? t('chat.placeholder') : t('chat.closed');
             dom.send.disabled = closed || state.sending;
         }
 
         function showMessageTooLongPopup() {
-            dom.input.setCustomValidity('Chat messages can be at most 200 characters long.');
+            dom.input.setCustomValidity(t('chat.tooLong'));
             dom.input.reportValidity();
         }
 
@@ -174,7 +174,7 @@
             const wasNearBottom = shouldStickToBottom || isNearBottom();
             if (messages.length) {
                 dom.messages.innerHTML = messages.map((message) => {
-                    const senderName = message?.sender?.name || 'Player';
+                    const senderName = message?.sender?.name || t('common.player');
                     const ownClass = resolveOwnMessage(message, state.currentUserId, state.currentUsername) ? ' is-own' : '';
                     const animationClass = state.animateMessageKey === messageKey(message) ? ' is-new' : '';
                     const timestamp = message?.timestamp ? String(message.timestamp) : '';
@@ -194,11 +194,11 @@
                     `;
                 }).join('');
             } else {
-                dom.messages.innerHTML = `<div class="${config.emptyClass}">${escapeHtml(config.emptyText || 'Send a message! I dare you!')}</div>`;
+                dom.messages.innerHTML = `<div class="${config.emptyClass}">${escapeHtml(config.emptyText || t('chat.emptyDare'))}</div>`;
             }
 
             if (dom.status) {
-                dom.status.textContent = state.chat?.isOpen ? 'Live' : 'Closed';
+                dom.status.textContent = state.chat?.isOpen ? t('chat.status.live') : t('chat.status.closed');
             }
             syncComposer();
             if (wasNearBottom) {

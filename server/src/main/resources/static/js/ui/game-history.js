@@ -33,7 +33,7 @@
         .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
     const parsePlayer = (value) => {
-        if (!value) return {name: 'Unknown player', id: null};
+        if (!value) return {name: t('history.unknownPlayer'), id: null};
         if (typeof value === 'object') return value;
         const raw = String(value);
         try {
@@ -44,7 +44,7 @@
             return {name: nameMatch ? nameMatch[1].trim() : raw, id: idMatch ? Number(idMatch[1]) : null};
         }
     };
-    const playerName = (player) => parsePlayer(player).name || 'Unknown player';
+    const playerName = (player) => parsePlayer(player).name || t('history.unknownPlayer');
     const playerKey = (player) => {
         const parsed = parsePlayer(player);
         if (parsed.id != null && String(parsed.id) !== '') return `id:${parsed.id}`;
@@ -65,16 +65,16 @@
         return playerLookupKeys(a).some((key) => bKeys.has(key));
     };
     const formatDate = (value) => {
-        if (!value) return 'Unknown time';
+        if (!value) return t('history.unknownTime');
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return 'Unknown time';
+        if (Number.isNaN(date.getTime())) return t('history.unknownTime');
         return new Intl.DateTimeFormat(undefined, {dateStyle: 'medium', timeStyle: 'short', hour12: false}).format(date);
     };
     const settingsText = (config = {}) => {
         const players = config.numberOfPlayers || '?';
         const cards = config.cardsInHandNum || '?';
-        const mode = config.teamsEnabled ? 'teams' : 'solo';
-        return `${players} players - ${cards} cards - ${mode}`;
+        const mode = config.teamsEnabled ? t('history.teams') : t('history.solo');
+        return `${t('history.playersCount', players)} - ${t('history.cardsCount', cards)} - ${mode}`;
     };
     // Card identity, matching what game.js renderCardImage writes to data-card-key
     // (it forces ITALIAN). Keep both sides identical so snapshots line up.
@@ -165,7 +165,7 @@
 
     // ---- rendering, via the game.js (briskula) pipeline ----
     const renderDeck = (deckLeft) => {
-        ui?.renderDeckTower(dom.deckTower, dom.deckStack, deckLeft, {cardType: 'ITALIAN', featuredCard: true, alt: 'Deck'});
+        ui?.renderDeckTower(dom.deckTower, dom.deckStack, deckLeft, {cardType: 'ITALIAN', featuredCard: true, alt: t('game.deck.alt')});
         if (dom.deckLeft) dom.deckLeft.textContent = String(deckLeft);
     };
     const renderTrump = (deckLeft) => {
@@ -200,7 +200,7 @@
             seat.innerHTML = `
                 <div class="seat-avatar">${escapeHtml(playerName(player).charAt(0).toUpperCase())}</div>
                 <div class="seat-name">${escapeHtml(playerName(player))}</div>
-                <div class="seat-team-badge"${teamNumber ? '' : ' hidden'}>${teamNumber ? `Team ${teamNumber}` : ''}</div>
+                <div class="seat-team-badge"${teamNumber ? '' : ' hidden'}>${teamNumber ? t('gameHistory.team', teamNumber) : ''}</div>
                 <div class="seat-cards"></div>
                 <div class="seat-points"></div>`;
             seatRegion(index, count).appendChild(seat);
@@ -230,7 +230,7 @@
         hand.innerHTML = '';
         const total = cards.length;
         cards.forEach((card, i) => {
-            const el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: `${playerName(player)} card`});
+            const el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: t('gameHistory.playerCard.alt', playerName(player))});
             const centered = i - (total - 1) / 2;
             el.style.setProperty('--slot-y', `${Math.abs(centered) * 1.4}px`);
             el.style.setProperty('--slot-rot', `${centered * 5.5}deg`);
@@ -258,7 +258,7 @@
             const key = ckey(play.card);
             let el = state.trickEls.get(key);
             if (!el) {
-                el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: play.card?.card}, className: 'trick-card', alt: `${playerName(play.player)} played`});
+                el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: play.card?.card}, className: 'trick-card', alt: t('gameHistory.playerPlayed.alt', playerName(play.player))});
                 el.style.transition = 'none';   // land in place, no centre→slot tween
                 state.trickEls.set(key, el);
                 dom.trick.appendChild(el);
@@ -291,7 +291,7 @@
             return;
         }
         dom.teams.innerHTML = [state.teamState.team1, state.teamState.team2].map((team, index) => `
-            <div class="history-replay-team team-score-${index + 1}"><strong>Team ${index + 1}</strong>
+            <div class="history-replay-team team-score-${index + 1}"><strong>${t('gameHistory.team', index + 1)}</strong>
             <span>${team.map((player) => escapeHtml(playerName(player))).join(', ')}</span></div>`).join('');
     };
     const renderStepText = () => {
@@ -299,8 +299,8 @@
         const round = getRound();
         const plays = round?.plays || [];
         const roundNumber = Number(round?.roundNumber ?? step.roundIndex) + 1;
-        if (dom.stepTitle) dom.stepTitle.textContent = `Round ${roundNumber}`;
-        if (dom.stateLabel) dom.stateLabel.textContent = step.playCount === 0 ? `Round ${roundNumber}` : `${step.playCount}/${plays.length}`;
+        if (dom.stepTitle) dom.stepTitle.textContent = t('gameHistory.roundN', roundNumber);
+        if (dom.stateLabel) dom.stateLabel.textContent = step.playCount === 0 ? t('gameHistory.roundN', roundNumber) : `${step.playCount}/${plays.length}`;
     };
     const renderControls = () => {
         const max = Math.max(state.steps.length - 1, 0);
@@ -519,8 +519,8 @@
     dom.range?.addEventListener('input', () => setStep(Number(dom.range.value) || 0));
 
     loadReplay().catch(() => {
-        if (dom.title) dom.title.textContent = 'Replay unavailable';
-        if (dom.meta) dom.meta.innerHTML = '<p>The game history could not be loaded.</p>';
-        if (dom.stateLabel) dom.stateLabel.textContent = 'Error';
+        if (dom.title) dom.title.textContent = t('gameHistory.unavailable');
+        if (dom.meta) dom.meta.innerHTML = `<p>${t('gameHistory.loadFailed')}</p>`;
+        if (dom.stateLabel) dom.stateLabel.textContent = t('gameHistory.error');
     });
 })();

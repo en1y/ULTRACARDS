@@ -250,12 +250,12 @@ function clearSessionsStatus() {
 
 function formatSessionCardInstant(value) {
     if (!value) {
-        return 'Unavailable';
+        return t('profilePage.unavailable');
     }
 
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return 'Unavailable';
+        return t('profilePage.unavailable');
     }
 
     return new Intl.DateTimeFormat(undefined, {
@@ -299,12 +299,12 @@ function isSameMondayWeek(left, right) {
 
 function formatLastPlayedAt(value) {
     if (!value) {
-        return 'Never played';
+        return t('profile.neverPlayed');
     }
 
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return 'Never played';
+        return t('profile.neverPlayed');
     }
 
     if (isSameMondayWeek(date, new Date())) {
@@ -316,17 +316,17 @@ function formatLastPlayedAt(value) {
 }
 
 function formatLastPlayedLabel(value) {
-    return value ? `Last played on ${formatLastPlayedAt(value)}` : 'Never played';
+    return value ? t('search.lastPlayedOn', formatLastPlayedAt(value)) : t('profile.neverPlayed');
 }
 
 function formatHistoryDate(value) {
     if (!value) {
-        return 'Unknown time';
+        return t('history.unknownTime');
     }
 
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return 'Unknown time';
+        return t('history.unknownTime');
     }
 
     return new Intl.DateTimeFormat(undefined, {
@@ -356,17 +356,17 @@ function sessionLabel(session) {
     const os = session.os || null;
 
     if (client && os) {
-        return `${client} on ${os}`;
+        return t('profilePage.clientOnOs', client, os);
     }
-    return client || os || 'Unknown session';
+    return client || os || t('profilePage.unknownSession');
 }
 
 function sessionSubtitle(session) {
     const location = [session.region, session.country].filter(Boolean).join(', ');
     if (session.currentSession) {
-        return location ? `This device • ${location}` : 'This device';
+        return location ? `${t('profilePage.thisDevice')} • ${location}` : t('profilePage.thisDevice');
     }
-    return location || 'Another signed-in device';
+    return location || t('profilePage.otherDevice');
 }
 
 function escapeHtml(value) {
@@ -542,14 +542,14 @@ function getActiveProfileTab() {
 
 async function verifyRecentSession(onVerified) {
     if (!window.ucAuthModal?.requestRecentVerification) {
-        throw new Error('Recent verification is not available on this page.');
+        throw new Error(t('profilePage.verifyUnavailable'));
     }
 
     const verified = await window.ucAuthModal.requestRecentVerification(
         onVerified ? { onVerified } : undefined
     );
     if (!verified) {
-        throw new Error('Verification was cancelled.');
+        throw new Error(t('profilePage.verifyCancelled'));
     }
 }
 
@@ -568,17 +568,17 @@ async function save({ allowRetry = true } = {}) {
     clearProfileStatus();
 
     if (!username) {
-        setProfileStatus('Username cannot be blank.', 'error');
+        setProfileStatus(t('profilePage.usernameBlank'), 'error');
         return;
     }
 
     if (!EMAIL_PATTERN.test(email)) {
-        setProfileStatus('Wrong email format.', 'error');
+        setProfileStatus(t('profilePage.wrongEmail'), 'error');
         return;
     }
 
     if (username === currentProfileSnapshot.username && email === currentProfileSnapshot.email) {
-        setProfileStatus('No changes to save.', 'error');
+        setProfileStatus(t('profilePage.noChanges'), 'error');
         return;
     }
 
@@ -597,7 +597,7 @@ async function save({ allowRetry = true } = {}) {
         });
 
         if (response.status === 403 && allowRetry) {
-            setProfileStatus('Recent verification is required. Check your email for the code.', 'error');
+            setProfileStatus(t('profilePage.verifyRequired'), 'error');
             await verifyRecentSession();
             await save({ allowRetry: false });
             return;
@@ -605,24 +605,24 @@ async function save({ allowRetry = true } = {}) {
 
         if (!response.ok) {
             if (response.status === 400) {
-                setProfileStatus('Could not save profile. Check the email and username format.', 'error');
+                setProfileStatus(t('profilePage.saveInvalid'), 'error');
                 return;
             }
 
-            setProfileStatus('Could not save profile. Please try again.', 'error');
+            setProfileStatus(t('profilePage.saveFailed'), 'error');
             throw new Error(`Response status: ${response.status}`);
         }
 
         await updateProfile(await response.json());
-        setProfileStatus('Profile saved successfully.', 'success');
+        setProfileStatus(t('profilePage.saved'), 'success');
     } catch (error) {
-        if (error.message === 'Verification was cancelled.') {
-            setProfileStatus('Profile update cancelled.', 'error');
+        if (error.message === t('profilePage.verifyCancelled')) {
+            setProfileStatus(t('profilePage.updateCancelled'), 'error');
             return;
         }
 
         if (!document.getElementById('profile-status')?.textContent) {
-            setProfileStatus('Network error while saving profile.', 'error');
+            setProfileStatus(t('profilePage.saveNetworkError'), 'error');
         }
         console.error(error.message);
     } finally {
@@ -666,7 +666,7 @@ async function refreshDetailedStats({ clearStatus = true } = {}) {
         }
         return true;
     } catch (error) {
-        setSessionsStatus('Could not load detailed game stats. Please refresh the page.', 'error');
+        setSessionsStatus(t('profilePage.statsLoadFailed'), 'error');
         console.error(error.message);
         return false;
     }
@@ -685,7 +685,7 @@ async function refreshSessions({ clearStatus = true } = {}) {
         }
         return true;
     } catch (error) {
-        setSessionsStatus('Could not load sessions. Please refresh the page.', 'error');
+        setSessionsStatus(t('profilePage.sessionsLoadFailed'), 'error');
         console.error(error.message);
         return false;
     }
@@ -700,7 +700,7 @@ function gameDisplayName(gameType) {
         .split('_')
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ') || 'Unknown game';
+        .join(' ') || t('game.unknown');
 }
 
 function gameConfigKey(config, gameType = 'Briskula') {
@@ -732,9 +732,9 @@ function gameConfigDisplayName(config, gameType = 'Briskula') {
     const players = Number(config.numberOfPlayers);
     const cards = Number(config.cardsInHandNum);
     if (Number.isFinite(players) && Number.isFinite(cards)) {
-        return `${players} players, ${cards} cards${config.teamsEnabled ? ', teams' : ''}`;
+        return t('gameConfig.custom', players, cards) + (config.teamsEnabled ? t('gameConfig.customTeams') : '');
     }
-    return 'Game config';
+    return t('gameConfig.fallback');
 }
 
 function normalizeGameStats(stats) {
@@ -779,21 +779,21 @@ function renderGameStatsCard(gameType, stats, extraClass = '') {
         <article class="profile-game-card profile-game-card--donut ${escapeHtml(extraClass)}">
             <span>${escapeHtml(gameDisplayName(gameType))}</span>
             <div class="profile-game-card-row">
-                <div class="profile-stat-donut" style="--win-rate: ${normalized.winRate}" role="img" aria-label="${normalized.winRate}% win rate">
+                <div class="profile-stat-donut" style="--win-rate: ${normalized.winRate}" role="img" aria-label="${t('profile.winRate.aria', normalized.winRate)}">
                     <span>${normalized.winRate}%</span>
                 </div>
                 <div class="profile-game-card-counts">
                     <div class="profile-stat-line">
                         <strong>${normalized.played}</strong>
-                        <small>played</small>
+                        <small>${t('profile.played')}</small>
                     </div>
                     <div class="profile-stat-line">
                         <strong>${normalized.wins}</strong>
-                        <small>won</small>
+                        <small>${t('profile.won')}</small>
                     </div>
                     <div class="profile-stat-line">
                         <strong>${normalized.losses}</strong>
-                        <small>lost</small>
+                        <small>${t('profilePage.lost')}</small>
                     </div>
                 </div>
             </div>
@@ -807,9 +807,9 @@ function matchupLabel(matchup) {
         return matchup.relatedUsername;
     }
     if (matchup.relatedUserId) {
-        return `User ${matchup.relatedUserId}`;
+        return t('lobby.userFallback', matchup.relatedUserId);
     }
-    return 'Unknown user';
+    return t('search.unknownUser');
 }
 
 function renderMatchupRows(matchups, emptyText) {
@@ -846,7 +846,7 @@ function renderMatchupTable(title, matchups, emptyText) {
         <article class="profile-stats-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">User matchups</p>
+                    <p class="section-kicker">${t('profilePage.userMatchups')}</p>
                     <h2>${escapeHtml(title)}</h2>
                 </div>
             </div>
@@ -854,13 +854,13 @@ function renderMatchupTable(title, matchups, emptyText) {
                 <table class="profile-stat-table">
                     <thead>
                         <tr>
-                            <th>User</th>
-                            <th>Config</th>
-                            <th>Played</th>
-                            <th>Won</th>
-                            <th>Lost</th>
-                            <th>Win rate</th>
-                            <th>Last played</th>
+                            <th>${t('profilePage.th.user')}</th>
+                            <th>${t('profilePage.th.config')}</th>
+                            <th>${t('profilePage.th.played')}</th>
+                            <th>${t('profilePage.th.won')}</th>
+                            <th>${t('profilePage.th.lost')}</th>
+                            <th>${t('profilePage.th.winRate')}</th>
+                            <th>${t('profilePage.th.lastPlayed')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -916,31 +916,31 @@ function renderMatchupControls(modes) {
                 ${escapeHtml(gameDisplayName(mode))}
             </option>
         `).join('')
-        : '<option value="">No Briskula modes</option>';
+        : `<option value="">${t('profilePage.noBriskulaModes')}</option>`;
 
     return `
-        <div class="profile-stats-controls" aria-label="User matchup filters">
+        <div class="profile-stats-controls" aria-label="${t('profilePage.matchupFilters.aria')}">
             <label class="profile-filter-field" for="stats-mode-filter">
-                <span>Mode</span>
+                <span>${t('profilePage.mode')}</span>
                 <select id="stats-mode-filter" ${modes.length ? '' : 'disabled'}>
                     ${modeOptions}
                 </select>
             </label>
             <label class="profile-filter-field" for="stats-sort">
-                <span>Sort</span>
+                <span>${t('profilePage.sort')}</span>
                 <select id="stats-sort">
-                    <option value="recent" ${detailedStatsFilters.sort === 'recent' ? 'selected' : ''}>Most recent</option>
-                    <option value="user" ${detailedStatsFilters.sort === 'user' ? 'selected' : ''}>User</option>
-                    <option value="gametype" ${detailedStatsFilters.sort === 'gametype' ? 'selected' : ''}>Game type</option>
-                    <option value="played" ${detailedStatsFilters.sort === 'played' ? 'selected' : ''}>Played</option>
-                    <option value="wins" ${detailedStatsFilters.sort === 'wins' ? 'selected' : ''}>Wins</option>
-                    <option value="losses" ${detailedStatsFilters.sort === 'losses' ? 'selected' : ''}>Losses</option>
-                    <option value="winRate" ${detailedStatsFilters.sort === 'winRate' ? 'selected' : ''}>Win rate</option>
+                    <option value="recent" ${detailedStatsFilters.sort === 'recent' ? 'selected' : ''}>${t('profilePage.sort.recent')}</option>
+                    <option value="user" ${detailedStatsFilters.sort === 'user' ? 'selected' : ''}>${t('profilePage.th.user')}</option>
+                    <option value="gametype" ${detailedStatsFilters.sort === 'gametype' ? 'selected' : ''}>${t('profilePage.sort.gameType')}</option>
+                    <option value="played" ${detailedStatsFilters.sort === 'played' ? 'selected' : ''}>${t('profilePage.th.played')}</option>
+                    <option value="wins" ${detailedStatsFilters.sort === 'wins' ? 'selected' : ''}>${t('history.wins')}</option>
+                    <option value="losses" ${detailedStatsFilters.sort === 'losses' ? 'selected' : ''}>${t('history.losses')}</option>
+                    <option value="winRate" ${detailedStatsFilters.sort === 'winRate' ? 'selected' : ''}>${t('profilePage.th.winRate')}</option>
                 </select>
             </label>
             <label class="profile-filter-field" for="stats-user-filter">
-                <span>User</span>
-                <input id="stats-user-filter" type="search" placeholder="Enter player username" value="${escapeHtml(detailedStatsFilters.user)}">
+                <span>${t('profilePage.th.user')}</span>
+                <input id="stats-user-filter" type="search" placeholder="${t('profilePage.userFilter.placeholder')}" value="${escapeHtml(detailedStatsFilters.user)}">
             </label>
         </div>
     `;
@@ -995,25 +995,25 @@ function renderDetailedStats(data) {
     const configEntries = Object.entries(configStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
     const selectedModeName = detailedStatsFilters.gameConfig
         ? gameDisplayName(detailedStatsFilters.gameConfig)
-        : 'No mode selected';
+        : t('profilePage.noModeSelected');
     const winsAgainstUser = filterMatchupsByControls(briskulaStats.winsAgainstUser);
     const winsWithTeammate = filterMatchupsByControls(briskulaStats.winsWithTeammate);
     const teammateTable = winsWithTeammate.length
-        ? renderMatchupTable(`With teammates - ${selectedModeName}`, winsWithTeammate, 'No teammate stats for this mode.')
+        ? renderMatchupTable(t('profilePage.withTeammates', selectedModeName), winsWithTeammate, t('profilePage.noTeammateStats'))
         : '';
 
     container.innerHTML = `
         <article class="profile-stats-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">All games</p>
-                    <h2>Game statistics</h2>
+                    <p class="section-kicker">${t('common.allGames')}</p>
+                    <h2>${t('profilePage.gameStatistics')}</h2>
                 </div>
             </div>
             <div class="profile-game-grid">
                 ${gameEntries.map(([gameType, stats]) => renderGameStatsCard(gameType, stats)).join('') || `
                     <article class="profile-session-card profile-session-card--empty">
-                        <p>No game stats found for this account.</p>
+                        <p>${t('profilePage.noAccountStats')}</p>
                     </article>
                 `}
             </div>
@@ -1022,19 +1022,19 @@ function renderDetailedStats(data) {
             <div class="section-heading">
                 <div>
                     <p class="section-kicker">Briskula</p>
-                    <h2>By game setting</h2>
+                    <h2>${t('profilePage.byGameSetting')}</h2>
                 </div>
             </div>
             <div class="profile-game-grid">
                 ${configEntries.map(([gameType, stats]) => renderGameStatsCard(gameType, stats, 'profile-game-card--config')).join('') || `
                     <article class="profile-session-card profile-session-card--empty">
-                        <p>No Briskula configuration stats yet.</p>
+                        <p>${t('profilePage.noConfigStats')}</p>
                     </article>
                 `}
             </div>
         </article>
         ${renderMatchupControls(modes)}
-        ${renderMatchupTable(`Against users - ${selectedModeName}`, winsAgainstUser, 'No opponent stats for this mode.')}
+        ${renderMatchupTable(t('profilePage.againstUsers', selectedModeName), winsAgainstUser, t('profilePage.noOpponentStats'))}
         ${teammateTable}
     `;
 
@@ -1046,7 +1046,7 @@ function friendUserId(friend) {
 }
 
 function friendName(friend) {
-    return friend?.user?.name || 'Unknown user';
+    return friend?.user?.name || t('search.unknownUser');
 }
 
 function friendPresence(friend) {
@@ -1055,21 +1055,21 @@ function friendPresence(friend) {
 
 function presenceLabel(presence) {
     if (presence === 'IN_GAME') {
-        return 'In game';
+        return t('friends.inGame');
     }
     if (presence === 'IN_LOBBY') {
-        return 'In lobby';
+        return t('friends.inLobby');
     }
     if (presence === 'ONLINE') {
-        return 'Online';
+        return t('friends.online');
     }
-    return 'Offline';
+    return t('friends.offline');
 }
 
 function renderFriendPlayCounts(friend) {
     const counts = Array.isArray(friend?.playedTogetherByGameType) ? friend.playedTogetherByGameType : [];
     if (!counts.length) {
-        return '<span class="profile-friend-count">No game-specific history</span>';
+        return `<span class="profile-friend-count">${t('profilePage.noGameSpecific')}</span>`;
     }
 
     return counts.map((item) => `
@@ -1081,12 +1081,12 @@ function renderFriendPlayCounts(friend) {
 
 function friendMatchupTypeLabel(value) {
     if (value === 'WITH_TEAMMATE') {
-        return 'With teammate';
+        return t('search.withTeammate');
     }
     if (value === 'AGAINST_USER') {
-        return 'Against user';
+        return t('search.againstUser');
     }
-    return String(value || 'Matchup');
+    return String(value || t('search.matchup'));
 }
 
 function renderDetailedFriendStats(detailedFriend) {
@@ -1100,12 +1100,12 @@ function renderDetailedFriendStats(detailedFriend) {
             <section class="profile-friends-section">
                 <div class="section-heading">
                     <div>
-                        <p class="section-kicker">Together</p>
-                        <h2>Persisted stats</h2>
+                        <p class="section-kicker">${t('search.together')}</p>
+                        <h2>${t('profilePage.persistedStats')}</h2>
                     </div>
                 </div>
                 <article class="profile-session-card profile-session-card--empty">
-                    <p>No saved friend matchup stats yet.</p>
+                    <p>${t('search.noMatchupStats')}</p>
                 </article>
             </section>
         `;
@@ -1115,8 +1115,8 @@ function renderDetailedFriendStats(detailedFriend) {
         <section class="profile-friends-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">Together</p>
-                    <h2>Persisted stats</h2>
+                    <p class="section-kicker">${t('search.together')}</p>
+                    <h2>${t('profilePage.persistedStats')}</h2>
                 </div>
             </div>
             <div class="profile-game-grid">
@@ -1127,20 +1127,20 @@ function renderDetailedFriendStats(detailedFriend) {
                             <span>${escapeHtml(gameDisplayName(gameType))} - ${escapeHtml(gameConfigDisplayName(stat.gameConfig, stat.gameType || gameType))}</span>
                             <div class="profile-stat-line">
                                 <strong>${normalized.played}</strong>
-                                <small>played</small>
+                                <small>${t('profile.played')}</small>
                             </div>
                             <div class="profile-stat-line">
                                 <strong>${normalized.wins}</strong>
-                                <small>won</small>
+                                <small>${t('profile.won')}</small>
                             </div>
                             <div class="profile-stat-line">
                                 <strong>${normalized.losses}</strong>
-                                <small>lost</small>
+                                <small>${t('profilePage.lost')}</small>
                             </div>
-                            <div class="profile-win-rate" aria-label="${normalized.winRate}% win rate">
+                            <div class="profile-win-rate" aria-label="${t('profile.winRate.aria', normalized.winRate)}">
                                 <span style="width: ${normalized.winRate}%"></span>
                             </div>
-                            <p>${normalized.winRate}% win rate - ${escapeHtml(friendMatchupTypeLabel(stat.matchupType))}</p>
+                            <p>${t('profile.winRate.aria', normalized.winRate)} - ${escapeHtml(friendMatchupTypeLabel(stat.matchupType))}</p>
                             <small class="profile-last-played">${escapeHtml(formatLastPlayedLabel(stat.lastPlayedAt))}</small>
                         </article>
                     `;
@@ -1152,7 +1152,7 @@ function renderDetailedFriendStats(detailedFriend) {
 
 function normalizeHistoryPlayer(value) {
     if (!value) {
-        return { name: 'Unknown player', id: 0 };
+        return { name: t('history.unknownPlayer'), id: 0 };
     }
     if (typeof value === 'object') {
         return value;
@@ -1176,7 +1176,7 @@ function historyPlayerId(player) {
 }
 
 function historyPlayerName(player) {
-    return normalizeHistoryPlayer(player).name || 'Unknown player';
+    return normalizeHistoryPlayer(player).name || t('history.unknownPlayer');
 }
 
 function historyGameIncludesUser(game, userId) {
@@ -1211,17 +1211,17 @@ function renderFriendHistoryCard(game, profile) {
                     <strong>${escapeHtml(game?.name || gameDisplayName(game?.gameType || 'Briskula'))}</strong>
                     <small>${escapeHtml(formatHistoryDate(game?.endedAt || game?.createdAt))} - ${escapeHtml(gameConfigDisplayName(game?.gameConfig, game?.gameType || 'Briskula'))}</small>
                 </div>
-                <span class="profile-friend-history-result ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span>
+                <span class="profile-friend-history-result ${won ? 'win' : 'loss'}">${won ? t('history.win') : t('history.loss')}</span>
             </div>
             <div class="profile-friend-history-row">
-                <span>Players</span>
+                <span>${t('lobby.players.chip')}</span>
                 <div class="profile-friend-history-players">${renderFriendHistoryPlayers(game?.playersOrder || [], game)}</div>
             </div>
             <div class="profile-friend-history-footer">
-                <p>Winners: ${escapeHtml((game?.winners || []).map(historyPlayerName).join(', ') || 'No winner recorded')}</p>
+                <p>${t('search.winnersLabel', escapeHtml((game?.winners || []).map(historyPlayerName).join(', ') || t('history.noWinner')))}</p>
                 <a class="btn" href="/history/${encodeURIComponent(game?.id || '')}">
                     ${iconHtml('history')}
-                    <span>Replay</span>
+                    <span>${t('history.replay')}</span>
                 </a>
             </div>
         </article>
@@ -1234,7 +1234,7 @@ async function loadFriendProfileHistory(profile) {
         return;
     }
 
-    panel.innerHTML = '<p class="section-copy">Loading history...</p>';
+    panel.innerHTML = `<p class="section-copy">${t('search.loadingHistory')}</p>`;
     try {
         const sharedGames = [];
         let offset = 0;
@@ -1271,14 +1271,14 @@ async function loadFriendProfileHistory(profile) {
             <section class="profile-friend-history-section">
                 <div class="section-heading">
                     <div>
-                        <p class="section-kicker">Past games</p>
-                        <h2>History</h2>
+                        <p class="section-kicker">${t('history.pastGames')}</p>
+                        <h2>${t('header.menu.history')}</h2>
                     </div>
                 </div>
                 <div class="profile-friend-history-list">
                     ${sharedGames.length ? sharedGames.slice(0, 20).map((game) => renderFriendHistoryCard(game, profile)).join('') : `
                         <article class="profile-session-card profile-session-card--empty">
-                            <p>No shared past games found.</p>
+                            <p>${t('search.noSharedGames')}</p>
                         </article>
                     `}
                 </div>
@@ -1287,7 +1287,7 @@ async function loadFriendProfileHistory(profile) {
         window.syncThemeUi?.();
     } catch (error) {
         console.error(error.message);
-        panel.innerHTML = '<p class="section-copy">History could not be loaded.</p>';
+        panel.innerHTML = `<p class="section-copy">${t('history.loadFailed')}</p>`;
     }
 }
 
@@ -1355,7 +1355,7 @@ function renderFriendSection(title, friends, emptyText, blocked = false) {
                         <span class="profile-friend-avatar" aria-hidden="true">${escapeHtml(name.charAt(0).toUpperCase() || 'U')}</span>
                         <div class="profile-friend-copy">
                             <strong>${escapeHtml(name)}</strong>
-                            <p>${escapeHtml(blocked ? 'Blocked user' : `${presenceLabel(presence)} - ${friend.totalPlayedTogether || 0} games together`)}</p>
+                            <p>${escapeHtml(blocked ? t('profilePage.blockedUser') : `${presenceLabel(presence)} - ${t('friends.gamesTogether', friend.totalPlayedTogether || 0)}`)}</p>
                             <div class="profile-friend-counts">
                                 ${blocked ? '' : renderFriendPlayCounts(friend)}
                             </div>
@@ -1365,11 +1365,11 @@ function renderFriendSection(title, friends, emptyText, blocked = false) {
                         ${blocked ? '' : `<span class="profile-friend-presence profile-friend-presence-${escapeHtml(presence.toLowerCase().replace('_', '-'))}">${escapeHtml(presenceLabel(presence))}</span>`}
                         <button class="btn" type="button" data-view-friend="${escapeHtml(id)}">
                             ${iconHtml('profile_icon')}
-                            <span>View stats</span>
+                            <span>${t('profilePage.viewStats')}</span>
                         </button>
                         <button class="btn danger" type="button" data-${blocked ? 'unblock' : 'remove'}-friend="${escapeHtml(id)}">
                             ${iconHtml(blocked ? 'block' : 'user_remove')}
-                            <span>${blocked ? 'Unblock' : 'Remove'}</span>
+                            <span>${blocked ? t('profilePage.unblock') : t('profilePage.remove')}</span>
                         </button>
                     </div>
                 </article>
@@ -1385,7 +1385,7 @@ function renderFriendSection(title, friends, emptyText, blocked = false) {
         <section class="profile-friends-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">${escapeHtml(blocked ? 'Blocked' : 'Connected')}</p>
+                    <p class="section-kicker">${escapeHtml(blocked ? t('profilePage.blocked') : t('profilePage.connected'))}</p>
                     <h2>${escapeHtml(title)}</h2>
                 </div>
             </div>
@@ -1407,7 +1407,7 @@ function bindFriendActions(container) {
         button.addEventListener('click', async () => {
             const id = button.getAttribute('data-remove-friend');
             const name = friendName(cachedFriends.find((friend) => friendUserId(friend) === id));
-            const confirmed = await confirmSessionAction(`Remove ${name} from your friends?`, 'Remove friend');
+            const confirmed = await confirmSessionAction(t('profilePage.removeFriendConfirm', name), t('search.removeFriend'));
             if (confirmed) {
                 await removeFriend(id);
             }
@@ -1418,7 +1418,7 @@ function bindFriendActions(container) {
         button.addEventListener('click', async () => {
             const id = button.getAttribute('data-unblock-friend');
             const name = friendName(cachedBlockedFriends.find((friend) => friendUserId(friend) === id));
-            const confirmed = await confirmSessionAction(`Unblock ${name}?`, 'Unblock');
+            const confirmed = await confirmSessionAction(t('profilePage.unblockConfirm', name), t('profilePage.unblock'));
             if (confirmed) {
                 await unblockFriend(id);
             }
@@ -1433,8 +1433,8 @@ function renderFriends() {
     }
 
     container.innerHTML = `
-        ${renderFriendSection('Friends', cachedFriends, 'No friends yet.')}
-        ${renderFriendSection('Blocked users', cachedBlockedFriends, 'No blocked users.', true)}
+        ${renderFriendSection(t('header.friends'), cachedFriends, t('profilePage.noFriends'))}
+        ${renderFriendSection(t('profilePage.blockedUsers'), cachedBlockedFriends, t('profilePage.noBlocked'), true)}
     `;
     window.syncThemeUi?.();
     bindFriendActions(container);
@@ -1474,7 +1474,7 @@ async function refreshFriends({ clearStatus = true } = {}) {
         }
     } catch (error) {
         console.error(error.message);
-        setSessionsStatus('Could not load friends. Please refresh the page.', 'error');
+        setSessionsStatus(t('profilePage.friendsLoadFailed'), 'error');
     }
 }
 
@@ -1493,10 +1493,10 @@ async function removeFriend(friendId) {
         }
         document.dispatchEvent(new CustomEvent('uc:friends-refresh'));
         await refreshFriends({ clearStatus: false });
-        setSessionsStatus('Friend removed.', 'success');
+        setSessionsStatus(t('search.removed'), 'success');
     } catch (error) {
         console.error(error.message);
-        setSessionsStatus('Could not remove friend.', 'error');
+        setSessionsStatus(t('profilePage.removeFriendFailed'), 'error');
     }
 }
 
@@ -1515,10 +1515,10 @@ async function unblockFriend(friendId) {
         }
         document.dispatchEvent(new CustomEvent('uc:friends-refresh'));
         await refreshFriends({ clearStatus: false });
-        setSessionsStatus('User unblocked.', 'success');
+        setSessionsStatus(t('profilePage.unblocked'), 'success');
     } catch (error) {
         console.error(error.message);
-        setSessionsStatus('Could not unblock user.', 'error');
+        setSessionsStatus(t('profilePage.unblockFailed'), 'error');
     }
 }
 
@@ -1555,7 +1555,7 @@ function renderFriendProfile(profile, detailedFriend = null) {
     }
 
     if (title) {
-        title.textContent = profile?.username || 'Friend profile';
+        title.textContent = profile?.username || t('profile.friendProfile');
     }
 
     const gameStats = profile?.userGamesStats?.gameStats || {};
@@ -1570,37 +1570,37 @@ function renderFriendProfile(profile, detailedFriend = null) {
                 ${escapeHtml((profile?.username || 'U').charAt(0).toUpperCase())}
             </span>
             <div>
-                <h2>${escapeHtml(profile?.username || 'Unknown user')}</h2>
-                <p class="section-copy">User ID #${escapeHtml(profile?.id ?? '-')}</p>
-                <p class="section-copy">Roles: ${escapeHtml((profile?.roles || ['USER']).join(', '))}</p>
+                <h2>${escapeHtml(profile?.username || t('search.unknownUser'))}</h2>
+                <p class="section-copy">${t('profile.userId')} #${escapeHtml(profile?.id ?? '-')}</p>
+                <p class="section-copy">${t('profile.roles')}: ${escapeHtml((profile?.roles || ['USER']).join(', '))}</p>
             </div>
         </section>
-        <div class="profile-friend-profile-tabs" role="tablist" aria-label="Friend profile sections">
-            <button class="profile-friend-profile-tab is-active" type="button" role="tab" aria-selected="true" data-friend-profile-tab="stats">Stats</button>
-            <button class="profile-friend-profile-tab" type="button" role="tab" aria-selected="false" data-friend-profile-tab="history">History</button>
+        <div class="profile-friend-profile-tabs" role="tablist" aria-label="${t('profilePage.friendProfileSections')}">
+            <button class="profile-friend-profile-tab is-active" type="button" role="tab" aria-selected="true" data-friend-profile-tab="stats">${t('search.stats')}</button>
+            <button class="profile-friend-profile-tab" type="button" role="tab" aria-selected="false" data-friend-profile-tab="history">${t('header.menu.history')}</button>
         </div>
         <div class="profile-friend-profile-panel" data-friend-profile-stats-panel>
             <section class="profile-history-stats">
                 <div class="profile-summary-card profile-summary-stack">
-                    <span class="summary-label">Games played</span>
+                    <span class="summary-label">${t('profile.gamesPlayed')}</span>
                     <span class="summary-value">${escapeHtml(profile?.gamesPlayed ?? 0)}</span>
                 </div>
                 <div class="profile-summary-card profile-summary-stack">
-                    <span class="summary-label">Games won</span>
+                    <span class="summary-label">${t('profile.gamesWon')}</span>
                     <span class="summary-value">${escapeHtml(profile?.gamesWon ?? 0)}</span>
                 </div>
             </section>
             <section class="profile-friends-section">
                 <div class="section-heading">
                     <div>
-                        <p class="section-kicker">Game stats</p>
-                        <h2>Stats</h2>
+                        <p class="section-kicker">${t('profile.tab.stats')}</p>
+                        <h2>${t('search.stats')}</h2>
                     </div>
                 </div>
                 <div class="profile-game-grid">
                     ${gameCards || `
                         <article class="profile-session-card profile-session-card--empty">
-                            <p>No game stats found for this user.</p>
+                            <p>${t('profilePage.noUserStats')}</p>
                         </article>
                     `}
                 </div>
@@ -1624,7 +1624,7 @@ async function openFriendProfile(friendId) {
         return;
     }
 
-    content.innerHTML = '<p class="section-copy">Loading profile...</p>';
+    content.innerHTML = `<p class="section-copy">${t('profile.loadingProfile')}</p>`;
     overlay.classList.add('active');
 
     try {
@@ -1649,7 +1649,7 @@ async function openFriendProfile(friendId) {
         renderFriendProfile(await profileResponse.json(), detailedFriend);
     } catch (error) {
         console.error(error.message);
-        content.innerHTML = '<p class="section-copy">Unable to load this profile.</p>';
+        content.innerHTML = `<p class="section-copy">${t('search.profileLoadFailed')}</p>`;
     }
 }
 
@@ -1675,11 +1675,11 @@ async function deleteSession(sessionId, isCurrentSession, { allowRetry = true } 
 
         if (response.status === 403 && allowRetry) {
             rememberPendingSessionDeletion(sessionId, isCurrentSession);
-            setSessionsStatus('Recent verification is required before removing a session.', 'error');
+            setSessionsStatus(t('profilePage.sessionVerifyRequired'), 'error');
             await verifyRecentSession();
             const pending = pendingSessionDeletion;
             if (!pending) {
-                throw new Error('Pending session removal was lost.');
+                throw new Error(t('profilePage.sessionRemovalLost'));
             }
             clearPendingSessionDeletion();
             await deleteSession(pending.sessionId, pending.isCurrentSession, { allowRetry: false });
@@ -1693,7 +1693,7 @@ async function deleteSession(sessionId, isCurrentSession, { allowRetry = true } 
         }
 
         if (!response.ok) {
-            setSessionsStatus('Could not remove session. Please try again.', 'error');
+            setSessionsStatus(t('profilePage.sessionRemoveFailed'), 'error');
             throw new Error(`Response status: ${response.status}`);
         }
 
@@ -1706,16 +1706,16 @@ async function deleteSession(sessionId, isCurrentSession, { allowRetry = true } 
         clearPendingSessionDeletion();
         await animateSessionRemoval(sessionId);
         if (await refreshSessions({ clearStatus: false })) {
-            setSessionsStatus('Session removed.', 'success');
+            setSessionsStatus(t('profilePage.sessionRemoved'), 'success');
         }
     } catch (error) {
-        if (error.message === 'Verification was cancelled.') {
+        if (error.message === t('profilePage.verifyCancelled')) {
             clearPendingSessionDeletion();
-            setSessionsStatus('Session removal cancelled.', 'error');
+            setSessionsStatus(t('profilePage.sessionRemovalCancelled'), 'error');
             return;
         }
 
-        setSessionsStatus('Network error while removing the session.', 'error');
+        setSessionsStatus(t('profilePage.sessionNetworkError'), 'error');
         console.error(error.message);
     }
 }
@@ -1738,7 +1738,7 @@ function renderSessions(sessions) {
     }
 
     const createMetaItem = (label, value, modifier = '') => {
-        if (!value || value === 'Unavailable') {
+        if (!value || value === t('profilePage.unavailable')) {
             return '';
         }
 
@@ -1759,20 +1759,20 @@ function renderSessions(sessions) {
                 </div>
             </div>
             <div class="profile-session-meta">
-                ${createMetaItem('Last active', formatSessionCardInstant(session.lastSeenAt))}
-                ${createMetaItem('Verified', formatSessionCardInstant(session.lastAuthenticatedAt))}
-                ${createMetaItem('Started', formatSessionCardInstant(session.firstSeenAt))}
-                ${createMetaItem('Device ID', session.deviceId)}
+                ${createMetaItem(t('profilePage.lastActive'), formatSessionCardInstant(session.lastSeenAt))}
+                ${createMetaItem(t('profilePage.verified'), formatSessionCardInstant(session.lastAuthenticatedAt))}
+                ${createMetaItem(t('profilePage.started'), formatSessionCardInstant(session.firstSeenAt))}
+                ${createMetaItem(t('profilePage.deviceId'), session.deviceId)}
             </div>
             <div class="profile-session-actions">
-                ${session.currentSession ? '<span class="profile-session-badge profile-session-badge--action">Current session</span>' : ''}
+                ${session.currentSession ? `<span class="profile-session-badge profile-session-badge--action">${t('profilePage.currentSession')}</span>` : ''}
                 <button
                     class="btn ${session.currentSession ? 'danger' : ''}"
                     type="button"
                     data-delete-session="${escapeHtml(session.id)}"
                     data-current-session="${session.currentSession ? 'true' : 'false'}">
                     ${iconHtml(session.currentSession ? 'logout' : 'close')}
-                    <span>${session.currentSession ? 'Log out this device' : 'Remove session'}</span>
+                    <span>${session.currentSession ? t('profilePage.logoutDevice') : t('profilePage.removeSession')}</span>
                 </button>
             </div>
         </article>
@@ -1785,9 +1785,9 @@ function renderSessions(sessions) {
             const isCurrentSession = button.getAttribute('data-current-session') === 'true';
             const confirmed = await confirmSessionAction(
                 isCurrentSession
-                    ? 'This will log out your current device. Continue?'
-                    : 'Remove this session from your account?',
-                isCurrentSession ? 'Log out' : 'Remove session'
+                    ? t('profilePage.logoutDeviceConfirm')
+                    : t('profilePage.removeSessionConfirm'),
+                isCurrentSession ? t('header.menu.logout') : t('profilePage.removeSession')
             );
 
             if (!confirmed) {

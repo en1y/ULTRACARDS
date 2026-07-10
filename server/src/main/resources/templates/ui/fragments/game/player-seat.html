@@ -7,7 +7,7 @@
                   data-zone-kind='player-seat'">
         <div class="seat-avatar"
              th:text="${player != null and player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'P'}">P</div>
-        <div class="seat-name" th:text="${player != null and player.name != null ? player.name : 'Player'}">Player</div>
+        <div class="seat-name" th:text="${player != null and player.name != null ? player.name : #messages.msg('common.player')}">Player</div>
         <div class="seat-team-badge" th:hidden="${statusText == null or #strings.isEmpty(statusText)}" th:text="${statusText}"></div>
         <div class="seat-cards">
             <th:block th:if="${cardCount != null and cardCount > 0}"

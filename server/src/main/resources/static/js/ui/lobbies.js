@@ -37,14 +37,14 @@ const gameSettingsAnimationDurationMs = 420;
 
             const h3Settings = document.createElement('h3');
             h3Settings.className = 'lobbies-settings-title';
-            h3Settings.textContent = `${title} settings`;
+            h3Settings.textContent = t('createLobby.settingsTitle', title);
 
             const div = document.createElement('div');
             div.className = 'field';
 
             const label = document.createElement('label');
             label.setAttribute('for', selectId);
-            label.textContent = 'Game configuration';
+            label.textContent = t('createLobby.gameConfiguration');
 
             const properties_select = document.createElement('select');
             properties_select.setAttribute('id', selectId);
@@ -68,7 +68,7 @@ const gameSettingsAnimationDurationMs = 420;
 
             const h3Settings = document.createElement('h3');
             h3Settings.className = 'lobbies-settings-title';
-            h3Settings.textContent = `${title} settings`;
+            h3Settings.textContent = t('createLobby.settingsTitle', title);
 
             const notice = document.createElement('p');
             notice.className = 'lobbies-settings-note';
@@ -96,8 +96,8 @@ const gameSettingsAnimationDurationMs = 420;
             const selectId = settingsElement.id === 'create-game-settings' ? 'create-properties' : 'properties';
             if (!Object.keys(selectedGame).length) {
                 const text = settingsElement.id === 'create-game-settings'
-                    ? 'Lobby creation is not available for this game yet.'
-                    : 'No saved configurations are available for this game yet.';
+                    ? t('createLobby.status.gameUnavailable')
+                    : t('lobbies.noSavedConfigs');
                 setGameSettingsContent(settingsElement, buildSettingsNotice(title, text));
                 return;
             }
@@ -164,22 +164,22 @@ const gameSettingsAnimationDurationMs = 420;
 
                 const isReady = /^[A-Z0-9]{6}$/.test(code);
                 joinCodeSubmit.disabled = !isReady;
-                setJoinCodeStatus(isReady ? 'Ready to join.' : 'Enter a 6-character lobby code.', isReady ? 'success' : '');
+                setJoinCodeStatus(isReady ? t('home.codeStatus.ready') : t('lobbies.codeStatus.hint'), isReady ? 'success' : '');
             }
 
             function buildEmptyStateMarkup() {
                 const title = filterState.gameType === 'all'
-                    ? 'No active lobbies present'
-                    : 'No lobbies match this filter';
+                    ? t('lobbies.empty.title')
+                    : t('lobbies.empty.noMatch');
                 const text = filterState.gameType === 'all'
-                    ? 'Create a room for yet another ULTRAgame'
-                    : 'Try another game setup or create a lobby for this configuration.';
+                    ? t('lobbies.empty.copy')
+                    : t('lobbies.empty.tryAnother');
 
                 return `
                     <h3>${title}</h3>
                     <p>${text}</p>
                     <div class="lobby-empty-actions">
-                        <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                        <button class="btn-accent" type="button" data-action="open-create-lobby">${t('createLobby.submit')}</button>
                     </div>
                 `;
             }
@@ -196,7 +196,7 @@ const gameSettingsAnimationDurationMs = 420;
             function updateLobbyCount() {
                 const count = grid.querySelectorAll('.lobby-card').length;
                 if (activeCount) {
-                    activeCount.textContent = `${count} active`;
+                    activeCount.textContent = t('lobbies.activeCount', count);
                 }
                 if (!emptyState && count === 0) {
                     emptyState = document.createElement('article');
@@ -229,37 +229,37 @@ const gameSettingsAnimationDurationMs = 420;
 
             function describeLobbySettings(lobby) {
                 if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
-                    return 'Standard rules';
+                    return t('lobby.config.standard');
                 }
 
                 const config = lobby.gameConfig;
                 const n = config.numberOfPlayers;
                 if (n === 2) {
-                    return config.cardsInHandNum != null ? `2 players • ${config.cardsInHandNum} cards each` : '2 players';
+                    return config.cardsInHandNum != null ? t('lobby.config.base', 2, config.cardsInHandNum) : t('history.playersCount', 2);
                 }
                 if (n === 3) {
-                    return '3 players';
+                    return t('history.playersCount', 3);
                 }
                 if (n === 4) {
-                    return config.teamsEnabled ? '4 players with teams' : '4 players no teams';
+                    return config.teamsEnabled ? t('lobbies.config.4teams') : t('lobbies.config.4solo');
                 }
-                return 'Standard rules';
+                return t('lobby.config.standard');
             }
 
             function renderPlayers(players, hostId) {
                 if (!players.length) {
-                    return '<span class="lobby-card-subtitle">Waiting for players…</span>';
+                    return `<span class="lobby-card-subtitle">${t('lobby.status.waiting')}</span>`;
                 }
 
                 return players.map((player) => {
                     const initial = escapeHtml((player.name || 'U').charAt(0).toUpperCase());
-                    const name = escapeHtml(player.name || `User ${player.id}`);
+                    const name = escapeHtml(player.name || t('lobby.userFallback', player.id));
                     const isHost = hostId != null && String(player.id) === String(hostId);
                     return `
                         <span class="lobby-card-player">
                             <span class="lobby-card-avatar">${initial}</span>
                             <span>${name}</span>
-                            ${isHost ? '<span class="chip">Host</span>' : ''}
+                            ${isHost ? `<span class="chip">${t('lobby.host')}</span>` : ''}
                         </span>
                     `;
                 }).join('');
@@ -273,15 +273,15 @@ const gameSettingsAnimationDurationMs = 420;
                     <article class="card lobby-card" data-id="${escapeHtml(lobby.id)}">
                         <div class="lobby-card-head">
                             <div class="lobby-card-title">
-                                <span class="chip">${escapeHtml(lobby.gameType || 'Unknown')}</span>
-                                <h3>${escapeHtml(lobby.name || `Lobby ${lobby.id}`)}</h3>
-                                <p class="lobby-card-subtitle">Host: ${escapeHtml(lobby.host?.name || 'Unknown')}</p>
+                                <span class="chip">${escapeHtml(lobby.gameType || t('history.unknown'))}</span>
+                                <h3>${escapeHtml(lobby.name || t('lobbies.lobbyFallback', lobby.id))}</h3>
+                                <p class="lobby-card-subtitle">${t('lobbies.hostLabel', escapeHtml(lobby.host?.name || t('history.unknown')))}</p>
                             </div>
-                            <span class="chip">${players.length}/${lobby.maxPlayers ?? ''} players</span>
+                            <span class="chip">${t('lobby.playerCount', players.length, lobby.maxPlayers ?? '')}</span>
                         </div>
 
                         <div class="lobby-card-settings">
-                            <strong>Lobby settings</strong>
+                            <strong>${t('lobbies.settings')}</strong>
                             <p>${escapeHtml(describeLobbySettings(lobby))}</p>
                         </div>
 
@@ -292,7 +292,7 @@ const gameSettingsAnimationDurationMs = 420;
                         <div class="lobby-card-footer">
                             <button class="btn btn-accent" type="button" data-join-lobby-id="${escapeHtml(lobby.id || '')}">
                                 <img class="uc-icon" data-icon="login" src="/pics/light/login.svg" alt="" aria-hidden="true">
-                                <span>Join lobby</span>
+                                <span>${t('lobbies.joinLobby')}</span>
                             </button>
                         </div>
                     </article>
@@ -432,7 +432,7 @@ const gameSettingsAnimationDurationMs = 420;
                     });
                     if (!response.ok) {
                         const message = (await response.text()).trim();
-                        throw new Error(message || 'Failed to refresh lobbies.');
+                        throw new Error(message || t('lobbies.refreshFailed'));
                     }
 
                     const lobbies = await response.json();
@@ -455,7 +455,7 @@ const gameSettingsAnimationDurationMs = 420;
                 try {
                     await refreshLobbies(nextFilter);
                 } catch (error) {
-                    showToast('Filter failed', error?.message || 'Unable to refresh lobbies right now.');
+                    showToast(t('lobbies.toast.filterFailed.title'), error?.message || t('lobbies.toast.filterFailed.body'));
                 }
             }
 
@@ -472,7 +472,7 @@ const gameSettingsAnimationDurationMs = 420;
                         settingId: null
                     });
                 } catch (error) {
-                    showToast('Reset failed', error?.message || 'Unable to reset filters right now.');
+                    showToast(t('lobbies.toast.resetFailed.title'), error?.message || t('lobbies.toast.resetFailed.body'));
                 }
             }
 
@@ -515,7 +515,7 @@ const gameSettingsAnimationDurationMs = 420;
 
                 if (!response.ok) {
                     const message = (await response.text()).trim();
-                    const error = new Error(message || 'Failed to join lobby');
+                    const error = new Error(message || t('lobbies.joinFailedFallback'));
                     error.status = response.status;
                     throw error;
                 }
@@ -564,8 +564,8 @@ const gameSettingsAnimationDurationMs = 420;
 
                 try {
                     const notice = JSON.parse(rawNotice);
-                    const lobbyName = notice?.lobbyName || 'Your lobby';
-                    showToast('Lobby closed', `${lobbyName} was closed because its timer ran out.`);
+                    const lobbyName = notice?.lobbyName || t('lobbies.yourLobby');
+                    showToast(t('lobbies.toast.closed.title'), t('lobbies.toast.closed.body', lobbyName));
                 } catch (error) {
                     console.error('Unable to parse lobby close notice', error);
                 }
@@ -581,11 +581,11 @@ const gameSettingsAnimationDurationMs = 420;
                     await joinLobby({lobbyId: joinButton.dataset.joinLobbyId});
                 } catch (error) {
                     if (error?.status === 409) {
-                        showToast('Lobby full', error.message || 'This lobby is already full.');
+                        showToast(t('lobbies.toast.fullTitle'), error.message || t('lobbies.toast.full'));
                         return;
                     }
 
-                    showToast('Join failed', error?.message || 'Unable to join this lobby right now.');
+                    showToast(t('lobbies.toast.joinFailed.title'), error?.message || t('lobbies.toast.joinFailed.body'));
                 }
             });
 
@@ -594,24 +594,24 @@ const gameSettingsAnimationDurationMs = 420;
                 event.preventDefault();
                 const code = normalizeCode(joinCodeInput?.value);
                 if (!/^[A-Z0-9]{6}$/.test(code)) {
-                    setJoinCodeStatus('Enter a valid 6-character lobby code.', 'error');
+                    setJoinCodeStatus(t('join.invalidCode'), 'error');
                     joinCodeInput?.focus();
                     return;
                 }
 
                 joinCodeSubmit.disabled = true;
-                setButtonLabel(joinCodeSubmit, 'Joining...');
-                setJoinCodeStatus('Joining lobby...', 'success');
+                setButtonLabel(joinCodeSubmit, t('join.joining'));
+                setJoinCodeStatus(t('join.joiningLobby'), 'success');
 
                 try {
                     await joinLobby({lobbyCode: code});
                 } catch (error) {
                     if (error?.status === 409) {
-                        setJoinCodeStatus(error.message || 'Lobby is full.', 'error');
+                        setJoinCodeStatus(error.message || t('lobbies.fullShort'), 'error');
                     } else {
-                        setJoinCodeStatus(error?.message || 'Unable to join this lobby.', 'error');
+                        setJoinCodeStatus(error?.message || t('join.unable'), 'error');
                     }
-                    setButtonLabel(joinCodeSubmit, 'Join');
+                    setButtonLabel(joinCodeSubmit, t('common.join'));
                     joinCodeSubmit.disabled = false;
                     joinCodeInput?.focus();
                 }
@@ -629,7 +629,7 @@ const gameSettingsAnimationDurationMs = 420;
                 refreshLobbies(savedFilter).catch((error) => {
                     replaceLobbies(initialLobbies);
                     syncFilterSummary();
-                    showToast('Saved filter failed', error?.message || 'Unable to restore your saved lobby filter.');
+                    showToast(t('lobbies.toast.savedFilterFailed.title'), error?.message || t('lobbies.toast.savedFilterFailed.body'));
                 });
             } else {
                 replaceLobbies(initialLobbies);

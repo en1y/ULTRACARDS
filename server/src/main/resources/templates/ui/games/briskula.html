@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
       th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
@@ -14,13 +14,13 @@
 </head>
 <body class="game-page">
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting...</div>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
 
 <main class="container game-layout">
     <div id="game-container"
          th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
         <div class="game-shell briskula-game-shell">
-            <th:block th:replace="~{ui/fragments/game/table :: table('', 'Drag a card to play', ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right')}"></th:block>
+            <th:block th:replace="~{ui/fragments/game/table :: table('', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right')}"></th:block>
 
             <div class="hand-row">
                 <th:block th:replace="~{ui/fragments/game/hand :: hand('', 'self', ${currentUserId}, null, 0, 'player')}"></th:block>
@@ -35,10 +35,10 @@
         </div>
     </div>
 
-    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
+    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
 
-<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" aria-label="Open chat" data-chat-panel=".chat-sidebar">
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" th:aria-label="#{chat.open}" data-chat-panel=".chat-sidebar">
     <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
     <span class="mobile-chat-badge" hidden></span>
 </button>
