@@ -56,7 +56,7 @@
 
 ---
 
-## v0.2.1 — Current release
+## v0.2.1 — Previous release
 
 Version bumped across all modules. Vulnerable Spring dependencies patched. Unused JS/theme code removed.
 
@@ -70,7 +70,7 @@ Version bumped across all modules. Vulnerable Spring dependencies patched. Unuse
 
 ---
 
-## v0.2.2 - Reconstruct profile pill in the header
+## v0.2.2 - Reconstruct profile pill in the header ✅
 
 - Make the profile pill more usable and visually appealing
 - All the options should be more hidden and accessible through a better implemented dropdown menu

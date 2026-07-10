@@ -42,14 +42,13 @@
         });
 
         document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' && menu.classList.contains('open')) {
             closeMenu();
+            trigger?.focus();
           }
         });
 
         document.addEventListener('uc:notifications-open', closeMenu);
-        document.addEventListener('uc:language-open', closeMenu);
-
         logoutButton?.addEventListener('click', async () => {
           closeMenu();
           if (!window.confirm(t('header.logout.confirm'))) {

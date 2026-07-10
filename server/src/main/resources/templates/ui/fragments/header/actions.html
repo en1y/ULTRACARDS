@@ -9,19 +9,6 @@
       </span>
     </button>
 
-    <div class="language-menu" data-language-menu>
-      <button class="header-icon-button" type="button" th:aria-label="#{header.language}"
-              aria-haspopup="true" aria-expanded="false" data-language-trigger>
-        <img class="uc-icon" data-icon="language" th:src="@{/pics/light/language.svg}" alt="" aria-hidden="true" />
-      </button>
-      <div class="profile-dropdown language-dropdown" role="menu" aria-hidden="true">
-        <button class="menu-item" type="button" role="menuitem" data-language="en">English</button>
-        <button class="menu-item" type="button" role="menuitem" data-language="hr">Hrvatski</button>
-        <button class="menu-item" type="button" role="menuitem" data-language="uk">Українська</button>
-        <button class="menu-item" type="button" role="menuitem" data-language="de">Deutsch</button>
-      </div>
-    </div>
-
     <div class="notification-menu" th:if="${isAuthenticated}" data-notifications>
       <button class="header-icon-button notification-bell" type="button" th:aria-label="#{header.notifications}"
               aria-haspopup="true" aria-expanded="false" data-notification-trigger>
@@ -59,19 +46,20 @@
           <img class="avatar" data-avatar th:src="@{/pics/dark/profile_icon.svg}" th:alt="#{header.menu.profile}" alt="Profile" />
         </button>
         <div class="profile-dropdown" role="menu" aria-hidden="true">
-          <a class="menu-item" th:href="@{/history}" role="menuitem">
-            <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
-            <span th:text="#{header.menu.history}">History</span>
-          </a>
           <a class="menu-item" th:href="@{/profile}" role="menuitem">
             <img class="uc-icon" data-icon="profile_icon" th:src="@{/pics/light/profile_icon.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.profile}">Profile</span>
+          </a>
+          <a class="menu-item" th:href="@{/history}" role="menuitem">
+            <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
+            <span th:text="#{header.menu.history}">History</span>
           </a>
           <button class="menu-item game-ui-menu-item" type="button" role="menuitem" data-action="toggle-game-ui"
                   th:title="#{header.gameUi.title}">
             <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
             <span data-game-ui-label th:text="#{header.gameUi.label(#{header.gameUi.fullscreen})}">Table display: Fullscreen</span>
           </button>
+          <div class="profile-menu-divider" role="separator"></div>
           <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
             <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.logout}">Log out</span>

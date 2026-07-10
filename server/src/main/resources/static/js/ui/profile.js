@@ -36,9 +36,9 @@ function setRefreshButtonLoading(isLoading) {
     button.disabled = isLoading;
     const label = button.querySelector('span');
     if (label) {
-        label.textContent = isLoading ? 'Refreshing' : 'Refresh';
+        label.textContent = t('common.refresh');
     } else {
-        button.textContent = isLoading ? 'Refreshing' : 'Refresh';
+        button.textContent = t('common.refresh');
     }
 }
 
