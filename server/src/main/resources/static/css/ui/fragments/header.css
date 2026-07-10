@@ -1456,6 +1456,10 @@ body.friends-drawer-open .uc-header.hidden {
 /* Language selector reuses the profile dropdown/menu-item styles. */
 .language-menu {
   position: relative;
+  /* Without this the flex row collapses the wrapper to ~0 and the globe
+     overlaps the bell / squeezes the profile pill. */
+  flex: 0 0 auto;
+  margin-inline: 0.15rem;
 }
 
 .language-menu.open .language-dropdown {
