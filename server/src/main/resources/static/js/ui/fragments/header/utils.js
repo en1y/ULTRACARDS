@@ -5,13 +5,13 @@
 
   window.ucHeader.guardXss = (value) => {
     if (typeof value !== 'string') {
-      return { ok: false, message: 'Invalid input' };
+      return { ok: false, message: t('validation.invalidInput') };
     }
     if (value.trim() === '') {
-      return { ok: false, message: 'Value must not be blank' };
+      return { ok: false, message: t('validation.blank') };
     }
     if (/[<>"'`]/.test(value)) {
-      return { ok: false, message: 'Invalid characters detected' };
+      return { ok: false, message: t('validation.invalidCharacters') };
     }
     return { ok: true };
   };

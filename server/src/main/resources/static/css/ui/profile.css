@@ -109,6 +109,7 @@
     color: var(--color-text-muted);
     text-transform: none;
     letter-spacing: 0;
+    white-space: nowrap;
 }
 
 .profile-hero h1,
@@ -138,7 +139,7 @@
 }
 
 .profile-summary-inline .summary-label {
-    flex: 0 0 96px;
+    flex: 0 0 auto;
     margin: 0;
     text-align: left;
 }

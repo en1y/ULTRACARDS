@@ -3,7 +3,7 @@
     <aside th:class="${panelClass}">
         <div th:class="${headerClass}">
             <div>
-                <span class="chip">Chat</span>
+                <span class="chip" th:text="#{chat.chip}">Chat</span>
                 <h2 th:text="${title}" th:attr="data-chat-title=${idPrefix}">Chat</h2>
             </div>
         </div>
@@ -17,7 +17,7 @@
                         : (message.sender != null and currentUserId != null and message.sender.id == currentUserId ? ' is-own' : '')
                  }">
                 <div class="chat-meta">
-                    <span th:text="${message.sender != null and message.sender.name != null ? message.sender.name : 'Player'}">Player</span>
+                    <span th:text="${message.sender != null and message.sender.name != null ? message.sender.name : #messages.msg('common.player')}">Player</span>
                     <span th:if="${message.timestamp != null}"
                           class="chat-time"
                           th:attr="data-timestamp=${message.timestamp}"
@@ -35,11 +35,11 @@
                       name="message"
                       rows="2"
                       maxlength="200"
-                      placeholder="Send a message"
+                      th:placeholder="#{chat.placeholder}"
                       th:disabled="${chat == null or !chat.isOpen}"></textarea>
             <button th:id="${idPrefix + '-send'}" class="btn btn-accent" type="submit" th:disabled="${chat == null or !chat.isOpen}">
                 <img class="uc-icon" data-icon="send" th:src="@{/pics/light/send.svg}" alt="" aria-hidden="true" />
-                <span>Send</span>
+                <span th:text="#{common.send}">Send</span>
             </button>
         </form>
     </aside>

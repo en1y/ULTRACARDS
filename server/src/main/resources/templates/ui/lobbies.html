@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,13 +17,13 @@
     <main class="lobbies-page">
         <section class="lobbies-hero container">
             <div class="lobbies-hero-copy">
-                <h1>Find an ULTRAlobby</h1>
+                <h1 th:text="#{lobbies.title}">Find an ULTRAlobby</h1>
             </div>
             <div class="lobbies-hero-stats card">
-                <strong>Create lobby</strong>
-                <p>Create a new lobby for a new ULTRAexperience</p>
+                <strong th:text="#{createLobby.title}">Create lobby</strong>
+                <p th:text="#{lobbies.hero.copy}">Create a new lobby for a new ULTRAexperience</p>
                 <div class="lobbies-hero-actions">
-                    <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                    <button class="btn-accent" type="button" data-action="open-create-lobby" th:text="#{createLobby.submit}">Create Lobby</button>
                 </div>
             </div>
         </section>
@@ -32,20 +32,20 @@
             <aside class="card lobbies-sidebar">
                 <div class="lobbies-panel-head">
                     <div>
-                        <p class="lobbies-eyebrow">Filters</p>
-                        <h2>Filter the lobby list</h2>
+                        <p class="lobbies-eyebrow" th:text="#{common.filters}">Filters</p>
+                        <h2 th:text="#{lobbies.filterTitle}">Filter the lobby list</h2>
                     </div>
                 </div>
 
                 <div class="lobbies-filter-group">
                     <label class="field" for="game-type">
-                        <span>Game type</span>
+                        <span th:text="#{createLobby.gameType}">Game type</span>
                         <select id="game-type">
-                            <option value="all">All games</option>
-                            <option value="briskula">Briskula</option>
-                            <option value="durak">Durak</option>
-                            <option value="poker">Poker</option>
-                            <option value="treseta">Treseta</option>
+                            <option value="all" th:text="#{common.allGames}">All games</option>
+                            <option value="briskula" th:text="#{game.briskula}">Briskula</option>
+                            <option value="durak" th:text="#{game.durak}">Durak</option>
+                            <option value="poker" th:text="#{game.poker}">Poker</option>
+                            <option value="treseta" th:text="#{game.treseta}">Treseta</option>
                         </select>
                     </label>
                 </div>
@@ -55,9 +55,9 @@
                 <div class="lobbies-sidebar-actions">
                     <button id="apply-filters-button" class="btn-accent" type="button">
                         <img class="uc-icon" data-icon="search" th:src="@{/pics/light/search.svg}" alt="" aria-hidden="true" />
-                        <span>Apply Filters</span>
+                        <span th:text="#{lobbies.applyFilters}">Apply Filters</span>
                     </button>
-                    <button id="clear-filters-button" class="btn" type="button">Show All</button>
+                    <button id="clear-filters-button" class="btn" type="button" th:text="#{lobbies.showAll}">Show All</button>
                 </div>
 
             </aside>
@@ -65,30 +65,30 @@
             <section class="lobbies-content">
                 <div class="lobbies-list-head">
                     <div>
-                        <p class="lobbies-eyebrow">Open rooms</p>
-                        <h2>Available lobbies</h2>
+                        <p class="lobbies-eyebrow" th:text="#{lobbies.openRooms}">Open rooms</p>
+                        <h2 th:text="#{lobbies.available}">Available lobbies</h2>
                     </div>
-                    <span id="active-lobbies-count" class="chip" th:text="${#lists.size(lobbies) + ' active'}">0 active</span>
+                    <span id="active-lobbies-count" class="chip" th:text="#{lobbies.activeCount(${#lists.size(lobbies)})}">0 active</span>
                 </div>
 
                 <div class="lobbies-browser">
                     <div class="lobbies-list">
                         <article id="lobbies-empty" class="card lobby-empty-state" th:if="${#lists.isEmpty(lobbies)}">
-                            <h3>No active lobbies present</h3>
-                            <p>
+                            <h3 th:text="#{lobbies.empty.title}">No active lobbies present</h3>
+                            <p th:text="#{lobbies.empty.copy}">
                                 Create a room for yet another ULTRAgame
                             </p>
                             <div class="lobby-empty-actions">
-                                <button class="btn-accent" type="button" data-action="open-create-lobby">Create Lobby</button>
+                                <button class="btn-accent" type="button" data-action="open-create-lobby" th:text="#{createLobby.submit}">Create Lobby</button>
                             </div>
                         </article>
                         <div id="lobbies-grid" class="lobbies-grid"></div>
                     </div>
 
-                    <form id="join-code-form" class="card lobbies-code-join" aria-label="Join lobby by code">
+                    <form id="join-code-form" class="card lobbies-code-join" th:aria-label="#{lobbies.joinByCode.aria}">
                         <div>
-                            <p class="lobbies-eyebrow">Invite code</p>
-                            <h2>Join by code</h2>
+                            <p class="lobbies-eyebrow" th:text="#{common.inviteCode}">Invite code</p>
+                            <h2 th:text="#{lobbies.joinByCode}">Join by code</h2>
                         </div>
                         <div class="lobbies-code-row">
                             <input id="join-code-input"
@@ -101,10 +101,10 @@
                                    placeholder="ABC123">
                             <button id="join-code-submit" class="btn btn-accent" type="submit" disabled>
                                 <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
-                                <span>Join</span>
+                                <span th:text="#{common.join}">Join</span>
                             </button>
                         </div>
-                        <p id="join-code-status" class="lobbies-code-status" aria-live="polite">Enter a 6-character lobby code.</p>
+                        <p id="join-code-status" class="lobbies-code-status" aria-live="polite" th:text="#{lobbies.codeStatus.hint}">Enter a 6-character lobby code.</p>
                     </form>
                 </div>
             </section>
@@ -113,8 +113,8 @@
     </main>
 
     <aside id="lobbies-toast" class="lobbies-toast" aria-live="polite" aria-atomic="true" hidden>
-        <p id="lobbies-toast-title" class="lobbies-toast-title">Lobby unavailable</p>
-        <p id="lobbies-toast-text" class="lobbies-toast-text">This lobby is already full.</p>
+        <p id="lobbies-toast-title" class="lobbies-toast-title" th:text="#{lobbies.toast.unavailable}">Lobby unavailable</p>
+        <p id="lobbies-toast-text" class="lobbies-toast-text" th:text="#{lobbies.toast.full}">This lobby is already full.</p>
     </aside>
 
     <script th:src="@{/js/ui/fragments/createLobby.js}"></script>

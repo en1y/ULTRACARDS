@@ -42,7 +42,7 @@
         const nextExpanded = !isExpanded;
 
         toggleButton.setAttribute('aria-expanded', String(nextExpanded));
-        toggleButton.textContent = nextExpanded ? 'Hide about ULTRACARDS' : 'Show about ULTRACARDS';
+        toggleButton.textContent = nextExpanded ? t('home.hideAbout') : t('home.showAbout');
 
         if (nextExpanded) {
             isAnimatingClosed = false;
@@ -104,7 +104,7 @@
 
         const isReady = /^[A-Z0-9]{6}$/.test(code);
         submitButton.disabled = !isReady;
-        setStatus(isReady ? 'Ready to join.' : 'Type the lobby code to join.', isReady ? 'success' : '');
+        setStatus(isReady ? t('home.codeStatus.ready') : t('home.codeStatus.hint'), isReady ? 'success' : '');
     }
 
     async function joinByCode() {
@@ -113,14 +113,14 @@
 
         if (!/^[A-Z0-9]{6}$/.test(code)) {
             submitButton.disabled = true;
-            setStatus('Enter a valid 6-character code.', 'error');
+            setStatus(t('join.invalidCode'), 'error');
             joinInput.focus();
             return;
         }
 
         submitButton.disabled = true;
-        setButtonLabel(submitButton, 'Joining...');
-        setStatus('Joining lobby...', 'success');
+        setButtonLabel(submitButton, t('join.joining'));
+        setStatus(t('join.joiningLobby'), 'success');
 
         try {
             const response = await fetch('/api/lobby/join', {
@@ -134,13 +134,13 @@
 
             if (!response.ok) {
                 const message = (await response.text()).trim();
-                throw new Error(message || 'Unable to join this lobby.');
+                throw new Error(message || t('join.unable'));
             }
 
             window.location.href = '/lobbies';
         } catch (error) {
-            setStatus(error?.message || 'Unable to join this lobby.', 'error');
-            setButtonLabel(submitButton, 'Join');
+            setStatus(error?.message || t('join.unable'), 'error');
+            setButtonLabel(submitButton, t('common.join'));
             submitButton.disabled = false;
             joinInput.focus();
         }

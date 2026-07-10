@@ -30,12 +30,12 @@
 
     const modes = {
       auth: {
-        title: 'Welcome to ULTRACARDS',
+        title: t('auth.title'),
         subtitle: ''
       },
       reverify: {
-        title: 'Confirm Profile Changes',
-        subtitle: 'A verification code has been sent to your email.'
+        title: t('auth.reverify.title'),
+        subtitle: t('auth.reverify.subtitle')
       }
     };
 
@@ -141,7 +141,7 @@
 
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         if (emailError) {
-          emailError.textContent = 'Please enter a valid email';
+          emailError.textContent = t('auth.error.invalidEmail');
         }
         return null;
       }
@@ -162,7 +162,7 @@
 
       if (currentMode === 'auth' && !pendingEmail) {
         if (codeError) {
-          codeError.textContent = 'Missing email. Go back and enter your email.';
+          codeError.textContent = t('auth.error.missingEmail');
         }
         showStep('email');
         return null;
@@ -183,7 +183,7 @@
 
       if (username.length < 3) {
         if (usernameError) {
-          usernameError.textContent = 'Username must be at least 3 characters';
+          usernameError.textContent = t('auth.error.usernameTooShort');
         }
         return null;
       }
@@ -198,7 +198,7 @@
       });
 
       if (!response.ok) {
-        throw new Error(await parseErrorResponse(response, 'Could not send verification code.'));
+        throw new Error(await parseErrorResponse(response, t('auth.error.sendCodeFailed')));
       }
     };
 
@@ -217,7 +217,7 @@
         await new Promise((resolve) => window.setTimeout(resolve, 80));
       }
 
-      throw new Error('Verification succeeded, but the refreshed session was not ready yet.');
+      throw new Error(t('auth.error.sessionNotReady'));
     };
 
     const openModal = (mode = 'auth') => {
@@ -237,7 +237,7 @@
         codeBoxes[0]?.focus();
       } catch (error) {
         if (codeError) {
-          codeError.textContent = error.message || 'Could not send verification code.';
+          codeError.textContent = error.message || t('auth.error.sendCodeFailed');
         }
       }
 
@@ -253,7 +253,7 @@
         if (currentMode === 'reverify') {
           await sendAuthenticatedVerificationEmail();
           if (codeError) {
-            codeError.textContent = 'A new code was sent to your email.';
+            codeError.textContent = t('auth.info.newCodeSent');
           }
           return;
         }
@@ -272,7 +272,7 @@
 
         if (!response.ok) {
           if (emailError) {
-            emailError.textContent = await parseErrorResponse(response, 'Could not send code.');
+            emailError.textContent = await parseErrorResponse(response, t('auth.error.sendCodeFailed'));
           }
           pendingEmail = null;
           showStep('email');
@@ -285,10 +285,10 @@
       } catch (error) {
         if (currentMode === 'reverify') {
           if (codeError) {
-            codeError.textContent = 'Network error. Try again.';
+            codeError.textContent = t('auth.error.network');
           }
         } else if (emailError) {
-          emailError.textContent = 'Network error. Try again.';
+          emailError.textContent = t('auth.error.network');
         }
       }
     };
@@ -405,7 +405,7 @@
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
               if (codeError) {
-                codeError.textContent = payload?.message || 'Verification failed. Try again.';
+                codeError.textContent = payload?.message || t('auth.error.verifyFailed');
               }
               return;
             }
@@ -417,7 +417,7 @@
                 closeModal(true);
               } catch (error) {
                 if (codeError) {
-                  codeError.textContent = error.message || 'Verification succeeded, but the action failed.';
+                  codeError.textContent = error.message || t('auth.error.actionFailed');
                 }
               }
               return;
@@ -430,7 +430,7 @@
 
             if (!usernameResponse.ok) {
               if (codeError) {
-                codeError.textContent = payload?.message || "Couldn't get the username. Try again.";
+                codeError.textContent = payload?.message || t('auth.error.usernameFetchFailed');
               }
               return;
             }
@@ -447,7 +447,7 @@
             window.location.reload();
           } catch (error) {
             if (codeError) {
-              codeError.textContent = 'Verification failed. Try again.';
+              codeError.textContent = t('auth.error.verifyFailed');
             }
           }
         });
@@ -473,7 +473,7 @@
 
             if (!response.ok) {
               if (usernameError) {
-                usernameError.textContent = 'Could not set username. Try again.';
+                usernameError.textContent = t('auth.error.usernameSetFailed');
               }
               return;
             }

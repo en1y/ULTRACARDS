@@ -4,6 +4,7 @@ import com.ultracards.server.entity.UserEntity;
 import org.springframework.boot.webmvc.autoconfigure.error.ErrorViewResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.servlet.ModelAndView;
@@ -39,6 +40,12 @@ public class ErrorViewConfig {
         if (isAuthenticated) {
             model.put("username", user.getUsername());
         }
+
+        // Error views bypass @ControllerAdvice model attributes, so the i18n
+        // attributes from I18nModelAdvice have to be re-added by hand here.
+        var locale = LocaleContextHolder.getLocale();
+        model.put("i18n", I18nConfig.messagesFor(locale));
+        model.put("lang", I18nConfig.supportedLanguage(locale));
     }
 
     private boolean isServerError(HttpStatus status) {

@@ -108,7 +108,7 @@
     };
 
     const friendUserId = (friend) => friend?.user?.id != null ? String(friend.user.id) : '';
-    const friendName = (friend) => friend?.user?.name || 'Friend';
+    const friendName = (friend) => friend?.user?.name || t('friends.fallbackName');
     const friendPresence = (friend) => String(friend?.presenceStatus || 'OFFLINE');
     const currentLobbyPlayers = () => Array.isArray(state.currentLobby?.players) ? state.currentLobby.players : [];
     const canInviteFriendToLobby = (friend) => {
@@ -122,33 +122,33 @@
 
     const presenceLabel = (presence) => {
       if (presence === 'IN_GAME') {
-        return 'In game';
+        return t('friends.inGame');
       }
       if (presence === 'IN_LOBBY') {
-        return 'In lobby';
+        return t('friends.inLobby');
       }
       if (presence === 'ONLINE') {
-        return 'Online';
+        return t('friends.online');
       }
-      return 'Offline';
+      return t('friends.offline');
     };
 
-    const friendCountLabel = (count) => `${count} ${count === 1 ? 'friend' : 'friends'}`;
+    const friendCountLabel = (count) => count === 1 ? t('friends.countOne', count) : t('friends.countMany', count);
 
     const groupConfig = [
       {
         key: 'active',
-        title: 'In game or lobby',
+        title: t('friends.inGameOrLobby'),
         accepts: (friend) => friendPresence(friend) === 'IN_GAME' || friendPresence(friend) === 'IN_LOBBY'
       },
       {
         key: 'online',
-        title: 'Online',
+        title: t('friends.online'),
         accepts: (friend) => friendPresence(friend) === 'ONLINE'
       },
       {
         key: 'offline',
-        title: 'Offline',
+        title: t('friends.offline'),
         accepts: (friend) => friendPresence(friend) === 'OFFLINE'
       }
     ];
@@ -170,7 +170,7 @@
         bubbleClass: 'chat-bubble',
         timeClass: 'chat-time',
         emptyClass: 'chat-empty',
-        emptyText: 'No messages yet.',
+        emptyText: t('chat.noMessages'),
         sendUrl: () => {
           const id = friendUserId(state.activeFriend);
           return id ? `/api/chat/friends/${encodeURIComponent(id)}` : '/api/chat';
@@ -296,7 +296,7 @@
         }
       } catch (error) {
         console.error('Unable to load friend chat', error);
-        setStatus('Unable to load that chat.', 'error');
+        setStatus(t('friends.chatLoadFailed'), 'error');
       }
     };
 
@@ -318,7 +318,7 @@
       }
 
       if (!friend) {
-        setStatus('Unable to find that chat.', 'error');
+        setStatus(t('friends.chatNotFound'), 'error');
         return;
       }
 
@@ -364,7 +364,7 @@
         setStatus(`Invited ${friendName(friend)} to the lobby.`);
       } catch (error) {
         console.error('Unable to invite friend to lobby', error);
-        setStatus(error?.message || 'Unable to send lobby invite.', 'error');
+        setStatus(error?.message || t('friends.inviteFailed'), 'error');
       } finally {
         state.invitingFriendIds.delete(id);
         if (button && button.isConnected) {
@@ -396,7 +396,7 @@
       name.textContent = friendName(friend);
 
       const meta = document.createElement('span');
-      meta.textContent = `${friend.totalPlayedTogether || 0} games together`;
+      meta.textContent = t('friends.gamesTogether', friend.totalPlayedTogether || 0);
 
       copy.append(name, meta);
       main.append(avatar, copy);
@@ -414,8 +414,8 @@
         inviteButton.className = 'btn btn-accent friend-invite-button';
         inviteButton.type = 'button';
         inviteButton.append(createIcon('mail'), document.createElement('span'));
-        setButtonLabel(inviteButton, 'Invite');
-        inviteButton.setAttribute('aria-label', `Invite ${friendName(friend)} to lobby`);
+        setButtonLabel(inviteButton, t('friends.invite'));
+        inviteButton.setAttribute('aria-label', t('friends.inviteAria', friendName(friend)));
         inviteButton.disabled = state.invitingFriendIds.has(id);
         inviteButton.addEventListener('click', (event) => {
           event.stopPropagation();
@@ -427,7 +427,7 @@
       const chatButton = document.createElement('button');
       chatButton.className = 'header-icon-button header-icon-button-small friend-chat-button';
       chatButton.type = 'button';
-      chatButton.setAttribute('aria-label', `Open chat with ${friendName(friend)}`);
+      chatButton.setAttribute('aria-label', t('friends.chatAria', friendName(friend)));
       chatButton.append(createIcon('chat'));
       chatButton.addEventListener('click', () => {
         openFriendChat(friend);
@@ -436,7 +436,7 @@
       const profileButton = document.createElement('button');
       profileButton.className = 'header-icon-button header-icon-button-small friend-profile-button';
       profileButton.type = 'button';
-      profileButton.setAttribute('aria-label', `View stats for ${friendName(friend)}`);
+      profileButton.setAttribute('aria-label', t('friends.statsAria', friendName(friend)));
       profileButton.append(createIcon('profile_icon'));
       profileButton.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -473,7 +473,7 @@
       if (friends.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'friends-empty';
-        empty.textContent = 'Empty';
+        empty.textContent = t('friends.emptyGroup');
         section.append(empty);
         return section;
       }
@@ -496,7 +496,7 @@
       const total = state.friends.length;
       const online = state.friends.filter((friend) => friendPresence(friend) === 'ONLINE').length;
       const active = state.friends.filter((friend) => friendPresence(friend) === 'IN_GAME' || friendPresence(friend) === 'IN_LOBBY').length;
-      setSummary(total ? `${friendCountLabel(total)} / ${online + active} active` : 'No friends yet');
+      setSummary(total ? t('friends.summary', friendCountLabel(total), online + active) : t('friends.none'));
 
       for (const config of groupConfig) {
         groups.append(createGroup(config, state.friends.filter(config.accepts)));
@@ -532,7 +532,7 @@
       } catch (error) {
         console.error('Unable to load current lobby', error);
         if (!options.silent) {
-          setStatus('Unable to check lobby invites.', 'error');
+          setStatus(t('friends.inviteCheckFailed'), 'error');
         }
       } finally {
         state.lobbyLoading = false;
@@ -571,7 +571,7 @@
         } catch (error) {
           console.error('Unable to load friends', error);
           if (!silent) {
-            setStatus('Unable to load friends.', 'error');
+            setStatus(t('friends.loadFailed'), 'error');
           }
         } finally {
           state.loading = false;

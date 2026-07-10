@@ -139,7 +139,7 @@
 
         const back = document.createElement('img');
         back.className = 'card-back';
-        back.alt = card ? '' : (options?.alt || 'Card back');
+        back.alt = card ? '' : (options?.alt || t('game.cardBack.alt'));
         applyCardImage(back, cardBackUrl(cardType));
 
         inner.appendChild(front);
@@ -533,7 +533,7 @@
             const card = renderCardImage({
                 cardType: options?.cardType,
                 className: options?.className || 'seat-card',
-                alt: options?.alt || 'Card back'
+                alt: options?.alt || t('game.cardBack.alt')
             });
             cardsEl.appendChild(card);
             existingCards.push(card);
@@ -609,7 +609,7 @@
             const img = renderCardImage({
                 cardType: options?.cardType,
                 className: options?.className || '',
-                alt: options?.alt || 'Deck'
+                alt: options?.alt || t('game.deck.alt')
             });
             img.style.setProperty('--deck-offset-x', String(Number((i * 0.65).toFixed(2))));
             img.style.setProperty('--deck-offset-y', String(Number((-i * 0.55).toFixed(2))));
@@ -769,7 +769,7 @@
                 card: options?.card,
                 cardType: options?.cardType,
                 className: options?.className || 'game-moving-card',
-                alt: options?.alt || 'Card'
+                alt: options?.alt || t('game.card.alt')
             });
             clone.style.width = `${options?.toEl?.offsetWidth || targetRect.width || sourceRect.width || 96}px`;
             clone.style.height = `${options?.toEl?.offsetHeight || targetRect.height || sourceRect.height}px`;
@@ -1287,11 +1287,11 @@
         const card = document.createElement('div');
         const back = document.createElement('div');
         back.className = 'deal-card-face deal-card-back';
-        back.appendChild(renderCardImage({cardType, alt: 'Card back'}));
+        back.appendChild(renderCardImage({cardType, alt: t('game.cardBack.alt')}));
 
         const front = document.createElement('div');
         front.className = 'deal-card-face deal-card-front';
-        front.appendChild(renderCardImage({card: incomingCard, cardType, alt: 'Card'}));
+        front.appendChild(renderCardImage({card: incomingCard, cardType, alt: t('game.card.alt')}));
 
         card.appendChild(back);
         card.appendChild(front);

@@ -11,10 +11,10 @@
         <div class="card-inner">
             <img class="card-front"
                  src=""
-                 th:alt="${card != null ? 'Card' : ''}">
+                 th:alt="${card != null ? #messages.msg('game.card.alt') : ''}">
             <img class="card-back"
                  th:src="${'/api/cards/' + #strings.toLowerCase(resolvedCardType) + '/back'}"
-                 alt="Card back">
+                 th:alt="#{game.cardBack.alt}">
         </div>
     </div>
 </th:block>

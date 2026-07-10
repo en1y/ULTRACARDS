@@ -125,8 +125,8 @@
       }
 
       toggleButton.setAttribute('aria-pressed', String(popupsEnabled));
-      toggleButton.setAttribute('aria-label', popupsEnabled ? 'Turn off notification popups' : 'Turn on notification popups');
-      toggleButton.title = popupsEnabled ? 'Turn off notification popups' : 'Turn on notification popups';
+      toggleButton.setAttribute('aria-label', popupsEnabled ? t('header.notifications.popupToggle') : t('notifications.popupsOn'));
+      toggleButton.title = popupsEnabled ? t('header.notifications.popupToggle') : t('notifications.popupsOn');
       setIcon(toggleButton, popupsEnabled ? 'notifications_on' : 'notifications_off');
     };
 
@@ -142,15 +142,15 @@
     const notificationTitle = (notification) => {
       const type = notificationType(notification);
       if (type === 'GAME_INVITE') {
-        return 'Lobby invite';
+        return t('notifications.lobbyInvite');
       }
       if (type === 'FRIEND_INVITE') {
-        return 'Friend request';
+        return t('notifications.friendRequest');
       }
       if (isGroupedNotification(notification)) {
-        return 'Messages';
+        return t('notifications.messages');
       }
-      return 'Message';
+      return t('notifications.message');
     };
 
     const notificationClass = (notification) => {
@@ -168,8 +168,8 @@
       if (isGroupedNotification(notification)) {
         const sortedItems = sortedGroupItems(notification);
         const count = sortedItems.length;
-        const latest = sortedItems[0]?.message || 'New message';
-        return `${count} new messages. Latest: ${latest}`;
+        const latest = sortedItems[0]?.message || t('notifications.newMessage');
+        return t('notifications.groupedMessages', count, latest);
       }
 
       if (notification?.message) {
@@ -178,12 +178,12 @@
 
       const type = notificationType(notification);
       if (type === 'GAME_INVITE') {
-        return `${senderName(notification)} invited you to a lobby.`;
+        return t('notifications.invitedToLobby', senderName(notification));
       }
       if (type === 'FRIEND_INVITE') {
-        return `${senderName(notification)} sent you a friend request.`;
+        return t('notifications.sentFriendRequest', senderName(notification));
       }
-      return 'You have a new notification.';
+      return t('notifications.generic');
     };
 
     const setBadgeCount = () => {
@@ -296,7 +296,7 @@
 
       if (!response.ok) {
         const text = (await response.text()).trim();
-        throw new Error(text || 'Unable to join this lobby.');
+        throw new Error(text || t('join.unable'));
       }
     };
 
@@ -360,7 +360,7 @@
         removeNotification(notification);
       } catch (error) {
         console.error('Notification action failed', error);
-        setActionError(button, 'Failed');
+        setActionError(button, t('notifications.actionFailed'));
       } finally {
         if (button && button.isConnected) {
           button.disabled = false;
@@ -398,28 +398,28 @@
 
       const type = notificationType(notification);
       if (type === 'GAME_INVITE') {
-        actions.append(createButton('Join lobby', 'join-lobby', notification, 'btn btn-accent'));
+        actions.append(createButton(t('lobbies.joinLobby'), 'join-lobby', notification, 'btn btn-accent'));
         return actions;
       }
 
       if (type === 'FRIEND_INVITE') {
         actions.append(
-            createButton('Accept', 'accept-friend', notification, 'btn btn-accent'),
-            createButton('Reject', 'reject-friend', notification),
-            createButton('Block', 'block-friend', notification, 'btn danger')
+            createButton(t('notifications.accept'), 'accept-friend', notification, 'btn btn-accent'),
+            createButton(t('notifications.reject'), 'reject-friend', notification),
+            createButton(t('notifications.block'), 'block-friend', notification, 'btn danger')
         );
         return actions;
       }
 
       if (isMessageNotification(notification) || isGroupedNotification(notification)) {
         actions.append(
-            createButton('Open chat', 'open-chat', notification, 'btn btn-accent'),
-            createButton('Mark read', 'mark-read', notification)
+            createButton(t('chat.open'), 'open-chat', notification, 'btn btn-accent'),
+            createButton(t('notifications.markRead'), 'mark-read', notification)
         );
         return actions;
       }
 
-      actions.append(createButton('Mark read', 'mark-read', notification));
+      actions.append(createButton(t('notifications.markRead'), 'mark-read', notification));
       return actions;
     };
 
@@ -449,7 +449,7 @@
       const dismiss = document.createElement('button');
       dismiss.className = 'header-icon-button header-icon-button-small notification-dismiss';
       dismiss.type = 'button';
-      dismiss.setAttribute('aria-label', 'Dismiss notification');
+      dismiss.setAttribute('aria-label', t('notifications.dismiss'));
       dismiss.append(createIcon('close'));
       dismiss.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -525,7 +525,7 @@
       if (renderedNotifications.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'notification-empty';
-        empty.textContent = 'No unread notifications.';
+        empty.textContent = t('header.notifications.empty');
         list.append(empty);
         return;
       }
@@ -710,6 +710,7 @@
 
         document.addEventListener('uc:notifications-refresh', loadUnreadNotifications);
         document.addEventListener('uc:profile-menu-open', () => setTrayOpen(false));
+        document.addEventListener('uc:language-open', () => setTrayOpen(false));
       }
     };
   };

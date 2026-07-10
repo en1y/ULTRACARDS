@@ -76,7 +76,8 @@ const getGameUiMode = () => {
 
 const syncGameUiLabel = () => {
     document.querySelectorAll('[data-game-ui-label]').forEach((label) => {
-        label.textContent = `Table display: ${getGameUiMode() === 'classic' ? 'Classic' : 'Fullscreen'}`;
+        label.textContent = t('header.gameUi.label',
+            getGameUiMode() === 'classic' ? t('header.gameUi.classic') : t('header.gameUi.fullscreen'));
     });
 };
 

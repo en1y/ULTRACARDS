@@ -23,44 +23,44 @@ function normalizeLobbyName(lobbyName) {
 const gameTypes = {
     briskula: {
         p2: {
-            ui_text: '1v1 3 cards each',
+            ui_text: t('gameConfig.1v1x3'),
             settingId: 0,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 2, 3)
         },
         p2c4: {
-            ui_text: '1v1 4 cards each',
+            ui_text: t('gameConfig.1v1x4'),
             settingId: 1,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 2, 4)
         },
         p3: {
-            ui_text: '3 players',
+            ui_text: t('gameConfig.3p'),
             settingId: 2,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 3, 3)
         },
         p4: {
-            ui_text: '4 players',
+            ui_text: t('gameConfig.4p'),
             settingId: 3,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 4, 3)
         },
         p4teams: {
-            ui_text: '2v2',
+            ui_text: t('gameConfig.2v2'),
             settingId: 4,
             req: (lobbyName) => createBriskulaRequest(lobbyName, 4, 3, true)
         }
     },
     treseta: {
         p2: {
-            ui_text: '1v1',
+            ui_text: t('gameConfig.1v1'),
             settingId: 0,
             req: ''
         },
         p3: {
-            ui_text: '3 players',
+            ui_text: t('gameConfig.3p'),
             settingId: 1,
             req: ''
         },
         p4: {
-            ui_text: '2v2',
+            ui_text: t('gameConfig.2v2'),
             settingId: 2,
             req: ''
         }
@@ -93,11 +93,12 @@ function titleCaseGameName(value) {
         .split('_')
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ') || 'Unknown game';
+        .join(' ') || t('game.unknown');
 }
 
 function getGameTypeDisplayName(gameType) {
-    return titleCaseGameName(gameType);
+    const key = String(gameType || '').toLowerCase();
+    return t(`game.${key}`) === `game.${key}` ? titleCaseGameName(gameType) : t(`game.${key}`);
 }
 
 function resolveBriskulaGameConfigKey(config) {
@@ -172,10 +173,10 @@ function getGameConfigDisplayName(gameType, config) {
         const players = Number(config.numberOfPlayers);
         const cards = Number(config.cardsInHandNum);
         if (Number.isFinite(players) && Number.isFinite(cards)) {
-            return `${players} players, ${cards} cards${config.teamsEnabled ? ', teams' : ''}`;
+            return t('gameConfig.custom', players, cards) + (config.teamsEnabled ? t('gameConfig.customTeams') : '');
         }
     }
-    return 'Game config';
+    return t('gameConfig.fallback');
 }
 
 function resolveLobbyGameSettingKey(lobby) {

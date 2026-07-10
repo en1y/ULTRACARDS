@@ -1,11 +1,12 @@
 <th:block th:fragment="teammateHand(gameId)" xmlns:th="http://www.thymeleaf.org">
-    <button class="teammate-hand-toggle" id="teammate-hand-toggle" type="button" aria-expanded="false">
+    <button class="teammate-hand-toggle" id="teammate-hand-toggle" type="button" aria-expanded="false"
+            th:text="#{game.teammateHand}">
         Teammate Hand
     </button>
-    <div class="teammate-hand-panel" id="teammate-hand-panel" role="region" aria-label="Teammate's hand">
-        <div class="teammate-hand-title">Teammate's Hand</div>
+    <div class="teammate-hand-panel" id="teammate-hand-panel" role="region" th:aria-label="#{game.teammateHand.aria}">
+        <div class="teammate-hand-title" th:text="#{game.teammateHand.title}">Teammate's Hand</div>
         <div class="teammate-hand-cards" id="teammate-hand-cards">
-            <span class="teammate-hand-empty">No cards to show</span>
+            <span class="teammate-hand-empty" th:text="#{game.noCardsToShow}">No cards to show</span>
         </div>
     </div>
 </th:block>

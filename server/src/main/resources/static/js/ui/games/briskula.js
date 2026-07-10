@@ -22,9 +22,7 @@
         if (!gameEl || !gameEl.dataset.gameId) return;
 
         function getTeamDisplayName(n) {
-            if (n === 1) return 'Team 1';
-            if (n === 2) return 'Team 2';
-            return `Team ${n}`;
+            return t('gameHistory.team', n);
         }
 
         const gameId = gameEl.dataset.gameId;
@@ -239,14 +237,14 @@
                 const wrap = window.UltracardsGameUi?.renderCardImage({
                     card,
                     className: 'teammate-hand-card-img',
-                    alt: `Teammate card ${i + 1}`
+                    alt: t('briskula.teammateCardN.alt', i + 1)
                 });
                 if (wrap) {
                     el.appendChild(wrap);
                 } else {
                     const img = document.createElement('img');
                     window.UltracardsGameUi?.applyCardImage(img, window.UltracardsGameUi?.cardUrl(card) || '');
-                    img.alt = `Teammate card ${i + 1}`;
+                    img.alt = t('briskula.teammateCardN.alt', i + 1);
                     el.appendChild(img);
                 }
             });
@@ -264,8 +262,8 @@
             const data = PreviousRoundStore.load(gameId);
             const titleEl = prevRoundPanel?.querySelector('.prev-round-title');
             if (!data || !Array.isArray(data.cards) || !data.cards.length) {
-                prevRoundCardsEl.innerHTML = '<span class="prev-round-empty">No round recorded yet</span>';
-                if (titleEl) titleEl.textContent = 'Last Completed Round';
+                prevRoundCardsEl.innerHTML = `<span class="prev-round-empty">${t('game.noRoundRecorded')}</span>`;
+                if (titleEl) titleEl.textContent = t('game.lastCompletedRound');
                 return;
             }
             // `players` is the trick's play order (leader-first), so card i was played
@@ -280,7 +278,7 @@
                 (w.id != null && player.id != null && w.id === player.id) || w.name === player.name);
             // Show who won the round in the panel title.
             if (titleEl) {
-                titleEl.textContent = winnerName ? `Round won by ${winnerName}` : 'Last Completed Round';
+                titleEl.textContent = winnerName ? t('briskula.roundWonBy', winnerName) : t('game.lastCompletedRound');
             }
             prevRoundCardsEl.innerHTML = '';
             data.cards.forEach((card, i) => {
@@ -331,7 +329,7 @@
             bubbleClass: 'chat-bubble',
             timeClass: 'chat-time',
             emptyClass: 'chat-empty',
-            emptyText: 'Why so scared to talk?'
+            emptyText: t('chat.gameEmpty')
         });
 
         state.hands.self = window.UltracardsGameUi?.registerHand(dom.hand, handLayoutParams());
@@ -404,7 +402,7 @@
 
         function connectWs() {
             if (!window.Stomp) {
-                setConnectionStatus(false, 'Live connection unavailable.');
+                setConnectionStatus(false, t('briskula.connUnavailable'));
                 return;
             }
             if (state.wsReconnectTimer) {
@@ -462,7 +460,7 @@
                 }
             }, () => {
                 state.wsConnected = false;
-                setConnectionStatus(false, 'Connection lost. Reconnecting...');
+                setConnectionStatus(false, t('game.connectionLost'));
                 scheduleWsReconnect();
             });
         }
@@ -658,7 +656,7 @@
             if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
                 const winners = formatWinnerText(result.gameWinners, game);
                 state.endState = {
-                    title: 'Match Result',
+                    title: t('briskula.matchResult'),
                     winnersText: winners,
                     metaText: buildResultMetaText(result.gameWinners, game)
                 };
@@ -667,9 +665,9 @@
                 clearTeammateHand();
             } else if (gameEvent === 'CLOSED') {
                 state.endState = {
-                    title: 'Match Result',
-                    winnersText: 'Game closed',
-                    metaText: 'Returning to lobby'
+                    title: t('briskula.matchResult'),
+                    winnersText: t('briskula.gameClosed'),
+                    metaText: t('briskula.returningToLobby')
                 };
                 renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
                 startLobbyReturnCountdown();
@@ -720,8 +718,8 @@
             if (entering) void dom.dropZone.offsetWidth;
             dom.dropZone.classList.add('is-result');
             dom.dropZone.innerHTML = `
-                <div class="drop-zone-title">${title || 'Match Result'}</div>
-                <div class="drop-zone-winner">${winnersText || 'No winner recorded'}</div>
+                <div class="drop-zone-title">${title || t('briskula.matchResult')}</div>
+                <div class="drop-zone-winner">${winnersText || t('history.noWinner')}</div>
                 <div class="drop-zone-meta">${metaText || ''}</div>
             `;
         }
@@ -729,7 +727,7 @@
         function clearCenterResult() {
             if (!dom.dropZone || !dom.dropZone.classList.contains('is-result')) return;
             dom.dropZone.classList.remove('is-result');
-            dom.dropZone.textContent = 'Drag a card to play';
+            dom.dropZone.textContent = t('game.dragToPlay');
             stopLobbyReturnCountdown();
         }
 
@@ -767,7 +765,7 @@
             if (!dom.dropZone || !dom.dropZone.classList.contains('is-result')) return;
             const meta = dom.dropZone.querySelector('.drop-zone-meta');
             if (meta) {
-                meta.textContent = `Returning to lobby in ${secondsLeft}s`;
+                meta.textContent = t('briskula.returningIn', secondsLeft);
             }
         }
 
@@ -823,7 +821,7 @@
                     img = window.UltracardsGameUi?.renderCardImage({
                         card,
                         className: 'trick-card',
-                        alt: 'Played card'
+                        alt: t('briskula.playedCard.alt')
                     }) || document.createElement('img');
                     img.dataset.trickKey = key;
                     state.trickEls.set(key, img);
@@ -1112,15 +1110,15 @@
             const isTurn = !playersTurn || isCurrentUser(playersTurn);
             if (dom.dropZone) {
                 if (dom.dropZone.classList.contains('is-result')) return;
-                dom.dropZone.textContent = isTurn ? 'Play here' : 'Wait a moment';
+                dom.dropZone.textContent = isTurn ? t('briskula.playHere') : t('briskula.waitMoment');
             }
             if (dom.tableTurnOverlay) {
                 dom.tableTurnOverlay.classList.toggle('is-visible', !!playersTurn);
             }
             if (dom.tableTurnMessage) {
                 dom.tableTurnMessage.textContent = isTurn
-                    ? 'Your turn'
-                    : `Waiting for ${playersTurn && playersTurn.name ? playersTurn.name : 'the next player'}`;
+                    ? t('briskula.yourTurn')
+                    : t('briskula.waitingFor', playersTurn && playersTurn.name ? playersTurn.name : t('briskula.nextPlayer'));
             }
             syncHand();
         }
@@ -1606,46 +1604,43 @@
             }
             const tone = resolvePlayerTeamTone(teamState, player);
             if (tone === 'ally') {
-                return 'Teammate';
+                return t('briskula.teammate');
             }
             if (tone === 'enemy') {
-                return 'Opponent';
+                return t('briskula.opponent');
             }
             return getTeamDisplayName(teamNumber);
         }
 
         function formatWinnerText(winners, game) {
             if (!Array.isArray(winners) || !winners.length) {
-                return 'No winner recorded';
+                return t('history.noWinner');
             }
-            const teamState = resolveTeams(game);
-            if (teamState && winners.length > 1) {
-                return `Winning team: ${formatPlayerList(winners)}`;
-            }
-            return winners.map((winner) => winner.name).join(', ');
+            const winnerLabel = winners.length === 1 ? t('history.winner') : t('history.winners');
+            return `${winnerLabel}: ${winners.map((winner) => winner.name).join(', ')}`;
         }
 
         function buildResultMetaText(winners, game) {
             const teamState = resolveTeams(game);
             if (!teamState || !Array.isArray(winners) || !winners.length) {
-                return 'Game ended.';
+                return t('briskula.gameEnded');
             }
             const currentTeamPlayers = teamState.currentUserTeamNumber === 1
                 ? teamState.team1
                 : (teamState.currentUserTeamNumber === 2 ? teamState.team2 : []);
             if (!currentTeamPlayers.length) {
-                return 'Game ended.';
+                return t('briskula.gameEnded');
             }
             const currentTeamWon = currentTeamPlayers.length > 0
                 && winners.every((winner) => currentTeamPlayers.some((player) => isSamePlayer(player, winner)));
-            return currentTeamWon ? 'Your team won.' : 'Your team lost.';
+            return currentTeamWon ? t('briskula.teamWon') : t('briskula.teamLost');
         }
 
         function formatPlayerList(players) {
             if (!Array.isArray(players) || !players.length) {
-                return 'Waiting for players';
+                return t('lobbyPage.waitingShort');
             }
-            return players.map((player) => player?.name || `User ${player?.id ?? ''}`).join(', ');
+            return players.map((player) => player?.name || t('lobby.userFallback', player?.id ?? '')).join(', ');
         }
 
         /**
@@ -1758,7 +1753,7 @@
                     overlay.className = 'trump-zoom';
                     const big = document.createElement('img');
                     big.src = src;
-                    big.alt = 'Trump card';
+                    big.alt = t('briskula.trumpCard.alt');
                     big.addEventListener('mouseleave', clear);
                     overlay.appendChild(big);
                     overlay.addEventListener('click', clear);
@@ -1998,7 +1993,7 @@
                 const el = window.UltracardsGameUi?.renderCardImage({
                     card,
                     className: 'seat-card teammate-open-card',
-                    alt: 'Teammate card'
+                    alt: t('briskula.teammateCard.alt')
                 });
                 if (!el) return;
                 const centered = i - (total - 1) / 2;
@@ -2025,7 +2020,7 @@
             window.UltracardsGameUi?.syncBackCards(cardsEl, cardsCount, {
                 cardType: 'ITALIAN',
                 className: 'seat-card',
-                alt: 'Card back',
+                alt: t('game.cardBack.alt'),
                 fromRect: deckRect
             });
         }

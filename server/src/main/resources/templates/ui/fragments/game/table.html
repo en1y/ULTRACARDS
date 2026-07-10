@@ -12,7 +12,7 @@
                  th:text="${dropZoneText}">Drag a card to play</div>
             <th:block th:replace="~{ui/fragments/game/previous-round :: previousRound(null)}"></th:block>
             <div th:id="${idPrefix + 'table-turn-overlay'}" class="table-turn-overlay">
-                <div th:id="${idPrefix + 'table-turn-message'}" class="table-turn-message">Waiting for the next move</div>
+                <div th:id="${idPrefix + 'table-turn-message'}" class="table-turn-message" th:text="#{game.waitingNextMove}">Waiting for the next move</div>
             </div>
             <th:block th:replace="~{ui/fragments/game/teammate-hand :: teammateHand(null)}"></th:block>
             <div class="table-center">
