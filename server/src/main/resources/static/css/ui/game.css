@@ -2188,6 +2188,7 @@
         /* Reveal pop-in for the teammate's face-up seat cards (class is only
            applied in fullscreen mobile mode). */
         .seat-card.teammate-open-card {
+            --reveal-i: 0;
             animation: teammate-card-reveal 380ms cubic-bezier(.2, .8, .3, 1.15) backwards;
             animation-delay: calc(var(--reveal-i, 0) * 70ms);
         }
