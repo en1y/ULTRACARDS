@@ -56,13 +56,13 @@
 
 ---
 
-## v0.2.0 — Current release
+## v0.2.1 — Current release
 
 Version bumped across all modules. Vulnerable Spring dependencies patched. Unused JS/theme code removed.
 
 ---
 
-## v0.2.1 - Implement multilingual support
+## v0.2.1 - Implement multilingual support ✅
 
 - Add i18n support for UI strings (English, Croatian, Ukrainian, German)
 - Update the UI to support and select the best language by default based on browser settings
