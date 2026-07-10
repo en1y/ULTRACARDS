@@ -73,6 +73,20 @@
                         <span th:text="#{common.save}">Save</span>
                     </button>
             </div>
+            <div class="profile-field-card profile-language-field">
+                <label for="language" th:text="#{header.language}">Language</label>
+                <div class="profile-input-shell">
+                    <span class="profile-input-icon" aria-hidden="true">
+                        <img class="uc-icon" data-icon="language" th:src="@{/pics/light/language.svg}" alt="" aria-hidden="true" />
+                    </span>
+                    <select class="profile-input" id="language" data-language-select>
+                        <option value="en" th:selected="${lang == 'en'}">English</option>
+                        <option value="hr" th:selected="${lang == 'hr'}">Hrvatski</option>
+                        <option value="uk" th:selected="${lang == 'uk'}">Українська</option>
+                        <option value="de" th:selected="${lang == 'de'}">Deutsch</option>
+                    </select>
+                </div>
+            </div>
             <div class="profile-meta-grid">
                 <div class="profile-summary-card profile-summary-stack profile-summary-inline">
                     <span class="summary-label" th:text="#{profile.userId}">User ID</span>

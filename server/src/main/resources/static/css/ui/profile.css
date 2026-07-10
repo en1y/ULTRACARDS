@@ -306,8 +306,12 @@
     display: flex;
     align-items: stretch;
     margin-top: 0.3rem;
-    margin-bottom: 1.4rem;
+    margin-bottom: 0.75rem;
     width: 100%;
+}
+
+.profile-language-field {
+    margin-bottom: 1.4rem;
 }
 
 .profile-actions #save-profile {
