@@ -18,6 +18,9 @@ public class TresetaGame
     public TresetaGame(List<TresetaPlayer> tresetaPlayers, TresetaGameConfig gameConfig) {
         super(tresetaPlayers, 40, gameConfig.getCardsInHandNum());
         this.gameConfig = gameConfig;
+        if (getNumberOfPlayers() != gameConfig.getNumberOfPlayers()) {
+            throw new IllegalArgumentException("Player count does not match the selected Treseta game mode.");
+        }
         this.roundNum = gameConfig.getRoundsNum();
     }
 
@@ -104,7 +107,7 @@ public class TresetaGame
     public void preGameCreateCheck(int numberOfPlayers, int cardsNum) {
         if (numberOfPlayers > 4 || numberOfPlayers < 2)
             throw new IllegalArgumentException("Number of players must be between 2 and 4.");
-        if (cardsNum != 0)
+        if (cardsNum != 40)
             throw new IllegalArgumentException("Number of cards must be 40.");
     }
 }
