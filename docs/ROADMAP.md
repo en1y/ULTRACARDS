@@ -56,12 +56,6 @@
 
 ---
 
-## v0.2.1 — Previous release
-
-Version bumped across all modules. Vulnerable Spring dependencies patched. Unused JS/theme code removed.
-
----
-
 ## v0.2.1 - Implement multilingual support ✅
 
 - Add i18n support for UI strings (English, Croatian, Ukrainian, German)
@@ -77,10 +71,13 @@ Version bumped across all modules. Vulnerable Spring dependencies patched. Unuse
 
 ---
 
-## v0.2.3 - Implement game-recorder module
+## v0.2.3 - Implement game-recorder module ✅
 
-- The idea behind this module is to record the game state using hooks on top of existing abstract methods so it can be reused for any game type there is to simplify persistence.
-- After implementing the module the persistence from the server module should be mostly moved to the game-recorder module and the server module should only be responsible for routing the requests to the correct service.
+- Add a non-invasive `GameRecordingHook` to the shared game template. Games notify it when they start, a round starts or ends, a card is played, and the game ends, without depending on recorder or server code.
+- Implement the `game-recorder` module, which turns those events into a replayable record: game metadata and timestamps, ordered players, starting hands, card plays, round winners, and game- or round-specific attributes.
+- Provide a Briskula recorder specialization that also captures the selected game configuration, teams, trump card, and points earned in each round.
+- Keep recorder lifecycle outside live game entities: the server attaches a recorder when it creates a game and persists the completed aggregate when that game finishes.
+- Move Briskula history to recorder-owned tables and migrate existing games, players, teams, rounds, cards, hands, winners, and scores so players keep their previous game history.
 
 ---
 

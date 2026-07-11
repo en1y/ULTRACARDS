@@ -4,6 +4,7 @@ import com.ultracards.templates.cards.AbstractCard;
 import com.ultracards.templates.cards.CardSuitInterface;
 import com.ultracards.templates.cards.CardValueInterface;
 import com.ultracards.templates.game.interfaces.GameInterface;
+import com.ultracards.templates.game.interfaces.GameRecordingHook;
 
 import java.util.List;
 
@@ -23,6 +24,7 @@ public abstract class AbstractGame
     private int numberOfPlayers;
     private int cardsNum;
     private int cardsInHandNum;
+    private GameRecordingHook gameRecordingHook = GameRecordingHook.NONE;
 
     public AbstractGame(List<Player> players, int cardsNum, int cardsInHandNum) {
         init(players, cardsNum, cardsInHandNum);
@@ -86,6 +88,16 @@ public abstract class AbstractGame
     @Override
     public void setCardsInHandNum(int cardsInHandNum) {
         this.cardsInHandNum = cardsInHandNum;
+    }
+
+    @Override
+    public GameRecordingHook getGameRecordingHook() {
+        return gameRecordingHook;
+    }
+
+    @Override
+    public void setGameRecordingHook(GameRecordingHook gameRecordingHook) {
+        this.gameRecordingHook = gameRecordingHook == null ? GameRecordingHook.NONE : gameRecordingHook;
     }
 
     @Override

@@ -9,8 +9,8 @@ import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.enums.games.GameType;
-import com.ultracards.server.repositories.games.BriskulaGameRepository;
 import com.ultracards.server.service.games.GameManager;
+import com.ultracards.server.service.games.GameRecordingService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import com.ultracards.server.service.lobby.LobbyManager;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -39,7 +39,7 @@ public class BriskulaGameService {
     private final LobbyManager lobbyManager;
     private final UserBriskulaStatsService userBriskulaStatsService;
     private final UserGamesStatsService userGamesStatsService;
-    private final BriskulaGameRepository briskulaGameRepository;
+    private final GameRecordingService gameRecordingService;
     private final TaskScheduler taskScheduler;
     private final Function<LobbyEntity, Boolean> openLobby;
     private final Map<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>> onCardPlayedByConfig;
@@ -54,7 +54,7 @@ public class BriskulaGameService {
             LobbyManager lobbyManager,
             UserBriskulaStatsService userBriskulaStatsService,
             UserGamesStatsService userGamesStatsService,
-            BriskulaGameRepository briskulaGameRepository,
+            GameRecordingService gameRecordingService,
             @Qualifier("timer") TaskScheduler taskScheduler,
             @Qualifier("openLobby") @Lazy Function<LobbyEntity, Boolean> openLobby) {
         this.gameManager = gameManager;
@@ -63,7 +63,7 @@ public class BriskulaGameService {
         this.lobbyManager = lobbyManager;
         this.userBriskulaStatsService = userBriskulaStatsService;
         this.userGamesStatsService = userGamesStatsService;
-        this.briskulaGameRepository = briskulaGameRepository;
+        this.gameRecordingService = gameRecordingService;
         this.taskScheduler = taskScheduler;
         this.openLobby = openLobby;
         this.onCardPlayedByConfig = createOnCardPlayedByConfig();
@@ -141,8 +141,7 @@ public class BriskulaGameService {
             userBriskulaStatsService.addBriskulaGame(player.getUser(), gameConfig, won);
         });
         updateBriskulaRelationshipStats(game.getPlayers(), winnerUsers, gameConfig);
-        game.markEnded();
-        briskulaGameRepository.save(game);
+        gameRecordingService.finish(game);
         gameManager.deleteGame(game);
         openLobby.apply(lobbyManager.getLobby(game.getLobbyId()));
     }

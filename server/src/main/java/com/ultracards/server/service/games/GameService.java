@@ -20,12 +20,15 @@ public class GameService {
     private final GameManager gameManager;
     private final LobbyManager lobbyManager;
     private final BriskulaGameService briskulaGameService;
+    private final GameRecordingService gameRecordingService;
 
     public GameEntity<?, ?> startGame(LobbyEntity lobby) {
         var game = gameManager.createGame(lobby.createGame());
         lobbyManager.putGame(lobby, game);
         if (game.getGameType().equals(GameTypeDTO.Briskula)) {
-            briskulaGameService.onGameStarted((BriskulaGameEntity) game);
+            var briskulaGame = (BriskulaGameEntity) game;
+            gameRecordingService.start(briskulaGame);
+            briskulaGameService.onGameStarted(briskulaGame);
         }
         return game;
     }
