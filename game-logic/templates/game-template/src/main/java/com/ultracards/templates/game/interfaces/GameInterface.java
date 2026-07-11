@@ -46,6 +46,10 @@ public interface GameInterface
                     createPlayingField()
             );
         }
+        getGameRecordingHook().gameStarted(this);
+        if (getPlayingField() != null) {
+            getGameRecordingHook().roundStarted(getPlayingField());
+        }
     }
 
     default void restart() {
@@ -58,12 +62,15 @@ public interface GameInterface
             postRoundWinnerDeterminedActions(roundWinner, getPlayingField());
             drawCards(getPlayers(), getDeck());
             roundEnd(getPlayingField(), roundWinner);
+            getGameRecordingHook().roundEnded(getPlayingField(), roundWinner);
             setPlayingField(
                     createPlayingField()
             );
             if (!isGameActive()) {
                 setPlayingField(null);
                 gameEnd();
+            } else {
+                getGameRecordingHook().roundStarted(getPlayingField());
             }
         }
     }
@@ -71,6 +78,7 @@ public interface GameInterface
     default void gameEnd() {
         var winners = determineGameWinners();
         postGameWinnersDeterminedActions(winners);
+        getGameRecordingHook().gameEnded(this, winners);
     }
 
     default Player determineRoundWinner(PlayingField playingField) {
@@ -92,6 +100,7 @@ public interface GameInterface
     List<Player> getPlayers();
     Deck getDeck();
     PlayingField getPlayingField();
+    default GameRecordingHook getGameRecordingHook() {return GameRecordingHook.NONE;}
 
     // setters
     void setNumberOfPlayers(int numberOfPlayers);
@@ -100,6 +109,7 @@ public interface GameInterface
     void setPlayers(List<Player> players);
     void setDeck(Deck deck);
     void setPlayingField(PlayingField playingField);
+    default void setGameRecordingHook(GameRecordingHook gameRecordingHook) {}
 
     /* **** DEFAULT METHODS THAT ARE NOT NECESSARY **** */
 

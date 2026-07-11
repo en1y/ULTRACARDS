@@ -1,6 +1,6 @@
 package com.ultracards.server.repositories.games;
 
-import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.recorder.RecordedBriskulaGame;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -8,27 +8,25 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface BriskulaGameRepository extends JpaRepository<BriskulaGameEntity, UUID> {
-    @Query("select game from BriskulaGameEntity game where game.id = :id")
-    Optional<BriskulaGameEntity> findHistoryById(UUID id);
+public interface BriskulaGameRepository extends JpaRepository<RecordedBriskulaGame, UUID> {
 
     @Query(value = """
-            SELECT game.*
-            FROM briskula_games game
-            JOIN briskula_game_players player ON player.briskula_game_id = game.id
+            SELECT game.*, briskula.game_config, briskula.teams_enabled, briskula.trump_suit, briskula.trump_value
+            FROM recorded_briskula_games briskula JOIN recorded_games game ON game.id = briskula.id
+            JOIN recorded_game_players player ON player.game_id = game.id
             WHERE player.user_id = :userId
             ORDER BY game.ended_at DESC
             LIMIT 20 OFFSET :offset
             """, nativeQuery = true)
-    List<BriskulaGameEntity> findPastGamesByUserIdLatest(Long userId, int offset);
+    List<RecordedBriskulaGame> findPastGamesByUserIdLatest(Long userId, int offset);
 
     @Query(value = """
-            SELECT game.*
-            FROM briskula_games game
-            JOIN briskula_game_players player ON player.briskula_game_id = game.id
+            SELECT game.*, briskula.game_config, briskula.teams_enabled, briskula.trump_suit, briskula.trump_value
+            FROM recorded_briskula_games briskula JOIN recorded_games game ON game.id = briskula.id
+            JOIN recorded_game_players player ON player.game_id = game.id
             WHERE player.user_id = :userId
             ORDER BY game.ended_at ASC
             LIMIT 20 OFFSET :offset
             """, nativeQuery = true)
-    List<BriskulaGameEntity> findPastGamesByUserIdOldest(Long userId, int offset);
+    List<RecordedBriskulaGame> findPastGamesByUserIdOldest(Long userId, int offset);
 }

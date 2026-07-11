@@ -56,6 +56,7 @@ public interface PlayingFieldInterface
         addCard(card);
         getHasPlayerPlayed().put(player, true);
         player.playCard(card);
+        getGame().getGameRecordingHook().cardPlayed(this, player, card);
         if (isTurnPlayed()) {
             getGame().roundCycle();
         }
