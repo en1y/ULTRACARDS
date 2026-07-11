@@ -494,12 +494,12 @@
             z-index: 20;
             width: min(28rem, calc(100% - 2rem));
             padding: 0.85rem 1rem;
-            border: 1px solid rgba(140, 220, 170, 0.26);
+            border: 1px solid color-mix(in oklab, var(--color-success) 52%, var(--color-border));
             border-radius: var(--radius-lg);
-            background: rgba(150, 235, 180, 0.16);
+            background: color-mix(in oklab, var(--color-success) 24%, var(--color-surface));
             color: var(--color-text);
             backdrop-filter: blur(10px);
-            box-shadow: 0 18px 40px rgba(30, 80, 45, 0.14);
+            box-shadow: 0 18px 40px color-mix(in oklab, var(--color-success) 22%, var(--color-shadow));
             opacity: 0;
             filter: blur(2px);
             transform: translate(-50%, -2px);
@@ -523,13 +523,18 @@
 
         .lobby-toast-text {
             margin: 0;
-            color: color-mix(in oklab, var(--color-text) 76%, transparent);
+            color: var(--color-text-muted);
         }
 
         .lobby-actions {
             margin-top: 1rem;
             justify-content: flex-start;
             flex-wrap: wrap;
+        }
+
+        .lobby-actions .btn,
+        .lobby-code-copy-action {
+            white-space: nowrap;
         }
 
         #start-button.is-start-blocked {
@@ -646,16 +651,20 @@
 
         .chat-form {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1fr);
             gap: 0.75rem;
             margin-top: 1rem;
         }
 
+        .chat-form button {
+            justify-self: end;
+        }
+
         .chat-form textarea {
             box-sizing: border-box;
-            height: calc(2.8em + 1.6rem);
-            min-height: calc(2.8em + 1.6rem);
-            max-height: calc(2.8em + 1.6rem);
+            height: calc(4.2em + 1.6rem);
+            min-height: calc(4.2em + 1.6rem);
+            max-height: calc(4.2em + 1.6rem);
             line-height: 1.4;
             resize: none;
         }
@@ -684,6 +693,8 @@
         }
 
         .player-avatar {
+            /* flex-basis pinned so the circle never gets squeezed oval in narrow team cards */
+            flex: 0 0 auto;
             width: 2.25rem;
             height: 2.25rem;
             border-radius: 50%;
@@ -751,12 +762,17 @@
 
             .lobby-title-row,
             .lobby-meta-row,
-            .player-row,
             .team-panel-header,
             .team-board-toolbar,
             .lobby-teams-bar {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            /* .player-row stays a row so the kick button sits on the far right
+               and the tile keeps a single-line height. */
+            .player-row {
+                gap: 0.5rem;
             }
 
             .team-panel {
@@ -765,6 +781,34 @@
 
             .lobby-meta-value {
                 text-align: left;
+            }
+
+            .mobile-chat-toggle {
+                display: grid;
+            }
+
+            /* Lobby chat floats over the page, toggled by the dock button. */
+            .lobby-chat-panel {
+                position: fixed;
+                left: 0.75rem;
+                right: 0.75rem;
+                /* Closed-state anchor only; while OPEN, mobileChatDock.js sets
+                   inline top/height straight from the visualViewport so the panel
+                   is always fully visible (keyboard, URL bar, scroll, zoom). */
+                bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+                height: min(56vh, 26rem);
+                min-height: 0;
+                z-index: 1450;
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(0.6rem);
+                transition: opacity 200ms ease, transform 200ms ease;
+            }
+
+            body.mobile-chat-open .lobby-chat-panel {
+                opacity: 1;
+                pointer-events: auto;
+                transform: none;
             }
         }
 

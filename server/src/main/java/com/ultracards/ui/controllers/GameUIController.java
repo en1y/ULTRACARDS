@@ -1,9 +1,12 @@
 package com.ultracards.ui.controllers;
 
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
+import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.templates.game.model.AbstractPlayer;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.lobby.LobbyService;
@@ -14,6 +17,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/game")
@@ -39,7 +44,8 @@ public class GameUIController {
             return "redirect:/lobbies";
         }
         var gameDto = toGameDto(currentGame);
-        if (gameDto == null) {
+        var gameView = toGameView(currentGame);
+        if (gameDto == null || gameView == null) {
             return "redirect:/lobbies";
         }
 
@@ -47,13 +53,31 @@ public class GameUIController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("currentUserId", user.getId());
         model.addAttribute("game", gameDto);
+        model.addAttribute("hand", toHandDto(currentGame, user));
         model.addAttribute("chat", chatService.getChat(currentLobby.getId()).toDto());
-        return "ui/game";
+        return gameView;
     }
 
     private GameEntityDTO toGameDto(GameEntity<?, ?> game) {
         if (game instanceof BriskulaGameEntity briskulaGame) {
             return briskulaGame.createGameDTO();
+        }
+        return null;
+    }
+
+    private List<GameCardDTO> toHandDto(GameEntity<?, ?> game, UserEntity user) {
+        for (var p : game.getGame().getPlayers()) {
+            var player = (AbstractPlayer<?, ?, ?, ?, ?>) p;
+            if (((PlayerEntity) p).getUser().getId().equals(user.getId())) {
+                return player.getHand().getCards().stream().map(GameCardDTO::createCardDTO).toList();
+            }
+        }
+        return List.of();
+    }
+
+    private String toGameView(GameEntity<?, ?> game) {
+        if (game instanceof BriskulaGameEntity) {
+            return "ui/games/briskula";
         }
         return null;
     }

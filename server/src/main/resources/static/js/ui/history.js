@@ -23,10 +23,10 @@
     .replaceAll("'", '&#39;');
 
   const formatDate = (value) => {
-    if (!value) return 'Unknown time';
+    if (!value) return t('history.unknownTime');
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'Unknown time';
-    return new Intl.DateTimeFormat(undefined, {
+    if (Number.isNaN(date.getTime())) return t('history.unknownTime');
+    return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
       dateStyle: 'medium',
       timeStyle: 'short',
       hour12: false
@@ -34,7 +34,7 @@
   };
 
   const normalizePlayer = (value) => {
-    if (!value) return { name: 'Unknown player', id: 0 };
+    if (!value) return { name: t('history.unknownPlayer'), id: 0 };
     if (typeof value === 'object') return value;
 
     try {
@@ -49,7 +49,7 @@
     }
   };
 
-  const playerName = (player) => escapeHtml(normalizePlayer(player).name || 'Unknown player');
+  const playerName = (player) => escapeHtml(normalizePlayer(player).name || t('history.unknownPlayer'));
   const playerId = (player) => Number(normalizePlayer(player).id);
   const isCurrentUser = (player) => playerId(player) === currentUserId;
 
@@ -60,16 +60,18 @@
     && game.winners.some((winner) => playerId(winner) === currentUserId);
 
   const settingsText = (config = {}) => {
-    const players = config.numberOfPlayers || '?';
-    const cards = config.cardsInHandNum || '?';
-    const mode = config.teamsEnabled ? 'teams' : 'solo';
-    return `${players} players - ${cards} cards - ${mode}`;
+    const parts = [t('history.playersCount', config.numberOfPlayers || '?')];
+    if (config.numberOfPlayers === 2) parts.push(t('history.cardsCount', config.cardsInHandNum || '?'));
+    if (config.numberOfPlayers === 4) parts.push(config.teamsEnabled ? t('history.teams') : t('history.solo'));
+    return parts.join(' - ');
   };
 
   const playerList = (players, game = null) => (players || [])
     .map((player) => {
       const winner = game && isWinner(game, player);
-      return `<span class="history-player ${winner ? 'is-winner' : ''}">${playerName(player)}</span>`;
+      const uid = playerId(player);
+      const interactive = uid > 0 ? ` data-user-id="${uid}" data-user-name="${playerName(player)}" tabindex="0" role="button"` : '';
+      return `<span class="history-player ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)}</span>`;
     })
     .join('');
 
@@ -82,37 +84,36 @@
   const scores = (game, pointsByUser = game.pointsByUser) => scoreEntries(pointsByUser)
     .map(({ player, points }) => {
       const winner = isWinner(game, player);
-      return `<span class="history-score ${winner ? 'is-winner' : ''}">${playerName(player)} <strong>${points}</strong></span>`;
+      const uid = playerId(player);
+      const interactive = uid > 0 ? ` data-user-id="${uid}" data-user-name="${playerName(player)}" tabindex="0" role="button"` : '';
+      return `<span class="history-score ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)} <strong>${points}</strong></span>`;
     }).join('');
 
   const renderGame = (game) => {
     const won = currentUserWon(game);
-    const winnerLabel = Array.isArray(game.winners) && game.winners.length === 1 ? 'Winner' : 'Winners';
+    const winnerLabel = Array.isArray(game.winners) && game.winners.length === 1 ? t('history.winner') : t('history.winners');
     return `
       <article class="card history-card" data-game-id="${escapeHtml(game.id)}">
         <div class="history-card-head">
           <div class="history-card-title">
+          <span class="chip">${escapeHtml(getGameTypeDisplayName(game.gameType) || t('history.unknown'))}</span>
             <h3>${escapeHtml(game.name || 'Briskula')}</h3>
             <div class="history-meta">
               <span>${formatDate(game.endedAt || game.createdAt)}</span>
               <span>${escapeHtml(settingsText(game.gameConfig))}</span>
             </div>
           </div>
-          <span class="history-result ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span>
+          <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
         </div>
         <div class="history-card-row">
-          <strong>Players</strong>
-          <div class="history-player-list">${playerList(game.playersOrder, game)}</div>
-        </div>
-        <div class="history-card-row">
-          <strong>Points</strong>
+          <strong>${t('lobby.players.chip')}</strong>
           <div class="history-score-list">${scores(game)}</div>
         </div>
         <div class="history-card-footer">
-          <p>${winnerLabel}: ${playerList(game.winners, game) || 'No winner recorded'}</p>
+          <p>${winnerLabel}: ${playerList(game.winners, game) || t('history.noWinner')}</p>
           <a class="btn history-details-button" href="/history/${encodeURIComponent(game.id)}" data-history-details="${escapeHtml(game.id)}">
             <img class="uc-icon" data-icon="history" src="/pics/light/history.svg" alt="" aria-hidden="true">
-            <span>Replay</span>
+            <span>${t('history.replay')}</span>
           </a>
         </div>
       </article>
@@ -120,9 +121,9 @@
   };
 
   const updateSummary = () => {
-    const gameType = gameTypeSelect.options[gameTypeSelect.selectedIndex]?.textContent || 'All games';
-    const result = resultSelect.options[resultSelect.selectedIndex]?.textContent || 'Wins and losses';
-    const time = timeSortSelect.options[timeSortSelect.selectedIndex]?.textContent || 'Latest first';
+    const gameType = gameTypeSelect.options[gameTypeSelect.selectedIndex]?.textContent || t('common.allGames');
+    const result = resultSelect.options[resultSelect.selectedIndex]?.textContent || t('history.winsAndLosses');
+    const time = timeSortSelect.options[timeSortSelect.selectedIndex]?.textContent || t('history.latestFirst');
     if (summary) summary.textContent = `${gameType}, ${result.toLowerCase()}, ${time.toLowerCase()}.`;
   };
 
@@ -135,7 +136,7 @@
 
     if (!Array.isArray(games) || games.length === 0) {
       if (offset === 0) {
-        list.innerHTML = '<article class="card history-card history-empty">No games match these filters.</article>';
+        list.innerHTML = `<article class="card history-card history-empty">${t('history.noMatches')}</article>`;
       }
       loadMoreButton.hidden = true;
       return;
@@ -153,10 +154,10 @@
     list.setAttribute('aria-busy', String(isLoading));
     loadMoreButton.disabled = isLoading;
     refreshButton.disabled = isLoading;
-    loadMoreButton.textContent = isLoading ? 'Loading' : 'Load More';
+    loadMoreButton.textContent = isLoading ? t('common.loading') : t('history.loadMore');
     const refreshLabel = refreshButton.querySelector('span');
     if (refreshLabel) {
-      refreshLabel.textContent = isLoading ? 'Refreshing' : 'Refresh';
+      refreshLabel.textContent = isLoading ? t('history.refreshing') : t('common.refresh');
     }
   };
 
@@ -181,7 +182,7 @@
       renderGames(await response.json(), reset);
     } catch (error) {
       if (offset === 0) {
-        list.innerHTML = '<article class="card history-card history-error">History could not be loaded.</article>';
+        list.innerHTML = `<article class="card history-card history-error">${t('history.loadFailed')}</article>`;
       }
     } finally {
       setListLoading(false);
@@ -193,13 +194,30 @@
   gameTypeSelect.addEventListener('change', () => loadHistory(true));
   loadMoreButton.addEventListener('click', () => loadHistory(false));
   refreshButton.addEventListener('click', () => loadHistory(true));
+  const openPlayerProfile = (el) => {
+    document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+      detail: { id: Number(el.dataset.userId), username: el.dataset.userName }
+    }));
+  };
+
   list.addEventListener('click', (event) => {
+    const player = event.target.closest('[data-user-id]');
+    if (player) { openPlayerProfile(player); return; }
+
     const link = event.target.closest('[data-history-details]');
     if (!link) return;
     const game = gamesById.get(String(link.dataset.historyDetails));
     if (game) {
       sessionStorage.setItem(`ultracards:history:${game.id}`, JSON.stringify(game));
     }
+  });
+
+  list.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const player = event.target.closest('[data-user-id]');
+    if (!player) return;
+    event.preventDefault();
+    openPlayerProfile(player);
   });
 
   updateSummary();

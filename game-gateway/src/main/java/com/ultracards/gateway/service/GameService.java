@@ -1,7 +1,8 @@
 package com.ultracards.gateway.service;
 
-import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
+import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -37,12 +38,16 @@ public class GameService {
         this(restTemplate, serverUrl, tokenHolder, new TokenManager(tokenHolder));
     }
 
-    public GameEntityDTO getGame(UUID gameId) {
+    public BriskulaGameHistoryDTO getGame(UUID gameId) {
+        return getGameHistory(gameId);
+    }
+
+    public BriskulaGameHistoryDTO getGameHistory(UUID gameId) {
         var response = restTemplate.exchange(
-                serverUrl + "api/games/" + gameId,
+                serverUrl + "api/games/history/" + gameId,
                 HttpMethod.GET,
                 new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                GameEntityDTO.class
+                BriskulaGameHistoryDTO.class
         );
         tokenManager.updateToken(tokenHolder, response);
         return response.getBody();
@@ -59,23 +64,16 @@ public class GameService {
         return response.getBody();
     }
 
-    public List<GameCardDTO> getPlayersCards() {
-        var response = restTemplate.exchange(
-                serverUrl + "api/games",
-                HttpMethod.GET,
-                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                new ParameterizedTypeReference<List<GameCardDTO>>() {
-                }
-        );
-        tokenManager.updateToken(tokenHolder, response);
-        return response.getBody();
+    public List<ShortGameHistoryDTO> getPastGames() {
+        return getPastGames(0, "both", "latest");
     }
 
-    public GameEntityDTO playCard(GameCardDTO card) {
-        var response = restTemplate.postForEntity(
-                serverUrl + "api/games",
-                new HttpEntity<>(card, tokenManager.jsonHeaders(tokenHolder)),
-                GameEntityDTO.class
+    public List<ShortGameHistoryDTO> getPastGames(int offset, String result, String timeSort) {
+        var response = restTemplate.exchange(
+                serverUrl + "api/games/history?offset=" + offset + "&result=" + result + "&timeSort=" + timeSort,
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                new ParameterizedTypeReference<List<ShortGameHistoryDTO>>() {}
         );
         tokenManager.updateToken(tokenHolder, response);
         return response.getBody();

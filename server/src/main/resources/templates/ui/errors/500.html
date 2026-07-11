@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" th:lang="${lang}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS - 500</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -11,13 +12,12 @@
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
 <section class="hero container">
-    <h2>Error 500</h2>
-    <h3>Something broke on our side. Try again in a moment.</h3>
+    <h2 th:text="#{error.heading('500')}">Error 500</h2>
+    <h3 th:text="#{error.500.message}">Something broke on our side. Try again in a moment.</h3>
     <p>
-        <a th:href="@{/}" class="btn btn-accent">Go to home</a>
+        <a th:href="@{/}" class="btn btn-accent" th:text="#{error.goHome}">Go to home</a>
     </p>
 </section>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-    <script th:src="@{/js/ui/errors/500.js}"></script>
 </body>
 </html>

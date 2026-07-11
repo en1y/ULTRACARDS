@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" th:lang="${lang}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS - 403</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -11,14 +12,13 @@
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
 <section class="hero container">
-    <h2>Error 403</h2>
-    <h3 th:if="${!isAuthenticated}">You cannot access this page without signing in.</h3>
-    <h3 th:if="${isAuthenticated}">You do not have permission to access this page.</h3>
+    <h2 th:text="#{error.heading('403')}">Error 403</h2>
+    <h3 th:if="${!isAuthenticated}" th:text="#{error.403.guest}">You cannot access this page without signing in.</h3>
+    <h3 th:if="${isAuthenticated}" th:text="#{error.403.authed}">You do not have permission to access this page.</h3>
     <p>
-        <a th:href="@{/}" class="btn btn-accent">Go to home</a>
+        <a th:href="@{/}" class="btn btn-accent" th:text="#{error.goHome}">Go to home</a>
     </p>
 </section>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-    <script th:src="@{/js/ui/errors/403.js}"></script>
 </body>
 </html>

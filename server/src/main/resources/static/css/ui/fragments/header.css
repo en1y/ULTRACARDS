@@ -26,10 +26,12 @@
   z-index: 1000;
   display: grid;
   justify-items: center;
-  backdrop-filter: blur(6px);
-  background: color-mix(in oklab, var(--color-bg) 85%, transparent);
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   transition: transform 0.25s ease, background 0.2s ease, border-color 0.2s ease;
+  /* Own compositor layer: the blurred, transform-animated header must not
+     force repaints of itself (or the page) on every scroll frame. */
+  will-change: transform;
 }
 
 .uc-header.hidden {
@@ -498,17 +500,50 @@ body.friends-drawer-open .uc-header.hidden {
 
 .header-user-history-result {
   flex: 0 0 auto;
-  padding: 0.2rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.4rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 0.4rem;
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: 1.7rem;
   font-weight: 900;
+  position: relative;
+  transition: border-color 0.12s, background 0.12s;
 }
 
 .header-user-history-result.win {
-  border-color: color-mix(in oklab, var(--color-success) 42%, var(--color-border));
+  border-color: var(--color-success);
   color: var(--color-success);
+  background: color-mix(in oklab, var(--color-success) 12%, var(--color-bg));
+}
+
+.header-user-history-result.loss {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 12%, var(--color-bg));
+}
+
+.header-user-history-result:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
 }
 
 .header-user-history-row {
@@ -530,12 +565,26 @@ body.friends-drawer-open .uc-header.hidden {
 }
 
 .header-user-history-player {
-  padding: 0.2rem 0.45rem;
+  padding: 0.2rem 0.5rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 0.4rem;
   background: var(--color-bg);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.header-user-history-player[data-user-id] {
+  cursor: pointer;
+  background: color-mix(in oklab, var(--color-accent) 7%, var(--color-bg));
+  border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.header-user-history-player[data-user-id]:hover,
+.header-user-history-player[data-user-id]:focus-visible {
+  border-color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-bg));
+  outline: none;
 }
 
 .header-user-history-player.is-winner {
@@ -563,14 +612,24 @@ body.friends-drawer-open .uc-header.hidden {
   background: color-mix(in oklab, var(--color-surface) 58%, var(--color-bg));
 }
 
+/* Inside a game card the played/won/lost tiles collapse to one compact row
+   each (number right, label left) so the card stays short next to the donut. */
 .header-user-game-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.35rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.15rem;
 }
 
 .header-user-game-stats .header-user-profile-stat {
-  padding: 0.45rem;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.1rem 0.2rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .header-user-game-stats .header-user-profile-stat strong {
@@ -933,14 +992,21 @@ body.friends-drawer-open .uc-header.hidden {
   box-shadow: none;
 }
 
+.friends-trigger .uc-icon {
+  transition: transform 0.18s ease;
+}
+
+.friends-shell.open .friends-trigger .uc-icon {
+  transform: rotate(90deg);
+}
+
 .friends-drawer {
   position: fixed;
-  top: var(--header-height);
+  top: var(--uc-header-h, var(--header-height));
   right: 0;
   z-index: 900;
   width: var(--friends-drawer-width);
-  height: calc(100vh - var(--header-height));
-  height: calc(100svh - var(--header-height));
+  height: calc(100svh - var(--uc-header-h, var(--header-height)));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -955,11 +1021,17 @@ body.friends-drawer-open .uc-header.hidden {
   border-left: 1px solid var(--color-border);
   box-shadow: -18px 0 42px var(--color-shadow);
   transform: translateX(105%);
-  transition: transform 0.22s ease;
+  /* visibility flips AFTER the slide-out so the close animation still plays;
+     while closed the drawer (its gradient, 42px shadow and blurred head) costs
+     zero paint per scroll frame — it lagged scrolling on Firefox Android. */
+  visibility: hidden;
+  transition: transform 0.22s ease, visibility 0s linear 0.22s;
 }
 
 .friends-shell.open .friends-drawer {
-  transform: translateX(0);
+  transform: none;
+  visibility: visible;
+  transition: transform 0.22s ease, visibility 0s;
 }
 
 .friends-drawer-head {
@@ -969,7 +1041,6 @@ body.friends-drawer-open .uc-header.hidden {
   margin: -0.9rem -0.9rem 0;
   padding: 0.95rem 0.9rem 0.8rem;
   background: color-mix(in oklab, var(--color-bg) 88%, transparent);
-  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1208,14 +1279,21 @@ body.friends-drawer-open .uc-header.hidden {
 .friend-chat-shell .chat-message {
   display: grid;
   gap: 0.2rem;
+  justify-items: start;
   justify-self: start;
   width: fit-content;
   max-width: min(100%, 18rem);
 }
 
 .friend-chat-shell .chat-message.is-own {
+  justify-items: end;
   justify-self: end;
   align-self: flex-end;
+}
+
+/* The bubble hugs its text — never stretched to the meta row's width. */
+.friend-chat-shell .chat-bubble {
+  width: fit-content;
 }
 
 .friend-chat-shell .chat-message.is-new {
@@ -1252,13 +1330,17 @@ body.friends-drawer-open .uc-header.hidden {
 
 .friend-chat-shell .chat-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
+.friend-chat-shell .chat-form button {
+  justify-self: end;
+}
+
 .friend-chat-shell .chat-form textarea {
-  min-height: 44px;
-  max-height: 96px;
+  min-height: 92px;
+  max-height: 92px;
   resize: vertical;
 }
 
@@ -1294,7 +1376,10 @@ body.friends-drawer-open .uc-header.hidden {
 @media (prefers-reduced-motion: reduce) {
   .notification-tray,
   .notification-toast,
-  .notification-row {
+  .notification-row,
+  .profile-dropdown,
+  .friends-drawer,
+  .friends-trigger .uc-icon {
     transition: none;
   }
 
@@ -1353,6 +1438,15 @@ body.friends-drawer-open .uc-header.hidden {
   height: 14px;
 }
 
+/* Theme toggle is a mobile-only control; on desktop (matching the header's own
+   880px mobile breakpoint) it's hidden. Scoped to the main toggle so the
+   notification-popup toggle inside the tray is unaffected. */
+@media (min-width: 881px) {
+  .theme-toggle[data-action="toggle-theme"] {
+    display: none;
+  }
+}
+
 [data-theme="dark"] .theme-toggle:not(.notification-popup-toggle) .theme-toggle-thumb {
   transform: translateX(26px);
 }
@@ -1391,6 +1485,15 @@ body.friends-drawer-open .uc-header.hidden {
   border-color: var(--color-accent);
 }
 
+.profile-chip:focus-visible,
+.header-icon-button:focus-visible,
+.theme-toggle:focus-visible,
+.uc-actions .btn:focus-visible,
+.menu-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .profile-chip .username {
   min-width: 0;
   overflow: hidden;
@@ -1404,23 +1507,41 @@ body.friends-drawer-open .uc-header.hidden {
   border-radius: 50%;
 }
 
+.profile-menu-divider {
+  height: 1px;
+  margin: 0.2rem 0.35rem;
+  background: var(--color-border);
+}
+
 .profile-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   min-width: 180px;
   padding: 0.35rem;
-  display: none;
+  display: grid;
   gap: var(--header-menu-gap);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 30px var(--color-shadow);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-0.45rem) scale(0.98);
+  transform-origin: top right;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0.18s ease;
   z-index: 1200;
 }
 
 .profile-menu.open .profile-dropdown {
-  display: grid;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
 }
 
 .menu-item {
@@ -1448,6 +1569,12 @@ body.friends-drawer-open .uc-header.hidden {
 
 .menu-item.danger:hover {
   background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
+}
+
+@media (min-width: 881px) {
+  .profile-dropdown .game-ui-menu-item {
+    display: none;
+  }
 }
 
 .uc-header button:hover,
@@ -1483,6 +1610,16 @@ body.friends-drawer-open .uc-header.hidden {
 @media (max-width: 640px) {
   .uc-header {
     --header-action-gap: 0.45rem;
+  }
+
+  .uc-brand {
+    /* ponytail: shrink instead of ellipsis so the full wordmark fits next to the actions */
+    font-size: clamp(0.95rem, 4.5vw, 1.8rem);
+    padding-inline: 0.5rem;
+  }
+
+  .login-label-suffix {
+    display: none;
   }
 
   .header-icon-button {
@@ -1537,24 +1674,56 @@ body.friends-drawer-open .uc-header.hidden {
     justify-items: start;
   }
 
-  .header-user-profile-stats,
-  .header-user-game-stats {
+  .header-user-profile-stats {
     grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .header-user-profile-stats .header-user-profile-stat {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .header-user-profile-stats .header-user-profile-stat strong {
+    font-size: 1.05rem;
   }
 
   .friends-drawer {
     width: 100vw;
-  }
-
-  .friend-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .friend-actions {
-    justify-content: space-between;
+    /* The keyboard overlays the page (layout never resizes); shrink the drawer
+       by the published keyboard height so its chat input stays above it. */
+    height: calc(100dvh - var(--uc-header-h, var(--header-height)) - var(--kb-offset, 0px));
+    transition: transform 0.22s ease, height 160ms ease-out;
   }
 
   .friend-chat-shell .chat-form {
     grid-template-columns: minmax(0, 1fr);
+    align-items: end;
+  }
+
+  .friend-chat-shell .chat-form button {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .friend-chat-shell .chat-form button span {
+    display: none;
+  }
+
+  /* Full-width drawer has room: keep name left, action icons right on ONE line
+     instead of wrapping the icons onto a second row. */
+  .friend-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .friend-actions {
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 }

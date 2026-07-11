@@ -1,32 +1,15 @@
-.history-replay-layout {
-    --header-height: 72px;
-    --table-size: min(62vmin, 58vh, 620px);
-    --avatar-size: clamp(38px, 6.2vmin, 56px);
-    --player-ring-pad: clamp(82px, 12vmin, 132px);
-    --deck-cluster-width: calc(var(--table-size) * 0.277);
-    --deck-cluster-height: calc(var(--table-size) * 0.342);
-    --deck-tower-width: calc(var(--table-size) * 0.18);
-    --deck-tower-height: calc(var(--table-size) * 0.245);
-    --deck-card-width: calc(var(--table-size) * 0.174);
-    --trump-card-width: calc(var(--table-size) * 0.185);
-    --trump-card-right: calc(var(--table-size) * 0.145);
-    --trump-card-bottom: calc(var(--table-size) * 0.039);
-    --trump-card-hover-right: calc(var(--table-size) * 0.306);
-    --trump-card-hover-width: calc(var(--table-size) * 0.21);
-    width: min(100%, 1360px);
-    min-height: calc(100vh - var(--header-height));
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-    gap: 1rem;
-    align-items: start;
-    padding-top: 1rem;
-    padding-bottom: 2rem;
+/* Replay reuses game.css's .game-layout + .chat-sidebar for sizing.
+   This file is only the controls-panel content + the face-up (omniscient) hands. */
+
+.game-layout.is-replay {
+    --max-hand: 4;
 }
 
-.history-replay-stage,
 .history-replay-panel {
-    display: grid;
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    overflow-y: auto;
 }
 
 .history-replay-head {
@@ -46,7 +29,7 @@
 }
 
 .history-replay-head h1 {
-    font-size: 1.8rem;
+    font-size: 1.4rem;
 }
 
 .history-replay-eyebrow {
@@ -62,190 +45,6 @@
     gap: 0.18rem;
     margin-top: 0.3rem;
     color: var(--color-text-muted);
-}
-
-.history-briskula-shell {
-    margin-top: 0;
-}
-
-.history-replay-layout .table-wrap {
-    margin-top: 2rem;
-    padding-bottom: 2.25rem;
-}
-
-.history-replay-layout .player-ring {
-    inset: calc(-1 * var(--player-ring-pad));
-}
-
-.history-replay-layout .player-seat {
-    width: 184px;
-}
-
-.history-replay-layout .player-seat.is-turn {
-    filter: drop-shadow(0 0 14px rgba(240, 180, 77, 0.74));
-}
-
-.history-replay-layout .seat-cards {
-    gap: 0.1rem;
-    margin-top: 0.45rem;
-    transform: rotate(var(--hand-rotate));
-}
-
-.history-replay-layout .seat-card.replay-seat-card {
-    width: 38px;
-    margin-left: -16px;
-    border-radius: 7px;
-    background: var(--cream);
-    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.34);
-    cursor: zoom-in;
-    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
-}
-
-.history-replay-layout .seat-card.replay-seat-card:first-child {
-    margin-left: 0;
-}
-
-.history-replay-layout .seat-card.replay-seat-card:hover {
-    position: relative;
-    z-index: 12;
-    transform: translateY(-18px) rotate(0deg) scale(2.4) !important;
-    box-shadow: 0 24px 42px rgba(0, 0, 0, 0.48);
-    filter: saturate(1.05);
-}
-
-.history-replay-layout .seat-card.replay-seat-card.is-replay-moving-card {
-    position: relative;
-    z-index: 18;
-    pointer-events: none;
-}
-
-.history-replay-layout .is-replay-hidden {
-    visibility: hidden;
-}
-
-.history-replay-layout .trick-area {
-    min-width: 260px;
-}
-
-.history-replay-layout .trick-card {
-    width: 84px;
-    cursor: default;
-}
-
-.history-replay-layout .trick-card:hover {
-    --grow: 0px;
-    z-index: 1;
-}
-
-.history-replay-state {
-    width: 212px;
-    height: 212px;
-    border-style: solid;
-    color: rgba(255, 248, 226, 0.78);
-    background: rgba(12, 18, 15, 0.26);
-    backdrop-filter: blur(4px);
-    pointer-events: none;
-}
-
-.history-replay-layout .deck-stack {
-    pointer-events: none;
-}
-
-.history-replay-layout .trump-card {
-    cursor: default;
-}
-
-.history-replay-layout .trump-card:hover {
-    width: var(--trump-card-width);
-    right: var(--trump-card-right);
-    bottom: var(--trump-card-bottom);
-    transform: rotate(90deg) translate3d(18px, -2px, 0);
-    filter: none;
-}
-
-.history-replay-fly-card {
-    position: fixed;
-    left: 0;
-    top: 0;
-    border-radius: 10px;
-    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
-    pointer-events: none;
-    z-index: 1500;
-    will-change: transform, width;
-}
-
-.history-replay-deal-card {
-    position: fixed;
-    left: var(--from-x);
-    top: var(--from-y);
-    width: var(--from-width);
-    aspect-ratio: 2.5 / 3.5;
-    border-radius: 10px;
-    pointer-events: none;
-    z-index: 1500;
-    transform: translate(-50%, -50%);
-    animation: history-replay-deal-card 420ms cubic-bezier(.18, .84, .24, 1) forwards;
-}
-
-.history-replay-deal-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    border-radius: inherit;
-    transform-style: preserve-3d;
-    animation: history-replay-deal-flip 260ms ease-in-out 90ms forwards;
-}
-
-.history-replay-deal-face {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    overflow: hidden;
-    backface-visibility: hidden;
-    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
-}
-
-.history-replay-deal-face img {
-    width: 100%;
-    height: 100%;
-    display: block;
-    border-radius: inherit;
-}
-
-.history-replay-deal-front {
-    transform: rotateY(180deg);
-}
-
-.history-replay-measure {
-    position: fixed;
-    visibility: hidden;
-    pointer-events: none;
-    z-index: -1;
-}
-
-.history-replay-measure.trick-area {
-    min-width: 0;
-}
-
-.history-replay-measure .trick-card {
-    width: 84px;
-    cursor: default;
-}
-
-.history-replay-measure .seat-card.replay-seat-card {
-    width: 38px;
-    margin-left: -16px;
-    border-radius: 7px;
-}
-
-.history-replay-measure .seat-card.replay-seat-card:first-child {
-    margin-left: 0;
-}
-
-.history-replay-panel {
-    position: sticky;
-    top: 5.5rem;
-    padding: 1rem;
 }
 
 .history-replay-controls {
@@ -321,89 +120,393 @@
     color: var(--color-text);
 }
 
-@media (max-width: 980px) {
-    .history-replay-layout {
-        grid-template-columns: 1fr;
+/* Bigger seat avatars so the player letter reads crisply in the replay. */
+.is-replay {
+    --avatar-size: clamp(40px, 5.6vmin, 54px);
+}
+
+/* Seats sit in flow regions around the felt (column: top row / left|felt|right / bottom
+   row), so every player's icon + points + cards is always on screen — no absolute ring. */
+.replay-arena {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 0;
+    /* Stay bounded even when game.css collapses to one column on mobile (where the grid
+       row is auto-height) so the felt's aspect-ratio can't run away vertically. */
+    max-height: calc(100svh - var(--header-height, 64px) - 0.5rem);
+    width: 100%;
+    gap: clamp(0.3rem, 1.2vh, 0.9rem);
+}
+
+.is-replay .game-shell {
+    min-height: 0;
+}
+
+.replay-mid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: clamp(0.5rem, 2vw, 1.4rem);
+}
+
+.replay-region {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 1rem;
+}
+
+.replay-region.replay-col {
+    flex-direction: column;
+}
+
+.replay-mid .table-wrap {
+    flex: 0 1 auto;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    height: 100%;
+    padding: clamp(0.4rem, 2vmin, 1rem);
+}
+
+.is-replay .player-ring {
+    display: none;   /* seats live in the flow regions now */
+}
+
+.is-replay .player-seat {
+    position: static;
+    transform: none;
+    left: auto;
+    top: auto;
+    width: auto;
+}
+
+/* Replay hands are face-up (omniscient): larger than the live 28px backs, zoom on hover.
+   Wrapper uses the NATIVE card ratio (300x546) so the art fills it without cropping or
+   overflowing onto the points below. */
+.is-replay .seat-card {
+    width: 44px;
+    aspect-ratio: 300 / 546;
+    height: auto;
+    margin-left: -18px;
+    cursor: zoom-in;
+    overflow: hidden;
+    /* --deal-* composes in so step animations move the REAL card in place —
+       it keeps its z-order inside the fan (a left card stays under its right
+       neighbour) and lands exactly on its slot, no clone handoff. */
+    transform: translate3d(var(--deal-x, 0px), var(--deal-y, 0px), 0)
+        translateY(var(--slot-y, 0px))
+        rotate(calc(var(--slot-rot, 0deg) + var(--deal-rot, 0deg)))
+        scale(var(--deal-scale, 1));
+}
+
+/* Keep the card's own fan z-order while it flies (a returning left card
+   belongs UNDER its right neighbours); just stop the CSS transition from
+   fighting the tween. */
+.is-replay .seat-card.is-flying,
+.is-replay .seat-card.is-dealing {
+    transition: none;
+}
+
+/* Seat regions paint above the felt (replay-mid), so an in-place card flying
+   deck→hand crosses the table on top of it rather than underneath. */
+.replay-region {
+    position: relative;
+    z-index: 2;
+}
+
+.replay-mid .table-wrap {
+    position: relative;
+    z-index: 1;
+}
+
+.replay-mid .replay-region {
+    z-index: 2;
+}
+
+.is-replay .seat-card .card-front,
+.is-replay .seat-card .card-back {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.is-replay .seat-card:first-child {
+    margin-left: 0;
+}
+
+.is-replay .seat-points {
+    position: relative;
+    z-index: 5;
+}
+
+/* Reserve the full max-hand footprint so the seat (and the flexing felt) never shifts as
+   players play/draw/empty out. 44px card, 26px effective step (-18px overlap). */
+.is-replay .seat-cards {
+    justify-content: center;
+    min-width: calc(44px + (var(--max-hand, 4) - 1) * 26px);
+    min-height: 88px;
+}
+
+/* Hovered card pops a big, sharp preview toward the table (set by JS). pointer-events:none
+   so the small cards stay the hover targets and you can glide along the hand. */
+.replay-card-preview {
+    position: fixed;
+    width: clamp(110px, 14vh, 150px);
+    aspect-ratio: 300 / 546;
+    pointer-events: none;
+    z-index: 1000;
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Mobile replay: shrink the omniscient hands and pare the controls down to
+   round title + prev/next + scrubber (scores are already on the table). */
+@media (max-width: 900px) {
+    .is-replay {
+        --avatar-size: clamp(28px, 8vw, 40px);
     }
 
+    .is-replay .seat-card {
+        width: 32px;
+        margin-left: -13px;
+    }
+
+    .is-replay .seat-cards {
+        min-width: calc(32px + (var(--max-hand, 4) - 1) * 19px);
+        min-height: 64px;
+    }
+
+    .replay-arena {
+        max-height: calc(100svh - var(--header-height, 112px) - 9rem);
+        gap: 0.25rem;
+        justify-content: flex-start;
+    }
+
+    .replay-region {
+        gap: 0.5rem;
+    }
+
+    /* Replay felt gets the whole width — seats overlap it (they paint above,
+       z 2) rather than squeezing it so small the trump/deck cluster clips. */
+    .game-layout.is-replay,
+    .game-layout.is-replay.is-two-player,
+    .game-layout.is-replay.is-three-player,
+    .game-layout.is-replay.is-four-player {
+        --table-size: min(calc(100vw - 1rem), calc(100svh - var(--header-height, 112px) - 13rem), 520px);
+    }
+
+    .replay-mid {
+        gap: 0.4rem;
+        /* Ride the felt up under the top seat (overlapping it is fine)... */
+        margin-top: calc(var(--table-size, 300px) * -0.12);
+    }
+
+    /* Let the felt's box extend beneath the side seats instead of being
+       flex-squeezed between them. */
+    .replay-mid .table-wrap {
+        margin-inline: -9vw;
+    }
+
+    /* ...spending the freed space below, so cards/deck spilling past the felt
+       edge can never sit on the bottom player's hand. */
+    #replay-seats-bottom {
+        margin-top: clamp(8px, 2vh, 20px);
+    }
+
+    /* Compact control strip: round title + prev/next + scrubber only. */
     .history-replay-panel {
-        position: static;
-        order: -1;
-    }
-}
-
-@media (max-width: 720px) {
-    .history-replay-layout {
-        --table-size: min(88vw, 520px);
-        --player-ring-pad: clamp(64px, 18vw, 108px);
-    }
-
-    .history-replay-head {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .history-replay-head .btn {
         width: 100%;
-        text-align: center;
+        height: auto;
+        gap: 0.4rem;
+        padding: 0.5rem 0.7rem 0.65rem;
     }
 
-    .history-replay-layout .player-seat {
-        width: 138px;
+    .history-replay-panel .history-replay-eyebrow {
+        display: none;
     }
 
-    .history-replay-layout .seat-card.replay-seat-card {
-        width: 30px;
-        margin-left: -13px;
+    #replay-step-title {
+        margin: 0;
+        font-size: 1.05rem;
     }
 
-    .history-replay-layout .trick-card {
-        width: 66px;
-        margin-left: -22px;
+    .history-replay-controls .btn {
+        min-height: 0;
+        padding: 0.42rem 0.6rem;
     }
 
-    .history-replay-measure .trick-card {
-        width: 66px;
-        margin-left: -22px;
+    .history-replay-head,
+    .history-replay-score-section,
+    .history-replay-team-list {
+        display: none;
     }
 
-    .history-replay-state {
-        width: 168px;
-        height: 168px;
+    .history-replay-controls {
+        gap: 0.45rem;
     }
 
-    .history-replay-measure .seat-card.replay-seat-card {
-        width: 30px;
-        margin-left: -13px;
+    /* Bottom seat reads felt-first: cards + points on top, avatar + name below,
+       so the avatar no longer overlaps the table edge. */
+    #replay-seats-bottom .player-seat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #replay-seats-bottom .seat-cards {
+        order: 1;
+    }
+
+    #replay-seats-bottom .seat-points {
+        order: 2;
+    }
+
+    #replay-seats-bottom .seat-avatar {
+        order: 3;
+        margin-top: 0.3rem;
+    }
+
+    #replay-seats-bottom .seat-name {
+        order: 4;
+    }
+
+    #replay-seats-bottom .seat-team-badge {
+        order: 5;
     }
 }
 
-@keyframes history-replay-deal-card {
-    0% {
-        left: var(--from-x);
-        top: var(--from-y);
-        width: var(--from-width);
-        opacity: 0.98;
-        transform: translate(-50%, -50%) rotate(-8deg) scale(0.92);
-    }
-    58% {
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(-2deg) scale(1.02);
-    }
-    100% {
-        left: var(--to-x);
-        top: var(--to-y);
-        width: var(--to-width);
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(0deg) scale(1);
-    }
-}
+/* ===== FULLSCREEN MOBILE REPLAY (html[data-game-ui="fullscreen"]) =====
+   Mirrors the live game's fullscreen phone look: the felt fills the viewport
+   below the header, the deck rides the RIGHT edge, seats overlay the felt,
+   and the replay controls float as a bottom bar. game.css already restyles
+   .game-layout/.table-surface/.deck-stack for this mode; the rules here only
+   cover replay-specific structure. Desktop is unaffected. */
 
-@keyframes history-replay-deal-flip {
-    from {
-        transform: rotateY(0deg);
+@media (max-width: 900px) {
+    html[data-game-ui="fullscreen"] .replay-arena {
+        position: relative;
+        height: 100%;
+        max-height: none;
+        justify-content: space-between;
+        gap: 0;
+        padding: 0.4rem 0 8.5rem;
+        z-index: 1;
     }
-    to {
-        transform: rotateY(180deg);
+
+    html[data-game-ui="fullscreen"] .replay-mid {
+        margin-top: 0;
+        width: 100%;
+        flex: 1 1 auto;
+        justify-content: space-between;
+        padding-inline: 0.4rem;
+    }
+
+    /* Beats the base `.replay-mid .table-wrap` (relative, padded, z 1):
+       the felt becomes the full-viewport backdrop behind the seat regions. */
+    html[data-game-ui="fullscreen"] .replay-mid .table-wrap {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: 0;
+        z-index: 0;
+    }
+
+    /* Full-width so the hand can centre while the identity badge anchors to the
+       far-left screen edge (the region otherwise shrinks to hug the hand). */
+    html[data-game-ui="fullscreen"] #replay-seats-bottom {
+        margin-top: 0;
+        width: 100%;
+    }
+
+    /* The bottom player is "you": a wide face-up hand pinned to the bottom, with
+       the avatar + username + points grouped as a compact badge on the LEFT
+       (rather than stacked beneath the hand). Mirrors the live self-summary. */
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .player-seat {
+        position: relative;
+        display: block;
+        width: 100%;
+        padding-bottom: 0.2rem;
+    }
+
+    html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-card {
+        width: clamp(52px, 15vw, 72px);
+        margin-left: calc(clamp(52px, 15vw, 72px) * -0.42);
+    }
+
+    /* The -0.42 rule above out-specifies the base first-child reset, so restore
+       it or the whole hand shifts off-centre (first card pulled left). */
+    html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-card:first-child {
+        margin-left: 0;
+    }
+
+    html[data-game-ui="fullscreen"] .is-replay #replay-seats-bottom .seat-cards {
+        min-width: 0;
+        min-height: calc(clamp(52px, 15vw, 72px) * 1.82);
+        justify-content: center;
+        margin: 0 auto;
+    }
+
+    /* Identity badge: avatar at far left, name above points to its right. */
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .seat-avatar {
+        position: absolute;
+        left: 0.6rem;
+        bottom: 0.5rem;
+        margin: 0;
+        z-index: 3;
+    }
+
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .seat-name {
+        position: absolute;
+        left: calc(1.05rem + var(--avatar-size));
+        bottom: calc(0.5rem + var(--avatar-size) * 0.52);
+        margin: 0;
+        max-width: 40vw;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        z-index: 3;
+    }
+
+    html[data-game-ui="fullscreen"] #replay-seats-bottom .seat-points {
+        position: absolute;
+        left: calc(1.05rem + var(--avatar-size));
+        bottom: 0.5rem;
+        margin: 0;
+        justify-content: flex-start;
+        z-index: 3;
+    }
+
+    /* The play area (trick + deck) sits in the gap between the top seat and the
+       bottom player's face-up hand — otherwise both drop into that hand. */
+    html[data-game-ui="fullscreen"] .is-replay .table-center {
+        top: 40%;
+    }
+
+    html[data-game-ui="fullscreen"] .is-replay .deck-stack {
+        top: 40%;
+    }
+
+    html[data-game-ui="fullscreen"] .is-replay.is-two-player .deck-stack,
+    html[data-game-ui="fullscreen"] .is-replay.is-four-player .deck-stack {
+        top: 16%;
+    }
+
+    /* Controls become a floating bar over the felt's bottom edge. */
+    html[data-game-ui="fullscreen"] .history-replay-panel {
+        position: absolute;
+        left: 0.5rem;
+        bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+        width: calc(100% - 1rem);
+        height: auto;
+        z-index: 6;
     }
 }

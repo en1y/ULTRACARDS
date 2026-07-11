@@ -1,6 +1,6 @@
 <th:block th:fragment="actions" xmlns:th="http://www.thymeleaf.org">
   <div class="uc-actions">
-    <button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-action="toggle-theme">
+    <button class="theme-toggle" type="button" th:aria-label="#{header.theme.toggle}" aria-pressed="false" data-action="toggle-theme">
       <span class="theme-toggle-track" aria-hidden="true">
         <span class="theme-toggle-thumb">
           <img class="uc-icon theme-toggle-icon" data-icon="light_mode" data-theme-toggle-icon="true"
@@ -10,16 +10,16 @@
     </button>
 
     <div class="notification-menu" th:if="${isAuthenticated}" data-notifications>
-      <button class="header-icon-button notification-bell" type="button" aria-label="Notifications"
+      <button class="header-icon-button notification-bell" type="button" th:aria-label="#{header.notifications}"
               aria-haspopup="true" aria-expanded="false" data-notification-trigger>
         <img class="uc-icon" data-icon="notifications" th:src="@{/pics/light/notifications.svg}" alt="" aria-hidden="true" />
         <span class="notification-badge" data-notification-badge hidden>0</span>
       </button>
       <div class="notification-tray" role="menu" aria-hidden="true" data-notification-tray>
         <div class="notification-tray-head">
-          <h2>Notifications</h2>
+          <h2 th:text="#{header.notifications}">Notifications</h2>
           <div class="notification-tray-actions">
-            <button class="theme-toggle notification-popup-toggle" type="button" aria-label="Turn off notification popups"
+            <button class="theme-toggle notification-popup-toggle" type="button" th:aria-label="#{header.notifications.popupToggle}"
                     aria-pressed="true" data-notification-toggle>
               <span class="theme-toggle-track" aria-hidden="true">
                 <span class="theme-toggle-thumb">
@@ -27,14 +27,14 @@
                 </span>
               </span>
             </button>
-            <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close notifications"
+            <button class="header-icon-button header-icon-button-small" type="button" th:aria-label="#{header.notifications.close}"
                     data-notification-close>
               <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
             </button>
           </div>
         </div>
         <div class="notification-list" data-notification-list>
-          <p class="notification-empty">No unread notifications.</p>
+          <p class="notification-empty" th:text="#{header.notifications.empty}">No unread notifications.</p>
         </div>
       </div>
     </div>
@@ -42,41 +42,43 @@
     <div class="profile-action" th:if="${isAuthenticated}">
       <div class="profile-menu" data-profile-menu>
         <button class="profile-chip" type="button" data-profile-menu-trigger aria-haspopup="true" aria-expanded="false">
-          <span class="username" th:text="${username} ?: 'John ULTRACARD.'" id="username-header">John ULTRACARD</span>
-          <img class="avatar" data-avatar th:src="@{/pics/dark/profile_icon.svg}" alt="Profile" />
+          <span class="username" th:text="${username} ?: #{header.profile.fallbackName}" id="username-header">John ULTRACARD</span>
+          <img class="avatar" data-avatar th:src="@{/pics/dark/profile_icon.svg}" th:alt="#{header.menu.profile}" alt="Profile" />
         </button>
         <div class="profile-dropdown" role="menu" aria-hidden="true">
-          <a class="menu-item" th:href="@{/history}" role="menuitem">
-            <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
-            <span>History</span>
-          </a>
           <a class="menu-item" th:href="@{/profile}" role="menuitem">
             <img class="uc-icon" data-icon="profile_icon" th:src="@{/pics/light/profile_icon.svg}" alt="" aria-hidden="true" />
-            <span>Profile</span>
+            <span th:text="#{header.menu.profile}">Profile</span>
           </a>
+          <a class="menu-item" th:href="@{/history}" role="menuitem">
+            <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
+            <span th:text="#{header.menu.history}">History</span>
+          </a>
+          <button class="menu-item game-ui-menu-item" type="button" role="menuitem" data-action="toggle-game-ui"
+                  th:title="#{header.gameUi.title}">
+            <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+            <span data-game-ui-label th:text="#{header.gameUi.label(#{header.gameUi.fullscreen})}">Table display: Fullscreen</span>
+          </button>
+          <div class="profile-menu-divider" role="separator"></div>
           <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
             <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />
-            <span>Log out</span>
+            <span th:text="#{header.menu.logout}">Log out</span>
           </button>
         </div>
       </div>
     </div>
 
     <div class="friends-shell" th:if="${isAuthenticated}" data-friends>
-      <button class="header-icon-button friends-trigger" type="button" aria-label="Friends"
+      <button class="header-icon-button friends-trigger" type="button" th:aria-label="#{header.friends}"
               aria-controls="friends-drawer" aria-expanded="false" data-friends-trigger>
         <img class="uc-icon" data-icon="sandwich_menu" th:src="@{/pics/light/sandwich_menu.svg}" alt="" aria-hidden="true" />
       </button>
       <aside id="friends-drawer" class="friends-drawer" aria-hidden="true" data-friends-drawer>
         <div class="friends-drawer-head">
           <div>
-            <h2>Friends</h2>
-            <p data-friends-summary>Loading</p>
+            <h2 th:text="#{header.friends}">Friends</h2>
+            <p data-friends-summary th:text="#{common.loading}">Loading</p>
           </div>
-          <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close friends"
-                  data-friends-close>
-            <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
-          </button>
         </div>
 
         <div class="friends-status" data-friends-status aria-live="polite"></div>
@@ -85,14 +87,14 @@
         <section class="friend-chat-shell" data-friend-chat hidden>
           <div class="friend-chat-title-row">
             <div>
-              <h3 data-friend-chat-title>Friend chat</h3>
+              <h3 data-friend-chat-title th:text="#{chat.friendTitle}">Friend chat</h3>
             </div>
-            <button class="header-icon-button header-icon-button-small" type="button" aria-label="Close chat"
+            <button class="header-icon-button header-icon-button-small" type="button" th:aria-label="#{chat.close}"
                     data-friend-chat-close>
               <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
             </button>
           </div>
-          <th:block th:replace="~{ui/fragments/chat :: chatPanel('friend-chat-panel', 'friend-chat-header', 'Friend chat', 'No messages yet.', null, false, ${username}, null, 'friend-chat')}"></th:block>
+          <th:block th:replace="~{ui/fragments/chat :: chatPanel('friend-chat-panel', 'friend-chat-header', #{chat.friendTitle}, #{chat.noMessages}, null, false, ${username}, null, 'friend-chat')}"></th:block>
         </section>
       </aside>
     </div>
@@ -100,7 +102,7 @@
     <div th:unless="${isAuthenticated}">
       <button class="btn btn-accent" type="button" data-action="open-login">
         <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
-        <span>Log In / Sign Up</span>
+        <span><th:block th:text="#{header.login}">Log In</th:block><span class="login-label-suffix" th:text="#{header.login.suffix}"> / Sign Up</span></span>
       </button>
     </div>
 

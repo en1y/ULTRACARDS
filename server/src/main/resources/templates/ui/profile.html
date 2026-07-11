@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -16,30 +17,30 @@
 <main class="profile-page">
     <section class="profile-hero">
         <div>
-            <p class="profile-eyebrow">Account management</p>
-            <h1>Profile</h1>
+            <p class="profile-eyebrow" th:text="#{profile.eyebrow}">Account management</p>
+            <h1 th:text="#{header.menu.profile}">Profile</h1>
         </div>
         <button class="btn profile-refresh-button" id="page-refresh" type="button">
             <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
-            <span>Refresh</span>
+            <span th:text="#{common.refresh}">Refresh</span>
         </button>
     </section>
 
-    <nav class="profile-tabs" aria-label="Profile sections">
-        <button class="profile-tab is-active" type="button" data-profile-tab="overview">Overview</button>
-        <button class="profile-tab" type="button" data-profile-tab="stats">Game stats</button>
-        <button class="profile-tab" type="button" data-profile-tab="friends">Friends</button>
-        <button class="profile-tab" type="button" data-profile-tab="sessions">Sessions</button>
+    <nav class="profile-tabs" th:aria-label="#{profile.tabs.aria}">
+        <button class="profile-tab is-active" type="button" data-profile-tab="overview" th:text="#{profile.tab.overview}">Overview</button>
+        <button class="profile-tab" type="button" data-profile-tab="stats" th:text="#{profile.tab.stats}">Game stats</button>
+        <button class="profile-tab" type="button" data-profile-tab="friends" th:text="#{header.friends}">Friends</button>
+        <button class="profile-tab" type="button" data-profile-tab="sessions" th:text="#{profile.tab.sessions}">Sessions</button>
     </nav>
 
     <section class="profile-panel is-active" data-profile-panel="overview">
         <div class="profile-summary-card profile-edit-row">
             <div class="section-heading">
-                <h2>Profile information</h2>
+                <h2 th:text="#{profile.info}">Profile information</h2>
             </div>
             <div class="profile-identity-grid">
                 <div class="profile-field-card">
-                    <label for="username">Username</label>
+                    <label for="username" th:text="#{profile.username}">Username</label>
                     <div class="profile-input-shell">
                         <span class="profile-input-icon" aria-hidden="true">@</span>
                         <input
@@ -47,12 +48,12 @@
                                 id="username"
                                 type="text"
                                 th:value="${profile.getUsername()}"
-                                placeholder="Enter your username"
+                                th:placeholder="#{profile.username.placeholder}"
                                 autocomplete="username">
                     </div>
                 </div>
                 <div class="profile-field-card">
-                    <label for="email">Email</label>
+                    <label for="email" th:text="#{auth.email.label}">Email</label>
                     <div class="profile-input-shell">
                         <span class="profile-input-icon" aria-hidden="true">
                             <img class="uc-icon" th:src="@{/pics/red/mail.svg}" alt="" aria-hidden="true" />
@@ -62,23 +63,37 @@
                                 id="email"
                                 type="email"
                                 th:value="${profile.getEmail()}"
-                                placeholder="Enter your email"
+                                th:placeholder="#{profile.email.placeholder}"
                         autocomplete="email">
                     </div>
                 </div>
             </div>
             <div class="profile-actions">
                     <button class="btn btn-accent" id="save-profile" type="button">
-                        <span>Save</span>
+                        <span th:text="#{common.save}">Save</span>
                     </button>
+            </div>
+            <div class="profile-field-card profile-language-field">
+                <label for="language" th:text="#{header.language}">Language</label>
+                <div class="profile-input-shell">
+                    <span class="profile-input-icon" aria-hidden="true">
+                        <img class="uc-icon" data-icon="language" th:src="@{/pics/light/language.svg}" alt="" aria-hidden="true" />
+                    </span>
+                    <select class="profile-input" id="language" data-language-select>
+                        <option value="en" th:selected="${lang == 'en'}">English</option>
+                        <option value="hr" th:selected="${lang == 'hr'}">Hrvatski</option>
+                        <option value="uk" th:selected="${lang == 'uk'}">Українська</option>
+                        <option value="de" th:selected="${lang == 'de'}">Deutsch</option>
+                    </select>
+                </div>
             </div>
             <div class="profile-meta-grid">
                 <div class="profile-summary-card profile-summary-stack profile-summary-inline">
-                    <span class="summary-label">User ID</span>
+                    <span class="summary-label" th:text="#{profile.userId}">User ID</span>
                     <span class="summary-value" th:text="${profile.getId()}" id="id">-</span>
                 </div>
                 <div class="profile-summary-card profile-summary-stack profile-summary-inline">
-                    <span class="summary-label">Roles</span>
+                    <span class="summary-label" th:text="#{profile.roles}">Roles</span>
                     <span class="summary-value" th:text='${T(java.lang.String).join(", ", profile.roles)}' id="roles">USER</span>
                 </div>
             </div>
@@ -87,28 +102,45 @@
         <div id="games" class="profile-history">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">Game stats</p>
-                    <h2>History</h2>
+                    <p class="section-kicker" th:text="#{profile.tab.stats}">Game stats</p>
+                    <h2 th:text="#{header.menu.history}">History</h2>
                 </div>
             </div>
             <div class="profile-history-stats">
                 <div class="profile-summary-card profile-summary-stack">
-                    <span class="summary-label">Games played</span>
-                    <span class="summary-value" th:text="${profile.getGamesPlayed()}" id="games_played">0</span>
+                    <span class="summary-label" th:text="#{profile.gamesPlayed}">Games played</span>
+                    <span class="summary-value" th:text="${profile.getGamesPlayed()} ?: 0" id="games_played">0</span>
                 </div>
                 <div class="profile-summary-card profile-summary-stack">
-                    <span class="summary-label">Games won</span>
-                    <span class="summary-value" th:text="${profile.getGamesWon()}" id="games_won">0</span>
+                    <span class="summary-label" th:text="#{profile.gamesWon}">Games won</span>
+                    <span class="summary-value" th:text="${profile.getGamesWon()} ?: 0" id="games_won">0</span>
                 </div>
             </div>
             <div id="per-game-type" class="profile-game-grid">
-                <div class="profile-game-card" th:each="game: ${profile.getUserGamesStats() != null ? profile.getUserGamesStats().getGameStats() : null}">
-                    <span th:text="${game.getKey()}"></span> <br>
-                    Games played: <span th:text="${game.getValue().getPlayed()}"></span> <br>
-                    Games won: <span th:text="${game.getValue().getWins()}"></span>
+                <div class="profile-game-card profile-game-card--donut"
+                     th:each="game: ${profile.getUserGamesStats() != null ? profile.getUserGamesStats().getGameStats() : null}"
+                     th:with="winRate=${game.getValue().getPlayed() > 0 ? (game.getValue().getWins() * 100 + game.getValue().getPlayed() / 2) / game.getValue().getPlayed() : 0}">
+                    <span th:text="${#messages.msg('game.' + #strings.toLowerCase(game.getKey()))}">Брішкула</span>
+                    <div class="profile-game-card-row">
+                        <div class="profile-stat-donut" role="img"
+                             th:style="'--win-rate: ' + ${winRate}"
+                             th:attr="aria-label=${#messages.msg('profile.winRate.aria', winRate)}">
+                            <span th:text="${winRate + '%'}"></span>
+                        </div>
+                        <div class="profile-game-card-counts">
+                            <div class="profile-stat-line">
+                                <strong th:text="${game.getValue().getPlayed()}">0</strong>
+                                <small th:text="#{profile.played}">played</small>
+                            </div>
+                            <div class="profile-stat-line">
+                                <strong th:text="${game.getValue().getWins()}">0</strong>
+                                <small th:text="#{profile.won}">won</small>
+                            </div>
+                        </div>
+                    </div>
                     <small class="profile-last-played"
                            th:attr="data-last-played-at=${game.getValue().getLastPlayedAt()}"
-                           th:text="${game.getValue().getLastPlayedAt() != null ? 'Last played: Loading...' : 'Never played'}"></small>
+                           th:text="${game.getValue().getLastPlayedAt() != null ? #messages.msg('profile.lastPlayed.loading') : #messages.msg('profile.neverPlayed')}"></small>
                 </div>
             </div>
         </div>
@@ -118,13 +150,13 @@
         <div class="profile-history">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">Detailed stats</p>
-                    <h2>Games</h2>
+                    <p class="section-kicker" th:text="#{profile.detailedStats}">Detailed stats</p>
+                    <h2 th:text="#{profile.games}">Games</h2>
                 </div>
             </div>
             <div id="detailed-game-stats" class="profile-detailed-stats">
                 <article class="profile-session-card profile-session-card--placeholder">
-                    <p>Loading detailed stats...</p>
+                    <p th:text="#{profile.loadingDetailedStats}">Loading detailed stats...</p>
                 </article>
             </div>
         </div>
@@ -134,15 +166,15 @@
         <div class="profile-history">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">Session management</p>
-                    <h2>All active sessions</h2>
-                    <p class="section-copy">Manage your sessions from different devices</p>
-                    <p class="section-copy">It is recommended to remove the old ones</p>
+                    <p class="section-kicker" th:text="#{profile.sessionManagement}">Session management</p>
+                    <h2 th:text="#{profile.activeSessions}">All active sessions</h2>
+                    <p class="section-copy" th:text="#{profile.sessions.copy1}">Manage your sessions from different devices</p>
+                    <p class="section-copy" th:text="#{profile.sessions.copy2}">It is recommended to remove the old ones</p>
                 </div>
             </div>
             <div id="sessions-list" class="profile-session-list">
                 <article class="profile-session-card profile-session-card--placeholder">
-                    <p>Loading sessions...</p>
+                    <p th:text="#{profile.loadingSessions}">Loading sessions...</p>
                 </article>
             </div>
         </div>
@@ -152,14 +184,14 @@
         <div class="profile-history">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">Social</p>
-                    <h2>Friends</h2>
-                    <p class="section-copy">Manage your friends and blocked users</p>
+                    <p class="section-kicker" th:text="#{profile.social}">Social</p>
+                    <h2 th:text="#{header.friends}">Friends</h2>
+                    <p class="section-copy" th:text="#{profile.friends.copy}">Manage your friends and blocked users</p>
                 </div>
             </div>
             <div id="friends-management" class="profile-friends-management">
                 <article class="profile-session-card profile-session-card--placeholder">
-                    <p>Loading friends...</p>
+                    <p th:text="#{profile.loadingFriends}">Loading friends...</p>
                 </article>
             </div>
         </div>
@@ -170,18 +202,18 @@
     <div class="modal profile-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="session-confirm-title">
         <header>
             <div>
-                <strong id="session-confirm-title">Confirm session action</strong>
+                <strong id="session-confirm-title" th:text="#{profile.sessionConfirm.title}">Confirm session action</strong>
             </div>
-            <button class="btn" id="session-confirm-close" type="button" aria-label="Close">
+            <button class="btn" id="session-confirm-close" type="button" th:aria-label="#{common.close}">
                 <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
             </button>
         </header>
         <div class="content">
-            <p id="session-confirm-text" class="section-copy">Are you sure?</p>
+            <p id="session-confirm-text" class="section-copy" th:text="#{profile.sessionConfirm.text}">Are you sure?</p>
         </div>
         <div class="actions">
-            <button class="btn" id="session-confirm-cancel" type="button">Cancel</button>
-            <button class="btn btn-accent" id="session-confirm-submit" type="button">Continue</button>
+            <button class="btn" id="session-confirm-cancel" type="button" th:text="#{common.cancel}">Cancel</button>
+            <button class="btn btn-accent" id="session-confirm-submit" type="button" th:text="#{common.continue}">Continue</button>
         </div>
     </div>
 </div>
@@ -190,14 +222,14 @@
     <div class="modal profile-friend-profile-modal" role="dialog" aria-modal="true" aria-labelledby="friend-profile-title">
         <header>
             <div>
-                <strong id="friend-profile-title">Friend profile</strong>
+                <strong id="friend-profile-title" th:text="#{profile.friendProfile}">Friend profile</strong>
             </div>
-            <button class="btn" id="friend-profile-close" type="button" aria-label="Close">
+            <button class="btn" id="friend-profile-close" type="button" th:aria-label="#{common.close}">
                 <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
             </button>
         </header>
         <div id="friend-profile-content" class="content profile-friend-profile-content" tabindex="-1">
-            <p class="section-copy">Loading profile...</p>
+            <p class="section-copy" th:text="#{profile.loadingProfile}">Loading profile...</p>
         </div>
     </div>
 </div>

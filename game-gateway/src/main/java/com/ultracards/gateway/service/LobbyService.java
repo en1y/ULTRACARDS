@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.lobby.JoinLobbyRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,17 @@ public class LobbyService {
         var res = restTemplate.postForEntity(
                 serverUrl + "api/lobby/create",
                 new HttpEntity<>(gameLobbyDTO, tokenManager.jsonHeaders(tokenHolder)),
+                GameLobbyDTO.class
+        );
+        tokenManager.updateToken(tokenHolder, res);
+        return res.getBody();
+    }
+
+    public GameLobbyDTO getLobby() {
+        var res = restTemplate.exchange(
+                serverUrl + "api/lobby/get",
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
                 GameLobbyDTO.class
         );
         tokenManager.updateToken(tokenHolder, res);
@@ -132,7 +144,18 @@ public class LobbyService {
                 serverUrl + "api/lobby/get-lobbies",
                 HttpMethod.GET,
                 new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                new org.springframework.core.ParameterizedTypeReference<List<GameLobbyDTO>>() {}
+                new ParameterizedTypeReference<List<GameLobbyDTO>>() {}
+        );
+        tokenManager.updateToken(tokenHolder, res);
+        return res.getBody();
+    }
+
+    public List<GameLobbyDTO> getLobbies(String gameType, Integer gameSettingId) {
+        var res = restTemplate.exchange(
+                serverUrl + "api/lobby/get-lobbies/" + gameType + "/" + gameSettingId,
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                new ParameterizedTypeReference<List<GameLobbyDTO>>() {}
         );
         tokenManager.updateToken(tokenHolder, res);
         return res.getBody();

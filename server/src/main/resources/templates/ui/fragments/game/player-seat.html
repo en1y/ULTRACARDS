@@ -1,0 +1,22 @@
+<th:block th:fragment="playerSeat(player, cardCount, points, isCurrentUser, statusText)" xmlns:th="http://www.thymeleaf.org">
+    <div class="player-seat"
+         th:classappend="${isCurrentUser ? ' is-self' : ''}"
+         th:attr="data-player-id=${player != null ? player.id : null},
+                  data-player-name=${player != null ? player.name : null},
+                  data-zone-id=${player != null and player.id != null ? 'player-' + player.id : null},
+                  data-zone-kind='player-seat'">
+        <div class="seat-avatar"
+             th:text="${player != null and player.name != null and player.name.length() > 0 ? player.name.substring(0,1).toUpperCase() : 'P'}">P</div>
+        <div class="seat-name" th:text="${player != null and player.name != null ? player.name : #messages.msg('common.player')}">Player</div>
+        <div class="seat-team-badge" th:hidden="${statusText == null or #strings.isEmpty(statusText)}" th:text="${statusText}"></div>
+        <div class="seat-cards">
+            <th:block th:if="${cardCount != null and cardCount > 0}"
+                      th:each="cardIndex : ${#numbers.sequence(1, cardCount)}">
+                <th:block th:replace="~{ui/fragments/game/card :: card(null, 'ITALIAN', 'seat-card', ${cardIndex}, null)}"></th:block>
+            </th:block>
+        </div>
+        <div class="seat-points" th:if="${points != null}">
+            <span class="seat-points-bubble" th:text="${points}">0</span>
+        </div>
+    </div>
+</th:block>

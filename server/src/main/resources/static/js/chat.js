@@ -13,7 +13,7 @@
         if (Number.isNaN(date.getTime())) {
             return value;
         }
-        return new Intl.DateTimeFormat(undefined, {
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
             hour: '2-digit',
             minute: '2-digit',
             hour12: false
@@ -67,6 +67,10 @@
         return !nonTextTypes.has(target.type);
     }
 
+    function isTouchPrimary() {
+        return window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
+    }
+
     function create(config) {
         const state = {
             chat: config.initialChat || {messages: [], isOpen: true},
@@ -102,14 +106,15 @@
         }
 
         function syncComposer() {
-            const disabled = !state.chat?.isOpen || state.sending;
-            dom.input.disabled = disabled;
-            dom.input.placeholder = state.chat?.isOpen ? 'Send a message' : 'Chat is closed';
-            dom.send.disabled = disabled;
+            const closed = !state.chat?.isOpen;
+            dom.input.disabled = closed;
+            dom.input.readOnly = false;
+            dom.input.placeholder = state.chat?.isOpen ? t('chat.placeholder') : t('chat.closed');
+            dom.send.disabled = closed || state.sending;
         }
 
         function showMessageTooLongPopup() {
-            dom.input.setCustomValidity('Chat messages can be at most 200 characters long.');
+            dom.input.setCustomValidity(t('chat.tooLong'));
             dom.input.reportValidity();
         }
 
@@ -131,24 +136,6 @@
                 && !event.ctrlKey
                 && !event.metaKey
                 && !isTextEntryTarget(event.target);
-        }
-
-        function scrollToBottom() {
-            const applyScroll = () => {
-                dom.messages.scrollTo({
-                    top: dom.messages.scrollHeight,
-                    left: 0,
-                    behavior: 'smooth'
-                });
-            };
-
-            applyScroll();
-            window.requestAnimationFrame(() => {
-                applyScroll();
-                window.requestAnimationFrame(applyScroll);
-            });
-            window.setTimeout(applyScroll, 0);
-            window.setTimeout(applyScroll, 120);
         }
 
         function scheduleInitialAutoScroll() {
@@ -187,7 +174,7 @@
             const wasNearBottom = shouldStickToBottom || isNearBottom();
             if (messages.length) {
                 dom.messages.innerHTML = messages.map((message) => {
-                    const senderName = message?.sender?.name || 'Player';
+                    const senderName = message?.sender?.name || t('common.player');
                     const ownClass = resolveOwnMessage(message, state.currentUserId, state.currentUsername) ? ' is-own' : '';
                     const animationClass = state.animateMessageKey === messageKey(message) ? ' is-new' : '';
                     const timestamp = message?.timestamp ? String(message.timestamp) : '';
@@ -207,11 +194,11 @@
                     `;
                 }).join('');
             } else {
-                dom.messages.innerHTML = `<div class="${config.emptyClass}">${escapeHtml(config.emptyText || 'Send a message! I dare you!')}</div>`;
+                dom.messages.innerHTML = `<div class="${config.emptyClass}">${escapeHtml(config.emptyText || t('chat.emptyDare'))}</div>`;
             }
 
             if (dom.status) {
-                dom.status.textContent = state.chat?.isOpen ? 'Live' : 'Closed';
+                dom.status.textContent = state.chat?.isOpen ? t('chat.status.live') : t('chat.status.closed');
             }
             syncComposer();
             if (wasNearBottom) {
@@ -250,7 +237,9 @@
                 if (!response.ok) {
                     throw new Error(`chat failed: ${response.status}`);
                 }
-                dom.input.value = '';
+                if (dom.input.value.trim() === message) {
+                    dom.input.value = '';
+                }
                 const contentType = response.headers.get('Content-Type') || '';
                 if (contentType.includes('application/json')) {
                     state.chat = await response.json();
@@ -260,7 +249,7 @@
             } finally {
                 state.sending = false;
                 syncComposer();
-                if (shouldRefocus) {
+                if (shouldRefocus && !isTouchPrimary()) {
                     dom.input.focus();
                 }
             }
@@ -269,6 +258,12 @@
         dom.form.addEventListener('submit', async (event) => {
             event.preventDefault();
             await sendMessage();
+        });
+
+        dom.send.addEventListener('pointerdown', (event) => {
+            if (isTouchPrimary() && document.activeElement === dom.input) {
+                event.preventDefault();
+            }
         });
 
         dom.input.addEventListener('input', () => {

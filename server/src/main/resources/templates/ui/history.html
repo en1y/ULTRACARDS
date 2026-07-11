@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
-    <title>Game History | ULTRACARDS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{history.pageTitle}">Game History | ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/history.css}">
@@ -15,33 +16,33 @@
         <section class="container history-shell">
             <aside class="card history-sidebar">
                 <div>
-                    <p class="history-eyebrow">Filters</p>
-                    <h1>Game history</h1>
+                    <p class="history-eyebrow" th:text="#{common.filters}">Filters</p>
+                    <h1 th:text="#{history.title}">Game history</h1>
                 </div>
 
                 <div class="history-filters">
                     <label class="field" for="history-game-type">
-                        <span>Game</span>
+                        <span th:text="#{history.game}">Game</span>
                         <select id="history-game-type">
-                            <option value="all">All games</option>
-                            <option value="briskula">Briskula</option>
+                            <option value="all" th:text="#{common.allGames}">All games</option>
+                            <option value="briskula" th:text="#{game.briskula}">Briskula</option>
                         </select>
                     </label>
 
                     <label class="field" for="history-result">
-                        <span>Result</span>
+                        <span th:text="#{history.result}">Result</span>
                         <select id="history-result">
-                            <option value="both">Wins and losses</option>
-                            <option value="wins">Wins</option>
-                            <option value="losses">Losses</option>
+                            <option value="both" th:text="#{history.winsAndLosses}">Wins and losses</option>
+                            <option value="wins" th:text="#{history.wins}">Wins</option>
+                            <option value="losses" th:text="#{history.losses}">Losses</option>
                         </select>
                     </label>
 
                     <label class="field" for="history-time-sort">
-                        <span>Time</span>
+                        <span th:text="#{history.time}">Time</span>
                         <select id="history-time-sort">
-                            <option value="latest">Latest first</option>
-                            <option value="oldest">Oldest first</option>
+                            <option value="latest" th:text="#{history.latestFirst}">Latest first</option>
+                            <option value="oldest" th:text="#{history.oldestFirst}">Oldest first</option>
                         </select>
                     </label>
                 </div>
@@ -50,20 +51,20 @@
             <section class="history-content">
                 <div class="history-head">
                     <div>
-                        <p class="history-eyebrow">Completed games</p>
-                        <h2>Past games</h2>
-                        <p id="history-summary">Showing latest games.</p>
+                        <p class="history-eyebrow" th:text="#{history.completed.eyebrow}">Completed games</p>
+                        <h2 th:text="#{history.pastGames}">Past games</h2>
+                        <p id="history-summary" th:text="#{history.summary.latest}">Showing latest games.</p>
                     </div>
                     <button id="history-refresh" class="btn" type="button">
                         <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
-                        <span>Refresh</span>
+                        <span th:text="#{common.refresh}">Refresh</span>
                     </button>
                 </div>
 
                 <div id="history-list" class="history-list" aria-live="polite"></div>
 
                 <div class="history-actions">
-                    <button id="history-load-more" class="btn" type="button">Load More</button>
+                    <button id="history-load-more" class="btn" type="button" th:text="#{history.loadMore}">Load More</button>
                 </div>
             </section>
         </section>

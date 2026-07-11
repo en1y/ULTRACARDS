@@ -68,7 +68,7 @@
 
       return {
         id: item.id,
-        username: String(item.username || 'Unnamed user'),
+        username: String(item.username || t('search.unnamedUser')),
         roles: Array.isArray(item.roles) ? item.roles : []
       };
     };
@@ -158,7 +158,7 @@
       button.classList.toggle('btn-accent', action === 'add');
       button.classList.toggle('danger', action === 'remove');
       setButtonIcon(button, action === 'remove' ? 'user_remove' : 'user_add');
-      setButtonLabel(button, action === 'remove' ? 'Remove friend' : 'Add friend');
+      setButtonLabel(button, action === 'remove' ? t('search.removeFriend') : t('search.addFriend'));
     };
 
     const addFriend = async (user, button, statusElement) => {
@@ -168,7 +168,7 @@
 
       const originalText = button.querySelector('span')?.textContent || button.textContent;
       button.disabled = true;
-      setButtonLabel(button, 'Sending...');
+      setButtonLabel(button, t('search.sending'));
       setActionStatus(statusElement, '');
 
       try {
@@ -178,16 +178,16 @@
         });
 
         if (!response.ok) {
-          throw new Error(await readErrorMessage(response, 'Friend request failed.'));
+          throw new Error(await readErrorMessage(response, t('search.requestFailed')));
         }
 
-        setButtonLabel(button, 'Request sent');
+        setButtonLabel(button, t('search.requestSent'));
         activeProfileAction = null;
-        setActionStatus(statusElement, 'Friend request sent.', 'success');
+        setActionStatus(statusElement, t('search.requestSentStatus'), 'success');
       } catch (error) {
         button.disabled = false;
         setButtonLabel(button, originalText);
-        setActionStatus(statusElement, error?.message || 'Unable to send friend request.', 'error');
+        setActionStatus(statusElement, error?.message || t('search.requestSendFailed'), 'error');
       }
     };
 
@@ -198,7 +198,7 @@
 
       const originalText = button.querySelector('span')?.textContent || button.textContent;
       button.disabled = true;
-      setButtonLabel(button, 'Removing...');
+      setButtonLabel(button, t('search.removing'));
       setActionStatus(statusElement, '');
 
       try {
@@ -208,7 +208,7 @@
         });
 
         if (!response.ok) {
-          throw new Error(await readErrorMessage(response, 'Remove friend failed.'));
+          throw new Error(await readErrorMessage(response, t('search.removeFailed')));
         }
 
         friendIdsCache?.delete(String(user.id));
@@ -216,11 +216,11 @@
         button.disabled = false;
         configureProfileActionButton('add', button);
         activeProfileAction = { action: 'add', profile: user, button, statusElement };
-        setActionStatus(statusElement, 'Friend removed.', 'success');
+        setActionStatus(statusElement, t('search.removed'), 'success');
       } catch (error) {
         button.disabled = false;
         setButtonLabel(button, originalText);
-        setActionStatus(statusElement, error?.message || 'Unable to remove friend.', 'error');
+        setActionStatus(statusElement, error?.message || t('search.removeUnable'), 'error');
       }
     };
 
@@ -341,35 +341,35 @@
 
     const formatLastPlayedAt = (value) => {
       if (!value) {
-        return 'Never played';
+        return t('profile.neverPlayed');
       }
 
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
-        return 'Never played';
+        return t('profile.neverPlayed');
       }
 
       if (isSameMondayWeek(date, new Date())) {
-        return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(date);
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { weekday: 'long' }).format(date);
       }
 
-      const month = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(date);
+      const month = new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long' }).format(date);
       return `${ordinalDay(date.getDate())} ${month}`;
     };
 
     const formatLastPlayedLabel = (value) => value
-        ? `Last played on ${formatLastPlayedAt(value)}`
-        : 'Never played';
+        ? t('search.lastPlayedOn', formatLastPlayedAt(value))
+        : t('profile.neverPlayed');
 
     const formatHistoryDate = (value) => {
       if (!value) {
-        return 'Unknown time';
+        return t('history.unknownTime');
       }
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
-        return 'Unknown time';
+        return t('history.unknownTime');
       }
-      return new Intl.DateTimeFormat(undefined, {
+      return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
         dateStyle: 'medium',
         timeStyle: 'short',
         hour12: false
@@ -386,13 +386,13 @@
       return { played: safePlayed, wins: safeWins, losses, winRate };
     };
 
-    const fallbackDisplayName = (value) => String(value || 'Game')
+    const fallbackDisplayName = (value) => String(value || t('search.gameFallback'))
         .replace(/([a-z])([A-Z])/g, '$1 $2')
         .toLowerCase()
         .split('_')
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ') || 'Game';
+        .join(' ') || t('search.gameFallback');
 
     const gameDisplayName = (gameType) => {
       if (typeof window.getGameTypeDisplayName === 'function') {
@@ -408,12 +408,12 @@
       if (!config || typeof config === 'string') {
         return fallbackDisplayName(config);
       }
-      return 'Game config';
+      return t('gameConfig.fallback');
     };
 
     const normalizePlayer = (value) => {
       if (!value) {
-        return { name: 'Unknown player', id: 0 };
+        return { name: t('history.unknownPlayer'), id: 0 };
       }
       if (typeof value === 'object') {
         return value;
@@ -433,7 +433,7 @@
     };
 
     const playerId = (player) => Number(normalizePlayer(player).id);
-    const playerName = (player) => normalizePlayer(player).name || 'Unknown player';
+    const playerName = (player) => normalizePlayer(player).name || t('history.unknownPlayer');
     const gameIncludesUser = (game, userId) => {
       const normalizedUserId = Number(userId);
       if (!Number.isFinite(normalizedUserId)) {
@@ -460,8 +460,31 @@
           item.classList.add('is-winner');
         }
         item.textContent = playerName(player);
+        const uid = playerId(player);
+        if (uid > 0) {
+          item.dataset.userId = uid;
+          item.dataset.userName = playerName(player);
+          item.tabIndex = 0;
+          item.role = 'button';
+        }
         list.append(item);
       }
+      list.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-user-id]');
+        if (!chip) return;
+        document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+          detail: { id: Number(chip.dataset.userId), username: chip.dataset.userName }
+        }));
+      });
+      list.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const chip = e.target.closest('[data-user-id]');
+        if (!chip) return;
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent('uc:open-user-profile', {
+          detail: { id: Number(chip.dataset.userId), username: chip.dataset.userName }
+        }));
+      });
       return list;
     };
 
@@ -480,26 +503,28 @@
       titleWrap.append(title, meta);
 
       const result = document.createElement('span');
-      result.className = `header-user-history-result ${userWonGame(game, profile?.id) ? 'win' : 'loss'}`;
-      result.textContent = userWonGame(game, profile?.id) ? 'Win' : 'Loss';
+      const won = userWonGame(game, profile?.id);
+      result.className = `header-user-history-result ${won ? 'win' : 'loss'}`;
+      result.textContent = won ? t('history.winLetter') : t('history.lossLetter');
+      result.title = won ? t('history.win') : t('history.loss');
 
       head.append(titleWrap, result);
 
       const playersRow = document.createElement('div');
       playersRow.className = 'header-user-history-row';
       const playersLabel = document.createElement('span');
-      playersLabel.textContent = 'Players';
+      playersLabel.textContent = t('lobby.players.chip');
       playersRow.append(playersLabel, createPlayerList(game?.playersOrder || [], game));
 
       const footer = document.createElement('div');
       footer.className = 'header-user-history-footer';
       const winners = document.createElement('p');
-      winners.textContent = `Winners: ${(game?.winners || []).map(playerName).join(', ') || 'No winner recorded'}`;
+      winners.textContent = t('search.winnersLabel', (game?.winners || []).map(playerName).join(', ') || t('history.noWinner'));
       const replay = document.createElement('a');
       replay.className = 'btn header-user-history-link';
       replay.href = `/history/${encodeURIComponent(game?.id || '')}`;
       replay.append(createIcon('history'), document.createElement('span'));
-      setButtonLabel(replay, 'Replay');
+      setButtonLabel(replay, t('history.replay'));
       footer.append(winners, replay);
 
       card.append(head, playersRow, footer);
@@ -508,12 +533,12 @@
 
     const friendMatchupTypeLabel = (value) => {
       if (value === 'WITH_TEAMMATE') {
-        return 'With teammate';
+        return t('search.withTeammate');
       }
       if (value === 'AGAINST_USER') {
-        return 'Against user';
+        return t('search.againstUser');
       }
-      return String(value || 'Matchup');
+      return String(value || t('search.matchup'));
     };
 
     const createProfileModal = () => {
@@ -535,18 +560,18 @@
 
       const eyebrow = document.createElement('span');
       eyebrow.className = 'chip';
-      eyebrow.textContent = 'Profile';
+      eyebrow.textContent = t('header.menu.profile');
 
       const title = document.createElement('h2');
       title.id = 'header-user-profile-title';
-      title.textContent = 'User profile';
+      title.textContent = t('search.userProfile');
 
       titleWrap.append(eyebrow, title);
 
       const close = document.createElement('button');
       close.className = 'header-icon-button header-icon-button-small';
       close.type = 'button';
-      close.setAttribute('aria-label', 'Close profile');
+      close.setAttribute('aria-label', t('search.closeProfile'));
       close.append(createIcon('close'));
       close.addEventListener('click', () => {
         window.ucHeader.closeUserProfilePopup?.() || closeProfileModal();
@@ -629,6 +654,18 @@
       return tile;
     };
 
+    const createWinRateDonut = (normalized) => {
+      const donut = document.createElement('div');
+      donut.className = 'profile-stat-donut';
+      donut.style.setProperty('--win-rate', String(normalized.winRate));
+      donut.setAttribute('role', 'img');
+      donut.setAttribute('aria-label', t('profile.winRate.aria', normalized.winRate));
+      const value = document.createElement('span');
+      value.textContent = `${normalized.winRate}%`;
+      donut.append(value);
+      return donut;
+    };
+
     const createGameCard = (gameType, stats) => {
       const normalized = normalizeGameStats(stats);
       const card = document.createElement('article');
@@ -640,23 +677,19 @@
       const statsLine = document.createElement('div');
       statsLine.className = 'header-user-game-stats';
       statsLine.append(
-          createStatTile('played', normalized.played),
-          createStatTile('won', normalized.wins),
-          createStatTile('lost', normalized.losses)
+          createStatTile(t('profile.played'), normalized.played),
+          createStatTile(t('profile.won'), normalized.wins),
+          createStatTile(t('search.tile.lost'), normalized.losses)
       );
 
-      const rate = document.createElement('div');
-      rate.className = 'header-user-win-rate';
-      rate.setAttribute('aria-label', `${normalized.winRate}% win rate`);
-
-      const bar = document.createElement('span');
-      bar.style.width = `${normalized.winRate}%`;
-      rate.append(bar);
+      const row = document.createElement('div');
+      row.className = 'profile-game-card-row';
+      row.append(createWinRateDonut(normalized), statsLine);
 
       const footer = document.createElement('small');
-      footer.textContent = `${normalized.winRate}% win rate - ${formatLastPlayedLabel(stats?.lastPlayedAt)}`;
+      footer.textContent = formatLastPlayedLabel(stats?.lastPlayedAt);
 
-      card.append(title, statsLine, rate, footer);
+      card.append(title, row, footer);
       return card;
     };
 
@@ -665,7 +698,7 @@
       section.className = 'header-user-profile-games';
 
       const title = document.createElement('h3');
-      title.textContent = 'Together';
+      title.textContent = t('search.together');
       section.append(title);
 
       const grid = document.createElement('div');
@@ -689,7 +722,7 @@
       });
 
       if (!entries.length) {
-        grid.append(createProfileState('No persisted friend matchup stats yet.'));
+        grid.append(createProfileState(t('search.noMatchupStats')));
       } else {
         for (const { gameType, stat } of entries) {
           const normalized = normalizeGameStats(stat);
@@ -702,23 +735,19 @@
           const statsLine = document.createElement('div');
           statsLine.className = 'header-user-game-stats';
           statsLine.append(
-              createStatTile('played', normalized.played),
-              createStatTile('won', normalized.wins),
-              createStatTile('lost', normalized.losses)
+              createStatTile(t('profile.played'), normalized.played),
+              createStatTile(t('profile.won'), normalized.wins),
+              createStatTile(t('search.tile.lost'), normalized.losses)
           );
 
-          const rate = document.createElement('div');
-          rate.className = 'header-user-win-rate';
-          rate.setAttribute('aria-label', `${normalized.winRate}% win rate`);
-
-          const bar = document.createElement('span');
-          bar.style.width = `${normalized.winRate}%`;
-          rate.append(bar);
+          const row = document.createElement('div');
+          row.className = 'profile-game-card-row';
+          row.append(createWinRateDonut(normalized), statsLine);
 
           const footer = document.createElement('small');
-          footer.textContent = `${normalized.winRate}% win rate - ${friendMatchupTypeLabel(stat?.matchupType)} - ${formatLastPlayedLabel(stat?.lastPlayedAt)}`;
+          footer.textContent = `${friendMatchupTypeLabel(stat?.matchupType)} - ${formatLastPlayedLabel(stat?.lastPlayedAt)}`;
 
-          card.append(cardTitle, statsLine, rate, footer);
+          card.append(cardTitle, row, footer);
           grid.append(card);
         }
       }
@@ -748,21 +777,21 @@
       const tabs = document.createElement('div');
       tabs.className = 'header-user-profile-tabs';
       tabs.setAttribute('role', 'tablist');
-      tabs.setAttribute('aria-label', 'Profile sections');
+      tabs.setAttribute('aria-label', t('profile.tabs.aria'));
 
       const statsButton = document.createElement('button');
       statsButton.className = 'header-user-profile-tab is-active';
       statsButton.type = 'button';
       statsButton.setAttribute('role', 'tab');
       statsButton.setAttribute('aria-selected', 'true');
-      statsButton.textContent = 'Stats';
+      statsButton.textContent = t('search.stats');
 
       const historyButton = document.createElement('button');
       historyButton.className = 'header-user-profile-tab';
       historyButton.type = 'button';
       historyButton.setAttribute('role', 'tab');
       historyButton.setAttribute('aria-selected', 'false');
-      historyButton.textContent = 'History';
+      historyButton.textContent = t('header.menu.history');
 
       let historyLoaded = false;
       const activate = (tab) => {
@@ -797,7 +826,7 @@
     };
 
     const loadProfileHistory = async (profile, panel) => {
-      panel.replaceChildren(createProfileState('Loading history...'));
+      panel.replaceChildren(createProfileState(t('search.loadingHistory')));
       try {
         const sharedGames = [];
         let offset = 0;
@@ -834,7 +863,7 @@
         renderProfileHistory(profile, panel, sharedGames.slice(0, 20));
       } catch (error) {
         console.warn('Unable to load profile history', error);
-        panel.replaceChildren(createProfileState('History could not be loaded.', 'error'));
+        panel.replaceChildren(createProfileState(t('history.loadFailed'), 'error'));
       }
     };
 
@@ -844,13 +873,13 @@
       section.className = 'header-user-profile-history';
 
       const title = document.createElement('h3');
-      title.textContent = 'Past games';
+      title.textContent = t('history.pastGames');
       section.append(title);
 
       const list = document.createElement('div');
       list.className = 'header-user-history-list';
       if (!Array.isArray(games) || !games.length) {
-        list.append(createProfileState('No shared past games found.'));
+        list.append(createProfileState(t('search.noSharedGames')));
       } else {
         for (const game of games) {
           list.append(createHistoryCard(game, profile));
@@ -864,7 +893,7 @@
 
     const renderProfile = async (profile, detailedFriend = null, loadedProfileFriendAction = null) => {
       const modal = ensureProfileModal();
-      modal.title.textContent = profile?.username || 'User profile';
+      modal.title.textContent = profile?.username || t('search.userProfile');
 
       const root = document.createElement('div');
       root.className = 'header-user-profile-view is-entering';
@@ -880,13 +909,13 @@
       identity.className = 'header-user-profile-identity';
 
       const name = document.createElement('h3');
-      name.textContent = profile?.username || 'Unknown user';
+      name.textContent = profile?.username || t('search.unknownUser');
 
       const id = document.createElement('p');
-      id.textContent = `User ID #${profile?.id ?? '-'}`;
+      id.textContent = `${t('profile.userId')} #${profile?.id ?? '-'}`;
 
       const roles = document.createElement('p');
-      roles.textContent = `Roles: ${(profile?.roles || ['USER']).join(', ')}`;
+      roles.textContent = `${t('profile.roles')}: ${(profile?.roles || ['USER']).join(', ')}`;
 
       identity.append(name, id, roles);
 
@@ -923,15 +952,15 @@
       const totals = document.createElement('section');
       totals.className = 'header-user-profile-stats';
       totals.append(
-          createStatTile('games played', profile?.gamesPlayed ?? 0),
-          createStatTile('games won', profile?.gamesWon ?? 0)
+          createStatTile(t('search.tile.gamesPlayed'), profile?.gamesPlayed ?? 0),
+          createStatTile(t('search.tile.gamesWon'), profile?.gamesWon ?? 0)
       );
 
       const games = document.createElement('section');
       games.className = 'header-user-profile-games';
 
       const gamesTitle = document.createElement('h3');
-      gamesTitle.textContent = 'Game stats';
+      gamesTitle.textContent = t('profile.tab.stats');
       games.append(gamesTitle);
 
       const grid = document.createElement('div');
@@ -946,7 +975,7 @@
               grid.append(createGameCard(gameType, stats));
             });
       } else {
-        grid.append(createProfileState('No game stats yet.'));
+        grid.append(createProfileState(t('search.noGameStats')));
       }
 
       games.append(grid);
@@ -985,8 +1014,8 @@
       }
 
       const modal = ensureProfileModal();
-      modal.title.textContent = user.username || 'User profile';
-      setProfileModalContent(createProfileState('Loading profile...'));
+      modal.title.textContent = user.username || t('search.userProfile');
+      setProfileModalContent(createProfileState(t('profile.loadingProfile')));
 
       try {
         const response = await fetch(`/api/users/${encodeURIComponent(user.id)}/profile`, {
@@ -1005,7 +1034,7 @@
         await renderProfile(profile, detailedFriend, profileFriendAction);
       } catch (error) {
         console.error('Unable to load user profile', error);
-        setProfileModalContent(createProfileState('Unable to load this profile.', 'error'));
+        setProfileModalContent(createProfileState(t('search.profileLoadFailed'), 'error'));
       }
     };
 
@@ -1087,7 +1116,7 @@
       if (state === 'error') {
         currentUsers = [];
         selectedIndex = -1;
-        resultsPanel.replaceChildren(createStateElement('header-search-state error', 'Search failed. Try again.'));
+        resultsPanel.replaceChildren(createStateElement('header-search-state error', t('search.failed')));
         setDropdownOpen(true);
         return;
       }
@@ -1095,7 +1124,7 @@
       if (users.length === 0) {
         currentUsers = [];
         selectedIndex = -1;
-        resultsPanel.replaceChildren(createStateElement('header-search-state', 'No users found.'));
+        resultsPanel.replaceChildren(createStateElement('header-search-state', t('search.noUsers')));
         setDropdownOpen(true);
         return;
       }

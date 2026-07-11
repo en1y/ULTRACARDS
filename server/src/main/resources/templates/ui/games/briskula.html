@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
+      th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Briskula | ULTRACARDS</title>
+
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <script th:src="@{/js/theme.js}" defer></script>
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
+</head>
+<body class="game-page">
+<div th:replace="~{ui/fragments/header :: header}"></div>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
+
+<main class="container game-layout">
+    <div id="game-container"
+         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
+        <div class="game-shell briskula-game-shell">
+            <th:block th:replace="~{ui/fragments/game/table :: table('', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right')}"></th:block>
+
+            <div class="hand-row">
+                <th:block th:replace="~{ui/fragments/game/hand :: hand('', 'self', ${currentUserId}, null, 0, 'player')}"></th:block>
+                <div id="player-summary" class="player-summary" style="visibility:hidden">
+                    <div class="player-summary-card">
+                        <div id="player-summary-avatar" class="seat-avatar">P</div>
+                        <div id="player-summary-name" class="player-summary-name"></div>
+                        <div id="player-summary-points" class="player-summary-points">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
+</main>
+
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" th:aria-label="#{chat.open}" data-chat-panel=".chat-sidebar">
+    <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
+    <span class="mobile-chat-badge" hidden></span>
+</button>
+<script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
+
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script th:inline="javascript">
+    window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
+    window.__INITIAL_HAND__ = /*[[${hand}]]*/ null;
+    window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
+<script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
+<script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/games/briskula.js}"></script>
+</body>
+</html>

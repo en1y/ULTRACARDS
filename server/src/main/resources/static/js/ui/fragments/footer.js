@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
       const randomFooter = document.getElementById('random-footer');
-      const footers = ["I'm so ULTRACARDSing it rn", "Where am I?", "SSStraight", "God Damn The Cards", "YOU INSIGNIFICANT CARD!"];
+      const footers = [t('footer.joke1'), t('footer.joke2'), t('footer.joke3'), t('footer.joke4'), t('footer.joke5')];
       randomFooter.textContent = footers[Math.floor(Math.random() * footers.length)];
     })

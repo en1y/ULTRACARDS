@@ -6,7 +6,7 @@
     <parent>
         <groupId>en1y.ultracards.ui</groupId>
         <artifactId>ui</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.3</version>
     </parent>
 
     <artifactId>gui</artifactId>
@@ -20,6 +20,13 @@
     </properties>
 
     <dependencies>
+        <!--        Gateway client dependencies       -->
+        <dependency>
+            <groupId>en1y.ultracards</groupId>
+            <artifactId>game-gateway</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!--        Games dependencies       -->
         <dependency>
             <groupId>en1y.ultracards.games</groupId>

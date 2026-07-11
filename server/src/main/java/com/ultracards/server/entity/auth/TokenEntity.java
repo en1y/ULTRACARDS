@@ -29,6 +29,13 @@ public class TokenEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rotated_to_token_id")
+    private TokenEntity replacementToken;
+
+    @Column(name = "reuse_until")
+    private Instant reuseUntil;
+
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;

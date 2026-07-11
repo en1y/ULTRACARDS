@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
       th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -11,48 +12,30 @@
     <!--suppress CssUnusedSymbol -->
         <link rel="stylesheet" th:href="@{/css/ui/game.css}">
 </head>
-<body>
+<body class="game-page">
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div id="connection-toast" class="connection-toast" role="status" aria-live="polite">Connection lost. Reconnecting…
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting…
 </div>
 
 <main class="container game-layout">
     <div id="game-container"
          th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username}">
-        <div class="briskula-shell">
-            <div class="table-wrap">
-                <div class="table-surface">
-                    <div class="table-rim"></div>
-                    <div class="table-felt"></div>
-                    <div id="player-ring" class="player-ring"></div>
-                    <div class="drop-zone" id="drop-zone">Drag a card to play</div>
-                    <div id="table-turn-overlay" class="table-turn-overlay">
-                        <div id="table-turn-message" class="table-turn-message">Waiting for the next move</div>
-                    </div>
-                    <div class="table-center">
-                        <div id="trick-area" class="trick-area"></div>
-                    </div>
-                    <div class="deck-stack" id="deck-stack">
-                        <div class="deck-cluster">
-                            <div class="deck-tower" id="deck-tower"></div>
-                            <img id="trump-card" class="trump-card" alt="Trump card">
-                        </div>
-                        <div class="deck-count">Deck: <span id="deck-left" th:text="${game.cardsLeftInDeck}">0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+        <div class="game-shell">
+            <th:block th:replace="~{ui/fragments/game/table :: table('', #{game.waitingForGame}, ${game != null ? game.cardsLeftInDeck : 0}, ${game != null ? game.trumpCard : null}, false, null)}"></th:block>
             <div class="hand-row">
-                <div class="hand-zone">
-                    <div id="hand-cards" class="hand-cards"></div>
-                </div>
+                <th:block th:replace="~{ui/fragments/game/hand :: hand('', 'self', ${currentUserId}, null, 0)}"></th:block>
             </div>
         </div>
     </div>
 
-    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', 'Game yap', 'Why so scared to talk?', ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
+    <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
+
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" th:aria-label="#{chat.open}" data-chat-panel=".chat-sidebar">
+    <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
+    <span class="mobile-chat-badge" hidden></span>
+</button>
+<script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <!--suppress JSUnresolvedVariable, RegExpRedundantEscape, CheckTagEmptyBody -->
@@ -60,6 +43,8 @@
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
 </script>
+<script th:src="@{/webjars/animejs/4.1.2/lib/anime.umd.min.js}"></script>
+<script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
 <script th:src="@{/js/ui/game.js}"></script>
 </body>
 </html>

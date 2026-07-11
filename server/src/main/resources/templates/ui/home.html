@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ULTRACARDS</title>
 
     <script th:src="@{/js/theme-preload.js}"></script>
@@ -16,21 +17,21 @@
 <main>
     <section class="hero container home-hero">
         <h1 th:if="${isAuthenticated}">ULTRACARDS</h1>
-        <p th:if="${isAuthenticated}">
-            Welcome back, <span th:text="${username}">player</span>.
+        <p th:if="${isAuthenticated}" th:text="#{home.welcomeBack(${username})}">
+            Welcome back, player.
         </p>
-        <h1 th:unless="${isAuthenticated}">Welcome to ULTRACARDS</h1>
+        <h1 th:unless="${isAuthenticated}" th:text="#{home.welcome}">Welcome to ULTRACARDS</h1>
     </section>
 
     <section th:if="${isAuthenticated}" class="container home-actions-section">
-        <div class="home-actions" aria-label="Lobby actions">
+        <div class="home-actions" th:aria-label="#{home.actions.aria}">
             <button class="card home-action-tile home-action-link home-action-primary" type="button" data-action="open-create-lobby">
-                <span class="home-action-title">Create game</span>
-                <span class="home-action-copy">Start a new lobby.</span>
+                <span class="home-action-title" th:text="#{home.createGame}">Create game</span>
+                <span class="home-action-copy" th:text="#{home.createGame.copy}">Start a new lobby.</span>
             </button>
 
             <form id="join-code-form" class="card home-action-tile home-code-form">
-                <label class="home-action-title" for="join-code-input">Enter code</label>
+                <label class="home-action-title" for="join-code-input" th:text="#{home.enterCode}">Enter code</label>
                 <div class="home-code-row">
                     <input id="join-code-input"
                            class="home-code-input"
@@ -39,18 +40,18 @@
                            maxlength="6"
                            autocomplete="off"
                            autocapitalize="characters"
-                           placeholder="CHEESE">
+                           th:placeholder="#{home.codePlaceholder}" placeholder="CHEESE">
                     <button id="join-code-submit" class="btn btn-accent home-code-submit" type="submit" disabled>
                         <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
-                        <span>Join</span>
+                        <span th:text="#{common.join}">Join</span>
                     </button>
                 </div>
-                <p id="join-code-status" class="home-code-status" aria-live="polite">Type the lobby code to join.</p>
+                <p id="join-code-status" class="home-code-status" aria-live="polite" th:text="#{home.codeStatus.hint}">Type the lobby code to join.</p>
             </form>
 
             <a class="card home-action-tile home-action-link" th:href="@{/lobbies}">
-                <span class="home-action-title">Find game</span>
-                <span class="home-action-copy">Browse open lobbies.</span>
+                <span class="home-action-title" th:text="#{home.findGame}">Find game</span>
+                <span class="home-action-copy" th:text="#{home.findGame.copy}">Browse open lobbies.</span>
             </a>
         </div>
 
@@ -59,41 +60,42 @@
                     class="btn home-public-toggle"
                     type="button"
                     aria-expanded="false"
-                    aria-controls="home-public-auth-copy">
+                    aria-controls="home-public-auth-copy"
+                    th:text="#{home.showAbout}">
                 Show about ULTRACARDS
             </button>
         </div>
 
         <div id="home-public-auth-copy" class="home-public home-public-auth" hidden>
             <div class="home-public-intro">
-                <h2>Play card games online</h2>
-                <p>
+                <h2 th:text="#{home.about.title}">Play card games online</h2>
+                <p th:text="#{home.about.intro}">
                     ULTRACARDS is a multiplayer card game platform built for quick games,
                     having fun, and room for more games as the project grows.
                 </p>
             </div>
 
-            <div class="home-public-grid" aria-label="ULTRACARDS overview">
+            <div class="home-public-grid" th:aria-label="#{home.overview.aria}">
                 <article class="home-public-item">
-                    <p class="home-eyebrow">Live lobbies</p>
-                    <h3>Start a game in seconds!</h3>
-                    <p>
+                    <p class="home-eyebrow" th:text="#{home.card1.eyebrow}">Live lobbies</p>
+                    <h3 th:text="#{home.card1.title}">Start a game in seconds!</h3>
+                    <p th:text="#{home.card1.copy}">
                         Create a game, share the lobby code, or browse open rooms when you want to join someone already waiting for your company.
                     </p>
                 </article>
 
                 <article class="home-public-item">
-                    <p class="home-eyebrow">Briskula now</p>
-                    <h3>Built for having fun!</h3>
-                    <p>
+                    <p class="home-eyebrow" th:text="#{home.card2.eyebrow}">Briskula now</p>
+                    <h3 th:text="#{home.card2.title}">Built for having fun!</h3>
+                    <p th:text="#{home.card2.copy}">
                         ULTRACARDS supports Briskula from the get-go. Log in, create a game and go have fun!
                     </p>
                 </article>
 
                 <article class="home-public-item">
-                    <p class="home-eyebrow">More games planned</p>
-                    <h3>A platform, not one game</h3>
-                    <p>
+                    <p class="home-eyebrow" th:text="#{home.card3.eyebrow}">More games planned</p>
+                    <h3 th:text="#{home.card3.title}">A platform, not one game</h3>
+                    <p th:text="#{home.card3.copy}">
                         Soon&trade; many more games like Poker, Durak, Treseta and others are to be implemented in the nearest future.
                     </p>
                 </article>
@@ -103,34 +105,34 @@
 
     <section th:unless="${isAuthenticated}" class="container home-public">
         <div class="home-public-intro">
-            <h2>Play card games online</h2>
-            <p>
+            <h2 th:text="#{home.about.title}">Play card games online</h2>
+            <p th:text="#{home.about.intro}">
                 ULTRACARDS is a multiplayer card game platform built for quick games,
                 having fun, and room for more games as the project grows.
             </p>
         </div>
 
-        <div class="home-public-grid" aria-label="ULTRACARDS overview">
+        <div class="home-public-grid" th:aria-label="#{home.overview.aria}">
             <article class="home-public-item">
-                <p class="home-eyebrow">Live lobbies</p>
-                <h3>Start a game in seconds!</h3>
-                <p>
+                <p class="home-eyebrow" th:text="#{home.card1.eyebrow}">Live lobbies</p>
+                <h3 th:text="#{home.card1.title}">Start a game in seconds!</h3>
+                <p th:text="#{home.card1.copy}">
                     Create a game, share the lobby code, or browse open rooms when you want to join someone already waiting for your company.
                 </p>
             </article>
 
             <article class="home-public-item">
-                <p class="home-eyebrow">Briskula now</p>
-                <h3>Built for having fun!</h3>
-                <p>
+                <p class="home-eyebrow" th:text="#{home.card2.eyebrow}">Briskula now</p>
+                <h3 th:text="#{home.card2.title}">Built for having fun!</h3>
+                <p th:text="#{home.card2.copy}">
                     ULTRACARDS supports Briskula from the get-go. Log in, create a game and go have fun!
                 </p>
             </article>
 
             <article class="home-public-item">
-                <p class="home-eyebrow">More games planned</p>
-                <h3>A platform, not one game</h3>
-                <p>
+                <p class="home-eyebrow" th:text="#{home.card3.eyebrow}">More games planned</p>
+                <h3 th:text="#{home.card3.title}">A platform, not one game</h3>
+                <p th:text="#{home.card3.copy}">
                     Soon&trade; many more games like Poker, Durak, Treseta and others are to be implemented in the nearest future.
                 </p>
             </article>

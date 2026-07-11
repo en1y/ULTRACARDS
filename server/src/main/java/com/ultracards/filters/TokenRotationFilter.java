@@ -60,11 +60,6 @@ public class TokenRotationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!tokenService.tokenExists(token)) {
-            handleUnauthorized(req, res);
-            return;
-        }
-
         try {
             // 1) rotate token
             var session = sessionService.handleSession(token, req);

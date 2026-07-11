@@ -1,0 +1,20 @@
+<th:block th:fragment="deck(idPrefix, cardsLeft, featuredCard, featuredEnabled, trumpSide)" xmlns:th="http://www.thymeleaf.org">
+    <div class="deck-stack"
+         th:id="${idPrefix + 'deck-stack'}"
+         th:attr="data-zone-id=${idPrefix + 'deck'},data-zone-kind='deck'"
+         th:classappend="${(featuredEnabled and featuredCard != null ? ' has-trump' : '') + ' trump-side-' + (trumpSide != null ? trumpSide : 'right')}">
+        <div class="deck-cluster">
+            <div class="deck-pile">
+                <div class="deck-tower"
+                     th:id="${idPrefix + 'deck-tower'}"
+                     th:attr="data-zone-id=${idPrefix + 'deck-pile'},data-zone-kind='deck-pile'"></div>
+                <th:block th:if="${featuredEnabled}">
+                    <div class="trump-card-slot" th:id="${idPrefix + 'trump-card-slot'}">
+                        <th:block th:replace="~{ui/fragments/game/card :: card(${featuredCard}, ${featuredCard != null ? featuredCard.cardType : 'ITALIAN'}, 'trump-card', 0, ${idPrefix + 'trump-card'})}"></th:block>
+                    </div>
+                </th:block>
+            </div>
+            <div class="deck-count-bubble" th:id="${idPrefix + 'deck-left'}" th:text="${cardsLeft != null ? cardsLeft : 0}">0</div>
+        </div>
+    </div>
+</th:block>

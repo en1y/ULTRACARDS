@@ -20,6 +20,10 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 14px;
+  /* Runtime-updated by JS (layout.js / theme.js); declared here so the values
+     resolve before the scripts run. */
+  --uc-header-h: 64px;
+  --kb-offset: 0px;
 }
 
 [data-theme="dark"] {
@@ -53,7 +57,6 @@ html {
 }
 
 body {
-  min-height: 100vh;
   min-height: 100svh;
   margin: 0;
   display: flex;
@@ -118,11 +121,28 @@ textarea {
   transform: translateY(1px);
 }
 
+@media (hover: none) and (pointer: coarse) {
+  :where(a, button, .btn, [role="button"]) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :where(a, button, .btn, [role="button"]):focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
 :where(button, .btn):has(.uc-icon) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+}
+
+/* The rule above sets an author `display`, which beats the browser's built-in
+   `[hidden] { display: none }` — icon buttons would ignore the hidden attribute. */
+:where(button, .btn)[hidden] {
+  display: none;
 }
 
 .btn-accent {
@@ -149,12 +169,14 @@ textarea {
 .chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   padding: 0.15rem 0.45rem;
   font-size: 0.85rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 0.5rem;
   background: var(--color-surface);
+  white-space: nowrap;
 }
 
 .center {
@@ -246,6 +268,7 @@ textarea {
 
 .modal .actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
   padding: 0 1rem 1rem;
@@ -508,6 +531,129 @@ textarea {
   gap: 0.75rem;
 }
 
+/* Firefox (Gecko) recomposites backdrop-filter on every scroll frame instead
+   of caching the layer like Chromium — with the header + drawers blurred it
+   makes the whole app scroll-lag. Drop the blurs there and use solid
+   backgrounds; purely cosmetic, no functionality lost. */
+@supports (-moz-appearance: none) {
+  * {
+    backdrop-filter: none !important;
+  }
+
+  .uc-header,
+  .friends-drawer-head,
+  .mobile-chat-toggle {
+    background: var(--color-bg);
+  }
+}
+
+/* Phone landscape blocker: browsers can't lock orientation outside a PWA, so
+   cover the page instead. Only game pages (live game + replay, body.game-page)
+   need portrait; tablets (landscape height >= 500px) and desktops (pointer:
+   fine) are unaffected. */
+.rotate-lock-overlay {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  body.game-page .rotate-lock-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-weight: 800;
+    text-align: center;
+  }
+}
+
+/* Win-rate donut — shared by the profile stats and the user-search popup. */
+.profile-game-card--donut {
+  line-height: 1.4;
+}
+
+.profile-game-card-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
+.profile-game-card-row > :not(.profile-stat-donut) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-stat-donut {
+  --win-rate: 0;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-accent) calc(var(--win-rate, 0) * 1%),
+    var(--color-surface-2) 0
+  );
+}
+
+.profile-stat-donut > span {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-bg);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+/* Floating mobile chat toggle — hidden by default; page CSS (lobby/game)
+   shows it at its own mobile breakpoint. */
+.mobile-chat-toggle {
+  display: none;
+  position: fixed;
+  left: 1rem;
+  /* Closed-state anchor; while the chat is OPEN, mobileChatDock.js pins the
+     button to the bottom of the visualViewport (above the keyboard) via an
+     inline `top`, so it stays tappable to close the chat while typing. */
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1460;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 24px var(--color-shadow);
+  place-items: center;
+}
+
+.mobile-chat-toggle .uc-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.mobile-chat-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-bg);
+}
+
+.mobile-chat-badge[hidden] {
+  display: none;
+}
+
 .footer {
   margin-top: auto;
   padding: 2rem 1rem;
@@ -518,6 +664,16 @@ textarea {
 .footer small {
   display: block;
   text-align: center;
+}
+
+@media (max-width: 760px) {
+  .lobbies-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lobbies-sidebar {
+    position: static;
+  }
 }
 
 @media (max-width: 640px) {

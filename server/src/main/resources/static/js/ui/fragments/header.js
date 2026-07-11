@@ -26,6 +26,7 @@
       createPhase(window.ucHeader?.createHeaderUiPhase),
       createPhase(window.ucHeader?.createHeaderSearchPhase),
       createPhase(window.ucHeader?.createProfileMenuPhase),
+      createPhase(window.ucHeader?.createLanguagePhase),
       createPhase(window.ucHeader?.createNotificationsPhase),
       createPhase(window.ucHeader?.createFriendsPhase),
       createPhase(window.ucHeader?.createAuthModalPhase)
