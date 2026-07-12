@@ -2,6 +2,8 @@ package com.ultracards.server.service.lobby;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
+import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.games.GameService;
@@ -16,9 +18,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -135,6 +139,38 @@ class LobbyServiceTest {
         lobbyService.deleteLobby(lobby);
 
         verify(notificationService, never()).deleteGameInviteNotifications(lobbyId);
+    }
+
+    @Test
+    void startsTresetaOnlyForOwnerWithExactConfiguredPlayerCount() {
+        var owner = user(1L, "Owner");
+        var player = user(2L, "Player");
+        var lobby = mock(LobbyEntity.class);
+        var config = mock(TresetaLobbyGameConfig.class);
+        when(lobbyManager.getLobby(owner)).thenReturn(lobby);
+        when(lobby.getOwner()).thenReturn(owner);
+        when(lobby.getLobbyGameConfig()).thenReturn(config);
+        when(config.getGameConfig()).thenReturn(TresetaGameConfig.TWO_PLAYERS);
+        when(lobby.getUsers()).thenReturn(List.of(owner));
+
+        assertThat(lobbyService.startLobby(owner)).isFalse();
+        verifyNoInteractions(gameService);
+
+        when(lobby.getUsers()).thenReturn(List.of(owner, player));
+        assertThat(lobbyService.startLobby(owner)).isTrue();
+        verify(gameService).startGame(lobby);
+    }
+
+    @Test
+    void doesNotLetLobbyMemberStartOwnersGame() {
+        var owner = user(1L, "Owner");
+        var member = user(2L, "Member");
+        var lobby = mock(LobbyEntity.class);
+        when(lobbyManager.getLobby(member)).thenReturn(lobby);
+        when(lobby.getOwner()).thenReturn(owner);
+
+        assertThat(lobbyService.startLobby(member)).isFalse();
+        verifyNoInteractions(gameService);
     }
 
     private void cacheLobby(UserEntity user, LobbyEntity lobby) {

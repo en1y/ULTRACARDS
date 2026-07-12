@@ -18,34 +18,24 @@ public class UserBriskulaStatsService {
         userBriskulaStatsRepository.save(stats);
     }
 
+    @Transactional
     public UserBriskulaStats getByUser(UserEntity user) {
-        return userBriskulaStatsRepository.findByUser(user).orElse(null);
+        return userBriskulaStatsRepository.findByUser(user)
+                .orElseGet(() -> userBriskulaStatsRepository.save(new UserBriskulaStats(user)));
     }
 
     @Transactional
     public void addBriskulaGame(UserEntity user, BriskulaGameConfig gameConfig, boolean won) {
-        var stats = userBriskulaStatsRepository.findByUser(user).orElse(null);
-        if (stats == null) {
-            return;
-        }
-        stats.addGame(gameConfig, won);
+        getByUser(user).addGame(gameConfig, won);
     }
 
     @Transactional
     public void addBriskulaGameAgainstUser(UserEntity user, BriskulaGameConfig gameConfig, UserEntity otherUser, boolean won) {
-        var stats = userBriskulaStatsRepository.findByUser(user).orElse(null);
-        if (stats == null) {
-            return;
-        }
-        stats.addGameAgainstUser(gameConfig, otherUser, won);
+        getByUser(user).addGameAgainstUser(gameConfig, otherUser, won);
     }
 
     @Transactional
     public void addBriskulaGameWithTeammate(UserEntity user, BriskulaGameConfig gameConfig, UserEntity teammate, boolean won) {
-        var stats = userBriskulaStatsRepository.findByUser(user).orElse(null);
-        if (stats == null) {
-            return;
-        }
-        stats.addGameWithTeammate(gameConfig, teammate, won);
+        getByUser(user).addGameWithTeammate(gameConfig, teammate, won);
     }
 }
