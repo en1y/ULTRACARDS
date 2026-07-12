@@ -38,6 +38,10 @@ public class GatewayAsync implements AutoCloseable {
         return CompletableFuture.runAsync(action, background);
     }
 
+    public void runOnUi(Runnable action) {
+        ui.accept(action);
+    }
+
     public <T> void onUi(
             CompletableFuture<T> future,
             Consumer<T> onSuccess,

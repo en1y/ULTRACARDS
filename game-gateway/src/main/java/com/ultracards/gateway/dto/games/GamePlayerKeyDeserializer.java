@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GamePlayerKeyDeserializer extends KeyDeserializer {
-    private static final Pattern NAME_PATTERN = Pattern.compile("name=([^,\\)]*)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NAME_PATTERN = Pattern.compile("name=(.*),\\s*id=", Pattern.CASE_INSENSITIVE);
     private static final Pattern ID_PATTERN = Pattern.compile("id=([^,\\)]*)", Pattern.CASE_INSENSITIVE);
     private static final Pattern DIGIT_PATTERN = Pattern.compile("(\\d+)");
 

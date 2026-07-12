@@ -8,10 +8,7 @@ import java.util.List;
 
 @Data
 public class BriskulaGameResultDTO extends GameResultDTO {
-    int winnerPointsNum;
-
     public BriskulaGameResultDTO(List<GamePlayerDTO> gameWinners, int winnerPointsNum) {
-        super(gameWinners);
-        this.winnerPointsNum = winnerPointsNum;
+        super(gameWinners, winnerPointsNum);
     }
 }
