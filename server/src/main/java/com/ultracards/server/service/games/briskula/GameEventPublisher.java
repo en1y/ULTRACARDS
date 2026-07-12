@@ -16,6 +16,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO;
 
@@ -68,6 +70,24 @@ public class GameEventPublisher {
                     var cards = player.getHand().getCards().stream().map(GameCardDTO::createCardDTO).toList();
                     messagingTemplate.convertAndSendToUser(player.getUser().getId().toString(), "/queue/game/cards", cards);
                 }
+        }
+    }
+
+    public void publishOpponentDrawnCards(TresetaGameEntity game, Map<Long, List<com.ultracards.games.treseta.TresetaCard>> handsBeforePlay) {
+        for (var raw : game.getGame().getPlayers()) {
+            var drawer = (TresetaPlayerEntity) raw;
+            var previous = handsBeforePlay.getOrDefault(drawer.getUser().getId(), List.of());
+            var drawn = drawer.getHand().getCards().stream()
+                    .filter(card -> !previous.contains(card))
+                    .map(GameCardDTO::createCardDTO)
+                    .toList();
+            if (drawn.isEmpty()) continue;
+            for (var recipientRaw : game.getGame().getPlayers()) {
+                var recipient = (TresetaPlayerEntity) recipientRaw;
+                if (!recipient.equals(drawer))
+                    messagingTemplate.convertAndSendToUser(recipient.getUser().getId().toString(),
+                            "/queue/game/opponent-drawn-cards", drawn);
+            }
         }
     }
 }

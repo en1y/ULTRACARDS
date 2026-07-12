@@ -116,6 +116,10 @@ class GatewayTest {
         uiTasks.remove().run();
         assertSame(game, session.game().get());
 
+        socket.opponentDrawnCardsHandler.accept(List.of(new GameCardDTO()));
+        uiTasks.remove().run();
+        assertEquals(1, session.opponentDrawnCards().get().size());
+
         var card = new GameCardDTO();
         session.playCard(card);
         assertSame(card, socket.playedCard);
@@ -204,6 +208,7 @@ class GatewayTest {
 
     private static final class FakeGameSocket extends GameWsService {
         private Consumer<GameEventDTO<TresetaGameEntityDTO>> gameHandler;
+        private Consumer<List<GameCardDTO>> opponentDrawnCardsHandler;
         private Runnable connected;
         private GameCardDTO playedCard;
         private boolean closed;
@@ -238,6 +243,12 @@ class GatewayTest {
 
         @Override
         public StompSession.Subscription subscribeToTeammateCards(Consumer<List<GameCardDTO>> handler) {
+            return null;
+        }
+
+        @Override
+        public StompSession.Subscription subscribeToOpponentDrawnCards(Consumer<List<GameCardDTO>> handler) {
+            opponentDrawnCardsHandler = handler;
             return null;
         }
 
