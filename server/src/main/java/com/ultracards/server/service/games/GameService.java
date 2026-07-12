@@ -5,8 +5,10 @@ import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.service.games.briskula.BriskulaGameService;
+import com.ultracards.server.service.games.treseta.TresetaGameService;
 import com.ultracards.server.service.lobby.LobbyManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class GameService {
     private final GameManager gameManager;
     private final LobbyManager lobbyManager;
     private final BriskulaGameService briskulaGameService;
+    private final TresetaGameService tresetaGameService;
     private final GameRecordingService gameRecordingService;
 
     public GameEntity<?, ?> startGame(LobbyEntity lobby) {
@@ -29,6 +32,11 @@ public class GameService {
             var briskulaGame = (BriskulaGameEntity) game;
             gameRecordingService.start(briskulaGame);
             briskulaGameService.onGameStarted(briskulaGame);
+        }
+        if (game.getGameType().equals(GameTypeDTO.Treseta)) {
+            var tresetaGame = (TresetaGameEntity) game;
+            gameRecordingService.start(tresetaGame);
+            tresetaGameService.onGameStarted(tresetaGame);
         }
         return game;
     }
@@ -40,5 +48,7 @@ public class GameService {
     public void playCard(UserEntity user, @Valid GameCardDTO card, GameEntity<?, ?> game) {
         if (game.getGameType().equals(GameTypeDTO.Briskula))
             briskulaGameService.playCard(user, card, (BriskulaGameEntity) game);
+        if (game.getGameType().equals(GameTypeDTO.Treseta))
+            tresetaGameService.playCard(user, card, (TresetaGameEntity) game);
     }
 }

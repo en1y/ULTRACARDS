@@ -5,9 +5,12 @@ import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEventDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameResultDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaGameResultDTO;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
+import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
+import com.ultracards.server.entity.games.treseta.TresetaPlayerEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,23 @@ public class GameEventPublisher {
                     );
                 }
             }
+        }
+        if (gameEntity.getGameType().equals(GameTypeDTO.Treseta)) {
+            var game = (TresetaGameEntity) gameEntity;
+            var event = new GameEventDTO(game.createGameDTO(), gameEventDTO);
+            if (gameEventDTO.equals(GameEventTypeDTO.RESULTED)) {
+                var winners = game.getGame().determineGameWinners();
+                var result = new ArrayList<GamePlayerDTO>();
+                for (var winner : winners) result.add(((TresetaPlayerEntity) winner).getGamePlayerDTO());
+                event.setResult(new TresetaGameResultDTO(result, winners.getFirst().getPoints()));
+            }
+            messagingTemplate.convertAndSend("/topic/game/" + game.getId(), event);
+            if (!gameEventDTO.equals(GameEventTypeDTO.RESULTED))
+                for (var raw : game.getGame().getPlayers()) {
+                    var player = (TresetaPlayerEntity) raw;
+                    var cards = player.getHand().getCards().stream().map(GameCardDTO::createCardDTO).toList();
+                    messagingTemplate.convertAndSendToUser(player.getUser().getId().toString(), "/queue/game/cards", cards);
+                }
         }
     }
 }

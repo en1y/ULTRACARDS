@@ -105,31 +105,32 @@ public class BriskulaGameService {
     }
 
     public void playCard(UserEntity user, GameCardDTO cardDTO, BriskulaGameEntity game) {
-        var genericCard = cardDTO.toCard();
-        if (!(genericCard instanceof ItalianCard<?>)) return;
+        synchronized (game) {
+            var genericCard = cardDTO.toCard();
+            if (!(genericCard instanceof ItalianCard<?>)) return;
 
-        var briskulaGame = game.getGame();
-        var oldField = briskulaGame.getPlayingField();
-        if (!game.playCard(user, genericCard)) return;
-        var newField = briskulaGame.getPlayingField();
-        if (newField == null || newField.getPlayedCards().isEmpty()) {
-            briskulaGame.setPlayingField(oldField);
+            var briskulaGame = game.getGame();
+            var oldField = briskulaGame.getPlayingField();
+            if (!game.playCard(user, genericCard)) return;
+            var newField = briskulaGame.getPlayingField();
+            if (newField == null || newField.getPlayedCards().isEmpty()) {
+                briskulaGame.setPlayingField(oldField);
+                eventPublisher.publish(game, UPDATED);
+                briskulaGame.setPlayingField(newField);
+            }
+
+            if (!game.isActive()) {
+                handleEndGame(game);
+                return;
+            }
+            setTimer(game);
             eventPublisher.publish(game, UPDATED);
-            briskulaGame.setPlayingField(newField);
-        }
 
-        if (!game.isActive()) {
-            handleEndGame(game);
-            return;
+            onCardPlayedByConfig.get(game.getPersistedGameConfig()).apply(user, game);
         }
-        setTimer(game);
-        eventPublisher.publish(game, UPDATED);
-
-        onCardPlayedByConfig.get(game.getPersistedGameConfig()).apply(user, game);
     }
 
     private void handleEndGame(BriskulaGameEntity game) {
-        eventPublisher.publish(game, RESULTED);
         var winners = game.getGame().determineGameWinners();
         var gameConfig = game.getPersistedGameConfig();
         var winnerUsers = new HashSet<UserEntity>();
@@ -142,6 +143,7 @@ public class BriskulaGameService {
         });
         updateBriskulaRelationshipStats(game.getPlayers(), winnerUsers, gameConfig);
         gameRecordingService.finish(game);
+        eventPublisher.publish(game, RESULTED);
         gameManager.deleteGame(game);
         openLobby.apply(lobbyManager.getLobby(game.getLobbyId()));
     }

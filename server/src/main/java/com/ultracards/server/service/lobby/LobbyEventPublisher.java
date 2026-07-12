@@ -8,9 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType;
 import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.*;
 
@@ -23,18 +20,12 @@ public class LobbyEventPublisher {
     public void publish(LobbyEntity lobby, GameLobbyEventType type) {
         var lobbyDTO = lobby.createLobbyDTO(false);
         var publicEvent = new GameLobbyEventDTO(type, lobbyDTO);
-        var privateEvent = new GameLobbyEventDTO(type, lobby.createLobbyDTO(true));
+        var gameId = type.equals(STARTED) ? gameManager.getGameByLobbyId(lobbyDTO.getId()).getId() : null;
+        var privateEvent = new GameLobbyEventDTO(type, lobby.createLobbyDTO(true), gameId);
         messagingTemplate.convertAndSend("/topic/lobbies", publicEvent);
-        if (!type.equals(CREATED) && !type.equals(STARTED)) {
+        if (!type.equals(CREATED)) {
             messagingTemplate.convertAndSend(
                     "/topic/lobbies/" + lobbyDTO.getId(), privateEvent);
-        }
-        if (type.equals(STARTED)) {
-            var game = gameManager.getGameByLobbyId(lobbyDTO.getId());
-            messagingTemplate.convertAndSend(
-                    "/topic/lobbies/" + lobbyDTO.getId(), privateEvent);
-            messagingTemplate.convertAndSend(
-                    "/topic/lobbies/" + lobbyDTO.getId(), (Object) Map.of("gameId", game.getId()));
         }
     }
 }
