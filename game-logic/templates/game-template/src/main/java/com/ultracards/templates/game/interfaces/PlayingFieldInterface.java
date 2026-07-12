@@ -53,9 +53,9 @@ public interface PlayingFieldInterface
     default void play(Card card, Player player) {
         Objects.requireNonNull(card, "card");
         Objects.requireNonNull(player, "player");
+        player.playCard(card);
         addCard(card);
         getHasPlayerPlayed().put(player, true);
-        player.playCard(card);
         getGame().getGameRecordingHook().cardPlayed(this, player, card);
         if (isTurnPlayed()) {
             getGame().roundCycle();

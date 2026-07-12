@@ -9,7 +9,6 @@ import java.util.List;
 
 public class TresetaPlayingField extends AbstractPlayingField<ItalianCardSuit, ItalianCardValue, TresetaCard, TresetaHand, TresetaDeck, TresetaPlayer> {
 
-    private ItalianCardSuit roundTrumpSuit = null;
     private final int roundNum;
     public TresetaPlayingField(List<TresetaPlayer> tresetaPlayers, AbstractGame<ItalianCardSuit, ItalianCardValue, TresetaCard, TresetaHand, TresetaDeck, TresetaPlayer, ?> game, int roundNum) {
         super(tresetaPlayers, game);
@@ -18,9 +17,9 @@ public class TresetaPlayingField extends AbstractPlayingField<ItalianCardSuit, I
 
     @Override
     public void play(TresetaCard card, TresetaPlayer player) {
-        if (roundTrumpSuit == null) {
-            roundTrumpSuit = card.getSuit();
-        } else if (!card.getSuit().equals(roundTrumpSuit) && player.getHand().containsSuit(roundTrumpSuit)) {
+        if (!getPlayedCards().isEmpty()
+                && !card.getSuit().equals(getPlayedCards().getFirst().getSuit())
+                && player.getHand().containsSuit(getPlayedCards().getFirst().getSuit())) {
             throw new IllegalArgumentException("Player must play a card of the same suit as the first played card if they have that suit");
         }
         super.play(card, player);
