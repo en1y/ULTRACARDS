@@ -57,4 +57,8 @@ public class GameWsService extends StompGatewayService {
     public StompSession.Subscription subscribeToTeammateCards(Consumer<List<GameCardDTO>> handler) {
         return subscribe("/user/queue/game/teammate-cards", new ParameterizedTypeReference<List<GameCardDTO>>() {}, handler);
     }
+
+    public StompSession.Subscription subscribeToOpponentDrawnCards(Consumer<List<GameCardDTO>> handler) {
+        return subscribe("/user/queue/game/opponent-drawn-cards", new ParameterizedTypeReference<List<GameCardDTO>>() {}, handler);
+    }
 }

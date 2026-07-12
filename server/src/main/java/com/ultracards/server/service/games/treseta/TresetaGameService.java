@@ -2,6 +2,7 @@ package com.ultracards.server.service.games.treseta;
 
 import com.ultracards.cards.ItalianCard;
 import com.ultracards.games.treseta.TresetaGameConfig;
+import com.ultracards.games.treseta.TresetaCard;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -69,6 +71,7 @@ public class TresetaGameService {
         synchronized (game) {
             var card = dto.toCard();
             if (!(card instanceof ItalianCard<?>)) return;
+            var handsBeforePlay = opponentHands(game);
             var oldField = game.getGame().getPlayingField();
             if (!game.playCard(user, card)) return;
             var newField = game.getGame().getPlayingField();
@@ -81,9 +84,20 @@ public class TresetaGameService {
                 finish(game);
                 return;
             }
+            if (game.getPersistedGameConfig().equals(TresetaGameConfig.TWO_PLAYERS))
+                eventPublisher.publishOpponentDrawnCards(game, handsBeforePlay);
             setTimer(game);
             eventPublisher.publish(game, UPDATED);
         }
+    }
+
+    private HashMap<Long, List<TresetaCard>> opponentHands(TresetaGameEntity game) {
+        var hands = new HashMap<Long, List<TresetaCard>>();
+        for (var raw : game.getGame().getPlayers()) {
+            var player = (TresetaPlayerEntity) raw;
+            hands.put(player.getUser().getId(), List.copyOf(player.getHand().getCards()));
+        }
+        return hands;
     }
 
     private void setTimer(TresetaGameEntity game) {
