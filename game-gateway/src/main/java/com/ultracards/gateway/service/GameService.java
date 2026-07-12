@@ -2,7 +2,11 @@ package com.ultracards.gateway.service;
 
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
+import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaGameHistoryDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -38,13 +42,9 @@ public class GameService {
         this(restTemplate, serverUrl, tokenHolder, new TokenManager(tokenHolder));
     }
 
-    public BriskulaGameHistoryDTO getGame(UUID gameId) {
-        return getGameHistory(gameId);
-    }
-
-    public BriskulaGameHistoryDTO getGameHistory(UUID gameId) {
+    public BriskulaGameHistoryDTO getBriskulaGameHistory(UUID gameId) {
         var response = restTemplate.exchange(
-                serverUrl + "api/games/history/" + gameId,
+                serverUrl + "api/games/history/briskula/" + gameId,
                 HttpMethod.GET,
                 new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
                 BriskulaGameHistoryDTO.class
@@ -53,12 +53,57 @@ public class GameService {
         return response.getBody();
     }
 
+    public TresetaGameHistoryDTO getTresetaGameHistory(UUID gameId) {
+        var response = restTemplate.exchange(
+                serverUrl + "api/games/history/treseta/" + gameId,
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                TresetaGameHistoryDTO.class
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
+    }
+
     public GameEntityDTO getGameByLobby(UUID lobbyId) {
+        return getGameByLobby(lobbyId, GameEntityDTO.class);
+    }
+
+    public BriskulaGameEntityDTO getBriskulaGameByLobby(UUID lobbyId) {
+        return getGameByLobby(lobbyId, BriskulaGameEntityDTO.class);
+    }
+
+    public TresetaGameEntityDTO getTresetaGameByLobby(UUID lobbyId) {
+        return getGameByLobby(lobbyId, TresetaGameEntityDTO.class);
+    }
+
+    public GameSnapshotDTO<BriskulaGameEntityDTO> getBriskulaSnapshot(UUID gameId) {
+        return getSnapshot(gameId, "briskula",
+                new ParameterizedTypeReference<GameSnapshotDTO<BriskulaGameEntityDTO>>() {});
+    }
+
+    public GameSnapshotDTO<TresetaGameEntityDTO> getTresetaSnapshot(UUID gameId) {
+        return getSnapshot(gameId, "treseta",
+                new ParameterizedTypeReference<GameSnapshotDTO<TresetaGameEntityDTO>>() {});
+    }
+
+    private <T extends GameEntityDTO> GameSnapshotDTO<T> getSnapshot(
+            UUID gameId, String gameType, ParameterizedTypeReference<GameSnapshotDTO<T>> responseType) {
+        var response = restTemplate.exchange(
+                serverUrl + "api/games/" + gameId + "/snapshot/" + gameType,
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                responseType
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
+    }
+
+    private <T extends GameEntityDTO> T getGameByLobby(UUID lobbyId, Class<T> responseType) {
         var response = restTemplate.exchange(
                 serverUrl + "api/games/lobby/" + lobbyId,
                 HttpMethod.GET,
                 new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
-                GameEntityDTO.class
+                responseType
         );
         tokenManager.updateToken(tokenHolder, response);
         return response.getBody();

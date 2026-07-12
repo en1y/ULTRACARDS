@@ -49,7 +49,23 @@ listener.close();
 
 ## WebSockets
 
-Track subscriptions with `GatewaySocketHandle`, then close once when the screen closes.
+For a game screen, use a typed session. It seeds `game()` and `hand()` from the server snapshot, so joining mid-game renders immediately. Its states are updated through the configured UI dispatcher and it owns all game subscriptions.
+
+```java
+client.tresetaGame(gameId).thenAccept(session -> {
+    var gameListener = session.game().listen(this::renderGame);
+    var handListener = session.hand().listen(this::renderHand);
+
+    session.playCard(card);
+
+    // when the screen closes:
+    gameListener.close();
+    handListener.close();
+    session.close();
+});
+```
+
+`briskulaGame(gameId)` provides the same typed handle for Briskula. For lobby, chat, notification, or custom socket flows, track subscriptions with `GatewaySocketHandle` and close once when the screen closes.
 
 ```java
 client.gameSocket().thenAccept(gameSocket -> {
@@ -67,5 +83,4 @@ client.gameSocket().thenAccept(gameSocket -> {
 
 ```bash
 mvn -pl game-gateway -am test
-java -ea -cp game-gateway/target/test-classes:game-gateway/target/classes com.ultracards.gateway.app.GatewayTest
 ```

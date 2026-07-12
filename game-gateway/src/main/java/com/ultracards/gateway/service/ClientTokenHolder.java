@@ -12,5 +12,5 @@ import org.springframework.stereotype.Component;
 @Setter
 @Component
 public class ClientTokenHolder {
-    private String token;
+    private volatile String token;
 }

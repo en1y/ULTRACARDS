@@ -1,7 +1,11 @@
 package com.ultracards.gateway.service;
 
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.messaging.converter.JacksonJsonMessageConverter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -13,6 +17,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.net.URI;
+import java.io.IOException;
 import java.util.function.Consumer;
 
 public abstract class StompGatewayService implements AutoCloseable {
@@ -21,6 +26,7 @@ public abstract class StompGatewayService implements AutoCloseable {
     private final String wsUrl;
     private final ClientTokenHolder tokenHolder;
     private final TokenManager tokenManager;
+    private final ObjectMapper objectMapper;
     private StompSession session;
 
     StompGatewayService(String wsUrl, ClientTokenHolder tokenHolder) {
@@ -33,9 +39,13 @@ public abstract class StompGatewayService implements AutoCloseable {
         this.tokenManager = tokenManager;
         this.scheduler = new ThreadPoolTaskScheduler();
         this.scheduler.initialize();
+        this.objectMapper = JsonMapper.builder()
+                .findAndAddModules()
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .build();
         this.stompClient = new WebSocketStompClient(new StandardWebSocketClient());
         this.stompClient.setTaskScheduler(scheduler);
-        this.stompClient.setMessageConverter(new JacksonJsonMessageConverter());
+        this.stompClient.setMessageConverter(new MappingJackson2MessageConverter(objectMapper));
     }
 
     public void connect(Runnable onConnected, Consumer<Throwable> onError) {
@@ -101,15 +111,22 @@ public abstract class StompGatewayService implements AutoCloseable {
         return session.subscribe(destination, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
-                return payloadType;
+                return byte[].class;
             }
 
             @Override
-            @SuppressWarnings("unchecked")
             public void handleFrame(StompHeaders headers, Object payload) {
-                handler.accept((T) payload);
+                handler.accept(decode(objectMapper, (byte[]) payload, payloadType));
             }
         });
+    }
+
+    static <T> T decode(ObjectMapper mapper, byte[] payload, Type payloadType) {
+        try {
+            return mapper.readValue(payload, mapper.constructType(payloadType));
+        } catch (IOException error) {
+            throw new MessageConversionException("Could not decode WebSocket payload as " + payloadType, error);
+        }
     }
 
     private void ensureSession() {

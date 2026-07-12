@@ -25,7 +25,10 @@ public class LobbyWsService extends StompGatewayService {
         return subscribe("/topic/lobbies/" + lobbyId, GameLobbyEventDTO.class, handler);
     }
 
+    @Deprecated(forRemoval = true)
     public StompSession.Subscription subscribeToLobbyGameId(UUID lobbyId, Consumer<Map> handler) {
-        return subscribe("/topic/lobbies/" + lobbyId, Map.class, handler);
+        return subscribeToLobby(lobbyId, event -> {
+            if (event.getGameId() != null) handler.accept(Map.of("gameId", event.getGameId()));
+        });
     }
 }

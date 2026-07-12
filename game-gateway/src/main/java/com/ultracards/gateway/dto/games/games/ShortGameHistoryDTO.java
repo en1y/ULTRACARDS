@@ -1,7 +1,9 @@
 package com.ultracards.gateway.dto.games.games;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,6 +26,7 @@ public class ShortGameHistoryDTO {
     private Instant endedAt;
     private GameConfigDTO gameConfig;
     private List<GamePlayerDTO> playersOrder;
+    @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
     private Map<GamePlayerDTO, Integer> pointsByUser;
     private List<GamePlayerDTO> winners;
 }
