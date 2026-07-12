@@ -6,7 +6,6 @@ import com.ultracards.templates.game.model.AbstractGame;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class TresetaGame
@@ -98,9 +97,11 @@ public class TresetaGame
             if (team2Points > team1Points) return List.of(players.get(1), players.get(3));
             return players;
         }
-        return List.of(players.stream().max(
-                Comparator.comparingInt(TresetaPlayer::getPoints)
-        ).orElseThrow(() -> new IllegalStateException("Could not determine Treseta winner")));
+        var winnerPoints = Integer.MIN_VALUE;
+        for (var player : players) winnerPoints = Math.max(winnerPoints, player.getPoints());
+        var winners = new ArrayList<TresetaPlayer>();
+        for (var player : players) if (player.getPoints() == winnerPoints) winners.add(player);
+        return winners;
     }
 
     @Override

@@ -58,7 +58,7 @@ public class BriskulaGame extends AbstractGame<ItalianCardSuit, ItalianCardValue
         if (numberOfPlayers < 2 || numberOfPlayers > 4) {
             throw new IllegalArgumentException("Number of players must be between 2 and 4.");
         }
-        if (cardsNum != 0) {
+        if (cardsNum != 40) {
             throw new IllegalArgumentException("Number of cards must be 40.");
         }
     }
