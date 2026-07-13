@@ -67,7 +67,7 @@
                     <div>
                         <div class="lobby-meta-label" th:text="#{lobby.configuration}">Configuration</div>
                         <div id="lobby-config" class="lobby-meta-value"
-                             th:text="${lobby.gameType.name() == 'Briskula' and lobby.gameConfig != null
+                             th:text="${lobby.gameConfig != null
                                 ? #messages.msg('lobby.config.base', lobby.gameConfig.numberOfPlayers, lobby.gameConfig.cardsInHandNum) + (lobby.gameConfig.numberOfPlayers == 4 ? (lobby.gameConfig.teamsEnabled ? #messages.msg('lobby.config.teamsEnabled') : #messages.msg('lobby.config.noTeams')) : '')
                                 : #messages.msg('lobby.config.standard')}">Loading…</div>
                         <div id="lobby-config-editor" class="lobby-config-editor field" hidden>

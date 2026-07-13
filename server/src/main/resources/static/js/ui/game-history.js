@@ -26,6 +26,8 @@
     };
 
     const state = {game: null, teamState: null, steps: [], stepIndex: 0, seats: new Map(), trickZone: null, trickEls: new Map(), animating: false};
+    const displayPoints = (points) => window.UltracardsGameRuntime
+        ?.get(state.game?.gameType)?.displayPoints?.(points) ?? points ?? 0;
 
     // ---- data model helpers (unchanged from the original replay) ----
     const escapeHtml = (value) => String(value ?? '')
@@ -163,7 +165,7 @@
     const players = () => state.game?.playersOrder || [];
     const playerCount = () => players().length || 2;
 
-    // ---- rendering, via the game.js (briskula) pipeline ----
+    // ---- rendering, via the shared game.js pipeline ----
     const renderDeck = (deckLeft) => {
         ui?.renderDeckTower(dom.deckTower, dom.deckStack, deckLeft, {cardType: 'ITALIAN', featuredCard: true, alt: t('game.deck.alt')});
         if (dom.deckLeft) dom.deckLeft.textContent = String(deckLeft);
@@ -229,11 +231,14 @@
         if (!hand) return;
         hand.innerHTML = '';
         const total = cards.length;
+        const historyAdapter = window.UltracardsGameRuntime?.get(state.game?.gameType);
+        const spread = historyAdapter?.historyCardSpread ?? 5.5;
+        const lift = historyAdapter?.historyCardLift ?? 1.4;
         cards.forEach((card, i) => {
             const el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: t('gameHistory.playerCard.alt', playerName(player))});
             const centered = i - (total - 1) / 2;
-            el.style.setProperty('--slot-y', `${Math.abs(centered) * 1.4}px`);
-            el.style.setProperty('--slot-rot', `${centered * 5.5}deg`);
+            el.style.setProperty('--slot-y', `${Math.abs(centered) * lift}px`);
+            el.style.setProperty('--slot-rot', `${centered * spread}deg`);
             el.style.zIndex = String(i + 1);
             el.addEventListener('mouseenter', () => { el._prev = showPreview(el, card.card); });
             el.addEventListener('mouseleave', () => { el._prev?.remove(); el._prev = null; });
@@ -281,7 +286,7 @@
         dom.scores.innerHTML = players().map((player) => {
             const teamNumber = getTeamNumber(player);
             return `<div class="history-replay-score ${teamNumber ? `team-score-${teamNumber}` : ''}">
-                <span>${escapeHtml(playerName(player))}</span><strong>${scores.get(playerKey(player)) || 0}</strong></div>`;
+                <span>${escapeHtml(playerName(player))}</span><strong>${displayPoints(scores.get(playerKey(player)))}</strong></div>`;
         }).join('');
     };
     const renderTeams = () => {
@@ -330,7 +335,7 @@
             seat.classList.toggle('is-turn', !!currentPlay && samePlayer(player, currentPlay.player));
             renderSeatHand(seat, player, visibleHands.get(playerKey(player)) || []);
             const pts = seat.querySelector('.seat-points');
-            if (pts) pts.innerHTML = `<span class="seat-points-bubble">${scores.get(playerKey(player)) || 0}</span>`;
+            if (pts) pts.innerHTML = `<span class="seat-points-bubble">${displayPoints(scores.get(playerKey(player)))}</span>`;
         });
         renderTrick((round?.plays || []).slice(0, step.playCount));
         renderScores();
@@ -496,12 +501,15 @@
         const response = await fetch(`/api/games/history/${encodeURIComponent(gameId)}`, {credentials: 'include'});
         if (!response.ok) throw new Error('Could not load replay');
         const game = await response.json();
+        // Replay DTOs predate gameType. Briskula carries trumpCard (even when null),
+        // while Treseta has no such field, so recover the adapter without changing API.
+        game.gameType ??= game.trumpCard === undefined ? 'treseta' : 'briskula';
         state.game = game;
         state.teamState = resolveTeams(game);
         state.steps = buildSteps(game);
         state.stepIndex = 0;
 
-        if (dom.title) dom.title.textContent = game.name || 'Briskula';
+        if (dom.title) dom.title.textContent = game.name || getGameTypeDisplayName(game.gameType) || t('history.unknown');
         if (dom.meta) {
             dom.meta.innerHTML = `<p>${escapeHtml(formatDate(game.endedAt || game.createdAt))}</p>
                 <p>${escapeHtml(settingsText(game.gameConfig))}</p>`;

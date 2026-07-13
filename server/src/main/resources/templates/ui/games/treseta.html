@@ -4,33 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Briskula | ULTRACARDS</title>
-
+    <title th:text="#{game.treseta} + ' | ULTRACARDS'">Treseta | ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
-    <script th:src="@{/js/theme.js}" defer></script>
     <link rel="stylesheet" th:href="@{/css/ui/game.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
+    <script th:src="@{/js/theme.js}" defer></script>
 </head>
 <body class="game-page">
 <div th:replace="~{ui/fragments/header :: header}"></div>
 <div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
-
 <main class="container game-layout">
-    <div id="game-container"
-         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
-        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('briskula-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right', 'self', ${currentUserId}, 'player', true)}"></th:block>
+    <div id="game-container" th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='treseta'">
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, null, false, null, 'self', ${currentUserId}, 'player', true)}"></th:block>
     </div>
-
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
-
 <button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" th:aria-label="#{chat.open}" data-chat-panel=".chat-sidebar">
     <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
     <span class="mobile-chat-badge" hidden></span>
 </button>
 <script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
-
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
@@ -42,7 +35,7 @@
 <script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
 <script th:src="@{/js/ui/game.js}"></script>
 <script th:src="@{/js/ui/game-runtime.js}"></script>
-<script th:src="@{/js/ui/games/briskula.js}"></script>
+<script th:src="@{/js/ui/games/treseta.js}"></script>
 <script th:src="@{/js/ui/live-game.js}"></script>
 </body>
 </html>

@@ -9,7 +9,6 @@
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/game.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
     <link rel="stylesheet" th:href="@{/css/ui/game-history.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
@@ -17,7 +16,7 @@
 <div th:replace="~{ui/fragments/header :: header}"></div>
 
 <main class="container game-layout is-replay" th:attr="data-game-id=${gameEntityId}">
-    <div class="game-shell briskula-game-shell">
+    <div class="game-shell">
         <div class="replay-arena">
             <div class="replay-region" id="replay-seats-top"></div>
             <div class="replay-mid">
@@ -39,7 +38,7 @@
             <div class="history-replay-head">
                 <div>
                     <p class="history-replay-eyebrow" th:text="#{gameHistory.replay}">Game replay</p>
-                    <h1 id="replay-title" th:text="#{game.briskula}">Briskula</h1>
+                    <h1 id="replay-title" th:text="#{common.loading}">Game replay</h1>
                     <div id="replay-meta" class="history-replay-meta">
                         <p th:text="#{gameHistory.loadingReplay}">Loading replay.</p>
                     </div>
@@ -71,6 +70,8 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
 <script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
+<script th:src="@{/js/ui/games/treseta.js}"></script>
 <script th:src="@{/js/ui/game-history.js}"></script>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>

@@ -472,39 +472,67 @@
         return layoutItems.map((item) => item.el);
     }
 
-    function animateFromRect(el, firstRect, lastRect, duration) {
+    function animateFromRect(el, firstRect, lastRect, duration, ease) {
         if (!el || !firstRect || !lastRect) return Promise.resolve();
         const dx = firstRect.left - lastRect.left;
         const dy = firstRect.top - lastRect.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return Promise.resolve();
         const baseTransform = getComputedStyle(el).transform === 'none' ? '' : getComputedStyle(el).transform;
+        const flipToken = (el.__ucFlipToken || 0) + 1;
+        el.__ucFlipToken = flipToken;
+        el.classList.add('is-flipping');
+        const finish = () => {
+            // A newer reflow may have started before this one finished. Only the
+            // latest pass may clear the animation state and inline transform.
+            if (el.__ucFlipToken !== flipToken) return;
+            el.style.transform = '';
+            el.classList.remove('is-flipping');
+        };
         return playAnimation(el, {
             transform: [
                 `translate3d(${dx}px, ${dy}px, 0) ${baseTransform}`,
                 baseTransform || 'translate3d(0, 0, 0)'
             ],
             duration: duration ?? MOTION.standardMs,
-            ease: MOTION.ease
-        }).then(() => {
-            el.style.transform = '';
-        });
+            ease: ease ?? MOTION.ease
+        }).then(finish, finish);
     }
 
-    // Reflow a zone purely through the CSS-variable slot transform. Movement is
-    // animated by the cards' own CSS `transition: transform`, so NO inline transforms
-    // are ever written here — this makes it impossible for an interrupted animation to
-    // strand a card at a stale position (the bug that kept one hand card separated).
+    // Reflow a zone through the CSS-variable slot transform and a FLIP pass. The
+    // temporary is-flipping class prevents the slot transition from competing with
+    // FLIP, and is removed safely when the newest pass completes.
     function animateZoneChange(zone, mutation, options) {
         const resolved = getZone(zone);
         if (!resolved) {
             mutation?.();
             return Promise.resolve();
         }
+
+        // Capture the current card positions before changing order or legality
+        // classes.  The hand can move vertically when cards become playable or
+        // illegal; a FLIP pass makes that movement visible even when the slot
+        // CSS variables are updated in the same frame.
+        const before = new Map(
+            getZoneCards(resolved).map((card) => [card, card.getBoundingClientRect()])
+        );
         mutation?.();
         const cards = options?.cards ? Array.from(options.cards) : null;
         if (cards) cards.forEach((card) => resolved.element.appendChild(card));
         layoutZone(resolved, cards || undefined, options?.layout);
-        return Promise.resolve();
+
+        const cardsAfter = cards || getZoneCards(resolved);
+        const animations = cardsAfter.map((card) => {
+            const first = before.get(card);
+            if (!first) return Promise.resolve();
+            return animateFromRect(
+                card,
+                first,
+                card.getBoundingClientRect(),
+                options?.duration ?? MOTION.quickMs,
+                options?.ease ?? 'inOut(2)'
+            );
+        });
+        return Promise.all(animations);
     }
 
     function applyHandFan(cards) {
@@ -542,7 +570,7 @@
         existingCards.forEach((card, index) => {
             const centeredIndex = index - ((total - 1) / 2);
             const rotate = centeredIndex * (options?.spread ?? 5);
-            const lift = Math.abs(centeredIndex) * 1.5;
+            const lift = Math.abs(centeredIndex) * (options?.lift ?? 1.5);
             card.style.transform = `translateY(${lift}px) rotate(${rotate}deg)`;
             card.style.zIndex = String(index + 1);
         });
@@ -594,6 +622,13 @@
         if (!handEl || !Array.isArray(cards) || !cards.length) return;
         const deckRect = options?.fromRect || null;
         const gsapApi = window.gsap || null;
+        // The server's hand order is not necessarily the rendered/sorted hand order.
+        // Stagger by visual position so cards always deal from left to right.
+        const orderedCards = [...cards].sort((left, right) => {
+            const leftEl = handEl.querySelector(`[data-card-key="${CSS.escape(cardKey(left))}"]`);
+            const rightEl = handEl.querySelector(`[data-card-key="${CSS.escape(cardKey(right))}"]`);
+            return (leftEl?.getBoundingClientRect().left ?? 0) - (rightEl?.getBoundingClientRect().left ?? 0);
+        });
         const finish = (el, card, index) => {
             if (!el || el.dataset.dealFinished === '1') return;
             delete el.dataset.dealRunning;
@@ -601,16 +636,16 @@
             el.classList.remove('is-dealing');
             ['--deal-x', '--deal-y', '--deal-rot', '--deal-scale'].forEach((prop) => el.style.removeProperty(prop));
             el.cardApi?.flip(card);
-            options?.onFinish?.(el, card, index === cards.length - 1);
+            options?.onFinish?.(el, card, index === orderedCards.length - 1);
         };
 
-        cards.forEach((card, index) => {
+        orderedCards.forEach((card, index) => {
             const key = cardKey(card);
             const el = handEl.querySelector(`[data-card-key="${CSS.escape(key)}"]`);
             if (!el || el.dataset.dealRunning === '1' || el.dataset.dealFinished === '1') return;
             el.dataset.dealRunning = '1';
             const slot = el.getBoundingClientRect();
-            const from = options?.fromFeaturedLast && index === cards.length - 1
+            const from = options?.fromFeaturedLast && index === orderedCards.length - 1
                 ? options.featuredRect || deckRect
                 : deckRect;
             if (!gsapApi || !from?.width || !slot.width) {
@@ -879,10 +914,15 @@
         sourceEl.style.width = `${width}px`;
         sourceEl.style.height = `${height}px`;
         sourceEl.classList.add(options?.className || 'drag-ghost');
-        ensureOverlayLayer().appendChild(sourceEl);
+        const overlay = ensureOverlayLayer();
+        // Reflow the cards left behind through the shared FLIP path.  With only
+        // two cards this is the large center-to-edge move that otherwise snaps.
+        if (originZone) {
+            animateZoneChange(originZone, () => overlay.appendChild(sourceEl));
+        } else {
+            overlay.appendChild(sourceEl);
+        }
         sourceEl.style.transform = `translate3d(${rect.left + (rect.width - width) / 2}px, ${rect.top + (rect.height - height) / 2}px, 0)`;
-        // The card left the hand container, so the remaining cards re-fan to close the gap.
-        if (originZone) layoutZone(originZone);
         updateDragCard(session, pointer.x, pointer.y);
         return session;
     }
@@ -1143,7 +1183,7 @@
         const raise = (card) => {
             if (raised === card) return;
             lower();
-            if (!card) return;
+            if (!card || (options?.isCardActive && !options.isCardActive(card))) return;
             raised = card;
             card.__ucPrevZ = card.style.zIndex;
             card.style.zIndex = '60';
@@ -1157,7 +1197,9 @@
         // hand. Otherwise hovering blank space would enlarge the edge card.
         const pickCard = (x, y) => {
             const cards = getZoneCards(resolved || {element}).filter((card) =>
-                !card.classList.contains('is-dragging') && !card.classList.contains('drag-ghost'));
+                !card.classList.contains('is-dragging')
+                && !card.classList.contains('drag-ghost')
+                && (!options?.isCardActive || options.isCardActive(card)));
             if (!cards.length) return null;
             let minL = Infinity, maxR = -Infinity, minT = Infinity, maxB = -Infinity;
             let best = null, bestDist = Infinity;
@@ -1229,7 +1271,7 @@
                         if (options?.isActive && !options.isActive()) return;
                         const pointer = eventToPoint(event);
                         const cardEl = element.__ucRaisedCard || nearestCard(pointer.x);
-                        if (!cardEl) return;
+                        if (!cardEl || (options?.isCardActive && !options.isCardActive(cardEl))) return;
                         const session = startDragCard({
                             sourceEl: cardEl,
                             originZone: options?.originZone || resolved,
@@ -1318,26 +1360,40 @@
     function animateTrickCollect(trickCards, winnerSeatEl) {
         if (!trickCards || !trickCards.length) return Promise.resolve();
         const reducedMotion = prefersReducedMotion();
-        const pickupDuration = reducedMotion ? 0.01 : 0.08;
-        const collectDuration = reducedMotion ? 0.05 : 0.28;
-        const stagger = reducedMotion ? 0 : 0.024;
-        if (!gsap || !winnerSeatEl) {
-            return Promise.all(trickCards.map((card, i) =>
-                playAnimation(card, {
+        const pickupDuration = reducedMotion ? 0.01 : 0.12;
+        const collectDuration = reducedMotion ? 0.05 : 0.34;
+        const stagger = reducedMotion ? 0 : 0.07;
+        const orderedCards = [...trickCards].sort((left, right) =>
+            left.getBoundingClientRect().left - right.getBoundingClientRect().left
+        );
+        const viewportLeft = -Math.max(window.innerWidth * 0.08, 120);
+
+        if (!gsap) {
+            return Promise.all(orderedCards.map((card, i) => {
+                const rect = card.getBoundingClientRect();
+                const dx = viewportLeft - rect.right;
+                const dy = (i % 2 ? -1 : 1) * (10 + i * 2);
+                const base = getComputedStyle(card).transform;
+                const baseTransform = base === 'none' ? '' : base;
+                return playAnimation(card, {
+                    transform: [
+                        baseTransform || 'translate3d(0, 0, 0)',
+                        `translate3d(${dx}px, ${dy}px, 0) ${baseTransform}`
+                    ],
                     opacity: [1, 0],
                     duration: (pickupDuration + collectDuration) * 1000,
                     delay: i * stagger * 1000,
                     ease: 'inOut(2)'
-                })
-            ));
+                });
+            }));
         }
-        const targetRect = winnerSeatEl.getBoundingClientRect();
-        const toX = targetRect.left + targetRect.width / 2;
-        const toY = targetRect.top + targetRect.height / 2;
-        const promises = trickCards.map((card, i) => {
+
+        const promises = orderedCards.map((card, i) => {
             const fromRect = card.getBoundingClientRect();
-            const dx = toX - (fromRect.left + fromRect.width / 2);
-            const dy = toY - (fromRect.top + fromRect.height / 2);
+            // Exit completely past the left edge. Each card gets a slight vertical
+            // offset so the stack feels collected rather than simply fading in place.
+            const dx = viewportLeft - fromRect.right;
+            const dy = (i % 2 ? -1 : 1) * (10 + i * 2);
             return new Promise((resolve) => {
                 const timeline = gsap.timeline({delay: i * stagger, onComplete: resolve});
                 timeline.to(card, {
@@ -1350,10 +1406,10 @@
                 timeline.to(card, {
                     x: dx,
                     y: dy,
-                    scale: 0.22,
+                    scale: 0.72,
                     opacity: 0,
                     duration: collectDuration,
-                    ease: 'power3.in'
+                    ease: 'power2.inOut'
                 });
             });
         });

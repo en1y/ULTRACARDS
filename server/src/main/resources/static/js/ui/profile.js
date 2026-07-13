@@ -787,11 +787,11 @@ function compareStatsEntries(a, b, sortKey = detailedStatsFilters.sort) {
     }
 }
 
-function renderGameStatsCard(gameType, stats, extraClass = '') {
+function renderGameStatsCard(gameType, stats, extraClass = '', label = gameDisplayName(gameType)) {
     const normalized = normalizeGameStats(stats);
     return `
         <article class="profile-game-card profile-game-card--donut ${escapeHtml(extraClass)}">
-            <span>${escapeHtml(gameDisplayName(gameType))}</span>
+            <span>${escapeHtml(label)}</span>
             <div class="profile-game-card-row">
                 <div class="profile-stat-donut" style="--win-rate: ${normalized.winRate}" role="img" aria-label="${t('profile.winRate.aria', normalized.winRate)}">
                     <span>${normalized.winRate}%</span>
@@ -843,7 +843,7 @@ function renderMatchupRows(matchups, emptyText) {
             return `
                 <tr>
                     <td>${escapeHtml(matchupLabel(matchup))}</td>
-                    <td>${escapeHtml(gameConfigDisplayName(matchup.gameConfig))}</td>
+                    <td>${escapeHtml(gameConfigDisplayName(matchup.gameConfig, matchup.gameType || 'Briskula'))}</td>
                     <td>${stats.played}</td>
                     <td>${stats.wins}</td>
                     <td>${stats.losses}</td>
@@ -1001,12 +1001,15 @@ function renderDetailedStats(data) {
 
     const gameStats = cachedDetailedStats?.userGamesStats?.gameStats || {};
     const briskulaStats = cachedDetailedStats?.userBriskulaStats || {};
+    const tresetaStats = cachedDetailedStats?.userTresetaStats || {};
     const configStats = briskulaStats.configStats || {};
+    const tresetaConfigStats = tresetaStats.configStats || {};
     const modes = collectBriskulaModes(briskulaStats, configStats);
     selectDefaultBriskulaMode(modes);
 
     const gameEntries = Object.entries(gameStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
     const configEntries = Object.entries(configStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
+    const tresetaConfigEntries = Object.entries(tresetaConfigStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
     const selectedModeName = detailedStatsFilters.gameConfig
         ? gameDisplayName(detailedStatsFilters.gameConfig)
         : t('profilePage.noModeSelected');
@@ -1014,6 +1017,14 @@ function renderDetailedStats(data) {
     const winsWithTeammate = filterMatchupsByControls(briskulaStats.winsWithTeammate);
     const teammateTable = winsWithTeammate.length
         ? renderMatchupTable(t('profilePage.withTeammates', selectedModeName), winsWithTeammate, t('profilePage.noTeammateStats'))
+        : '';
+    const tresetaOpponentTable = renderMatchupTable(
+        t('profilePage.againstUsers', t('game.treseta')),
+        tresetaStats.winsAgainstUser,
+        t('profilePage.noOpponentStats')
+    );
+    const tresetaTeammateTable = Array.isArray(tresetaStats.winsWithTeammate) && tresetaStats.winsWithTeammate.length
+        ? renderMatchupTable(t('profilePage.withTeammates', t('game.treseta')), tresetaStats.winsWithTeammate, t('profilePage.noTeammateStats'))
         : '';
 
     container.innerHTML = `
@@ -1047,9 +1058,31 @@ function renderDetailedStats(data) {
                 `}
             </div>
         </article>
+        <article class="profile-stats-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">${t('game.treseta')}</p>
+                    <h2>${t('profilePage.byGameSetting')}</h2>
+                </div>
+            </div>
+            <div class="profile-game-grid">
+                ${tresetaConfigEntries.map(([gameConfig, stats]) => renderGameStatsCard(
+                    gameConfig,
+                    stats,
+                    'profile-game-card--config',
+                    gameConfigDisplayName(gameConfig, 'treseta')
+                )).join('') || `
+                    <article class="profile-session-card profile-session-card--empty">
+                        <p>${t('profilePage.noConfigStats')}</p>
+                    </article>
+                `}
+            </div>
+        </article>
         ${renderMatchupControls(modes)}
         ${renderMatchupTable(t('profilePage.againstUsers', selectedModeName), winsAgainstUser, t('profilePage.noOpponentStats'))}
         ${teammateTable}
+        ${tresetaOpponentTable}
+        ${tresetaTeammateTable}
     `;
 
     bindMatchupControls(container);

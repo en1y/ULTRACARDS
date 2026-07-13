@@ -6,6 +6,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.templates.game.model.AbstractPlayer;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
@@ -62,6 +63,9 @@ public class GameUIController {
         if (game instanceof BriskulaGameEntity briskulaGame) {
             return briskulaGame.createGameDTO();
         }
+        if (game instanceof TresetaGameEntity tresetaGame) {
+            return tresetaGame.createGameDTO();
+        }
         return null;
     }
 
@@ -78,6 +82,9 @@ public class GameUIController {
     private String toGameView(GameEntity<?, ?> game) {
         if (game instanceof BriskulaGameEntity) {
             return "ui/games/briskula";
+        }
+        if (game instanceof TresetaGameEntity) {
+            return "ui/games/treseta";
         }
         return null;
     }

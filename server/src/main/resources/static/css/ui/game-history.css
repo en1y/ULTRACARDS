@@ -205,6 +205,7 @@
         translateY(var(--slot-y, 0px))
         rotate(calc(var(--slot-rot, 0deg) + var(--deal-rot, 0deg)))
         scale(var(--deal-scale, 1));
+    transition: transform 160ms ease-in-out;
 }
 
 /* Keep the card's own fan z-order while it flies (a returning left card

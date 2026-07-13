@@ -561,8 +561,12 @@
         }
 
         function describeConfig(lobby) {
-            if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+            if (!lobby?.gameConfig) {
                 return t('lobby.config.standard');
+            }
+
+            if (typeof getGameConfigDisplayName === 'function') {
+                return getGameConfigDisplayName(lobby.gameType, lobby.gameConfig);
             }
 
             const config = lobby.gameConfig;
@@ -653,27 +657,7 @@
         }
 
         function resolveGameSettingKey(lobby) {
-            if (!lobby || String(lobby.gameType) !== 'Briskula' || !lobby.gameConfig) {
-                return '';
-            }
-
-            const config = lobby.gameConfig;
-            if (config.numberOfPlayers === 2 && config.cardsInHandNum === 3) {
-                return 'p2';
-            }
-            if (config.numberOfPlayers === 2 && config.cardsInHandNum === 4) {
-                return 'p2c4';
-            }
-            if (config.numberOfPlayers === 3) {
-                return 'p3';
-            }
-            if (config.numberOfPlayers === 4 && config.teamsEnabled) {
-                return 'p4teams';
-            }
-            if (config.numberOfPlayers === 4) {
-                return 'p4';
-            }
-            return '';
+            return typeof resolveLobbyGameSettingKey === 'function' ? resolveLobbyGameSettingKey(lobby) : '';
         }
 
         async function updateLobbyConfiguration(settingKey) {
@@ -704,7 +688,7 @@
             updatedLobby.players = state.lobby.players;
             updatedLobby.host = state.lobby.host;
             updatedLobby.isPublic = isLobbyPublic(state.lobby);
-            if (gameTypeKey === 'briskula' && updatedLobby.gameConfig) {
+            if (updatedLobby.gameConfig) {
                 updatedLobby.gameConfig.orderedUsers = resolveOrderedLobbyPlayers(state.lobby);
             }
 
@@ -876,7 +860,7 @@
 
         function resolveTeams(lobby) {
             const config = lobby?.gameConfig;
-            if (!lobby || lobby.gameType !== 'Briskula' || !config || config.numberOfPlayers !== 4 || !config.teamsEnabled) {
+            if (!lobby || !['Briskula', 'Treseta'].includes(lobby.gameType) || !config || config.numberOfPlayers !== 4 || !config.teamsEnabled) {
                 return null;
             }
 
@@ -900,7 +884,7 @@
 
         function resolveOrderedLobbyPlayers(lobby) {
             const players = sortPlayers(Array.isArray(lobby?.players) ? lobby.players : [], lobby?.host);
-            if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+            if (!lobby || !['Briskula', 'Treseta'].includes(lobby.gameType) || !lobby.gameConfig) {
                 return players;
             }
 
@@ -949,7 +933,7 @@
         }
 
         function isBriskulaOrderReorderable(lobby) {
-            return !!(lobby && lobby.gameType === 'Briskula' && lobby.gameConfig);
+            return !!(lobby && ['Briskula', 'Treseta'].includes(lobby.gameType) && lobby.gameConfig);
         }
 
         function startTeamDrag(event, card, teamState) {

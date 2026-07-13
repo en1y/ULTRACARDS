@@ -42,7 +42,7 @@ public class TresetaGameService {
     private final TaskScheduler taskScheduler;
     private final Function<com.ultracards.server.entity.lobby.LobbyEntity, Boolean> openLobby;
 
-    @Value("${app.treseta-move.timer.duration-seconds:${app.briskula-move.timer.duration-seconds}}")
+    @Value("${app.treseta-move.timer.duration-seconds}")
     private int timerDuration;
 
     public TresetaGameService(GameManager gameManager, GameEventPublisher eventPublisher, LobbyManager lobbyManager,

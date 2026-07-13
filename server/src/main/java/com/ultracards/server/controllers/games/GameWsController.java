@@ -6,8 +6,10 @@ import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.GameService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
@@ -29,5 +31,14 @@ public class GameWsController {
                 .findFirst().orElse(null);
         if (user == null) return;
         gameService.playCard(user, card, game);
+    }
+
+    @MessageExceptionHandler(IllegalArgumentException.class)
+    @SendToUser("/queue/game/errors")
+    public GameMoveError handleInvalidMove(IllegalArgumentException ex) {
+        return new GameMoveError(400, ex.getMessage());
+    }
+
+    public record GameMoveError(int status, String message) {
     }
 }

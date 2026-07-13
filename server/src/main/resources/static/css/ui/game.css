@@ -1,3 +1,9 @@
+@property --lift {
+            syntax: '<length>';
+            inherits: false;
+            initial-value: 0px;
+        }
+
 :root {
             --game-bg-1: #f8ecd7;
             --game-bg-2: #ebd6a9;
@@ -288,7 +294,7 @@
             text-align: center;
             color: var(--seat-text);
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-            transition: transform 280ms ease, filter 280ms ease;
+            transition: transform 280ms ease-in-out, filter 280ms ease;
             pointer-events: auto;
             letter-spacing: 0;
             --hand-rotate: 0deg;
@@ -373,6 +379,7 @@
             margin: 0.45rem 0 0.2rem;
             transform: rotate(var(--hand-rotate));
             transform-origin: 50% 50%;
+            transition: transform 160ms ease-in-out;
         }
 
         .seat-card {
@@ -382,7 +389,7 @@
             background: var(--cream);
             margin-left: -9px;
             transform-origin: 50% 85%;
-            transition: transform 160ms ease;
+            transition: transform 160ms ease-in-out;
         }
 
         .seat-card:first-child {
@@ -472,6 +479,7 @@
         .trick-area .game-hand-placeholder {
             width: var(--trick-card-width);
             border-radius: 12px;
+            visibility: hidden;
         }
 
         .briskula-shell .game-hand-placeholder {
@@ -839,6 +847,29 @@
             backdrop-filter: blur(8px);
         }
 
+        .hand-sort-controls {
+            display: flex;
+            gap: 0.28rem;
+        }
+
+        .hand-sort-button {
+            border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
+            border-radius: 999px;
+            padding: 0.22rem 0.48rem;
+            background: transparent;
+            color: var(--seat-text);
+            font: inherit;
+            font-size: 0.68rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .hand-sort-button.is-active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: var(--color-on-primary, #fff);
+        }
+
         .player-summary-name {
             font-size: 0.76rem;
             font-weight: 900;
@@ -856,6 +887,12 @@
             min-height: 156px;
         }
 
+        /* Chrome can keep a pointer gesture alive across the round-clear repaint;
+           block the hand surface while the explicit JS round lock is active. */
+        .game-layout.is-round-clearing .hand-cards {
+            pointer-events: none;
+        }
+
         .hand-card {
             --grow: 0px;
             width: var(--hand-card-width);
@@ -863,7 +900,7 @@
             border-radius: 14px;
             box-shadow: 0 16px 30px rgba(0, 0, 0, 0.26);
             cursor: grab;
-            transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, filter 180ms ease;
+            transition: --lift 180ms ease-in-out, transform 180ms ease-in-out, box-shadow 180ms ease, opacity 180ms ease, filter 180ms ease;
             background: var(--cream);
             margin: 0;
             z-index: 1;
@@ -911,6 +948,17 @@
             filter: saturate(0.82);
         }
 
+        .hand-card.is-playable {
+            --lift: -14px;
+        }
+
+        .hand-card.is-illegal {
+            --lift: 9px;
+            opacity: 0.66;
+            cursor: not-allowed;
+            filter: grayscale(0.34) saturate(0.72);
+        }
+
         .hand-card.is-pressed:not(.is-disabled) {
             --press-y: 8px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.24);
@@ -924,6 +972,12 @@
             )
             rotate(calc(var(--slot-rot, 0deg) + var(--deal-rot, 0deg)))
             scale(calc(var(--slot-scale, 1) * var(--hover-scale, 1) * var(--deal-scale, 1)));
+        }
+
+        /* FLIP owns transform while a hand is reflowing. Once the pass completes,
+           the normal hand transition is restored so hover raise remains animated. */
+        .game-hand-card.is-flipping {
+            transition: none !important;
         }
 
         .game-hand-card.trick-card {

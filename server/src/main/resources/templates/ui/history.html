@@ -26,6 +26,7 @@
                         <select id="history-game-type">
                             <option value="all" th:text="#{common.allGames}">All games</option>
                             <option value="briskula" th:text="#{game.briskula}">Briskula</option>
+                            <option value="treseta" th:text="#{game.treseta}">Treseta</option>
                         </select>
                     </label>
 
@@ -74,6 +75,8 @@
         window.__CURRENT_USER_ID__ = /*[[${currentUserId}]]*/ null;
         window.__INITIAL_HISTORY__ = /*[[${initialHistory}]]*/ [];
     </script>
+    <script th:src="@{/js/ui/game-runtime.js}"></script>
+    <script th:src="@{/js/ui/games/treseta.js}"></script>
     <script th:src="@{/js/ui/history.js}"></script>
     <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>
