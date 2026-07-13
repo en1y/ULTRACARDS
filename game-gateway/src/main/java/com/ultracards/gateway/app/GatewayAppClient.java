@@ -1,5 +1,9 @@
 package com.ultracards.gateway.app;
 
+import com.ultracards.gateway.dto.games.games.GameEntityDTO;
+import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.CardImageService;
 import com.ultracards.gateway.service.ChatService;
@@ -19,7 +23,13 @@ import com.ultracards.gateway.service.UiPageService;
 import com.ultracards.gateway.service.UserSearchService;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 public class GatewayAppClient implements AutoCloseable {
     private final ClientTokenHolder tokenHolder;
@@ -36,6 +46,8 @@ public class GatewayAppClient implements AutoCloseable {
     private final CardImageService cards;
     private final ServerService server;
     private final UiPageService uiPages;
+    private final List<StompGatewayService> sockets = new CopyOnWriteArrayList<>();
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     public GatewayAppClient(String serverUrl, String wsUrl) {
         this(new RestTemplate(), serverUrl, wsUrl, new ClientTokenHolder(), GatewayAsync.cached(Runnable::run));
@@ -132,14 +144,104 @@ public class GatewayAppClient implements AutoCloseable {
         return connect(new NotificationWsService(wsUrl, tokenHolder));
     }
 
-    private <T extends StompGatewayService> CompletableFuture<T> connect(T socket) {
+    public CompletableFuture<GatewayGameSession<BriskulaGameEntityDTO>> briskulaGame(UUID gameId) {
+        return gameSocket().thenApply(socket -> GatewayGameSession.briskula(
+                gameId, socket, async, () -> releaseSocket(socket)))
+                .thenCompose(session -> seedSession(session, () -> game.getBriskulaSnapshot(gameId)));
+    }
+
+    public CompletableFuture<GatewayGameSession<TresetaGameEntityDTO>> tresetaGame(UUID gameId) {
+        return gameSocket().thenApply(socket -> GatewayGameSession.treseta(
+                gameId, socket, async, () -> releaseSocket(socket)))
+                .thenCompose(session -> seedSession(session, () -> game.getTresetaSnapshot(gameId)));
+    }
+
+    private <T extends GameEntityDTO> CompletableFuture<GatewayGameSession<T>> seedSession(
+            GatewayGameSession<T> session, Supplier<GameSnapshotDTO<T>> snapshot) {
+        return async.call(snapshot).handle((value, error) -> {
+            if (error != null) {
+                try {
+                    session.close();
+                } catch (RuntimeException closeError) {
+                    error.addSuppressed(closeError);
+                }
+                throw error instanceof CompletionException completion
+                        ? completion : new CompletionException(error);
+            }
+            session.seed(value);
+            return session;
+        });
+    }
+
+    <T extends StompGatewayService> CompletableFuture<T> connect(T socket) {
         var ready = new CompletableFuture<T>();
-        socket.connect(() -> ready.complete(socket), ready::completeExceptionally);
+        if (closed.get()) {
+            var error = closedException();
+            closeRejectedSocket(socket, error);
+            return CompletableFuture.failedFuture(error);
+        }
+
+        sockets.add(socket);
+        if (closed.get()) {
+            releaseSocket(socket);
+            return CompletableFuture.failedFuture(closedException());
+        }
+
+        try {
+            socket.connect(() -> {
+                if (closed.get()) {
+                    ready.completeExceptionally(closedException());
+                    releaseSocket(socket);
+                } else if (!ready.complete(socket)) {
+                    releaseSocket(socket);
+                }
+            }, error -> {
+                ready.completeExceptionally(error);
+                releaseSocket(socket);
+            });
+        } catch (RuntimeException error) {
+            ready.completeExceptionally(error);
+            releaseSocket(socket);
+        }
         return ready;
+    }
+
+    void releaseSocket(StompGatewayService socket) {
+        sockets.remove(socket);
+        socket.close();
+    }
+
+    private void closeRejectedSocket(StompGatewayService socket, RuntimeException error) {
+        try {
+            socket.close();
+        } catch (RuntimeException closeError) {
+            error.addSuppressed(closeError);
+        }
+    }
+
+    private IllegalStateException closedException() {
+        return new IllegalStateException("Gateway client is closed.");
     }
 
     @Override
     public void close() {
-        async.close();
+        if (!closed.compareAndSet(false, true)) return;
+        RuntimeException failure = null;
+        for (var socket : sockets) {
+            try {
+                socket.close();
+            } catch (RuntimeException error) {
+                if (failure == null) failure = error;
+                else failure.addSuppressed(error);
+            }
+        }
+        sockets.clear();
+        try {
+            async.close();
+        } catch (RuntimeException error) {
+            if (failure == null) failure = error;
+            else failure.addSuppressed(error);
+        }
+        if (failure != null) throw failure;
     }
 }

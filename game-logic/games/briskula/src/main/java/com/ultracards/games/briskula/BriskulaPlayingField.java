@@ -10,7 +10,6 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardSuit, 
 
     private final ItalianCardSuit gameTrumpCardType;
     private final BriskulaGameConfig gameConfig;
-    private int playedCards = 0;
     public BriskulaPlayingField(List<BriskulaPlayer> players, BriskulaGame game, ItalianCardSuit gameTrumpCardType, BriskulaGameConfig gameConfig) {
         super(players, game);
         this.gameTrumpCardType = gameTrumpCardType;
@@ -31,7 +30,7 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardSuit, 
     @Override
     public boolean isTurnPlayed() {
         if (gameConfig.equals(BriskulaGameConfig.TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH)) {
-            return playedCards >= 4;
+            return getPlayedCards().size() >= 4;
         }
         return super.isTurnPlayed();
     }
@@ -39,7 +38,7 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardSuit, 
     @Override
     public BriskulaPlayer getCurrentPlayer() {
         if (gameConfig.equals(BriskulaGameConfig.TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH)) {
-            return getPlayers().get(playedCards % 2);
+            return getPlayers().get(getPlayedCards().size() % 2);
         }
         return super.getCurrentPlayer();
     }
@@ -62,11 +61,5 @@ public class BriskulaPlayingField extends AbstractPlayingField<ItalianCardSuit, 
             res += card.getPoints();
         }
         return res;
-    }
-
-    @Override
-    public void play(BriskulaCard card, BriskulaPlayer player) {
-        playedCards++;
-        super.play(card, player);
     }
 }

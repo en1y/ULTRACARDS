@@ -6,6 +6,9 @@ import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
+import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
+import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
@@ -145,13 +148,22 @@ public class LobbyService {
 
     public Boolean startLobby(UserEntity user) {
         var lobby = lobbyManager.getLobby(user);
-        if (lobby != null && lobby.getUsers().size() >= lobby.getMinPlayers()) {
+        if (lobby != null && lobby.getOwner().equals(user) && hasRequiredPlayers(lobby)) {
             gameService.startGame(lobby);
             lobby.setStarted(true);
             eventPublisher.publish(lobby, STARTED);
             return true;
         }
         return false;
+    }
+
+    private boolean hasRequiredPlayers(LobbyEntity lobby) {
+        var config = lobby.getLobbyGameConfig();
+        if (config instanceof BriskulaLobbyGameConfig briskula)
+            return lobby.getUsers().size() == briskula.getGameConfig().getNumberOfPlayers();
+        if (config instanceof TresetaLobbyGameConfig treseta)
+            return lobby.getUsers().size() == treseta.getGameConfig().getNumberOfPlayers();
+        return lobby.getUsers().size() >= lobby.getMinPlayers();
     }
 
     public void inviteFriendToLobby(UserEntity user, Long friendUserId) {
@@ -184,6 +196,8 @@ public class LobbyService {
                 if (config != null) {
                     if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
                         lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
+                    } else if (config instanceof TresetaGameConfigDTO tresetaConfig) {
+                        lobby.setGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
                     } else {
                         lobby.setGameConfig(config);
                     }
@@ -273,7 +287,19 @@ public class LobbyService {
 
                 yield res;
             }
-            case "treseta", "durak", "poker" -> new ArrayList<>();
+            case "treseta" -> {
+                var lobbies = lobbyManager.getLobbies(GameTypeDTO.Treseta);
+                var output = new ArrayList<GameLobbyDTO>();
+                var configs = TresetaGameConfig.values();
+                if (gameSettingId == null || gameSettingId < 0 || gameSettingId >= configs.length) yield null;
+                var config = configs[gameSettingId];
+                for (var lobby : lobbies)
+                    if (lobby.getLobbyState().equals(LobbyState.PUBLIC)
+                            && ((TresetaLobbyGameConfig) lobby.getLobbyGameConfig()).getGameConfig().equals(config))
+                        output.add(lobby.createLobbyDTO(false));
+                yield output;
+            }
+            case "durak", "poker" -> new ArrayList<>();
             default -> null;
         };
     }
@@ -295,6 +321,8 @@ public class LobbyService {
         var config = lobby.getGameConfig();
         if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
             lobby.setLobbyGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
+        } else if (config instanceof TresetaGameConfigDTO tresetaConfig) {
+            lobby.setLobbyGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
         }
     }
 

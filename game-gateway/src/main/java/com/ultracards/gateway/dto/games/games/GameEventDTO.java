@@ -5,12 +5,12 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class GameEventDTO {
-    private GameEntityDTO gameEntity;
+public class GameEventDTO<T extends GameEntityDTO> {
+    private T gameEntity;
     private GameEventTypeDTO gameEvent;
     private GameResultDTO result;
 
-    public GameEventDTO(GameEntityDTO gameEntity, GameEventTypeDTO gameEvent) {
+    public GameEventDTO(T gameEntity, GameEventTypeDTO gameEvent) {
         this.gameEntity = gameEntity;
         this.gameEvent = gameEvent;
     }

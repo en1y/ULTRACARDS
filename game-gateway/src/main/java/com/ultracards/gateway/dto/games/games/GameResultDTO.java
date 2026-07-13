@@ -1,13 +1,23 @@
 package com.ultracards.gateway.dto.games.games;
 
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
-import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
-@AllArgsConstructor
+@NoArgsConstructor
 public class GameResultDTO {
-    List<GamePlayerDTO> gameWinners;
+    private List<GamePlayerDTO> gameWinners;
+    private Integer winnerPointsNum;
+
+    public GameResultDTO(List<GamePlayerDTO> gameWinners) {
+        this.gameWinners = gameWinners;
+    }
+
+    public GameResultDTO(List<GamePlayerDTO> gameWinners, Integer winnerPointsNum) {
+        this.gameWinners = gameWinners;
+        this.winnerPointsNum = winnerPointsNum;
+    }
 }

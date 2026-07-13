@@ -53,7 +53,7 @@ public class GameRecorder implements GameRecordingHook {
 
     @Override
     public void gameEnded(GameInterface<?, ?, ?, ?, ?, ?, ?> game, List<? extends AbstractPlayer<?, ?, ?, ?, ?>> winners) {
-        recordedGame.ended(players(game.getPlayers()), attributes.gameAttributes(game));
+        recordedGame.ended(attributes.gameAttributes(game));
     }
 
     private List<RecordedPlayer> players(List<? extends AbstractPlayer<?, ?, ?, ?, ?>> source) {

@@ -12,4 +12,5 @@ import lombok.Setter;
 public class DetailedProfileStatsDTO {
     private UserGamesStatsDTO userGamesStats;
     private UserBriskulaStatsDTO userBriskulaStats;
+    private UserTresetaStatsDTO userTresetaStats;
 }

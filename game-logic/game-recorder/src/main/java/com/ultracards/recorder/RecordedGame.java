@@ -95,9 +95,8 @@ public class RecordedGame {
         this.attributes = new LinkedHashMap<>(attributes);
     }
 
-    void ended(List<RecordedPlayer> players, Map<String, String> attributes) {
+    void ended(Map<String, String> attributes) {
         endedAt = Instant.now();
-        this.players = new ArrayList<>(players);
         this.attributes = new LinkedHashMap<>(attributes);
     }
 

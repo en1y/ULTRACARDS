@@ -1,6 +1,7 @@
 package com.ultracards.gateway.dto.games.games;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GameEntityDTO {
     @NotNull UUID id;
     @NotNull UUID lobbyId;

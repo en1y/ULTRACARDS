@@ -8,6 +8,7 @@ import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Data
+@NoArgsConstructor
 public class BriskulaGameEntityDTO extends GameEntityDTO {
     @Getter @Setter
     @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)

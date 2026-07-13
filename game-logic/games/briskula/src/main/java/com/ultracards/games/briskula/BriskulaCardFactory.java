@@ -11,8 +11,8 @@ public class BriskulaCardFactory implements CardFactoryInterface<ItalianCardSuit
     @Override
     public List<BriskulaCard> getCards() {
         var res = new ArrayList<BriskulaCard>();
-        for (ItalianCardSuit type : ItalianCardSuit.values()) {
-            for (ItalianCardValue value : ItalianCardValue.values()) {
+        for (var type : ItalianCardSuit.values()) {
+            for (var value : ItalianCardValue.values()) {
                 res.add(new BriskulaCard(type, value));
             }
         }

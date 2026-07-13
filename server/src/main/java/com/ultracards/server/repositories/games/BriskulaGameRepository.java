@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface BriskulaGameRepository extends JpaRepository<RecordedBriskulaGame, UUID> {
@@ -16,9 +15,8 @@ public interface BriskulaGameRepository extends JpaRepository<RecordedBriskulaGa
             JOIN recorded_game_players player ON player.game_id = game.id
             WHERE player.user_id = :userId
             ORDER BY game.ended_at DESC
-            LIMIT 20 OFFSET :offset
             """, nativeQuery = true)
-    List<RecordedBriskulaGame> findPastGamesByUserIdLatest(Long userId, int offset);
+    List<RecordedBriskulaGame> findPastGamesByUserIdLatest(Long userId);
 
     @Query(value = """
             SELECT game.*, briskula.game_config, briskula.teams_enabled, briskula.trump_suit, briskula.trump_value
@@ -26,7 +24,6 @@ public interface BriskulaGameRepository extends JpaRepository<RecordedBriskulaGa
             JOIN recorded_game_players player ON player.game_id = game.id
             WHERE player.user_id = :userId
             ORDER BY game.ended_at ASC
-            LIMIT 20 OFFSET :offset
             """, nativeQuery = true)
-    List<RecordedBriskulaGame> findPastGamesByUserIdOldest(Long userId, int offset);
+    List<RecordedBriskulaGame> findPastGamesByUserIdOldest(Long userId);
 }

@@ -1,6 +1,8 @@
 package com.ultracards.gateway.dto.games.games.briskula;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
+import com.ultracards.gateway.dto.games.GamePlayerKeyDeserializer;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -26,6 +28,7 @@ public class BriskulaGameHistoryDTO {
     private List<GamePlayerDTO> playersOrder;
     private List<List<GamePlayerDTO>> teams;
     private List<BriskulaRoundHistoryDTO> rounds;
+    @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
     private Map<GamePlayerDTO, Integer> finalPoints;
     private List<GamePlayerDTO> winners;
 
@@ -34,10 +37,12 @@ public class BriskulaGameHistoryDTO {
     @AllArgsConstructor
     public static class BriskulaRoundHistoryDTO {
         private Integer roundNumber;
+        @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
         private Map<GamePlayerDTO, List<GameCardDTO>> playerHands;
         private List<BriskulaCardPlayHistoryDTO> plays;
         private GamePlayerDTO winner;
         private Integer points;
+        @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
         private Map<GamePlayerDTO, Integer> pointsAfterRound;
     }
 
