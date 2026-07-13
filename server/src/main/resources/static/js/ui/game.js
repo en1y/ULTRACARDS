@@ -587,6 +587,61 @@
         });
     }
 
+    // Deal real cards into an existing hand.  The caller owns game state; this
+    // helper only owns the shared flight/flip animation and always leaves the
+    // card in its normal slot, even when a tween is interrupted.
+    function dealCardsIntoHand(handEl, cards, options) {
+        if (!handEl || !Array.isArray(cards) || !cards.length) return;
+        const deckRect = options?.fromRect || null;
+        const gsapApi = window.gsap || null;
+        const finish = (el, card, index) => {
+            if (!el || el.dataset.dealFinished === '1') return;
+            delete el.dataset.dealRunning;
+            el.dataset.dealFinished = '1';
+            el.classList.remove('is-dealing');
+            ['--deal-x', '--deal-y', '--deal-rot', '--deal-scale'].forEach((prop) => el.style.removeProperty(prop));
+            el.cardApi?.flip(card);
+            options?.onFinish?.(el, card, index === cards.length - 1);
+        };
+
+        cards.forEach((card, index) => {
+            const key = cardKey(card);
+            const el = handEl.querySelector(`[data-card-key="${CSS.escape(key)}"]`);
+            if (!el || el.dataset.dealRunning === '1' || el.dataset.dealFinished === '1') return;
+            el.dataset.dealRunning = '1';
+            const slot = el.getBoundingClientRect();
+            const from = options?.fromFeaturedLast && index === cards.length - 1
+                ? options.featuredRect || deckRect
+                : deckRect;
+            if (!gsapApi || !from?.width || !slot.width) {
+                finish(el, card, index);
+                return;
+            }
+            const dx = (from.left + from.width / 2) - (slot.left + slot.width / 2);
+            const dy = (from.top + from.height / 2) - (slot.top + slot.height / 2);
+            const fromScale = from.width / Math.max(el.offsetWidth || slot.width, 1);
+            gsapApi.set(el, {
+                '--deal-x': `${dx}px`,
+                '--deal-y': `${dy}px`,
+                '--deal-rot': `${-10 + index * 4}deg`,
+                '--deal-scale': fromScale
+            });
+            gsapApi.to(el, {
+                '--deal-x': '0px',
+                '--deal-y': '0px',
+                '--deal-rot': '0deg',
+                '--deal-scale': 1,
+                duration: (options?.duration ?? MOTION.dealMs) / 1000,
+                delay: index * (options?.stagger ?? 80) / 1000,
+                ease: options?.ease || 'power3.out',
+                onComplete: () => finish(el, card, index)
+            });
+            // ponytail: the timeout is the small, explicit recovery path for an
+            // interrupted tween; a full animation lifecycle abstraction adds no value.
+            setTimeout(() => finish(el, card, index), (options?.duration ?? MOTION.dealMs) + index * (options?.stagger ?? 80) + 350);
+        });
+    }
+
     function renderDeckTower(deckTower, deckStack, cardsLeft, options) {
         if (!deckTower) return;
         const deckTowerCount = Math.max((cardsLeft ?? 0) - (options?.featuredCard ? 1 : 0), 0);
@@ -795,6 +850,8 @@
         if (!sourceEl) return null;
         const pointer = options?.pointer || {x: 0, y: 0};
         const rect = sourceEl.getBoundingClientRect();
+        const width = sourceEl.offsetWidth || rect.width;
+        const height = sourceEl.offsetHeight || rect.height;
         const originZone = getZone(options?.originZone || options?.originHand || sourceEl.parentElement);
         const session = {
             el: sourceEl,
@@ -803,19 +860,27 @@
             originParent: sourceEl.parentElement,
             originNextSibling: sourceEl.nextElementSibling,
             // Grab the card at the point under the cursor so it doesn't jump.
-            pointerOffsetX: clamp(pointer.x - rect.left, 0, rect.width) || rect.width / 2,
-            pointerOffsetY: clamp(pointer.y - rect.top, 0, rect.height) || rect.height / 2,
+            pointerOffsetX: rect.width
+                ? clamp((pointer.x - rect.left) * width / rect.width, 0, width)
+                : width / 2,
+            pointerOffsetY: rect.height
+                ? clamp((pointer.y - rect.top) * height / rect.height, 0, height)
+                : height / 2,
+            dragWidth: width,
+            dragHeight: height,
             originZone,
             bounds: resolveDragBounds(options),
             accepted: false,
             overDropZone: false,
             lastPoint: pointer
         };
-        sourceEl.style.width = `${rect.width}px`;
-        sourceEl.style.height = `${rect.height}px`;
+        // Preserve the unrotated card box. A rotated bounding rect has a different
+        // aspect ratio, which distorted the flying card and made it miss its final slot.
+        sourceEl.style.width = `${width}px`;
+        sourceEl.style.height = `${height}px`;
         sourceEl.classList.add(options?.className || 'drag-ghost');
         ensureOverlayLayer().appendChild(sourceEl);
-        sourceEl.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
+        sourceEl.style.transform = `translate3d(${rect.left + (rect.width - width) / 2}px, ${rect.top + (rect.height - height) / 2}px, 0)`;
         // The card left the hand container, so the remaining cards re-fan to close the gap.
         if (originZone) layoutZone(originZone);
         updateDragCard(session, pointer.x, pointer.y);
@@ -824,8 +889,8 @@
 
     function updateDragCard(session, x, y) {
         if (!session?.el) return;
-        const width = session.originRect?.width || 96;
-        const height = session.originRect?.height || 134;
+        const width = session.dragWidth || session.originRect?.width || 96;
+        const height = session.dragHeight || session.originRect?.height || 134;
         const bounds = session.bounds || resolveDragBounds();
         const moveX = clamp(x - session.pointerOffsetX, bounds.left, bounds.right - width);
         const moveY = clamp(y - session.pointerOffsetY, bounds.top, bounds.bottom - height);
@@ -928,17 +993,21 @@
         if (!el || !toRect) return Promise.resolve();
         const fromRect = el.getBoundingClientRect();
         const duration = prefersReducedMotion() ? 80 : (options?.duration ?? MOTION.dealMs);
-        const fromX = fromRect.left;
-        const fromY = fromRect.top;
         // Scale is applied about the element's center, so center the destination on the
         // UNSCALED box (offsetWidth/Height), not the scaled getBoundingClientRect size.
         const nw = el.offsetWidth || fromRect.width;
         const nh = el.offsetHeight || fromRect.height;
+        const fromX = fromRect.left + (fromRect.width - nw) / 2;
+        const fromY = fromRect.top + (fromRect.height - nh) / 2;
         const toX = toRect.left + (toRect.width - nw) / 2;
         const toY = toRect.top + (toRect.height - nh) / 2;
+        const fromScale = options?.fromScale ?? (fromRect.width / Math.max(nw, 1));
+        // A card can be released while a previous frame is still settling. Start
+        // from its actual rendered geometry, not a hard-coded drag scale.
+        window.gsap?.killTweensOf(el);
         return playAnimation(el, {
             transform: [
-                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${options?.fromScale ?? 1.04})`,
+                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.fromRot || '0deg'}) scale(${fromScale})`,
                 `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.toScale ?? 1})`
             ],
             opacity: options?.fade ? [1, 0] : [1, 1],
@@ -1248,11 +1317,18 @@
 
     function animateTrickCollect(trickCards, winnerSeatEl) {
         if (!trickCards || !trickCards.length) return Promise.resolve();
-        const duration = prefersReducedMotion() ? 0.06 : 0.22;
+        const reducedMotion = prefersReducedMotion();
+        const pickupDuration = reducedMotion ? 0.01 : 0.08;
+        const collectDuration = reducedMotion ? 0.05 : 0.28;
+        const stagger = reducedMotion ? 0 : 0.024;
         if (!gsap || !winnerSeatEl) {
-            // fallback: just fade out
-            return Promise.all(trickCards.map((card) =>
-                playAnimation(card, {opacity: [1, 0], duration: duration * 1000, ease: 'inOut(2)'})
+            return Promise.all(trickCards.map((card, i) =>
+                playAnimation(card, {
+                    opacity: [1, 0],
+                    duration: (pickupDuration + collectDuration) * 1000,
+                    delay: i * stagger * 1000,
+                    ease: 'inOut(2)'
+                })
             ));
         }
         const targetRect = winnerSeatEl.getBoundingClientRect();
@@ -1263,15 +1339,21 @@
             const dx = toX - (fromRect.left + fromRect.width / 2);
             const dy = toY - (fromRect.top + fromRect.height / 2);
             return new Promise((resolve) => {
-                gsap.to(card, {
+                const timeline = gsap.timeline({delay: i * stagger, onComplete: resolve});
+                timeline.to(card, {
+                    x: dx * 0.08,
+                    y: dy * 0.08,
+                    scale: 1.03,
+                    duration: pickupDuration,
+                    ease: 'power1.out'
+                });
+                timeline.to(card, {
                     x: dx,
                     y: dy,
-                    scale: 0.28,
+                    scale: 0.22,
                     opacity: 0,
-                    duration,
-                    delay: i * 0.038,
-                    ease: 'power2.in',
-                    onComplete: resolve
+                    duration: collectDuration,
+                    ease: 'power3.in'
                 });
             });
         });
@@ -1311,6 +1393,7 @@
         animateCardBetweenZones,
         zoneSlotRect,
         animateTrickCollect,
+        dealCardsIntoHand,
         createDealFlipCard,
         clearReservedSlot,
         disableCardDrag,

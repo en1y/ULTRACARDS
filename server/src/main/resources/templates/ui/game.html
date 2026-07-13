@@ -19,13 +19,8 @@
 
 <main class="container game-layout">
     <div id="game-container"
-         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username}">
-        <div class="game-shell">
-            <th:block th:replace="~{ui/fragments/game/table :: table('', #{game.waitingForGame}, ${game != null ? game.cardsLeftInDeck : 0}, ${game != null ? game.trumpCard : null}, false, null)}"></th:block>
-            <div class="hand-row">
-                <th:block th:replace="~{ui/fragments/game/hand :: hand('', 'self', ${currentUserId}, null, 0)}"></th:block>
-            </div>
-        </div>
+         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='generic'">
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('', #{game.waitingForGame}, ${game != null ? game.cardsLeftInDeck : 0}, null, false, null, 'self', ${currentUserId}, 'player', false)}"></th:block>
     </div>
 
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>

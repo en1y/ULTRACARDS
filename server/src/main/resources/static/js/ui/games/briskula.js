@@ -21,6 +21,14 @@
         const gameEl = document.getElementById('game-container');
         if (!gameEl || !gameEl.dataset.gameId) return;
 
+        const gameRuntime = window.UltracardsGameRuntime;
+        const gameAdapter = gameRuntime?.register({
+            name: gameEl.dataset.gameType || 'briskula',
+            cardType: 'ITALIAN',
+            features: {deck: true, trump: true, teams: true, teammateHand: true, previousRound: true},
+            copy(key, ...args) { return t(`briskula.${key}`, ...args); }
+        }) || null;
+
         function getTeamDisplayName(n) {
             return t('gameHistory.team', n);
         }
@@ -44,9 +52,10 @@
         // The fullscreen hand is a wide, strongly-arced fan (edge-to-edge like a
         // real held hand); classic keeps the flat desktop-ish spread.
         function handLayoutParams() {
-            return isFullscreenMobile()
+            const layout = isFullscreenMobile()
                 ? {type: 'fan', slotTotal: 3, spacingScale: 0.62, maxTilt: 13, yArc: 14, baseOffsetY: 0}
                 : {type: 'fan', slotTotal: 3, spacingScale: 0.4, maxTilt: 6, yArc: 5, baseOffsetY: 2};
+            return gameAdapter?.layout ? gameAdapter.layout(layout, isFullscreenMobile()) : layout;
         }
 
         const dom = {
@@ -90,7 +99,6 @@
             turnIndicatorEndsAt: null,
             turnDurationMs: Number(initialGame?.turnDurationSeconds) > 0 ? Number(initialGame.turnDurationSeconds) * 1000 : 15000,
             delayedTableUpdateTimer: null,
-            delayedTableCommitTimer: null,
             delayedTablePayload: null,
             delayedTablePending: false,
             endState: null,
@@ -487,19 +495,36 @@
             const prevKeys = new Set(state.hand.map(cardKey));
             const serverKeys = new Set(list.map(cardKey));
             const newCards = [];
+            const returnedCards = [];
+            const returningKeys = new Set();
+            const turnMovedAway = !!state.game?.playersTurn && !isCurrentUser(state.game.playersTurn);
             state.pending.forEach((key) => {
                 if (!serverKeys.has(key)) {
                     // Server no longer lists the card: the play was accepted.
                     state.pending.delete(key);
                     state.pendingAt.delete(key);
-                } else if (Date.now() - (state.pendingAt.get(key) || 0) > 2500) {
+                } else if (turnMovedAway || Date.now() - (state.pendingAt.get(key) || 0) > 2500) {
                     // Server STILL lists the card well past the play round-trip:
-                    // the play never landed. The incoming update wins over the
-                    // local cache — unhide the card instead of losing it forever.
+                    // the play never landed (usually because the turn expired). The
+                    // incoming update wins over the local cache — return the real
+                    // card to the hand instead of treating it as a new deal.
                     state.pending.delete(key);
                     state.pendingAt.delete(key);
+                    returningKeys.add(key);
+                    const handoff = state.justPlayed?.key === key ? state.justPlayed : null;
+                    const fromRect = handoff?.el?.isConnected ? handoff.el.getBoundingClientRect() : null;
+                    handoff?.el?.remove();
+                    if (state.justPlayed === handoff) state.justPlayed = null;
+                    returnedCards.push({key, fromRect});
                 }
             });
+            if (returnedCards.length) {
+                state.playing = false;
+                state.dragSession = null;
+                state.draggingEl = null;
+                setTableDropReady(false);
+                window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
+            }
             state.autoPlayedPending.forEach((key) => {
                 if (!serverKeys.has(key)) {
                     state.autoPlayedPending.delete(key);
@@ -508,15 +533,27 @@
             list.forEach((card) => {
                 const key = cardKey(card);
                 if (!prevKeys.has(key)) {
-                    state.justDealtKeys.add(key);
-                    // Mark as dealing BEFORE syncHand so the card is created
-                    // face-down and excluded from the generic fade-in.
-                    state.dealingKeys.add(key);
-                    newCards.push(card);
+                    if (!returningKeys.has(key)) {
+                        state.justDealtKeys.add(key);
+                        // Mark as dealing BEFORE syncHand so the card is created
+                        // face-down and excluded from the generic fade-in.
+                        state.dealingKeys.add(key);
+                        newCards.push(card);
+                    }
                 }
             });
             state.hand = list.filter((card) => !state.pending.has(cardKey(card)));
             syncHand();
+            returnedCards.forEach(({key, fromRect}) => {
+                const el = state.handEls.get(key);
+                if (!el || !fromRect?.width) return;
+                window.UltracardsGameUi?.flyIntoSlot(el, fromRect, {
+                    faceDown: false,
+                    spin: 0,
+                    fromScale: 1.04,
+                    duration: 220
+                });
+            });
             if (newCards.length) {
                 dealCardsIntoHand(newCards, state.finalTrumpDraw);
                 state.finalTrumpDraw = false;
@@ -609,26 +646,20 @@
                 state.delayedTablePending = true;
                 state.delayedTableUpdateTimer = setTimeout(() => {
                     state.delayedTableUpdateTimer = null;
-                    animateTrickClear();
-                    state.delayedTableCommitTimer = setTimeout(() => {
-                        state.delayedTableCommitTimer = null;
+                    Promise.resolve(animateTrickClear()).finally(() => {
                         const delayedPayload = state.delayedTablePayload;
                         state.delayedTablePayload = null;
                         state.delayedTablePending = false;
                         if (delayedPayload) {
                             applyGame(delayedPayload.game, delayedPayload.gameEvent, delayedPayload.result, true);
                         }
-                    }, 320);
+                    });
                 }, 1100);
                 return;
             }
             if (state.delayedTableUpdateTimer) {
                 clearTimeout(state.delayedTableUpdateTimer);
                 state.delayedTableUpdateTimer = null;
-            }
-            if (state.delayedTableCommitTimer) {
-                clearTimeout(state.delayedTableCommitTimer);
-                state.delayedTableCommitTimer = null;
             }
             state.delayedTablePayload = null;
             state.delayedTablePending = false;
@@ -840,6 +871,12 @@
                 ordered.push(img);
             });
 
+            // A confirmed local play can arrive before its flight ends. Remove the
+            // reserved target now so the hidden confirmed card occupies that same slot
+            // instead of being laid out beside it and moving a second time on cleanup.
+            if (localHandoffCards.length) {
+                window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
+            }
             // Fixed-slot row: cards occupy stable slots and never re-center.
             setTrickSlotTotal(list.length);
             Promise.resolve(window.UltracardsGameUi?.animateHandChange(state.hands.table, () => {
@@ -896,38 +933,41 @@
         function finishLocalPlayedHandoff(renderedCard) {
             const handoff = state.justPlayed;
             if (!renderedCard || !handoff) return;
-            const reveal = () => {
-                requestAnimationFrame(() => {
-                    // The flown overlay already landed exactly on the slot (true size +
-                    // rotation), so just reveal the rendered card in place — no settle
-                    // tween (that introduced a small spin/scale "jiggle").
+            const adoptPlayedCard = () => {
+                if (!handoff.flightDone) {
+                    handoff.revealWhenReady = adoptPlayedCard;
+                    return;
+                }
+                if (state.justPlayed !== handoff) return;
+                const movingCard = handoff.el;
+                if (!movingCard?.isConnected || !renderedCard.isConnected) {
                     renderedCard.classList.remove('is-handoff-hidden');
-                    if (state.justPlayed === handoff) {
-                        handoff.el?.remove();
-                        state.justPlayed = null;
-                    }
-                });
+                    movingCard?.remove();
+                    state.justPlayed = null;
+                    return;
+                }
+
+                // Keep the actual card that flew from the hand. Copy the already-laid-out
+                // trick card's classes/styles and replace its hidden placeholder in one
+                // synchronous step, so there is no frame with different geometry or shadow.
+                const trickKey = renderedCard.dataset.trickKey;
+                movingCard.className = Array.from(renderedCard.classList)
+                    .filter((className) => className !== 'is-handoff-hidden')
+                    .join(' ');
+                movingCard.style.cssText = renderedCard.style.cssText;
+                movingCard.dataset.trickKey = trickKey;
+                movingCard.ondblclick = null;
+                renderedCard.replaceWith(movingCard);
+                state.trickEls.set(trickKey, movingCard);
+                state.justPlayed = null;
             };
-            const front = renderedCard.querySelector('.card-front');
-            if (!front || front.complete) {
-                reveal();
-                return;
-            }
-            let done = false;
-            const complete = () => {
-                if (done) return;
-                done = true;
-                reveal();
-            };
-            front.addEventListener('load', complete, {once: true});
-            front.addEventListener('error', complete, {once: true});
-            setTimeout(complete, 260);
+            adoptPlayedCard();
         }
 
         function animateTrickClear() {
-            if (!dom.trick) return;
+            if (!dom.trick) return Promise.resolve();
             const trickCards = Array.from(dom.trick.querySelectorAll('.trick-card'));
-            if (!trickCards.length) return;
+            if (!trickCards.length) return Promise.resolve();
 
             // Save previous round before clearing. Prefer the captured in-trick data
             // (cards + the player order at play time, before the winner rotation).
@@ -965,9 +1005,9 @@
                 ? dom.ring?.querySelector(`[data-player-id="${CSS.escape(String(winnerPlayer.id))}"]`)
                 : null;
 
-            Promise.resolve(
+            return Promise.resolve(
                 window.UltracardsGameUi?.animateTrickCollect(trickCards, winnerSeatEl)
-            ).then(() => {
+            ).finally(() => {
                 dom.trick.classList.remove('is-clearing');
             });
         }
@@ -1229,14 +1269,19 @@
             // scale(1.04) and land the card ~4% under the real slot size (snap on handoff).
             const flownW = el.offsetWidth || el.getBoundingClientRect().width;
             const toScale = (targetRect.width && flownW) ? (targetRect.width / flownW) : 0.94;
+            if (!playCard(card, {alreadyLocked: true, keepLocked: true})) {
+                window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
+                return;
+            }
             Promise.resolve(window.UltracardsGameUi?.flyOverlayTo(el, targetRect, {
                 duration: 230,
                 toScale,
                 toRot: `${trickSlotRotation(state.trickEls.size)}deg`,
                 fade: false
             })).catch(() => undefined).then(() => {
+                completeJustPlayedFlight(cardKey(card));
+                state.playing = false;
                 window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
-                playCard(card, {alreadyLocked: true});
             });
         }
 
@@ -1244,7 +1289,7 @@
         // drawn trick card seamlessly. A safety timer removes it even if the trick was
         // already cleared (e.g. the play completed the trick) so it can't linger.
         function markJustPlayed(el, card) {
-            const entry = {el, key: cardKey(card)};
+            const entry = {el, key: cardKey(card), flightDone: false};
             state.justPlayed = entry;
             setTimeout(() => {
                 if (state.justPlayed === entry) {
@@ -1254,14 +1299,21 @@
             }, 1600);
         }
 
+        function completeJustPlayedFlight(cardKeyValue) {
+            const handoff = state.justPlayed;
+            if (!handoff || handoff.key !== cardKeyValue) return;
+            handoff.flightDone = true;
+            handoff.revealWhenReady?.();
+        }
+
         function playCard(card, options) {
             const alreadyLocked = options?.alreadyLocked === true;
-            if (state.playing && !alreadyLocked) return;
+            if (state.playing && !alreadyLocked) return false;
             const isTurn = state.game && state.game.playersTurn
                 && isCurrentUser(state.game.playersTurn);
             if (state.game && state.game.playersTurn && !isTurn) {
                 if (alreadyLocked) state.playing = false;
-                return;
+                return false;
             }
             state.playing = true;
             state.pending.add(cardKey(card));
@@ -1277,15 +1329,16 @@
                 }
                 restoreDraggedCard(cardKey(card));
                 syncHand();
-                return;
+                return false;
             }
             state.wsClient.send('/app/game/play', {}, JSON.stringify({cardType: card.cardType, card: card.card}));
-            state.playing = false;
+            if (!options?.keepLocked) state.playing = false;
             animateHandRemoval(cardKey(card));
             setTimeout(() => {
                 state.hand = state.hand.filter((entry) => cardKey(entry) !== cardKey(card));
                 syncHand();
             }, 230);
+            return true;
         }
 
         function setTableDropReady(on) {
@@ -1329,11 +1382,14 @@
                 const el = session.el;
                 state.dragSession = null;
                 state.draggingEl = null;
+                // Lock the play for the whole handoff. Without this, a second
+                // pointer gesture can start while the first card is still flying.
+                state.playing = true;
                 state.handEls.delete(cardKey(card));
                 // Exclude from the hand right away so a mid-flight syncHand can't
                 // re-create a duplicate while the card flies to the table.
                 state.pending.add(cardKey(card));
-            state.pendingAt.set(cardKey(card), Date.now());
+                state.pendingAt.set(cardKey(card), Date.now());
                 // Fly the REAL card to the trick slot WITHOUT fading, and keep it there
                 // until renderTrick draws the played card at the same spot — then it is
                 // removed. No disappear/reappear, and it lands on the exact slot.
@@ -1343,14 +1399,19 @@
                 // UNSCALED width so the drag scale(1.04) isn't double-counted.
                 const flownW = el.offsetWidth || el.getBoundingClientRect().width;
                 const toScale = (targetRect.width && flownW) ? (targetRect.width / flownW) : 0.94;
+                if (!playCard(card, {alreadyLocked: true, keepLocked: true})) {
+                    window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
+                    return;
+                }
                 Promise.resolve(window.UltracardsGameUi?.flyOverlayTo(el, targetRect, {
                     duration: 220,
                     toScale,
                     toRot: `${trickSlotRotation(state.trickEls.size)}deg`,
                     fade: false
-                })).then(() => {
+                })).catch(() => undefined).then(() => {
+                    completeJustPlayedFlight(cardKey(card));
+                    state.playing = false;
                     window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
-                    playCard(card);
                 });
                 return;
             }
@@ -1449,7 +1510,22 @@
             // Reserve the new card's FIXED slot so the play flies straight there.
             setTrickSlotTotal(state.trickEls.size + 1);
             const placeholder = window.UltracardsGameUi?.reserveSlot(state.hands.table, state.trickEls.size);
-            return placeholder?.getBoundingClientRect() || dom.dropZone?.getBoundingClientRect() || dom.trick?.getBoundingClientRect();
+            if (!placeholder) {
+                return dom.dropZone?.getBoundingClientRect() || dom.trick?.getBoundingClientRect();
+            }
+            const visualRect = placeholder.getBoundingClientRect();
+            const width = placeholder.offsetWidth || visualRect.width;
+            const height = placeholder.offsetHeight || visualRect.height;
+            const centerX = visualRect.left + visualRect.width / 2;
+            const centerY = visualRect.top + visualRect.height / 2;
+            return {
+                left: centerX - width / 2,
+                top: centerY - height / 2,
+                right: centerX + width / 2,
+                bottom: centerY + height / 2,
+                width,
+                height
+            };
         }
 
         /**
@@ -2018,7 +2094,7 @@
                 ? rawDeck
                 : dom.deckStack?.getBoundingClientRect();
             window.UltracardsGameUi?.syncBackCards(cardsEl, cardsCount, {
-                cardType: 'ITALIAN',
+                cardType: gameAdapter?.cardType || 'ITALIAN',
                 className: 'seat-card',
                 alt: t('game.cardBack.alt'),
                 fromRect: deckRect
@@ -2032,7 +2108,7 @@
 
         function renderDeckTower(cardsLeft) {
             window.UltracardsGameUi?.renderDeckTower(dom.deckTower, dom.deckStack, cardsLeft, {
-                cardType: 'ITALIAN',
+                cardType: gameAdapter?.cardType || 'ITALIAN',
                 featuredCard: true,
                 exhausting: state.deckExhausting,
                 alt: 'Deck'
@@ -2048,67 +2124,22 @@
         // CSS vars (which add onto the slot transform), then flips itself face-up via
         // its innate cardApi. One DOM element per card — no duplicate backs, no pile.
         function dealCardsIntoHand(cards, useTrumpForLastDraw) {
-            if (!dom.hand || !cards || !cards.length) return;
             const rawTowerRect = dom.deckTower?.getBoundingClientRect();
             const deckRect = (rawTowerRect && rawTowerRect.width && rawTowerRect.height)
                 ? rawTowerRect
                 : (dom.deckStack?.getBoundingClientRect() || rawTowerRect);
-            const gsap = window.gsap;
-
-            const finish = (el, card, isLast) => {
-                if (el.dataset.dealFinished === '1') return; // idempotent
-                el.dataset.dealFinished = '1';
-                el.classList.remove('is-dealing');
-                ['--deal-x', '--deal-y', '--deal-rot', '--deal-scale'].forEach((p) => el.style.removeProperty(p));
-                state.dealingKeys.delete(cardKey(card));
-                el.cardApi?.flip(card);
-                if (useTrumpForLastDraw && isLast) {
-                    state.deckExhausting = false;
-                    renderDeckTower(0);
-                    renderTrump(null, 0);
+            window.UltracardsGameUi?.dealCardsIntoHand(dom.hand, cards, {
+                fromRect: deckRect,
+                fromFeaturedLast: useTrumpForLastDraw && !!dom.trump?.dataset.cardCode,
+                featuredRect: dom.trump?.getBoundingClientRect(),
+                onFinish(el, card, isLast) {
+                    state.dealingKeys.delete(cardKey(card));
+                    if (useTrumpForLastDraw && isLast) {
+                        state.deckExhausting = false;
+                        renderDeckTower(0);
+                        renderTrump(null, 0);
+                    }
                 }
-            };
-
-            cards.forEach((card, index) => {
-                const key = cardKey(card);
-                const el = dom.hand.querySelector(`[data-card-key="${key}"]`);
-                if (!el) {
-                    state.dealingKeys.delete(key);
-                    return;
-                }
-                el.dataset.dealFinished = '';
-                const isLast = index === cards.length - 1;
-                const useTrumpSource = useTrumpForLastDraw && isLast && dom.trump && dom.trump.dataset.cardCode;
-                const fromRect = useTrumpSource ? dom.trump.getBoundingClientRect() : deckRect;
-                if (!gsap || !fromRect || !fromRect.width) {
-                    finish(el, card, isLast);
-                    return;
-                }
-                // The slot rect is the resting position (deal vars are still identity).
-                const slot = el.getBoundingClientRect();
-                const dx = (fromRect.left + fromRect.width / 2) - (slot.left + slot.width / 2);
-                const dy = (fromRect.top + fromRect.height / 2) - (slot.top + slot.height / 2);
-                gsap.set(el, {
-                    '--deal-x': `${dx}px`,
-                    '--deal-y': `${dy}px`,
-                    '--deal-rot': `${-10 + index * 4}deg`,
-                    // Full size from the first frame — a 0.9 start made the card
-                    // back visibly smaller than the card it lands as.
-                    '--deal-scale': 1
-                });
-                gsap.to(el, {
-                    '--deal-x': '0px',
-                    '--deal-y': '0px',
-                    '--deal-rot': '0deg',
-                    '--deal-scale': 1,
-                    duration: 0.52,
-                    delay: index * 0.08,
-                    ease: 'power3.out',
-                    onComplete() { finish(el, card, isLast); }
-                });
-                // Safety: if the tween is ever interrupted/overwritten, force-finish so
-                // the card can never be left mid-deal (stuck offset, stranded).
-                setTimeout(() => finish(el, card, isLast), 520 + index * 80 + 350);
             });
         }
 

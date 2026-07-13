@@ -1,0 +1,20 @@
+<th:block th:fragment="liveGame(shellClass, dropZoneText, cardsLeft, featuredCard, featuredEnabled, trumpSide, handId, ownerId, handType, showPlayerSummary)"
+          xmlns:th="http://www.thymeleaf.org">
+    <div class="game-shell"
+         th:classappend="${shellClass != null ? shellClass : ''}">
+        <th:block th:replace="~{ui/fragments/game/table :: table('', ${dropZoneText}, ${cardsLeft}, ${featuredCard}, ${featuredEnabled}, ${trumpSide})}"></th:block>
+
+        <div class="hand-row">
+            <th:block th:replace="~{ui/fragments/game/hand :: hand('', ${handId}, ${ownerId}, null, 0, ${handType})}"></th:block>
+            <div id="player-summary" class="player-summary" th:if="${showPlayerSummary}" style="visibility:hidden">
+                <div class="player-summary-card">
+                    <div id="player-summary-avatar" class="seat-avatar">P</div>
+                    <div id="player-summary-name" class="player-summary-name"></div>
+                    <div id="player-summary-points" class="player-summary-points">0</div>
+                </div>
+            </div>
+        </div>
+
+        <th:block th:replace="~{ui/fragments/game/animation-layer :: animationLayer}"></th:block>
+    </div>
+</th:block>
