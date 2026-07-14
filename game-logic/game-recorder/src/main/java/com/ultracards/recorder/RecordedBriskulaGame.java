@@ -48,7 +48,7 @@ public class RecordedBriskulaGame extends RecordedGame {
     }
 
     public List<Long> teamUserIds() {
-        return List.copyOf(teamUserIds);
+        return teamUserIds.stream().filter(Objects::nonNull).toList();
     }
 
     public void setTrump(String suit, String value) {
