@@ -106,9 +106,12 @@
                 state.wsConnected = true;
                 clearReconnectDisconnectTimer();
                 connectionLostNotified = false;
-                client.subscribe(`/topic/lobbies/${state.lobby.id}`, (message) => {
+                const handleLobbyEvent = (message) => {
                     try {
                         const payload = JSON.parse(message.body);
+                        if (String(payload?.lobbyDto?.id || '') !== String(state.lobby.id)) {
+                            return;
+                        }
                         if (payload && payload.gameId) {
                             announceGameStarted();
                             return;
@@ -145,7 +148,8 @@
                     } catch (error) {
                         console.error('Lobby websocket parse error', error);
                     }
-                });
+                };
+                client.subscribe('/topic/lobbies', handleLobbyEvent);
                 client.subscribe(`/topic/lobbies/${state.lobby.id}/chat`, (message) => {
                     try {
                         const payload = JSON.parse(message.body);
