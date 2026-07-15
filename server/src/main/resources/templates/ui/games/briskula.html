@@ -19,7 +19,7 @@
 <main class="container game-layout">
     <div id="game-container"
          th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
-        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('briskula-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right', 'self', ${currentUserId}, 'player', true)}"></th:block>
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('briskula-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right', ${discardedCard}, 'self', ${currentUserId}, 'player', true)}"></th:block>
     </div>
 
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>

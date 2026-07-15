@@ -1,4 +1,4 @@
-<th:block th:fragment="table(idPrefix, dropZoneText, cardsLeft, featuredCard, featuredEnabled, trumpSide)" xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="table(idPrefix, dropZoneText, cardsLeft, featuredCard, featuredEnabled, trumpSide, discardedCard)" xmlns:th="http://www.thymeleaf.org">
     <div class="table-wrap"
          th:attr="data-zone-id=${idPrefix + 'table-stage'},data-zone-kind='stage'">
         <div class="table-surface"
@@ -18,6 +18,10 @@
                 <div th:id="${idPrefix + 'trick-area'}"
                      class="trick-area"
                      th:attr="data-zone-id=${idPrefix + 'table-center'},data-zone-kind='center'"></div>
+            </div>
+            <div class="discarded-card-display" th:if="${discardedCard != null}" role="note" th:aria-label="#{game.discardedCard}">
+                <th:block th:replace="~{ui/fragments/game/card :: card(${discardedCard}, ${discardedCard.cardType}, 'discarded-card', 0, ${idPrefix + 'discarded-card'})}"></th:block>
+                <span class="discarded-card-label" th:text="#{game.discardedCard}">Card out of play</span>
             </div>
             <th:block th:replace="~{ui/fragments/game/deck :: deck(${idPrefix}, ${cardsLeft}, ${featuredCard}, ${featuredEnabled}, ${trumpSide})}"></th:block>
         </div>

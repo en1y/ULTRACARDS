@@ -15,7 +15,7 @@
 <div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
 <main class="container game-layout treseta-game-layout">
     <div id="game-container" th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='treseta'">
-        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, null, false, null, 'self', ${currentUserId}, 'player', true)}"></th:block>
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, null, false, null, ${discardedCard}, 'self', ${currentUserId}, 'player', true)}"></th:block>
     </div>
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>

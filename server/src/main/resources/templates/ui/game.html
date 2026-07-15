@@ -20,7 +20,7 @@
 <main class="container game-layout">
     <div id="game-container"
          th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='generic'">
-        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('', #{game.waitingForGame}, ${game != null ? game.cardsLeftInDeck : 0}, null, false, null, 'self', ${currentUserId}, 'player', false)}"></th:block>
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('', #{game.waitingForGame}, ${game != null ? game.cardsLeftInDeck : 0}, null, false, null, null, 'self', ${currentUserId}, 'player', false)}"></th:block>
     </div>
 
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>

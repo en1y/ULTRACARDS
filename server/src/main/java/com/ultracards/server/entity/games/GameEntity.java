@@ -1,6 +1,7 @@
 package com.ultracards.server.entity.games;
 
 import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.GameConfig;
 import com.ultracards.templates.game.model.AbstractGame;
@@ -36,6 +37,8 @@ public class GameEntity<Game extends AbstractGame<?, ?, ?, ?, ?, ?, ?>, GameLobb
     private Integer turnNumber = 0;
 
     private GameLobbyConfig gameConfig;
+
+    private GameCardDTO discardedCard;
 
     protected GameEntity() {
     }

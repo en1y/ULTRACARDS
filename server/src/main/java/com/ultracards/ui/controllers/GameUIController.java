@@ -55,6 +55,7 @@ public class GameUIController {
         model.addAttribute("currentUserId", user.getId());
         model.addAttribute("game", gameDto);
         model.addAttribute("hand", toHandDto(currentGame, user));
+        model.addAttribute("discardedCard", currentGame.getDiscardedCard());
         model.addAttribute("chat", chatService.getChat(currentLobby.getId()).toDto());
         return gameView;
     }
