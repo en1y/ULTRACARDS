@@ -82,6 +82,9 @@ public class LobbyService {
     }
 
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
+        if (getLobbyByUser(owner) != null)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already in a lobby");
+
         var levelNumbers = ultrakillLevelService.findLevelNumbers(gameLobbyDTO.getName(), 1);
         if (levelNumbers.length > 0)
             gameLobbyDTO.setName(String.format("%s: %s", levelNumbers[0],

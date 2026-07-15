@@ -4,6 +4,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
 import com.ultracards.games.treseta.TresetaGameConfig;
+import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.games.GameService;
@@ -115,6 +116,20 @@ class LobbyServiceTest {
                 .isSameAs(error);
 
         verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void rejectsLobbyCreationWhenUserIsAlreadyInLobby() {
+        var user = user(1L, "User");
+        cacheLobby(user, lobby(user, UUID.randomUUID()));
+
+        assertThatThrownBy(() -> lobbyService.createLobby(user, new GameLobbyDTO()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("You are already in a lobby")
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verifyNoInteractions(lobbyManager, ultrakillLevelService, chatService, eventPublisher, taskScheduler);
     }
 
     @Test
