@@ -9,7 +9,6 @@
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/game.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
     <link rel="stylesheet" th:href="@{/css/ui/game-history.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
@@ -17,12 +16,12 @@
 <div th:replace="~{ui/fragments/header :: header}"></div>
 
 <main class="container game-layout is-replay" th:attr="data-game-id=${gameEntityId}">
-    <div class="game-shell briskula-game-shell">
+    <div class="game-shell">
         <div class="replay-arena">
             <div class="replay-region" id="replay-seats-top"></div>
             <div class="replay-mid">
                 <div class="replay-region replay-col" id="replay-seats-left"></div>
-                <th:block th:replace="~{ui/fragments/game/table :: table('replay-', #{common.loading}, 0, null, true, 'right')}"></th:block>
+                <th:block th:replace="~{ui/fragments/game/table :: table('replay-', #{common.loading}, 0, null, true, 'right', null)}"></th:block>
                 <div class="replay-region replay-col" id="replay-seats-right"></div>
             </div>
             <div class="replay-region" id="replay-seats-bottom"></div>
@@ -30,38 +29,68 @@
     </div>
 
     <aside class="card chat-sidebar history-replay-panel">
-        <div>
-            <p class="history-replay-eyebrow" th:text="#{gameHistory.controls}">Controls</p>
-            <h2 id="replay-step-title" th:text="#{gameHistory.round}">Round</h2>
-        </div>
-
         <div class="history-replay-controls" th:aria-label="#{gameHistory.controls.aria}">
-            <div class="history-replay-head">
-                <div>
-                    <p class="history-replay-eyebrow" th:text="#{gameHistory.replay}">Game replay</p>
-                    <h1 id="replay-title" th:text="#{game.briskula}">Briskula</h1>
-                    <div id="replay-meta" class="history-replay-meta">
-                        <p th:text="#{gameHistory.loadingReplay}">Loading replay.</p>
-                    </div>
-                </div>
-                <a class="btn" th:href="@{/}">
-                    <img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true" />
-                    <span th:text="#{gameHistory.home}">Home</span>
-                </a>
+            <div id="replay-self-summary" class="history-replay-self" aria-live="polite">
+                <span id="replay-self-avatar" class="seat-avatar" aria-hidden="true"></span>
+                <span id="replay-self-name" class="history-replay-self-name"></span>
+                <strong id="replay-self-points" class="history-replay-self-points"></strong>
             </div>
 
-            <button id="replay-prev" class="btn" type="button" th:text="#{gameHistory.previous}">Previous</button>
-            <button id="replay-next" class="btn btn-accent" type="button" th:text="#{gameHistory.next}">Next</button>
+            <details class="history-replay-info">
+                <summary class="btn history-replay-info-toggle" role="button"
+                         th:aria-label="#{gameHistory.info}" th:title="#{gameHistory.info}">
+                    <img class="uc-icon" data-icon="info" th:src="@{/pics/light/info.svg}" alt="" aria-hidden="true" />
+                </summary>
+
+                <div class="history-replay-info-card">
+                    <button class="btn history-replay-info-close" type="button"
+                            th:aria-label="#{common.close}" th:title="#{common.close}">
+                        <img class="uc-icon" data-icon="close" th:src="@{/pics/light/close.svg}" alt="" aria-hidden="true" />
+                    </button>
+                    <div class="history-replay-step">
+                        <p class="history-replay-eyebrow" th:text="#{gameHistory.controls}">Controls</p>
+                        <h2 id="replay-step-title" th:text="#{gameHistory.round}">Round</h2>
+                    </div>
+
+                    <div class="history-replay-head">
+                        <div>
+                            <p class="history-replay-eyebrow" th:text="#{gameHistory.replay}">Game replay</p>
+                            <h1 id="replay-title" th:text="#{common.loading}">Game replay</h1>
+                            <div id="replay-meta" class="history-replay-meta">
+                                <p th:text="#{gameHistory.loadingReplay}">Loading replay.</p>
+                            </div>
+                        </div>
+                        <a class="btn" th:href="@{/}">
+                            <img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true" />
+                            <span th:text="#{gameHistory.home}">Home</span>
+                        </a>
+                    </div>
+
+                    <div class="history-replay-score-section">
+                        <p class="history-replay-eyebrow" th:text="#{gameHistory.score}">Score</p>
+                        <div id="replay-score-list" class="history-replay-score-list"></div>
+                    </div>
+
+                    <div id="replay-team-list" class="history-replay-team-list"></div>
+                </div>
+            </details>
+
+            <div class="history-replay-navigation">
+                <button id="replay-prev" class="btn" type="button"
+                        th:aria-label="#{gameHistory.previous}" th:title="#{gameHistory.previous}">
+                    <img class="uc-icon" data-icon="previous_round" th:src="@{/pics/light/previous_round.svg}" alt="" aria-hidden="true" />
+                    <span class="history-replay-button-label" th:text="#{gameHistory.previous}">Previous</span>
+                </button>
+
+                <input id="replay-step-range" class="history-replay-range" type="range" min="0" max="0" value="0">
+
+                <button id="replay-next" class="btn btn-accent" type="button"
+                        th:aria-label="#{gameHistory.next}" th:title="#{gameHistory.next}">
+                    <span class="history-replay-button-label" th:text="#{gameHistory.next}">Next</span>
+                    <img class="uc-icon" data-icon="next_round" th:src="@{/pics/light/next_round.svg}" alt="" aria-hidden="true" />
+                </button>
+            </div>
         </div>
-
-        <input id="replay-step-range" class="history-replay-range" type="range" min="0" max="0" value="0">
-
-        <div class="history-replay-score-section">
-            <p class="history-replay-eyebrow" th:text="#{gameHistory.score}">Score</p>
-            <div id="replay-score-list" class="history-replay-score-list"></div>
-        </div>
-
-        <div id="replay-team-list" class="history-replay-team-list"></div>
     </aside>
 </main>
 
@@ -71,6 +100,8 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
 <script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
+<script th:src="@{/js/ui/games/treseta.js}"></script>
 <script th:src="@{/js/ui/game-history.js}"></script>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>

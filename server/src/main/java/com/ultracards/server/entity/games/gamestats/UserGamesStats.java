@@ -24,7 +24,7 @@ public class UserGamesStats {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(cascade = CascadeType.PERSIST)
+    @OneToOne
     @JoinColumn(name = "user_id")
     private UserEntity user;
 

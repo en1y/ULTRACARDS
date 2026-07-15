@@ -18,6 +18,12 @@
         deckTower: document.getElementById('replay-deck-tower'),
         deckLeft: document.getElementById('replay-deck-left'),
         stepTitle: document.getElementById('replay-step-title'),
+        selfSummary: document.getElementById('replay-self-summary'),
+        selfAvatar: document.getElementById('replay-self-avatar'),
+        selfName: document.getElementById('replay-self-name'),
+        selfPoints: document.getElementById('replay-self-points'),
+        info: document.querySelector('.history-replay-info'),
+        infoClose: document.querySelector('.history-replay-info-close'),
         prev: document.getElementById('replay-prev'),
         next: document.getElementById('replay-next'),
         range: document.getElementById('replay-step-range'),
@@ -25,7 +31,10 @@
         teams: document.getElementById('replay-team-list')
     };
 
-    const state = {game: null, teamState: null, steps: [], stepIndex: 0, seats: new Map(), trickZone: null, trickEls: new Map(), animating: false};
+    const state = {game: null, teamState: null, steps: [], stepIndex: 0, seats: new Map(), trickZone: null, trickEls: new Map(), animating: false, rangeFrame: null};
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
+    const displayPoints = (points) => window.UltracardsGameRuntime
+        ?.get(state.game?.gameType)?.displayPoints?.(points) ?? points ?? 0;
 
     // ---- data model helpers (unchanged from the original replay) ----
     const escapeHtml = (value) => String(value ?? '')
@@ -163,7 +172,7 @@
     const players = () => state.game?.playersOrder || [];
     const playerCount = () => players().length || 2;
 
-    // ---- rendering, via the game.js (briskula) pipeline ----
+    // ---- rendering, via the shared game.js pipeline ----
     const renderDeck = (deckLeft) => {
         ui?.renderDeckTower(dom.deckTower, dom.deckStack, deckLeft, {cardType: 'ITALIAN', featuredCard: true, alt: t('game.deck.alt')});
         if (dom.deckLeft) dom.deckLeft.textContent = String(deckLeft);
@@ -205,6 +214,12 @@
                 <div class="seat-points"></div>`;
             seatRegion(index, count).appendChild(seat);
             state.seats.set(key, seat);
+
+            if (index === 0 && dom.selfSummary) {
+                dom.selfSummary.className = `history-replay-self${teamNumber != null ? ` team-seat-${teamNumber}` : ''}`;
+                if (dom.selfAvatar) dom.selfAvatar.textContent = playerName(player).charAt(0).toUpperCase();
+                if (dom.selfName) dom.selfName.textContent = playerName(player);
+            }
         });
     };
 
@@ -227,18 +242,51 @@
     const renderSeatHand = (seat, player, cards) => {
         const hand = seat.querySelector('.seat-cards');
         if (!hand) return;
-        hand.innerHTML = '';
+        // Same cards in the same order — skip the rebuild. Re-appending unchanged
+        // nodes every step invalidates layout for the whole seat, which a phone
+        // pays for on every replay step.
+        const sig = cards.map(ckey).join('|');
+        if (hand.dataset.handSig === sig) return;
+        hand.dataset.handSig = sig;
+        const existing = new Map(Array.from(hand.children).map((el) => [el.dataset.cardKey, el]));
+        const next = document.createDocumentFragment();
         const total = cards.length;
+        const historyAdapter = window.UltracardsGameRuntime?.get(state.game?.gameType);
+        const spread = historyAdapter?.historyCardSpread ?? 5.5;
+        const lift = historyAdapter?.historyCardLift ?? 1.4;
         cards.forEach((card, i) => {
-            const el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: t('gameHistory.playerCard.alt', playerName(player))});
+            const key = ckey(card);
+            let el = existing.get(key);
+            if (!el) {
+                el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: t('gameHistory.playerCard.alt', playerName(player))});
+                el.addEventListener('mouseenter', () => { el._prev = showPreview(el, el.dataset.cardCode); });
+                el.addEventListener('mouseleave', () => {
+                    if (el._previewPinned) return;
+                    el._prev?.remove();
+                    el._prev = null;
+                });
+                el.addEventListener('click', () => {
+                    const wasPinned = el._previewPinned;
+                    document.querySelectorAll('.seat-card').forEach((other) => {
+                        other._prev?.remove();
+                        other._prev = null;
+                        other._previewPinned = false;
+                    });
+                    if (!wasPinned) {
+                        el._prev = showPreview(el, el.dataset.cardCode);
+                        el._previewPinned = true;
+                    }
+                });
+            }
+            existing.delete(key);
             const centered = i - (total - 1) / 2;
-            el.style.setProperty('--slot-y', `${Math.abs(centered) * 1.4}px`);
-            el.style.setProperty('--slot-rot', `${centered * 5.5}deg`);
+            el.style.setProperty('--slot-y', `${Math.abs(centered) * lift}px`);
+            el.style.setProperty('--slot-rot', `${centered * spread}deg`);
             el.style.zIndex = String(i + 1);
-            el.addEventListener('mouseenter', () => { el._prev = showPreview(el, card.card); });
-            el.addEventListener('mouseleave', () => { el._prev?.remove(); el._prev = null; });
-            hand.appendChild(el);
+            next.appendChild(el);
         });
+        existing.forEach((el) => el.remove());
+        hand.replaceChildren(next);
     };
 
     const renderTrick = (plays) => {
@@ -281,7 +329,7 @@
         dom.scores.innerHTML = players().map((player) => {
             const teamNumber = getTeamNumber(player);
             return `<div class="history-replay-score ${teamNumber ? `team-score-${teamNumber}` : ''}">
-                <span>${escapeHtml(playerName(player))}</span><strong>${scores.get(playerKey(player)) || 0}</strong></div>`;
+                <span>${escapeHtml(playerName(player))}</span><strong>${displayPoints(scores.get(playerKey(player)))}</strong></div>`;
         }).join('');
     };
     const renderTeams = () => {
@@ -330,8 +378,10 @@
             seat.classList.toggle('is-turn', !!currentPlay && samePlayer(player, currentPlay.player));
             renderSeatHand(seat, player, visibleHands.get(playerKey(player)) || []);
             const pts = seat.querySelector('.seat-points');
-            if (pts) pts.innerHTML = `<span class="seat-points-bubble">${scores.get(playerKey(player)) || 0}</span>`;
+            if (pts) pts.innerHTML = `<span class="seat-points-bubble">${displayPoints(scores.get(playerKey(player)))}</span>`;
         });
+        const self = players()[0];
+        if (self && dom.selfPoints) dom.selfPoints.textContent = displayPoints(scores.get(playerKey(self)));
         renderTrick((round?.plays || []).slice(0, step.playCount));
         renderScores();
         renderTeams();
@@ -361,8 +411,8 @@
     };
     const deckRect = () => dom.deckTower?.getBoundingClientRect() || dom.deckStack?.getBoundingClientRect();
 
-    // Fly the REAL card in place via its --deal-* transform vars (same mechanism
-    // as the live game's deal). No overlay clone: the card keeps its own z-order
+    // Fly the real card in place through the shared compositor-friendly transfer.
+    // No overlay clone: the card keeps its own z-order
     // inside the fan (a left card stays under its right neighbour) and lands
     // exactly on its slot — there is no clone→card handoff to snap.
     // `src` = {rect, rot} from the before-snapshot (or a plain rect for the deck).
@@ -377,7 +427,7 @@
             // Start at the source's orientation relative to the destination slot.
             spin: (src?.rot || 0) - cardRot(el),
             fromScale: 1,
-            duration: 340,
+            duration: mobileQuery.matches ? 220 : 340,
             ease: 'power2.out'
         }));
     };
@@ -385,41 +435,25 @@
     // FLIP the cards whose slot merely shifted (the fan re-spreads when a card
     // enters/leaves a hand): glide them from their old screen position instead of
     // letting the rebuilt fan snap into place.
+    // The rebuilt fan re-appends its cards, which kills any CSS transition, so
+    // survivors would snap to their shifted slots. Glide each moved card from its
+    // old screen position through the same shared transfer the main fly uses
+    // (compositor-friendly on every browser — no gsap/desktop-only path).
     const glideSurvivors = (before, skipKey) => {
-        const gsapApi = window.gsap;
-        if (!gsapApi) return Promise.resolve();
-        const tweens = [];
+        const glides = [];
         const glide = (el) => {
             const key = el.dataset.cardKey;
             if (!key || key === skipKey || !before.has(key)) return;
+            const src = before.get(key);
             const now = el.getBoundingClientRect();
-            const old = before.get(key).rect;
-            const dx = (old.left + old.width / 2) - (now.left + now.width / 2);
-            const dy = (old.top + old.height / 2) - (now.top + now.height / 2);
+            const dx = (src.rect.left + src.rect.width / 2) - (now.left + now.width / 2);
+            const dy = (src.rect.top + src.rect.height / 2) - (now.top + now.height / 2);
             if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5) return;
-            // gsap decomposes the CSS-var transform into its own x/y — tween back
-            // to THAT base, not to 0, or the card lands minus its slot offset and
-            // pops when clearProps restores the stylesheet transform.
-            const baseX = Number(gsapApi.getProperty(el, 'x')) || 0;
-            const baseY = Number(gsapApi.getProperty(el, 'y')) || 0;
-            el.style.transition = 'none';   // the CSS transform transition would fight the tween
-            tweens.push(new Promise((resolve) => {
-                gsapApi.fromTo(el, {x: baseX + dx, y: baseY + dy}, {
-                    x: baseX,
-                    y: baseY,
-                    duration: 0.28,
-                    ease: 'power2.out',
-                    clearProps: 'transform',
-                    onComplete() {
-                        el.style.transition = '';
-                        resolve();
-                    }
-                });
-            }));
+            glides.push(flyReplayCard(el, src));
         };
         state.seats.forEach((seat) => seat.querySelectorAll('.seat-cards .card-wrap').forEach(glide));
         dom.trick?.querySelectorAll('.trick-card').forEach(glide);
-        return Promise.all(tweens);
+        return Promise.all(glides);
     };
 
     const classify = (from, to) => {
@@ -435,6 +469,10 @@
 
     const setStep = (index) => {
         if (state.animating) return;
+        if (state.rangeFrame) {
+            cancelAnimationFrame(state.rangeFrame);
+            state.rangeFrame = null;
+        }
         const max = Math.max(state.steps.length - 1, 0);
         state.stepIndex = Math.min(Math.max(index, 0), max);
         render();
@@ -496,18 +534,22 @@
         const response = await fetch(`/api/games/history/${encodeURIComponent(gameId)}`, {credentials: 'include'});
         if (!response.ok) throw new Error('Could not load replay');
         const game = await response.json();
+        // Replay DTOs predate gameType. Briskula carries trumpCard (even when null),
+        // while Treseta has no such field, so recover the adapter without changing API.
+        game.gameType ??= game.trumpCard === undefined ? 'treseta' : 'briskula';
         state.game = game;
         state.teamState = resolveTeams(game);
         state.steps = buildSteps(game);
         state.stepIndex = 0;
 
-        if (dom.title) dom.title.textContent = game.name || 'Briskula';
+        if (dom.title) dom.title.textContent = game.name || getGameTypeDisplayName(game.gameType) || t('history.unknown');
         if (dom.meta) {
             dom.meta.innerHTML = `<p>${escapeHtml(formatDate(game.endedAt || game.createdAt))}</p>
                 <p>${escapeHtml(settingsText(game.gameConfig))}</p>`;
         }
         layout?.style.setProperty('--max-hand', String(game.gameConfig?.cardsInHandNum || 4));
         layout?.classList.toggle('is-two-player', playerCount() === 2);
+        layout?.classList.toggle('is-three-player', playerCount() === 3);
         layout?.classList.toggle('is-four-player', playerCount() === 4);
         initSeats();
         state.trickZone = ui?.registerHand(dom.trick, {type: 'center', spacingScale: 0.45, maxTilt: 4, yArc: 3});
@@ -516,7 +558,23 @@
 
     dom.prev?.addEventListener('click', () => stepAnimated(state.stepIndex - 1));
     dom.next?.addEventListener('click', () => stepAnimated(state.stepIndex + 1));
-    dom.range?.addEventListener('input', () => setStep(Number(dom.range.value) || 0));
+    dom.infoClose?.addEventListener('click', () => {
+        if (dom.info) dom.info.open = false;
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' || !dom.info?.open) return;
+        dom.info.open = false;
+        dom.info.querySelector('summary')?.focus();
+    });
+    let pendingRangeStep = null;
+    dom.range?.addEventListener('input', () => {
+        pendingRangeStep = Number(dom.range.value) || 0;
+        if (state.rangeFrame) return;
+        state.rangeFrame = requestAnimationFrame(() => {
+            state.rangeFrame = null;
+            setStep(pendingRangeStep);
+        });
+    });
 
     loadReplay().catch(() => {
         if (dom.title) dom.title.textContent = t('gameHistory.unavailable');

@@ -59,15 +59,9 @@
             <div class="lobby-meta">
                 <div class="lobby-meta-row">
                     <div>
-                        <div class="lobby-meta-label" th:text="#{lobby.host}">Host</div>
-                        <div id="lobby-host" class="lobby-meta-value" th:text="${lobby.host.name}">Host</div>
-                    </div>
-                </div>
-                <div class="lobby-meta-row">
-                    <div>
-                        <div class="lobby-meta-label" th:text="#{lobby.configuration}">Configuration</div>
+                        <div class="lobby-meta-label" th:text="#{lobby.gameMode}">Game mode</div>
                         <div id="lobby-config" class="lobby-meta-value"
-                             th:text="${lobby.gameType.name() == 'Briskula' and lobby.gameConfig != null
+                             th:text="${lobby.gameConfig != null
                                 ? #messages.msg('lobby.config.base', lobby.gameConfig.numberOfPlayers, lobby.gameConfig.cardsInHandNum) + (lobby.gameConfig.numberOfPlayers == 4 ? (lobby.gameConfig.teamsEnabled ? #messages.msg('lobby.config.teamsEnabled') : #messages.msg('lobby.config.noTeams')) : '')
                                 : #messages.msg('lobby.config.standard')}">Loading…</div>
                         <div id="lobby-config-editor" class="lobby-config-editor field" hidden>
@@ -78,13 +72,13 @@
                 </div>
                 <div class="lobby-meta-row lobby-visibility-row">
                     <div>
-                        <div class="lobby-meta-label" th:text="#{createLobby.visibility}">Visibility</div>
-                        <div id="lobby-visibility-value" class="lobby-meta-value" th:text="#{createLobby.visibility.publicLobby}">Public lobby</div>
+                        <div class="lobby-meta-label" th:text="#{lobby.visibility}">Visibility</div>
+                        <div id="lobby-visibility-value" class="lobby-meta-value" th:text="#{lobby.visibility.publicLobby}">Public lobby</div>
                     </div>
                     <label id="lobby-visibility-control" class="lobby-visibility-control" for="lobby-public-toggle" hidden>
                         <input id="lobby-public-toggle" type="checkbox">
                         <span class="visibility-switch" aria-hidden="true"></span>
-                        <span id="lobby-public-toggle-label" th:text="#{createLobby.visibility.public}">Public</span>
+                        <span id="lobby-public-toggle-label" th:text="#{lobby.visibility.public}">Public</span>
                     </label>
                 </div>
                 <button id="lobby-code-tile" class="lobby-meta-row lobby-code-tile" type="button">
@@ -95,16 +89,6 @@
                     </span>
                     <span class="lobby-code-copy-action" th:text="#{lobby.copy}">Copy</span>
                 </button>
-                <div id="lobby-teams-section" class="lobby-meta-row lobby-teams-section" hidden>
-                    <div class="lobby-teams-content">
-                        <div class="lobby-teams-bar">
-                            <div>
-                                <div class="lobby-meta-label" th:text="#{lobby.teams}">Teams</div>
-                                <div id="lobby-teams-summary" class="lobby-meta-value" th:text="#{lobby.teamsPlaceholder}">Teams will appear here.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div id="lobby-status" class="lobby-status" th:text="#{lobby.status.waiting}">Waiting for players…</div>

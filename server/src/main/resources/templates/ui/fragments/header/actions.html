@@ -54,11 +54,6 @@
             <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.history}">History</span>
           </a>
-          <button class="menu-item game-ui-menu-item" type="button" role="menuitem" data-action="toggle-game-ui"
-                  th:title="#{header.gameUi.title}">
-            <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
-            <span data-game-ui-label th:text="#{header.gameUi.label(#{header.gameUi.fullscreen})}">Table display: Fullscreen</span>
-          </button>
           <div class="profile-menu-divider" role="separator"></div>
           <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
             <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />

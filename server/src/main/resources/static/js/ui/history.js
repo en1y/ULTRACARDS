@@ -59,7 +59,13 @@
   const currentUserWon = (game) => Array.isArray(game.winners)
     && game.winners.some((winner) => playerId(winner) === currentUserId);
 
-  const settingsText = (config = {}) => {
+  const displayPoints = (game, points) => window.UltracardsGameRuntime
+    ?.get(game?.gameType)?.displayPoints?.(points) ?? points ?? 0;
+
+  const settingsText = (game, config = {}) => {
+    if (typeof getGameConfigDisplayName === 'function') {
+      return getGameConfigDisplayName(game.gameType, config);
+    }
     const parts = [t('history.playersCount', config.numberOfPlayers || '?')];
     if (config.numberOfPlayers === 2) parts.push(t('history.cardsCount', config.cardsInHandNum || '?'));
     if (config.numberOfPlayers === 4) parts.push(config.teamsEnabled ? t('history.teams') : t('history.solo'));
@@ -86,7 +92,7 @@
       const winner = isWinner(game, player);
       const uid = playerId(player);
       const interactive = uid > 0 ? ` data-user-id="${uid}" data-user-name="${playerName(player)}" tabindex="0" role="button"` : '';
-      return `<span class="history-score ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)} <strong>${points}</strong></span>`;
+      return `<span class="history-score ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)} <strong>${displayPoints(game, points)}</strong></span>`;
     }).join('');
 
   const renderGame = (game) => {
@@ -97,10 +103,10 @@
         <div class="history-card-head">
           <div class="history-card-title">
           <span class="chip">${escapeHtml(getGameTypeDisplayName(game.gameType) || t('history.unknown'))}</span>
-            <h3>${escapeHtml(game.name || 'Briskula')}</h3>
+            <h3>${escapeHtml(game.name || getGameTypeDisplayName(game.gameType) || t('history.unknown'))}</h3>
             <div class="history-meta">
               <span>${formatDate(game.endedAt || game.createdAt)}</span>
-              <span>${escapeHtml(settingsText(game.gameConfig))}</span>
+              <span>${escapeHtml(settingsText(game, game.gameConfig))}</span>
             </div>
           </div>
           <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
@@ -127,7 +133,7 @@
     if (summary) summary.textContent = `${gameType}, ${result.toLowerCase()}, ${time.toLowerCase()}.`;
   };
 
-  const renderGames = (games, reset) => {
+  const renderGames = (games, reset, hasMore = games.length >= 20) => {
     if (reset) {
       offset = 0;
       gamesById.clear();
@@ -138,7 +144,7 @@
       if (offset === 0) {
         list.innerHTML = `<article class="card history-card history-empty">${t('history.noMatches')}</article>`;
       }
-      loadMoreButton.hidden = true;
+      loadMoreButton.hidden = !hasMore;
       return;
     }
 
@@ -146,7 +152,7 @@
     list.insertAdjacentHTML('beforeend', games.map(renderGame).join(''));
     window.syncThemeUi?.();
     offset += 20;
-    loadMoreButton.hidden = games.length < 20;
+    loadMoreButton.hidden = !hasMore;
   };
 
   const setListLoading = (isLoading) => {
@@ -173,13 +179,15 @@
     const params = new URLSearchParams({
       offset: String(offset),
       result: resultSelect.value,
-      timeSort: timeSortSelect.value
+      timeSort: timeSortSelect.value,
+      gameType: gameTypeSelect.value
     });
 
     try {
       const response = await fetch(`/api/games/history?${params}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Could not load history');
-      renderGames(await response.json(), reset);
+      const games = await response.json();
+      renderGames(games, reset, games.length >= 20);
     } catch (error) {
       if (offset === 0) {
         list.innerHTML = `<article class="card history-card history-error">${t('history.loadFailed')}</article>`;
@@ -221,9 +229,6 @@
   });
 
   updateSummary();
-  if (initialHistory) {
-    renderGames(initialHistory, true);
-  } else {
-    loadHistory(true);
-  }
+  if (initialHistory) renderGames(initialHistory, true);
+  loadHistory(true);
 })();

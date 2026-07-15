@@ -26,10 +26,8 @@
             name: document.getElementById('lobby-name'),
             gameType: document.getElementById('lobby-type-chip'),
             playerChip: document.getElementById('lobby-player-chip'),
-            host: document.getElementById('lobby-host'),
             config: document.getElementById('lobby-config'),
             visibilityValue: document.getElementById('lobby-visibility-value'),
-            visibilityHelp: document.getElementById('lobby-visibility-help'),
             visibilityControl: document.getElementById('lobby-visibility-control'),
             publicToggle: document.getElementById('lobby-public-toggle'),
             publicToggleLabel: document.getElementById('lobby-public-toggle-label'),
@@ -37,8 +35,6 @@
             lobbyCode: document.getElementById('lobby-code'),
             configEditor: document.getElementById('lobby-config-editor'),
             configSelect: document.getElementById('lobby-config-select'),
-            teamsSection: document.getElementById('lobby-teams-section'),
-            teamsSummary: document.getElementById('lobby-teams-summary'),
             randomize: document.getElementById('lobby-randomize'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
@@ -108,16 +104,12 @@
             client.connect({}, () => {
                 state.wsConnected = true;
                 clearReconnectDisconnectTimer();
-                if (connectionLostNotified) {
-                    connectionLostNotified = false;
-                    showToast(t('lobbyPage.toast.connRestored.title'), t('lobbyPage.toast.connRestored.body'));
-                }
+                connectionLostNotified = false;
                 client.subscribe(`/topic/lobbies/${state.lobby.id}`, (message) => {
                     try {
                         const payload = JSON.parse(message.body);
                         if (payload && payload.gameId) {
-                            updateStatus(t('lobbyPage.gameStartedId', payload.gameId));
-                            redirectToGame(payload.gameId);
+                            announceGameStarted();
                             return;
                         }
                         if (!payload || !payload.type) {
@@ -146,8 +138,7 @@
                             }
                             notifyLobbyEvent(payload.type, previousLobby, payload.lobbyDto);
                             if (payload.type === 'STARTED') {
-                                showToast(t('lobbyPage.toast.gameStarted.title'), t('lobbyPage.toast.gameStarted.body'));
-                                redirectToResolvedGame();
+                                announceGameStarted();
                             }
                         }
                     } catch (error) {
@@ -167,7 +158,7 @@
                 });
             }, () => {
                 state.wsConnected = false;
-                if (!connectionLostNotified) {
+                if (!state.redirectingToGame && !connectionLostNotified) {
                     connectionLostNotified = true;
                     showToast(t('lobbyPage.toast.connLost.title'), t('lobbyPage.toast.connLost.body'));
                 }
@@ -208,7 +199,7 @@
                         throw new Error('Failed to start lobby');
                     }
                     updateStatus(t('lobbyPage.startingGame'));
-                    redirectToResolvedGame();
+                    announceGameStarted();
                 } catch (error) {
                     updateStatus(t('lobbyPage.startFailed'));
                 }
@@ -373,13 +364,14 @@
             if (dom.name) dom.name.textContent = lobby.name || 'ULTRAlobby';
             if (dom.gameType) dom.gameType.textContent = getGameTypeDisplayName(lobby.gameType) || t('game.unknown');
             if (dom.playerChip) dom.playerChip.textContent = formatLobbyPlayerCounter(lobby, players.length);
-            if (dom.host) dom.host.textContent = lobby.host?.name || 'Unknown';
             if (dom.config) dom.config.textContent = describeConfig(lobby);
             if (dom.lobbyCode) dom.lobbyCode.textContent = lobby.lobbyCode || '------';
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
             syncLobbyVisibility(lobby, !!isHost);
             renderConfigEditor(lobby, !!isHost);
-            renderTeams(lobby);
+            if (dom.randomize) {
+                dom.randomize.hidden = !(isBriskulaOrderReorderable(lobby) && isCurrentUserHost());
+            }
             syncCloseWarning(lobby);
 
             if (dom.start) {
@@ -541,7 +533,8 @@
 
         function renderKickAction(canKick, playerId) {
             if (canKick) {
-                return `<button class="btn danger" type="button" data-kick-player="${playerId}">${t('lobbyPage.kick')}</button>`;
+                const label = t('lobbyPage.kick');
+                return `<button class="btn danger kick-player-button" type="button" data-kick-player="${playerId}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><img class="uc-icon" data-icon="kick" src="/pics/light/kick.svg" alt="" aria-hidden="true"></button>`;
             }
             return '';
         }
@@ -561,8 +554,12 @@
         }
 
         function describeConfig(lobby) {
-            if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+            if (!lobby?.gameConfig) {
                 return t('lobby.config.standard');
+            }
+
+            if (typeof getGameConfigDisplayName === 'function') {
+                return getGameConfigDisplayName(lobby.gameType, lobby.gameConfig);
             }
 
             const config = lobby.gameConfig;
@@ -596,13 +593,7 @@
 
         function syncLobbyVisibility(lobby, isHost) {
             const publicLobby = isLobbyPublic(lobby);
-            setAnimatedVisibilityText(dom.visibilityValue, publicLobby ? t('createLobby.visibility.publicLobby') : t('createLobby.visibility.privateLobby'));
-            setAnimatedVisibilityText(
-                dom.visibilityHelp,
-                publicLobby
-                    ? t('lobbyPage.publicHelp')
-                    : t('lobbyPage.privateHelp')
-            );
+            setAnimatedVisibilityText(dom.visibilityValue, publicLobby ? t('lobby.visibility.publicLobby') : t('lobby.visibility.privateLobby'));
             if (dom.visibilityControl) {
                 dom.visibilityControl.hidden = !isHost;
             }
@@ -610,7 +601,7 @@
                 dom.publicToggle.checked = publicLobby;
                 dom.publicToggle.disabled = !isHost;
             }
-            setAnimatedVisibilityText(dom.publicToggleLabel, publicLobby ? 'Public' : 'Private');
+            setAnimatedVisibilityText(dom.publicToggleLabel, publicLobby ? t('lobby.visibility.public') : t('lobby.visibility.private'));
         }
 
         function renderConfigEditor(lobby, isHost) {
@@ -637,43 +628,8 @@
             dom.configEditor.hidden = false;
         }
 
-        function renderTeams(lobby) {
-            if (!dom.teamsSection || !dom.teamsSummary) {
-                return;
-            }
-
-            const teamState = resolveTeams(lobby);
-            dom.teamsSection.hidden = !teamState;
-            if (teamState) {
-                dom.teamsSummary.textContent = formatTeamsSummary(teamState);
-            }
-            if (dom.randomize) {
-                dom.randomize.hidden = !(isBriskulaOrderReorderable(lobby) && isCurrentUserHost());
-            }
-        }
-
         function resolveGameSettingKey(lobby) {
-            if (!lobby || String(lobby.gameType) !== 'Briskula' || !lobby.gameConfig) {
-                return '';
-            }
-
-            const config = lobby.gameConfig;
-            if (config.numberOfPlayers === 2 && config.cardsInHandNum === 3) {
-                return 'p2';
-            }
-            if (config.numberOfPlayers === 2 && config.cardsInHandNum === 4) {
-                return 'p2c4';
-            }
-            if (config.numberOfPlayers === 3) {
-                return 'p3';
-            }
-            if (config.numberOfPlayers === 4 && config.teamsEnabled) {
-                return 'p4teams';
-            }
-            if (config.numberOfPlayers === 4) {
-                return 'p4';
-            }
-            return '';
+            return typeof resolveLobbyGameSettingKey === 'function' ? resolveLobbyGameSettingKey(lobby) : '';
         }
 
         async function updateLobbyConfiguration(settingKey) {
@@ -704,7 +660,7 @@
             updatedLobby.players = state.lobby.players;
             updatedLobby.host = state.lobby.host;
             updatedLobby.isPublic = isLobbyPublic(state.lobby);
-            if (gameTypeKey === 'briskula' && updatedLobby.gameConfig) {
+            if (updatedLobby.gameConfig) {
                 updatedLobby.gameConfig.orderedUsers = resolveOrderedLobbyPlayers(state.lobby);
             }
 
@@ -832,7 +788,6 @@
                     orderedUsers: orderedPlayers
                 }
             };
-            renderTeams(state.lobby);
         }
 
         function updateRenderedTeamState(teamState = resolveTeams(state.lobby)) {
@@ -842,7 +797,6 @@
 
             syncTeamPanel(teamState, 1);
             syncTeamPanel(teamState, 2);
-            renderTeams(state.lobby);
         }
 
         function syncTeamPanel(teamState, teamNumber) {
@@ -876,7 +830,7 @@
 
         function resolveTeams(lobby) {
             const config = lobby?.gameConfig;
-            if (!lobby || lobby.gameType !== 'Briskula' || !config || config.numberOfPlayers !== 4 || !config.teamsEnabled) {
+            if (!lobby || !['Briskula', 'Treseta'].includes(lobby.gameType) || !config || config.numberOfPlayers !== 4 || !config.teamsEnabled) {
                 return null;
             }
 
@@ -900,7 +854,7 @@
 
         function resolveOrderedLobbyPlayers(lobby) {
             const players = sortPlayers(Array.isArray(lobby?.players) ? lobby.players : [], lobby?.host);
-            if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+            if (!lobby || !['Briskula', 'Treseta'].includes(lobby.gameType) || !lobby.gameConfig) {
                 return players;
             }
 
@@ -949,7 +903,7 @@
         }
 
         function isBriskulaOrderReorderable(lobby) {
-            return !!(lobby && lobby.gameType === 'Briskula' && lobby.gameConfig);
+            return !!(lobby && ['Briskula', 'Treseta'].includes(lobby.gameType) && lobby.gameConfig);
         }
 
         function startTeamDrag(event, card, teamState) {
@@ -986,6 +940,8 @@
                 proxyWidth: rect.width,
                 proxyHeight: rect.height
             };
+
+            card.setPointerCapture?.(event.pointerId);
 
             positionTeamDragProxy(event.clientX, event.clientY);
             document.body.classList.add('is-team-dragging');
@@ -1025,6 +981,8 @@
                 proxyWidth: rect.width,
                 proxyHeight: rect.height
             };
+
+            card.setPointerCapture?.(event.pointerId);
 
             positionTeamDragProxy(event.clientX, event.clientY);
             document.body.classList.add('is-team-dragging');
@@ -1194,6 +1152,9 @@
                 state.dragSession.moveFrame = null;
             }
             state.dragSession.sourceCard?.classList.remove('is-source-hidden');
+            if (state.dragSession.sourceCard?.hasPointerCapture?.(state.dragSession.pointerId)) {
+                state.dragSession.sourceCard.releasePointerCapture(state.dragSession.pointerId);
+            }
             state.dragSession.proxy?.remove();
             document.body.classList.remove('is-team-dragging');
         }
@@ -1779,17 +1740,6 @@
             return teamNumber === 1 ? t('lobbyPage.team1') : t('lobbyPage.team2');
         }
 
-        function formatTeamsSummary(teamState) {
-            return `${getTeamDisplayName(1)}: ${formatTeamNames(teamState.team1)} • ${getTeamDisplayName(2)}: ${formatTeamNames(teamState.team2)}`;
-        }
-
-        function formatTeamNames(team) {
-            if (!team.length) {
-                return t('lobbyPage.waitingShort');
-            }
-            return team.map((player) => player.name || t('lobby.userFallback', player.id)).join(', ');
-        }
-
         function isCurrentUserHost() {
             return !!(state.currentUser && state.lobby?.host && String(state.currentUser.id) === String(state.lobby.host.id));
         }
@@ -1929,38 +1879,30 @@
             return Date.now() >= closeAt - 1000;
         }
 
-        function redirectToGame(gameId) {
-            if (state.redirectingToGame || !gameId) {
+        function announceGameStarted() {
+            if (state.redirectingToGame) {
                 return;
             }
             state.redirectingToGame = true;
             window.clearInterval(closeWarningTimer);
-            window.location.href = '/game';
+            showToast(t('lobbyPage.toast.gameStarted.title'), t('lobbyPage.toast.gameStarted.body'));
+            window.setTimeout(() => {
+                redirectToResolvedGame();
+            }, 700);
         }
 
         async function redirectToResolvedGame() {
-            if (state.redirectingToGame || !state.lobby?.id) {
-                return;
-            }
             try {
                 const response = await fetch(`/api/games/lobby/${encodeURIComponent(state.lobby.id)}`, {
                     credentials: 'include'
                 });
-                if (response.ok) {
-                    const game = await response.json();
-                    if (game?.id) {
-                        redirectToGame(game.id);
-                        return;
-                    }
+                if (response.ok && (await response.json())?.id) {
+                    window.location.href = '/game';
+                    return;
                 }
             } catch (error) {
             }
-            window.setTimeout(() => {
-                if (!state.redirectingToGame) {
-                    state.redirectingToGame = true;
-                    window.location.href = '/game';
-                }
-            }, 250);
+            window.location.href = '/game';
         }
 
         function notifyLobbyEvent(type, previousLobby, nextLobby) {

@@ -339,6 +339,13 @@
 
     const isSameMondayWeek = (left, right) => startOfMondayWeek(left).getTime() === startOfMondayWeek(right).getTime();
 
+    const isToday = (date) => {
+      const today = new Date();
+      return date.getFullYear() === today.getFullYear()
+        && date.getMonth() === today.getMonth()
+        && date.getDate() === today.getDate();
+    };
+
     const formatLastPlayedAt = (value) => {
       if (!value) {
         return t('profile.neverPlayed');
@@ -349,17 +356,36 @@
         return t('profile.neverPlayed');
       }
 
-      if (isSameMondayWeek(date, new Date())) {
-        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { weekday: 'long' }).format(date);
+      const lang = document.documentElement.lang || 'en';
+      if (isToday(date)) {
+        return t('common.today');
       }
 
-      const month = new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long' }).format(date);
+      if (isSameMondayWeek(date, new Date())) {
+        return new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(date);
+      }
+
+      const normalizedLang = lang.toLowerCase();
+      if (!normalizedLang.startsWith('en')) {
+        return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' }).format(date);
+      }
+
+      const month = new Intl.DateTimeFormat(lang, { month: 'long' }).format(date);
       return `${ordinalDay(date.getDate())} ${month}`;
     };
 
-    const formatLastPlayedLabel = (value) => value
-        ? t('search.lastPlayedOn', formatLastPlayedAt(value))
-        : t('profile.neverPlayed');
+    const formatLastPlayedLabel = (value) => {
+      if (!value) {
+        return t('profile.neverPlayed');
+      }
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return t('profile.neverPlayed');
+      }
+      return isToday(date)
+        ? t('search.lastPlayedToday')
+        : t('search.lastPlayedOn', formatLastPlayedAt(value));
+    };
 
     const formatHistoryDate = (value) => {
       if (!value) {

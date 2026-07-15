@@ -4,42 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ULTRACARDS</title>
-
+    <title th:text="#{game.treseta} + ' | ULTRACARDS'">Treseta | ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
     <script th:src="@{/js/theme.js}" defer></script>
-    <!--suppress CssUnusedSymbol -->
-        <link rel="stylesheet" th:href="@{/css/ui/game.css}">
 </head>
 <body class="game-page">
 <div th:replace="~{ui/fragments/header :: header}"></div>
-<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting…
-</div>
-
-<main class="container game-layout">
-    <div id="game-container"
-         th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='generic'">
-        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('', #{game.waitingForGame}, ${game != null ? game.cardsLeftInDeck : 0}, null, false, null, null, 'self', ${currentUserId}, 'player', false)}"></th:block>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
+<main class="container game-layout treseta-game-layout">
+    <div id="game-container" th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='treseta'">
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, null, false, null, ${discardedCard}, 'self', ${currentUserId}, 'player', true)}"></th:block>
     </div>
-
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
 </main>
-
 <button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" th:aria-label="#{chat.open}" data-chat-panel=".chat-sidebar">
     <img class="uc-icon" data-icon="chat" th:src="@{/pics/light/chat.svg}" alt="" aria-hidden="true" />
     <span class="mobile-chat-badge" hidden></span>
 </button>
 <script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
-
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-<!--suppress JSUnresolvedVariable, RegExpRedundantEscape, CheckTagEmptyBody -->
 <script th:inline="javascript">
     window.__INITIAL_GAME__ = /*[[${game}]]*/ null;
+    window.__INITIAL_HAND__ = /*[[${hand}]]*/ null;
     window.__INITIAL_GAME_CHAT__ = /*[[${chat}]]*/ null;
 </script>
-<script th:src="@{/webjars/animejs/4.1.2/lib/anime.umd.min.js}"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
 <script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
 <script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
+<script th:src="@{/js/ui/games/treseta.js}"></script>
+<script th:src="@{/js/ui/live-game.js}"></script>
 </body>
 </html>

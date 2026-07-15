@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class GameControllerTest {
@@ -60,10 +61,27 @@ class GameControllerTest {
         when(briskulaHistory.getPastGames(user, "both", "latest")).thenReturn(games);
         when(tresetaHistory.getPastGames(user, "both", "latest")).thenReturn(List.of());
 
-        var page = controller.getPastGames(user, 20, "both", "latest").getBody();
+        var page = controller.getPastGames(user, 20, "both", "latest", "all").getBody();
 
         assertThat(page).hasSize(5);
         assertThat(page.getFirst().getEndedAt()).isEqualTo(Instant.ofEpochSecond(4));
+    }
+
+    @Test
+    void filtersByGameTypeBeforePaginating() {
+        var user = user(1L, "Player");
+        var games = new ArrayList<ShortGameHistoryDTO>();
+        for (int i = 0; i < 21; i++)
+            games.add(new ShortGameHistoryDTO(UUID.randomUUID(), UUID.randomUUID(), "game-" + i,
+                    GameTypeDTO.Treseta, Instant.ofEpochSecond(i), Instant.ofEpochSecond(i),
+                    null, List.of(), Map.of(), List.of()));
+        when(tresetaHistory.getPastGames(user, "both", "latest")).thenReturn(games);
+
+        var page = controller.getPastGames(user, 20, "both", "latest", "treseta").getBody();
+
+        assertThat(page).singleElement().extracting(ShortGameHistoryDTO::getEndedAt)
+                .isEqualTo(Instant.EPOCH);
+        verifyNoInteractions(briskulaHistory);
     }
 
     private UserEntity user(Long id, String name) {

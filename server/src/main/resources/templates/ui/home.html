@@ -140,6 +140,11 @@
     </section>
 </main>
 
+<aside id="home-toast" class="home-toast" aria-live="polite" aria-atomic="true" hidden>
+    <p id="home-toast-title" class="home-toast-title" th:text="#{lobbies.toast.closed.title}">Lobby closed</p>
+    <p id="home-toast-text" class="home-toast-text" th:text="#{lobbies.toast.closed.body('your lobby')}">Your lobby was closed because its timer ran out.</p>
+</aside>
+
 <th:block th:if="${isAuthenticated}" th:replace="~{ui/fragments/create-lobby :: createLobbyMenu}"></th:block>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>

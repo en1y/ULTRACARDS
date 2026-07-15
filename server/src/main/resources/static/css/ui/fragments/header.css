@@ -1438,15 +1438,6 @@ body.friends-drawer-open .uc-header.hidden {
   height: 14px;
 }
 
-/* Theme toggle is a mobile-only control; on desktop (matching the header's own
-   880px mobile breakpoint) it's hidden. Scoped to the main toggle so the
-   notification-popup toggle inside the tray is unaffected. */
-@media (min-width: 881px) {
-  .theme-toggle[data-action="toggle-theme"] {
-    display: none;
-  }
-}
-
 [data-theme="dark"] .theme-toggle:not(.notification-popup-toggle) .theme-toggle-thumb {
   transform: translateX(26px);
 }
@@ -1569,12 +1560,6 @@ body.friends-drawer-open .uc-header.hidden {
 
 .menu-item.danger:hover {
   background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
-}
-
-@media (min-width: 881px) {
-  .profile-dropdown .game-ui-menu-item {
-    display: none;
-  }
 }
 
 .uc-header button:hover,

@@ -8,13 +8,15 @@
                   data-card-index=${index},
                   data-card-face=${card != null},
                   data-card-key=${card != null ? resolvedCardType + ':' + card.card : null}">
-        <div class="card-inner">
+        <th:block th:if="${card != null}">
             <img class="card-front"
                  src=""
                  th:alt="${card != null ? #messages.msg('game.card.alt') : ''}">
+        </th:block>
+        <th:block th:unless="${card != null}">
             <img class="card-back"
-                 th:src="${'/api/cards/' + #strings.toLowerCase(resolvedCardType) + '/back'}"
+                 th:src="${'/api/cards/' + #strings.toLowerCase(resolvedCardType) + '/back?v=2'}"
                  th:alt="#{game.cardBack.alt}">
-        </div>
+        </th:block>
     </div>
 </th:block>

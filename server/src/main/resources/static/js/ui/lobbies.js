@@ -228,8 +228,12 @@ const gameSettingsAnimationDurationMs = 420;
             }
 
             function describeLobbySettings(lobby) {
-                if (!lobby || lobby.gameType !== 'Briskula' || !lobby.gameConfig) {
+                if (!lobby?.gameConfig) {
                     return t('lobby.config.standard');
+                }
+
+                if (typeof getGameConfigDisplayName === 'function') {
+                    return getGameConfigDisplayName(lobby.gameType, lobby.gameConfig);
                 }
 
                 const config = lobby.gameConfig;

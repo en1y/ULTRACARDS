@@ -73,11 +73,14 @@ public class GameController {
             @AuthenticationPrincipal UserEntity user,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "both") String result,
-            @RequestParam(defaultValue = "latest") String timeSort
+            @RequestParam(defaultValue = "latest") String timeSort,
+            @RequestParam(defaultValue = "all") String gameType
     ) {
         var histories = new ArrayList<ShortGameHistoryDTO>();
-        histories.addAll(briskulaGameHistoryService.getPastGames(user, result, timeSort));
-        histories.addAll(tresetaGameHistoryService.getPastGames(user, result, timeSort));
+        if (!"treseta".equalsIgnoreCase(gameType))
+            histories.addAll(briskulaGameHistoryService.getPastGames(user, result, timeSort));
+        if (!"briskula".equalsIgnoreCase(gameType))
+            histories.addAll(tresetaGameHistoryService.getPastGames(user, result, timeSort));
         var comparator = Comparator.comparing(ShortGameHistoryDTO::getEndedAt,
                 Comparator.nullsLast(Comparator.naturalOrder()));
         if (!"oldest".equalsIgnoreCase(timeSort) && !"asc".equalsIgnoreCase(timeSort)) comparator = comparator.reversed();

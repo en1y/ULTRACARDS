@@ -14,6 +14,22 @@ function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnable
     })
 }
 
+function createTresetaRequest(lobbyName, playerNum, teamsEnabled=false, isPublic=true) {
+    return JSON.stringify({
+        id: "",
+        name: lobbyName,
+        minPlayers: playerNum,
+        maxPlayers: playerNum,
+        gameType: "Treseta",
+        isPublic,
+        gameConfig: {
+            numberOfPlayers: playerNum,
+            cardsInHandNum: playerNum === 3 ? 13 : 10,
+            teamsEnabled
+        }
+    });
+}
+
 function normalizeLobbyName(lobbyName) {
     return typeof lobbyName === 'string' && lobbyName.trim().length
         ? lobbyName.trim()
@@ -52,17 +68,22 @@ const gameTypes = {
         p2: {
             ui_text: t('gameConfig.1v1'),
             settingId: 0,
-            req: ''
+            req: (lobbyName) => createTresetaRequest(lobbyName, 2)
         },
         p3: {
             ui_text: t('gameConfig.3p'),
             settingId: 1,
-            req: ''
+            req: (lobbyName) => createTresetaRequest(lobbyName, 3)
         },
-        p4: {
+        p4teams: {
             ui_text: t('gameConfig.2v2'),
             settingId: 2,
-            req: ''
+            req: (lobbyName) => createTresetaRequest(lobbyName, 4, true)
+        },
+        p4: {
+            ui_text: t('gameConfig.4p'),
+            settingId: 3,
+            req: (lobbyName) => createTresetaRequest(lobbyName, 4)
         }
     },
     durak:{},
@@ -151,6 +172,13 @@ function resolveGameConfigKey(gameType, config) {
     if (String(gameType || '').toLowerCase() === 'briskula') {
         return resolveBriskulaGameConfigKey(config);
     }
+    if (String(gameType || '').toLowerCase() === 'treseta' && config && typeof config === 'object') {
+        const players = Number(config.numberOfPlayers);
+        if (players === 2) return 'TWO_PLAYERS';
+        if (players === 3) return 'THREE_PLAYERS';
+        if (players === 4 && config.teamsEnabled) return 'FOUR_PLAYERS_WITH_TEAMS';
+        if (players === 4) return 'FOUR_PLAYERS_NO_TEAMS';
+    }
     return typeof config === 'string' ? config : '';
 }
 
@@ -162,6 +190,10 @@ function getGameConfigDisplayName(gameType, config) {
         if (setting?.ui_text) {
             return setting.ui_text;
         }
+    }
+    if (normalizedGameType === 'treseta') {
+        const setting = getGameTypeSetting('treseta', resolveLobbyGameSettingKey({gameType: 'Treseta', gameConfig: config}));
+        if (setting?.ui_text) return setting.ui_text;
     }
 
     const configKey = resolveGameConfigKey(gameType, config);
@@ -185,11 +217,18 @@ function resolveLobbyGameSettingKey(lobby) {
     }
 
     const gameType = String(lobby.gameType || '').toLowerCase();
-    if (gameType !== 'briskula' || !lobby.gameConfig) {
+    if (!['briskula', 'treseta'].includes(gameType) || !lobby.gameConfig) {
         return '';
     }
 
     const config = lobby.gameConfig;
+    if (gameType === 'treseta') {
+        if (config.numberOfPlayers === 2) return 'p2';
+        if (config.numberOfPlayers === 3) return 'p3';
+        if (config.numberOfPlayers === 4 && config.teamsEnabled) return 'p4teams';
+        if (config.numberOfPlayers === 4) return 'p4';
+        return '';
+    }
     if (config.numberOfPlayers === 2 && config.cardsInHandNum === 3) {
         return 'p2';
     }

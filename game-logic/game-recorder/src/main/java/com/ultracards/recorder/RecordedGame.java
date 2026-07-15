@@ -76,7 +76,7 @@ public class RecordedGame {
     }
 
     public List<RecordedPlayer> players() {
-        return List.copyOf(players);
+        return players.stream().filter(Objects::nonNull).toList();
     }
 
     public List<RecordedRound> rounds() {

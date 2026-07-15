@@ -19,20 +19,7 @@
 <main class="container game-layout">
     <div id="game-container"
          th:attr="data-game-id=${game.id},data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
-        <div class="game-shell briskula-game-shell">
-            <th:block th:replace="~{ui/fragments/game/table :: table('', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right')}"></th:block>
-
-            <div class="hand-row">
-                <th:block th:replace="~{ui/fragments/game/hand :: hand('', 'self', ${currentUserId}, null, 0, 'player')}"></th:block>
-                <div id="player-summary" class="player-summary" style="visibility:hidden">
-                    <div class="player-summary-card">
-                        <div id="player-summary-avatar" class="seat-avatar">P</div>
-                        <div id="player-summary-name" class="player-summary-name"></div>
-                        <div id="player-summary-points" class="player-summary-points">0</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('briskula-game-shell', #{game.dragToPlay}, ${game.cardsLeftInDeck}, ${game.trumpCard}, true, 'right', ${discardedCard}, 'self', ${currentUserId}, 'player', true)}"></th:block>
     </div>
 
     <th:block th:replace="~{ui/fragments/chat :: chatPanel('chat-sidebar', 'chat-header', #{chat.gameTitle}, #{chat.gameEmpty}, ${chat}, false, ${username}, ${currentUserId}, 'chat')}"></th:block>
@@ -54,6 +41,8 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
 <script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
 <script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
 <script th:src="@{/js/ui/games/briskula.js}"></script>
+<script th:src="@{/js/ui/live-game.js}"></script>
 </body>
 </html>

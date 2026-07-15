@@ -376,7 +376,7 @@
 
         .team-player-card {
             display: grid;
-            grid-template-columns: minmax(0, 1fr);
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
             gap: 0.65rem;
             position: relative;
@@ -387,10 +387,6 @@
             will-change: transform;
             touch-action: none;
             box-sizing: border-box;
-        }
-
-        .team-player-card:has([data-kick-player]) {
-            padding-right: 4.8rem;
         }
 
         .team-player-card .player-main {
@@ -404,12 +400,29 @@
         }
 
         .team-player-card .btn {
-            position: absolute;
-            top: 0.65rem;
-            right: 0.65rem;
+            position: static;
+            align-self: start;
             width: auto;
+            max-width: 100%;
             min-height: 2rem;
             padding: 0.35rem 0.65rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kick-player-button {
+            display: inline-grid;
+            place-items: center;
+            width: 2.2rem !important;
+            min-width: 2.2rem;
+            height: 2.2rem;
+            padding: 0.35rem !important;
+            flex: 0 0 auto;
+        }
+
+        .kick-player-button .uc-icon {
+            width: 1.15rem;
+            height: 1.15rem;
         }
 
         .team-player-card-ally {
