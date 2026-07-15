@@ -185,6 +185,14 @@ public class LobbyService {
     public GameLobbyDTO updateLobby(@Valid GameLobbyDTO lobbyDTO, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyDTO.getId());
         if (lobby != null && lobby.getOwner().equals(user)) {
+            var config = lobbyDTO.getGameConfig();
+            if ((config instanceof BriskulaGameConfigDTO briskulaConfig
+                    && briskulaConfig.getNumberOfPlayers() < lobby.getUsers().size())
+                    || (config instanceof TresetaGameConfigDTO tresetaConfig
+                    && tresetaConfig.getNumberOfPlayers() < lobby.getUsers().size()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Kick a player before reducing the game mode player count");
+
             var previousUsers = new ArrayList<>(lobby.getUsers());
             lobby.setName(lobbyDTO.getName());
             lobby.setMinPlayers(lobbyDTO.getMinPlayers());
@@ -195,7 +203,6 @@ public class LobbyService {
                 lobby.setLobbyState(lobbyDTO.getIsPublic() ? LobbyState.PUBLIC : LobbyState.PRIVATE);
 
             try {
-                var config = lobbyDTO.getGameConfig();
                 if (config != null) {
                     if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
                         lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));

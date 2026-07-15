@@ -2,8 +2,11 @@ package com.ultracards.server.service.lobby;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
 import com.ultracards.games.treseta.TresetaGameConfig;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.friends.FriendService;
@@ -130,6 +133,29 @@ class LobbyServiceTest {
                 .isEqualTo(HttpStatus.CONFLICT);
 
         verifyNoInteractions(lobbyManager, ultrakillLevelService, chatService, eventPublisher, taskScheduler);
+    }
+
+    @Test
+    void requiresPlayerKickBeforeReducingGameModePlayerCount() {
+        var owner = user(1L, "Owner");
+        var lobby = new LobbyEntity("Lobby", GameTypeDTO.Briskula, owner, 2, 3,
+                new BriskulaGameConfigDTO(3, 3, false, null), LobbyState.PUBLIC, 60);
+        lobby.addUser(user(2L, "Player 2"));
+        lobby.addUser(user(3L, "Player 3"));
+        when(lobbyManager.getLobby(lobby.getId())).thenReturn(lobby);
+
+        var update = new GameLobbyDTO();
+        update.setId(lobby.getId());
+        update.setGameConfig(new BriskulaGameConfigDTO(2, 3, false, null));
+
+        assertThatThrownBy(() -> lobbyService.updateLobby(update, owner))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Kick a player")
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        assertThat(lobby.getUsers()).hasSize(3).contains(owner);
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test

@@ -35,6 +35,7 @@
             lobbyCode: document.getElementById('lobby-code'),
             configEditor: document.getElementById('lobby-config-editor'),
             configSelect: document.getElementById('lobby-config-select'),
+            configWarning: document.getElementById('lobby-config-warning'),
             randomize: document.getElementById('lobby-randomize'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
@@ -613,17 +614,28 @@
             if (!isHost || !settings || !Object.keys(settings).length) {
                 dom.configEditor.hidden = true;
                 dom.configSelect.innerHTML = '';
+                if (dom.configWarning) {
+                    dom.configWarning.hidden = true;
+                }
                 return;
             }
 
             const selectedKey = resolveGameSettingKey(lobby);
+            const playerCount = resolveOrderedLobbyPlayers(lobby).length;
+            let hasUnavailableModes = false;
             dom.configSelect.innerHTML = '';
             for (const [key, value] of Object.entries(settings)) {
                 const option = document.createElement('option');
+                const requestedPlayers = Number(JSON.parse(value.req(lobby.name)).gameConfig?.numberOfPlayers);
                 option.value = key;
                 option.textContent = value.ui_text;
                 option.selected = key === selectedKey;
+                option.disabled = Number.isFinite(requestedPlayers) && requestedPlayers < playerCount;
+                hasUnavailableModes ||= option.disabled;
                 dom.configSelect.appendChild(option);
+            }
+            if (dom.configWarning) {
+                dom.configWarning.hidden = !hasUnavailableModes;
             }
             dom.configEditor.hidden = false;
         }
