@@ -8,6 +8,7 @@ let cachedDetailedStats = null;
 let cachedFriends = [];
 let cachedBlockedFriends = [];
 let detailedStatsFilters = {
+    gameType: '',
     gameConfig: '',
     sort: 'recent',
     user: ''
@@ -297,6 +298,13 @@ function isSameMondayWeek(left, right) {
     return startOfMondayWeek(left).getTime() === startOfMondayWeek(right).getTime();
 }
 
+function isToday(date) {
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+        && date.getMonth() === today.getMonth()
+        && date.getDate() === today.getDate();
+}
+
 function formatLastPlayedAt(value) {
     if (!value) {
         return t('profile.neverPlayed');
@@ -308,11 +316,15 @@ function formatLastPlayedAt(value) {
     }
 
     const lang = document.documentElement.lang || 'en';
+    if (isToday(date)) {
+        return t('common.today');
+    }
+
     if (isSameMondayWeek(date, new Date())) {
         return new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(date);
     }
 
-    if (lang !== 'en') {
+    if (!lang.toLowerCase().startsWith('en')) {
         return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' }).format(date);
     }
     const month = new Intl.DateTimeFormat(lang, { month: 'long' }).format(date);
@@ -320,7 +332,17 @@ function formatLastPlayedAt(value) {
 }
 
 function formatLastPlayedLabel(value) {
-    return value ? t('search.lastPlayedOn', formatLastPlayedAt(value)) : t('profile.neverPlayed');
+    if (!value) {
+        return t('profile.neverPlayed');
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return t('profile.neverPlayed');
+    }
+    if (isToday(date)) {
+        return t('profile.lastPlayed.today');
+    }
+    return t('search.lastPlayedOn', formatLastPlayedAt(value));
 }
 
 function formatHistoryDate(value) {
@@ -886,15 +908,15 @@ function renderMatchupTable(title, matchups, emptyText) {
     `;
 }
 
-function collectBriskulaModes(briskulaStats, configStats) {
+function collectGameModes(gameType, gameStats, configStats) {
     const modeMap = new Map();
 
     Object.entries(configStats || {}).forEach(([gameConfig, stats]) => {
         modeMap.set(gameConfig, stats?.lastPlayedAt || null);
     });
 
-    [...(briskulaStats.winsAgainstUser || []), ...(briskulaStats.winsWithTeammate || [])].forEach((matchup) => {
-        const configKey = gameConfigKey(matchup.gameConfig);
+    [...(gameStats.winsAgainstUser || []), ...(gameStats.winsWithTeammate || [])].forEach((matchup) => {
+        const configKey = gameConfigKey(matchup.gameConfig, gameType);
         if (!configKey) {
             return;
         }
@@ -908,32 +930,49 @@ function collectBriskulaModes(briskulaStats, configStats) {
     });
 
     return Array.from(modeMap.entries())
-        .sort((a, b) => lastPlayedTime(b[1]) - lastPlayedTime(a[1]) || gameDisplayName(a[0]).localeCompare(gameDisplayName(b[0])))
+        .sort((a, b) => lastPlayedTime(b[1]) - lastPlayedTime(a[1]) || gameConfigDisplayName(a[0], gameType).localeCompare(gameConfigDisplayName(b[0], gameType)))
         .map(([mode]) => mode);
 }
 
-function selectDefaultBriskulaMode(modes) {
-    if (!modes.length) {
+function selectDefaultGameType(gameEntries) {
+    if (!gameEntries.some(([gameType]) => gameType === detailedStatsFilters.gameType)) {
+        detailedStatsFilters.gameType = gameEntries[0]?.[0] || '';
         detailedStatsFilters.gameConfig = '';
+    }
+}
+
+function selectGameMode(modes) {
+    if (!detailedStatsFilters.gameConfig) {
         return;
     }
 
     if (!modes.includes(detailedStatsFilters.gameConfig)) {
-        detailedStatsFilters.gameConfig = modes[0];
+        detailedStatsFilters.gameConfig = '';
     }
 }
 
-function renderMatchupControls(modes) {
+function renderMatchupControls(gameEntries, modes) {
+    const gameOptions = gameEntries.map(([gameType]) => `
+        <option value="${escapeHtml(gameType)}" ${gameType === detailedStatsFilters.gameType ? 'selected' : ''}>
+            ${escapeHtml(gameDisplayName(gameType))}
+        </option>
+    `).join('');
     const modeOptions = modes.length
-        ? modes.map((mode) => `
+        ? `<option value="" ${!detailedStatsFilters.gameConfig ? 'selected' : ''}>${t('profilePage.allModes')}</option>${modes.map((mode) => `
             <option value="${escapeHtml(mode)}" ${mode === detailedStatsFilters.gameConfig ? 'selected' : ''}>
-                ${escapeHtml(gameDisplayName(mode))}
+                ${escapeHtml(gameConfigDisplayName(mode, detailedStatsFilters.gameType))}
             </option>
-        `).join('')
-        : `<option value="">${t('profilePage.noBriskulaModes')}</option>`;
+        `).join('')}`
+        : `<option value="">${t('profilePage.noModes')}</option>`;
 
     return `
         <div class="profile-stats-controls" aria-label="${t('profilePage.matchupFilters.aria')}">
+            <label class="profile-filter-field" for="stats-game-filter">
+                <span>${t('profilePage.sort.gameType')}</span>
+                <select id="stats-game-filter" ${gameEntries.length ? '' : 'disabled'}>
+                    ${gameOptions}
+                </select>
+            </label>
             <label class="profile-filter-field" for="stats-mode-filter">
                 <span>${t('profilePage.mode')}</span>
                 <select id="stats-mode-filter" ${modes.length ? '' : 'disabled'}>
@@ -961,9 +1000,16 @@ function renderMatchupControls(modes) {
 }
 
 function bindMatchupControls(container) {
+    const gameSelect = container.querySelector('#stats-game-filter');
     const modeSelect = container.querySelector('#stats-mode-filter');
     const sortSelect = container.querySelector('#stats-sort');
     const userInput = container.querySelector('#stats-user-filter');
+
+    gameSelect?.addEventListener('change', () => {
+        detailedStatsFilters.gameType = gameSelect.value;
+        detailedStatsFilters.gameConfig = '';
+        renderDetailedStats(cachedDetailedStats);
+    });
 
     modeSelect?.addEventListener('change', () => {
         detailedStatsFilters.gameConfig = modeSelect.value;
@@ -984,10 +1030,10 @@ function bindMatchupControls(container) {
     });
 }
 
-function filterMatchupsByControls(matchups) {
+function filterMatchupsByControls(matchups, gameType) {
     const userFilter = detailedStatsFilters.user.trim().toLowerCase();
     return (Array.isArray(matchups) ? matchups : [])
-        .filter((matchup) => !detailedStatsFilters.gameConfig || gameConfigKey(matchup.gameConfig) === detailedStatsFilters.gameConfig)
+        .filter((matchup) => !detailedStatsFilters.gameConfig || gameConfigKey(matchup.gameConfig, gameType) === detailedStatsFilters.gameConfig)
         .filter((matchup) => !userFilter || matchupLabel(matchup).toLowerCase().includes(userFilter));
 }
 
@@ -1000,43 +1046,43 @@ function renderDetailedStats(data) {
     }
 
     const gameStats = cachedDetailedStats?.userGamesStats?.gameStats || {};
-    const briskulaStats = cachedDetailedStats?.userBriskulaStats || {};
-    const tresetaStats = cachedDetailedStats?.userTresetaStats || {};
-    const configStats = briskulaStats.configStats || {};
-    const tresetaConfigStats = tresetaStats.configStats || {};
-    const modes = collectBriskulaModes(briskulaStats, configStats);
-    selectDefaultBriskulaMode(modes);
-
     const gameEntries = Object.entries(gameStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
-    const configEntries = Object.entries(configStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
-    const tresetaConfigEntries = Object.entries(tresetaConfigStats).sort((a, b) => compareStatsEntries(a, b, 'recent'));
+    selectDefaultGameType(gameEntries);
+
+    const selectedGameType = detailedStatsFilters.gameType;
+    const selectedGameStats = gameStats[selectedGameType] || {};
+    const detailedStatsByGameType = {
+        briskula: cachedDetailedStats?.userBriskulaStats || {},
+        treseta: cachedDetailedStats?.userTresetaStats || {}
+    };
+    const selectedDetailedStats = detailedStatsByGameType[String(selectedGameType).toLowerCase()] || {};
+    const configStats = selectedDetailedStats.configStats || {};
+    const modes = collectGameModes(selectedGameType, selectedDetailedStats, configStats);
+    selectGameMode(modes);
+
+    const configEntries = Object.entries(configStats)
+        .filter(([gameConfig]) => !detailedStatsFilters.gameConfig || gameConfig === detailedStatsFilters.gameConfig)
+        .sort((a, b) => compareStatsEntries(a, b, 'recent'));
     const selectedModeName = detailedStatsFilters.gameConfig
-        ? gameDisplayName(detailedStatsFilters.gameConfig)
-        : t('profilePage.noModeSelected');
-    const winsAgainstUser = filterMatchupsByControls(briskulaStats.winsAgainstUser);
-    const winsWithTeammate = filterMatchupsByControls(briskulaStats.winsWithTeammate);
+        ? gameConfigDisplayName(detailedStatsFilters.gameConfig, selectedGameType)
+        : t('profilePage.allModes');
+    const winsAgainstUser = filterMatchupsByControls(selectedDetailedStats.winsAgainstUser, selectedGameType);
+    const winsWithTeammate = filterMatchupsByControls(selectedDetailedStats.winsWithTeammate, selectedGameType);
     const teammateTable = winsWithTeammate.length
         ? renderMatchupTable(t('profilePage.withTeammates', selectedModeName), winsWithTeammate, t('profilePage.noTeammateStats'))
         : '';
-    const tresetaOpponentTable = renderMatchupTable(
-        t('profilePage.againstUsers', t('game.treseta')),
-        tresetaStats.winsAgainstUser,
-        t('profilePage.noOpponentStats')
-    );
-    const tresetaTeammateTable = Array.isArray(tresetaStats.winsWithTeammate) && tresetaStats.winsWithTeammate.length
-        ? renderMatchupTable(t('profilePage.withTeammates', t('game.treseta')), tresetaStats.winsWithTeammate, t('profilePage.noTeammateStats'))
-        : '';
 
     container.innerHTML = `
+        ${renderMatchupControls(gameEntries, modes)}
         <article class="profile-stats-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">${t('common.allGames')}</p>
+                    <p class="section-kicker">${escapeHtml(gameDisplayName(selectedGameType))}</p>
                     <h2>${t('profilePage.gameStatistics')}</h2>
                 </div>
             </div>
             <div class="profile-game-grid">
-                ${gameEntries.map(([gameType, stats]) => renderGameStatsCard(gameType, stats)).join('') || `
+                ${selectedGameType ? renderGameStatsCard(selectedGameType, selectedGameStats) : `
                     <article class="profile-session-card profile-session-card--empty">
                         <p>${t('profilePage.noAccountStats')}</p>
                     </article>
@@ -1046,31 +1092,16 @@ function renderDetailedStats(data) {
         <article class="profile-stats-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">${t('game.briskula')}</p>
+                    <p class="section-kicker">${escapeHtml(selectedModeName)}</p>
                     <h2>${t('profilePage.byGameSetting')}</h2>
                 </div>
             </div>
             <div class="profile-game-grid">
-                ${configEntries.map(([gameType, stats]) => renderGameStatsCard(gameType, stats, 'profile-game-card--config')).join('') || `
-                    <article class="profile-session-card profile-session-card--empty">
-                        <p>${t('profilePage.noConfigStats')}</p>
-                    </article>
-                `}
-            </div>
-        </article>
-        <article class="profile-stats-section">
-            <div class="section-heading">
-                <div>
-                    <p class="section-kicker">${t('game.treseta')}</p>
-                    <h2>${t('profilePage.byGameSetting')}</h2>
-                </div>
-            </div>
-            <div class="profile-game-grid">
-                ${tresetaConfigEntries.map(([gameConfig, stats]) => renderGameStatsCard(
+                ${configEntries.map(([gameConfig, stats]) => renderGameStatsCard(
                     gameConfig,
                     stats,
                     'profile-game-card--config',
-                    gameConfigDisplayName(gameConfig, 'treseta')
+                    gameConfigDisplayName(gameConfig, selectedGameType)
                 )).join('') || `
                     <article class="profile-session-card profile-session-card--empty">
                         <p>${t('profilePage.noConfigStats')}</p>
@@ -1078,11 +1109,8 @@ function renderDetailedStats(data) {
                 `}
             </div>
         </article>
-        ${renderMatchupControls(modes)}
         ${renderMatchupTable(t('profilePage.againstUsers', selectedModeName), winsAgainstUser, t('profilePage.noOpponentStats'))}
         ${teammateTable}
-        ${tresetaOpponentTable}
-        ${tresetaTeammateTable}
     `;
 
     bindMatchupControls(container);

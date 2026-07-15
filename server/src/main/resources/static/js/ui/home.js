@@ -68,6 +68,42 @@
 })();
 
 (() => {
+    const toast = document.getElementById('home-toast');
+    const toastTitle = document.getElementById('home-toast-title');
+    const toastText = document.getElementById('home-toast-text');
+    if (!toast || !toastTitle || !toastText) {
+        return;
+    }
+
+    let rawNotice = null;
+    try {
+        rawNotice = window.sessionStorage.getItem('uc-lobby-closed-notice');
+        window.sessionStorage.removeItem('uc-lobby-closed-notice');
+    } catch (error) {
+        return;
+    }
+
+    if (!rawNotice) {
+        return;
+    }
+
+    try {
+        const notice = JSON.parse(rawNotice);
+        const lobbyName = notice?.lobbyName || t('lobbies.yourLobby');
+        toastTitle.textContent = t('lobbies.toast.closed.title');
+        toastText.textContent = t('lobbies.toast.closed.body', lobbyName);
+        toast.hidden = false;
+        window.requestAnimationFrame(() => toast.classList.add('is-visible'));
+        window.setTimeout(() => {
+            toast.classList.remove('is-visible');
+            window.setTimeout(() => { toast.hidden = true; }, 260);
+        }, 2800);
+    } catch (error) {
+        // Ignore malformed stale notices.
+    }
+})();
+
+(() => {
     const joinForm = document.getElementById('join-code-form');
     const joinInput = document.getElementById('join-code-input');
     const submitButton = document.getElementById('join-code-submit');

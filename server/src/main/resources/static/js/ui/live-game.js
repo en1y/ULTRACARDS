@@ -46,6 +46,7 @@
         // Fullscreen mobile table (the default phone look; 'classic' keeps the
         // old oval felt). theme-preload.js sets html[data-game-ui] before paint.
         const mobileQuery = window.matchMedia('(max-width: 900px)');
+        const useNativeCardAnimations = window.CSS?.supports?.('-moz-appearance', 'none') === true;
 
         function isFullscreenMobile() {
             return mobileQuery.matches && document.documentElement.getAttribute('data-game-ui') !== 'classic';
@@ -85,6 +86,7 @@
             game: null,
             hand: [],
             wsConnected: false,
+            hasConnected: false,
             wsClient: null,
             wsReconnectTimer: null,
             playing: false,
@@ -99,7 +101,7 @@
             finalTrumpDraw: false,
             deckExhausting: false,
             dragSession: null,
-            turnIndicatorFrame: null,
+            turnIndicatorTimer: null,
             turnIndicatorTargetKey: null,
             turnIndicatorEndsAt: null,
             turnDurationMs: Number(initialGame?.turnDurationSeconds) > 0 ? Number(initialGame.turnDurationSeconds) * 1000 : 15000,
@@ -112,6 +114,7 @@
             pendingRound: null,
             dealingKeys: new Set(),
             draggingEl: null,
+            handRenderSignature: null,
             justPlayed: null,
             lastActingPlayer: null,
             trickPlayOrder: [],      // play order (leader-first) captured mid-trick, before rotation
@@ -120,7 +123,13 @@
                 table: null
             },
             teammateCards: null,
-            teammateAutoCloseTimer: null
+            teammateAutoCloseTimer: null,
+            opponentDrawReveal: null,
+            opponentDrawRevealTimer: null,
+            previousRound: null,
+            previousRoundReplayActive: false,
+            previousRoundReplayView: null,
+            previousRoundAnimating: false
         };
         state.handSort = 'suit';
         dom.sortSuit?.classList.add('is-active');
@@ -130,6 +139,7 @@
         function setRoundClearing(active) {
             state.roundClearing = !!active;
             gameLayout?.classList.toggle('is-round-clearing', state.roundClearing);
+            refreshPrevRoundControls();
         }
         const PreviousRoundStore = {
             save(id, data) {
@@ -163,26 +173,8 @@
             }
         };
 
-        const prevRoundToggle = document.getElementById('prev-round-toggle');
-        const prevRoundPanel = document.getElementById('prev-round-panel');
-        const prevRoundCardsEl = document.getElementById('prev-round-cards');
-
-        if (prevRoundToggle && prevRoundPanel) {
-            prevRoundToggle.addEventListener('click', () => {
-                const open = prevRoundPanel.classList.toggle('is-open');
-                prevRoundToggle.setAttribute('aria-expanded', String(open));
-                if (open) {
-                    closeTeammateHandPanel();
-                    renderPrevRoundPanel();
-                }
-            });
-        }
-
-        function closePrevRoundPanel() {
-            if (!prevRoundPanel) return;
-            prevRoundPanel.classList.remove('is-open');
-            prevRoundToggle?.setAttribute('aria-expanded', 'false');
-        }
+        const prevRoundBack = document.getElementById('prev-round-back');
+        const prevRoundForward = document.getElementById('prev-round-forward');
 
         const teammateHandToggle = document.getElementById('teammate-hand-toggle');
         const teammateHandPanel = document.getElementById('teammate-hand-panel');
@@ -230,7 +222,6 @@
         // couple seconds unless the player clicks the button, which pins it open).
         function openTeammateHandPanel(autoClose) {
             if (!teammateHandPanel || !teammateHandToggle) return;
-            closePrevRoundPanel();
             teammateHandPanel.classList.add('is-open');
             teammateHandToggle.setAttribute('aria-expanded', 'true');
             renderTeammateHandPanel();
@@ -272,70 +263,156 @@
             });
         }
 
-        function refreshPrevRoundButton() {
-            if (!prevRoundToggle) return;
-            const data = PreviousRoundStore.load(gameId);
-            const hasData = !!(data && Array.isArray(data.cards) && data.cards.length);
-            prevRoundToggle.classList.toggle('has-data', hasData);
+        function previousRoundData() {
+            const data = state.previousRound || PreviousRoundStore.load(gameId);
+            if (data && Array.isArray(data.cards) && data.cards.length) {
+                state.previousRound = data;
+                return data;
+            }
+            return null;
         }
 
-        function renderPrevRoundPanel() {
-            if (!prevRoundCardsEl) return;
-            const data = PreviousRoundStore.load(gameId);
-            const titleEl = prevRoundPanel?.querySelector('.prev-round-title');
-            if (!data || !Array.isArray(data.cards) || !data.cards.length) {
-                prevRoundCardsEl.innerHTML = `<span class="prev-round-empty">${t('game.noRoundRecorded')}</span>`;
-                if (titleEl) titleEl.textContent = t('game.lastCompletedRound');
+        function refreshPrevRoundControls() {
+            if (!prevRoundBack || !prevRoundForward) return;
+            const data = previousRoundData();
+            const disabled = !data || state.roundClearing || state.previousRoundAnimating;
+            const view = state.previousRoundReplayView;
+            prevRoundBack.hidden = false;
+            prevRoundForward.hidden = false;
+            prevRoundBack.disabled = disabled || (view?.phase === 'previous' && view.previousCount <= 1);
+            prevRoundForward.disabled = disabled || !view
+                || (view.phase === 'current' && view.currentCount >= view.currentCards.length);
+        }
+
+        function resetPreviousRoundReplay() {
+            state.previousRoundReplayActive = false;
+            state.previousRoundReplayView = null;
+            state.previousRoundAnimating = false;
+            syncHand();
+            refreshPrevRoundControls();
+        }
+
+        function stopPreviousRoundReplay() {
+            if (!state.previousRoundReplayActive) return;
+            const renderedCards = state.previousRoundReplayView?.renderedCards || [];
+            state.previousRoundReplayActive = false;
+            state.previousRoundReplayView = null;
+            renderTrick(state.game?.playedCards || [], renderedCards);
+            clearPreviousRoundLabels();
+            syncHand();
+        }
+
+        function renderPreviousRoundReplay(data) {
+            const view = state.previousRoundReplayView;
+            if (!view) return;
+            const cards = view.phase === 'current'
+                ? view.currentCards.slice(0, view.currentCount)
+                : data.cards.slice(0, view.previousCount);
+            renderTrick(cards, view.renderedCards);
+            view.renderedCards = cards;
+            if (view.phase === 'previous') {
+                renderPreviousRoundLabels(data, view.previousCount);
+                dom.trick?.classList.add('is-previous-round-replay');
+            } else {
+                clearPreviousRoundLabels();
+            }
+        }
+
+        function replayPreviousRound(direction) {
+            const data = previousRoundData();
+            if (!data || state.previousRoundAnimating) return;
+            if (!state.previousRoundReplayActive) {
+                const currentCards = (state.game?.playedCards || []).slice();
+                state.previousRoundReplayActive = true;
+                state.previousRoundReplayView = {
+                    phase: 'current',
+                    currentCards,
+                    currentCount: currentCards.length,
+                    previousCount: data.cards.length,
+                    renderedCards: currentCards
+                };
+            }
+
+            const view = state.previousRoundReplayView;
+            if (direction === 'back') {
+                if (view.phase === 'current' && view.currentCount > 1) {
+                    view.currentCount--;
+                } else if (view.phase === 'current') {
+                    view.phase = 'previous';
+                    view.previousCount = data.cards.length;
+                } else if (view.previousCount > 1) {
+                    view.previousCount--;
+                } else {
+                    return;
+                }
+            } else if (view.phase === 'previous' && view.previousCount < data.cards.length) {
+                view.previousCount++;
+            } else if (view.phase === 'previous') {
+                view.phase = 'current';
+                view.currentCount = view.currentCards.length ? 1 : 0;
+            } else if (view.currentCount < view.currentCards.length) {
+                view.currentCount++;
+            } else {
                 return;
             }
-            // `players` is the trick's play order (leader-first), so card i was played
-            // by players[i % n] (modulo covers the 2-player/4-card config).
-            const players = Array.isArray(data.players) ? data.players : [];
-            const winnerName = data.winner?.name || null;
-            // Every player on the winning team gets a star (both teammates in 2v2).
-            const winners = Array.isArray(data.winners) && data.winners.length
-                ? data.winners
-                : (data.winner ? [data.winner] : []);
-            const isWinner = (player) => !!player && winners.some((w) =>
-                (w.id != null && player.id != null && w.id === player.id) || w.name === player.name);
-            // Show who won the round in the panel title.
-            if (titleEl) {
-                titleEl.textContent = winnerName ? t('briskula.roundWonBy', winnerName) : t('game.lastCompletedRound');
+
+            const returnedToLiveTrick = direction === 'forward'
+                && view.phase === 'current'
+                && view.currentCount >= view.currentCards.length;
+            if (returnedToLiveTrick) {
+                stopPreviousRoundReplay();
+                refreshPrevRoundControls();
+                return;
             }
-            prevRoundCardsEl.innerHTML = '';
-            data.cards.forEach((card, i) => {
-                const entry = document.createElement('div');
-                entry.className = 'prev-round-entry';
 
-                // Player name goes ABOVE the card it threw.
-                const label = document.createElement('div');
-                label.className = 'prev-round-player';
-                const player = players.length ? players[i % players.length] : null;
-                const playerName = player?.name || `Player ${i + 1}`;
-                label.textContent = playerName;
-                // Mark the winning team's card(s).
-                if (isWinner(player)) {
-                    entry.classList.add('is-winner');
-                    label.textContent = `${playerName} ★`;
-                }
-                entry.appendChild(label);
+            state.previousRoundAnimating = true;
+            renderPreviousRoundReplay(data);
+            syncHand();
+            refreshPrevRoundControls();
+            window.setTimeout(() => {
+                state.previousRoundAnimating = false;
+                refreshPrevRoundControls();
+            }, 420);
+        }
 
-                const wrap = window.UltracardsGameUi?.renderCardImage({
-                    card,
-                    className: 'prev-round-card-img',
-                    alt: `Card ${i + 1}`
-                });
-                if (wrap) {
-                    entry.appendChild(wrap);
-                } else {
-                    const img = document.createElement('img');
-                    window.UltracardsGameUi?.applyCardImage(img, window.UltracardsGameUi?.cardUrl(card) || '');
-                    img.alt = `Card ${i + 1}`;
-                    entry.appendChild(img);
-                }
+        prevRoundBack?.addEventListener('click', () => replayPreviousRound('back'));
+        prevRoundForward?.addEventListener('click', () => replayPreviousRound('forward'));
 
-                prevRoundCardsEl.appendChild(entry);
+        function clearPreviousRoundLabels() {
+            dom.trick?.classList.remove('is-previous-round-replay');
+            dom.trick?.querySelectorAll('.replay-card-player').forEach((label) => label.remove());
+            state.trickEls.forEach((card) => card.classList.remove('is-previous-round-replay'));
+        }
+
+        function renderPreviousRoundLabels(data, playCount) {
+            clearPreviousRoundLabels();
+            const players = Array.isArray(data.players) ? data.players : [];
+            data.cards.slice(0, playCount).forEach((card, index) => {
+                const trickCard = state.trickEls.get(`${cardKey(card)}:${index}`);
+                if (!trickCard || !players.length || !trickCard.appendChild) return;
+                const label = document.createElement('span');
+                label.className = 'replay-card-player';
+                label.textContent = players[index % players.length]?.name || `Player ${index + 1}`;
+                trickCard.classList.add('is-previous-round-replay');
+                trickCard.appendChild(label);
             });
+        }
+
+        function refreshPrevRoundButton() {
+            resetPreviousRoundReplay();
+        }
+
+        function refreshPreviousRoundControlsAfterGameUpdate() {
+            const view = state.previousRoundReplayView;
+            if (view) {
+                view.currentCards = (state.game?.playedCards || []).slice();
+                if (view.phase === 'current') {
+                    view.currentCount = Math.min(view.currentCount + 1, view.currentCards.length);
+                }
+                const data = previousRoundData();
+                if (data) renderPreviousRoundReplay(data);
+            }
+            refreshPrevRoundControls();
         }
 
         const chat = window.UltracardsChat?.create({
@@ -366,7 +443,7 @@
         window.UltracardsGameUi?.enableHandHoverRaise(state.hands.self, {
             isActive: () => {
                 const isTurn = state.game?.playersTurn && isCurrentUser(state.game.playersTurn);
-                return !state.playing && !state.roundClearing && !state.draggingEl && !!isTurn;
+                return !state.playing && !state.roundClearing && !state.previousRoundReplayActive && !state.draggingEl && !!isTurn;
             },
             isCardActive: (cardEl) => isPlayableCard(cardFromEl(cardEl))
         });
@@ -377,7 +454,7 @@
             className: 'drag-ghost',
             isActive: () => {
                 const isTurn = state.game && state.game.playersTurn && isCurrentUser(state.game.playersTurn);
-                return !state.playing && !state.roundClearing && !!isTurn;
+                return !state.playing && !state.roundClearing && !state.previousRoundReplayActive && !!isTurn;
             },
             isCardActive: (cardEl) => isPlayableCard(cardFromEl(cardEl)),
             onStart(session, cardEl) {
@@ -395,8 +472,7 @@
         });
         if (dom.tableSurface) setupDropZone(dom.tableSurface);
 
-        // Seats + hand fan depend on the layout mode; refresh them when the
-        // viewport crosses the mobile breakpoint or the user flips the setting.
+        // Seats + hand fan depend on the viewport size.
         function refreshLayoutMode() {
             positionSeats(dom.ring);
             if (state.hands.self) window.UltracardsGameUi?.layoutZone(state.hands.self, undefined, handLayoutParams());
@@ -404,7 +480,6 @@
         }
 
         window.addEventListener('resize', refreshLayoutMode);
-        document.addEventListener('uc:game-ui-changed', refreshLayoutMode);
 
         if (initialGame != null) {
             applyGame(initialGame, 'UPDATED', null);
@@ -444,6 +519,7 @@
             state.wsClient = client;
             client.connect({}, () => {
                 state.wsConnected = true;
+                state.hasConnected = true;
                 setConnectionStatus(true);
                 client.subscribe(`/topic/game/${gameId}`, (msg) => {
                     try {
@@ -483,6 +559,40 @@
                         console.error('Teammate hand event error', err);
                     }
                 });
+                client.subscribe('/user/queue/game/opponent-drawn-cards', (msg) => {
+                    try {
+                        const drawn = JSON.parse(msg.body) || [];
+                        if (!Array.isArray(drawn) || !drawn.length || !state.game) return;
+                        if (buildPlayers(state.game).length !== 2) return;
+                        if (state.opponentDrawRevealTimer) {
+                            clearTimeout(state.opponentDrawRevealTimer);
+                        }
+                        const token = (state.opponentDrawReveal?.token || 0) + 1;
+                        // The private draw event is published before the public game
+                        // snapshot. Reserve the new slots now so syncBackCards can
+                        // create them and fly their backs from the deck immediately.
+                        const opponent = buildPlayers(state.game).find((player) => !isCurrentUser(player));
+                        const opponentSeat = opponent?.id != null
+                            ? dom.ring?.querySelector(`[data-player-id="${CSS.escape(String(opponent.id))}"]`)
+                            : null;
+                        const currentCount = Number(opponent?.cards) || 0;
+                        const renderedCount = opponentSeat?.querySelector('.seat-cards')?.children.length || 0;
+                        const targetCount = Math.max(currentCount, renderedCount);
+                        state.opponentDrawReveal = {cards: drawn, token, targetCount};
+                        renderPlayers(state.game);
+                        state.opponentDrawRevealTimer = setTimeout(() => {
+                            if (state.opponentDrawReveal?.token !== token) return;
+                            hideOpponentDrawnCards().finally(() => {
+                                if (state.opponentDrawReveal?.token !== token) return;
+                                state.opponentDrawReveal = null;
+                                state.opponentDrawRevealTimer = null;
+                                if (state.game) renderPlayers(state.game);
+                            });
+                        }, 3600);
+                    } catch (err) {
+                        console.error('Opponent drawn-card event error', err);
+                    }
+                });
                 if (initialGame?.lobbyId) {
                     client.subscribe(`/topic/lobbies/${initialGame.lobbyId}/chat`, (msg) => {
                         try {
@@ -495,8 +605,11 @@
                     });
                 }
             }, () => {
+                const hadConnection = state.hasConnected;
                 state.wsConnected = false;
-                setConnectionStatus(false, t('game.connectionLost'));
+                if (hadConnection) {
+                    setConnectionStatus(false, t('game.connectionLost'));
+                }
                 scheduleWsReconnect();
             });
         }
@@ -594,6 +707,7 @@
          * @param {GameResult|null} result
          */
         function applyGame(game, gameEvent, result, skipTableDelay = false) {
+            clearPreviousRoundLabels();
             game.playersTurn = normalizePlayer(game.playersTurn);
             if (Number(game.turnDurationSeconds) > 0) {
                 state.turnDurationMs = Number(game.turnDurationSeconds) * 1000;
@@ -721,6 +835,7 @@
                 animateAutoPlayedHandRemoval(autoplayedCard);
             }
             renderTrick(nextPlayedCards, previousPlayedCards);
+            refreshPreviousRoundControlsAfterGameUpdate();
             renderPlayers(game);
             updateTurnIndicator(game);
             renderCurrentPlayer(game);
@@ -1032,10 +1147,10 @@
                         : (fallbackWinner ? [fallbackWinner] : []),
                     timestamp: Date.now()
                 };
+                state.previousRound = roundData;
                 PreviousRoundStore.save(gameId, roundData);
                 state.pendingRound = null;
                 refreshPrevRoundButton();
-                if (prevRoundPanel?.classList.contains('is-open')) renderPrevRoundPanel();
             }
 
             dom.trick.classList.remove('is-clearing');
@@ -1161,7 +1276,22 @@
                         : null;
                     if (revealed) {
                         renderTeammateSeatCards(cards, revealed);
+                    } else if (players.length === 2 && !isSelf && state.opponentDrawReveal?.cards?.length) {
+                        renderOpponentDrawnSeatCards(
+                            cards,
+                            cardsCount,
+                            seat.dataset.seatSide || 'center',
+                            state.opponentDrawReveal.cards,
+                            state.opponentDrawReveal.targetCount
+                        );
                     } else {
+                        if (cards.dataset.opponentRevealSig) {
+                            cards.querySelectorAll('.opponent-drawn-card').forEach((card) => {
+                                card.cardApi?.showBack();
+                                card.classList.remove('opponent-drawn-card');
+                            });
+                            delete cards.dataset.opponentRevealSig;
+                        }
                         syncSeatCards(cards, cardsCount, seat.dataset.seatSide || 'center');
                     }
                 }
@@ -1189,6 +1319,8 @@
 
         function updateTurn(playersTurn) {
             const isTurn = !playersTurn || isCurrentUser(playersTurn);
+            if (isTurn) stopPreviousRoundReplay();
+            refreshPrevRoundControls();
             if (dom.dropZone) {
                 if (dom.dropZone.classList.contains('is-result')) return;
                 dom.dropZone.textContent = isTurn ? t('briskula.playHere') : t('briskula.waitMoment');
@@ -1206,12 +1338,21 @@
 
         function syncHand() {
             if (!dom.hand) return;
-            const isTurn = state.game && state.game.playersTurn
+            const isTurn = !state.previousRoundReplayActive && state.game && state.game.playersTurn
                 && isCurrentUser(state.game.playersTurn);
             const visibleHand = state.hand.filter((card) => {
                 const key = cardKey(card);
                 return !state.pending.has(key) && !state.autoPlayedPending.has(key);
             }).sort(compareHandCards);
+            const renderSignature = [
+                isTurn ? 'turn' : 'wait',
+                state.playing ? 'locked' : 'ready',
+                state.roundClearing ? 'clearing' : 'steady',
+                state.draggingEl?.dataset.cardKey || '',
+                visibleHand.map((card) => `${cardKey(card)}:${isPlayableCard(card) ? 1 : 0}`).join(',')
+            ].join('|');
+            if (renderSignature === state.handRenderSignature) return;
+            state.handRenderSignature = renderSignature;
             const nextKeys = new Set(visibleHand.map(cardKey));
             const cardsByKey = new Map(visibleHand.map((card) => [cardKey(card), card]));
 
@@ -1257,7 +1398,8 @@
             const wrap = window.UltracardsGameUi?.createCard({
                 card,
                 className: 'hand-card',
-                alt: 'Card'
+                alt: 'Card',
+                flippable: state.dealingKeys.has(cardKey(card))
             }) || document.createElement('div');
             // Cards that are being dealt in start face-down and flip once they land
             // (see dealCardsIntoHand). The card flips itself via its own cardApi.
@@ -1404,7 +1546,7 @@
 
         function playCard(card, options) {
             const alreadyLocked = options?.alreadyLocked === true;
-            if (state.roundClearing) return false;
+            if (state.roundClearing || state.previousRoundReplayActive) return false;
             if (state.playing && !alreadyLocked) return false;
             if (!isPlayableCard(card)) return false;
             const isTurn = state.game && state.game.playersTurn
@@ -1454,7 +1596,7 @@
             if (!session) return;
             const x = Number(event.clientX ?? event.pageX ?? session.lastPoint?.x ?? 0);
             const y = Number(event.clientY ?? event.pageY ?? session.lastPoint?.y ?? 0);
-            const inside = isPointInTableTarget(x, y);
+            const inside = isPointInTableTarget(x, y, session);
             if (inside === session.overTable) return;
             session.overTable = inside;
             setTableDropReady(inside);
@@ -1474,7 +1616,7 @@
                 y: Number(event.clientY ?? event.pageY ?? session.lastPoint?.y ?? 0)
             };
             // Pointer position is authoritative: release anywhere over the table plays the card.
-            const accepted = isPointInTableTarget(point.x, point.y);
+            const accepted = isPointInTableTarget(point.x, point.y, session);
             const targetRect = accepted ? getTableTargetRect() : session.originRect;
             if (accepted && targetRect) {
                 const el = session.el;
@@ -1568,9 +1710,21 @@
             });
         }
 
-        function isPointInTableTarget(x, y) {
-            const target = dom.tableSurface || dom.dropZone || dom.trick;
-            const rect = target?.getBoundingClientRect();
+        // `cache` (a drag session) memoizes the rects for the drag's lifetime —
+        // nothing the hit-test reads moves mid-drag, and reading layout on every
+        // touch move right after the drag transform write forces a layout flush
+        // per input event (a real stutter source on mobile Gecko).
+        function isPointInTableTarget(x, y, cache) {
+            let rects = cache?.tableHitRects;
+            if (!rects) {
+                const target = dom.tableSurface || dom.dropZone || dom.trick;
+                rects = {
+                    table: target?.getBoundingClientRect() || null,
+                    hand: dom.hand?.closest('.hand-row')?.getBoundingClientRect() || null
+                };
+                if (cache) cache.tableHitRects = rects;
+            }
+            const rect = rects.table;
             const inside = !!rect
                 && x >= rect.left
                 && x <= rect.right
@@ -1580,7 +1734,7 @@
             // Fullscreen mobile: the felt extends under the hand strip — releasing
             // a card back over the hand must NOT play it. (Classic layouts keep the
             // hand below the felt, so this never triggers there.)
-            const handRect = dom.hand?.closest('.hand-row')?.getBoundingClientRect();
+            const handRect = rects.hand;
             return !(handRect && handRect.height > 0 && y >= handRect.top);
         }
 
@@ -1841,6 +1995,7 @@
             if (dom.playerSummaryName) {
                 dom.playerSummaryName.textContent = current.name || 'Player';
             }
+            separateFullscreenAvatars(dom.ring);
         }
 
         function positionSeats(ring) {
@@ -1852,12 +2007,44 @@
                 const resolvedIndex = Number.isFinite(seatIndex) ? seatIndex : index;
                 const slot = getSeatSlot(resolvedIndex, count, seat.dataset.isSelf === '1');
                 seat.dataset.seatSide = slot.side;
-                seat.style.left = `${slot.x}%`;
-                seat.style.top = `${slot.y}%`;
+                seat.style.left = formatSeatCoordinate(slot.x);
+                seat.dataset.seatTop = formatSeatCoordinate(slot.y);
+                seat.style.top = seat.dataset.seatTop;
                 const nudgeX = typeof slot.nudgeX === 'number' ? `${slot.nudgeX}px` : (slot.nudgeX || '0px');
                 const nudgeY = typeof slot.nudgeY === 'number' ? `${slot.nudgeY}px` : (slot.nudgeY || '0px');
                 seat.style.transform = `translate(-50%, -50%) translate3d(${nudgeX}, ${nudgeY}, 0)`;
                 seat.style.setProperty('--hand-rotate', getSeatHandRotate(slot.side));
+            });
+            separateFullscreenAvatars(ring);
+        }
+
+        function formatSeatCoordinate(value) {
+            return typeof value === 'number' ? `${value}%` : value;
+        }
+
+        function separateFullscreenAvatars(ring) {
+            if (!ring || !isFullscreenMobile()) return;
+            const gap = 8;
+            const occupied = [];
+            const selfAvatar = dom.playerSummaryAvatar;
+            if (selfAvatar && getComputedStyle(selfAvatar).visibility !== 'hidden') {
+                const rect = selfAvatar.getBoundingClientRect();
+                if (rect.width && rect.height) occupied.push(rect);
+            }
+            Array.from(ring.children).forEach((seat) => {
+                if (seat.dataset.isSelf === '1') return;
+                const avatar = seat.querySelector('.seat-avatar');
+                if (!avatar) return;
+                let rect = avatar.getBoundingClientRect();
+                let offset = 0;
+                occupied.forEach((other) => {
+                    if (rect.right + gap <= other.left || rect.left >= other.right + gap
+                        || rect.bottom + gap <= other.top || rect.top >= other.bottom + gap) return;
+                    offset += Math.ceil(other.bottom + gap - rect.top);
+                    seat.style.top = `calc(${seat.dataset.seatTop} + ${offset}px)`;
+                    rect = avatar.getBoundingClientRect();
+                });
+                occupied.push(rect);
             });
         }
 
@@ -1869,20 +2056,20 @@
                 // Full-bleed felt: the classic ring hangs side seats at -3%/103%,
                 // which would put them off screen — keep everyone fully visible.
                 if (count <= 2) {
-                    return {x: 50, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'};
+                    return {x: 50, y: 24, nudgeX: 0, nudgeY: 0, side: 'top'};
                 }
                 if (count === 3) {
                     const slots = [
                         {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
-                        {x: 26, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'},
-                        {x: 74, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'}
+                        {x: 26, y: 24, nudgeX: 0, nudgeY: 0, side: 'top'},
+                        {x: 74, y: 24, nudgeX: 0, nudgeY: 0, side: 'top'}
                     ];
                     return slots[index] || slots[1];
                 }
                 const slots = [
                     {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
                     {x: 14, y: 30, nudgeX: 0, nudgeY: 0, side: 'left'},
-                    {x: 50, y: 16, nudgeX: 0, nudgeY: 0, side: 'top'},
+                    {x: 50, y: 24, nudgeX: 0, nudgeY: 0, side: 'top'},
                     {x: 86, y: 30, nudgeX: 0, nudgeY: 0, side: 'right'}
                 ];
                 return slots[index] || slots[index % slots.length];
@@ -1893,8 +2080,8 @@
             if (count === 3) {
                 const slots = [
                     {x: 50, y: 112, nudgeX: 0, nudgeY: 0, side: 'bottom'},
-                    {x: 50, y: 10, nudgeX: 0, nudgeY: 'var(--seat-top-nudge-y)', side: 'top'},
-                    {x: 103, y: 42, nudgeX: 0, nudgeY: 0, side: 'right'}
+                    {x: 34, y: 10, nudgeX: 0, nudgeY: 'var(--seat-top-nudge-y)', side: 'top'},
+                    {x: 66, y: 10, nudgeX: 0, nudgeY: 'var(--seat-top-nudge-y)', side: 'top'}
                 ];
                 return slots[index] || slots[1];
             }
@@ -2081,13 +2268,13 @@
                 stopTurnIndicatorLoop();
                 return;
             }
-            if (!state.turnIndicatorFrame) {
+            if (!state.turnIndicatorTimer) {
                 runTurnIndicatorFrame();
             }
         }
 
         function runTurnIndicatorFrame() {
-            state.turnIndicatorFrame = null;
+            state.turnIndicatorTimer = null;
             const targetKey = state.turnIndicatorTargetKey;
             const endsAt = state.turnIndicatorEndsAt;
             if (!targetKey || !Number.isFinite(endsAt)) {
@@ -2096,12 +2283,12 @@
             }
             const seat = dom.ring?.querySelector(`[data-player-key="${CSS.escape(targetKey)}"]`);
             if (!seat) {
-                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
+                state.turnIndicatorTimer = window.setTimeout(runTurnIndicatorFrame, 100);
                 return;
             }
             const avatar = seat.querySelector('.seat-avatar');
             if (!avatar) {
-                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
+                state.turnIndicatorTimer = window.setTimeout(runTurnIndicatorFrame, 100);
                 return;
             }
             const remaining = Math.max(0, endsAt - Date.now());
@@ -2119,14 +2306,14 @@
             }
 
             if (remaining > 0) {
-                state.turnIndicatorFrame = requestAnimationFrame(runTurnIndicatorFrame);
+                state.turnIndicatorTimer = window.setTimeout(runTurnIndicatorFrame, 100);
             }
         }
 
         function stopTurnIndicatorLoop() {
-            if (state.turnIndicatorFrame) {
-                cancelAnimationFrame(state.turnIndicatorFrame);
-                state.turnIndicatorFrame = null;
+            if (state.turnIndicatorTimer) {
+                clearTimeout(state.turnIndicatorTimer);
+                state.turnIndicatorTimer = null;
             }
         }
 
@@ -2181,7 +2368,131 @@
             });
         }
 
-        function syncSeatCards(cardsEl, cardsCount, seatSide) {
+        function renderOpponentDrawnSeatCards(cardsEl, cardsCount, seatSide, drawnCards, targetCount) {
+            const drawn = Array.isArray(drawnCards) ? drawnCards : [];
+            const count = Math.max(Number(cardsCount) || 0, Number(targetCount) || 0, drawn.length);
+            const sig = `${count}:${drawn.map(cardKey).join('|')}`;
+            if (cardsEl.dataset.opponentRevealSig === sig) return;
+            if (cardsEl.dataset.opponentRevealSig) {
+                // A second draw arrived before the first reveal expired. Turn the
+                // previous face-up cards back without rebuilding the whole hand, so
+                // only the newly added back cards fly in from the deck.
+                cardsEl.querySelectorAll('.opponent-drawn-card').forEach((card) => {
+                    card.cardApi?.showBack();
+                    card.classList.remove('opponent-drawn-card');
+                });
+            }
+            cardsEl.dataset.opponentRevealSig = sig;
+            // Keep the normal anonymous backs and replace only the newly drawn
+            // positions with face-up cards. The existing fan/slot geometry remains
+            // identical, so the reveal does not move the opponent's whole hand.
+            syncSeatCards(cardsEl, count, seatSide, {forceDealCount: drawn.length});
+            const children = Array.from(cardsEl.children);
+            const start = Math.max(0, children.length - drawn.length);
+            drawn.forEach((card, index) => {
+                const back = children[start + index];
+                if (!back?.cardApi) return;
+                back.classList.add('opponent-drawn-card');
+                window.setTimeout(() => {
+                    if (cardsEl.dataset.opponentRevealSig !== sig || !back.isConnected) return;
+                    Promise.resolve(back.cardApi.flip(card)).then(() => {
+                        if (cardsEl.dataset.opponentRevealSig !== sig || !back.isConnected) return;
+                        // Keep the landed card readable at a larger size before the
+                        // hide animation shrinks it and turns it back face-down.
+                        const inner = back.querySelector('.card-inner');
+                        if (!inner) return;
+                        const scale = opponentRevealScale(back);
+                        if (useNativeCardAnimations && window.UltracardsGameUi?.animateElement) {
+                            window.UltracardsGameUi.animateElement(inner, {
+                                transform: ['rotateY(180deg) scale(1)', `rotateY(180deg) scale(${scale})`],
+                                duration: 120
+                            });
+                        } else if (window.gsap) {
+                            window.gsap.to(inner, {
+                                scale,
+                                duration: 0.12,
+                                ease: 'power2.out'
+                            });
+                        }
+                    });
+                }, 560 + index * 45);
+            });
+        }
+
+        function opponentRevealScale(card) {
+            const handCard = dom.hand?.querySelector('.hand-card');
+            const handWidth = handCard?.offsetWidth
+                || Number.parseFloat(getComputedStyle(gameLayout || document.documentElement)
+                    .getPropertyValue('--hand-card-width'));
+            const seatWidth = card?.offsetWidth || 0;
+            if (!handWidth || !seatWidth) return 1.65;
+            return Math.max(1, handWidth / seatWidth);
+        }
+
+        function hideOpponentDrawnCards() {
+            const cards = Array.from(document.querySelectorAll('.opponent-drawn-card'));
+            if (!cards.length) return Promise.resolve();
+            if (useNativeCardAnimations && window.UltracardsGameUi?.animateElement) {
+                return Promise.all(cards.map(async (card) => {
+                    const inner = card.querySelector('.card-inner');
+                    if (!inner) {
+                        card.cardApi?.showBack();
+                        return;
+                    }
+                    await window.UltracardsGameUi.animateElement(inner, {
+                        transform: [
+                            `rotateY(180deg) scale(${opponentRevealScale(card)})`,
+                            'rotateY(180deg) scale(0.96)'
+                        ],
+                        duration: 180
+                    });
+                    await window.UltracardsGameUi.animateElement(inner, {
+                        transform: ['rotateY(180deg) scale(0.96)', 'rotateY(90deg) scale(0.96)'],
+                        duration: 140
+                    });
+                    card.cardApi?.showBack();
+                    await window.UltracardsGameUi.animateElement(inner, {
+                        transform: ['rotateY(0deg) scale(0.96)', 'rotateY(0deg) scale(1)'],
+                        duration: 160
+                    });
+                    inner.style.transform = '';
+                }));
+            }
+            if (!window.gsap) {
+                cards.forEach((card) => card.cardApi?.showBack());
+                return Promise.resolve();
+            }
+            return Promise.all(cards.map((card) => new Promise((resolve) => {
+                const inner = card.querySelector('.card-inner');
+                if (!inner) {
+                    card.cardApi?.showBack();
+                    resolve();
+                    return;
+                }
+                const timeline = window.gsap.timeline({onComplete: resolve});
+                window.gsap.killTweensOf(inner);
+                // Shrink the face layer as it turns edge-on, leaving the seat slot
+                // transform untouched so the card cannot jump between edges.
+                timeline.to(inner, {
+                    scale: 0.96,
+                    duration: 0.18,
+                    ease: 'power2.inOut'
+                }, 0);
+                timeline.to(inner, {
+                    rotateY: 90,
+                    duration: 0.14,
+                    ease: 'power2.in'
+                }, 0.18);
+                timeline.call(() => card.cardApi?.showBack(), null, 0.32);
+                timeline.to(inner, {
+                    scale: 1,
+                    duration: 0.16,
+                    ease: 'power2.out'
+                }, 0.32);
+            })));
+        }
+
+        function syncSeatCards(cardsEl, cardsCount, seatSide, animationOptions) {
             // Returning from a teammate reveal (mode switched / reveal cleared):
             // the face-up cards can't be reused as backs — rebuild from scratch.
             if (cardsEl.dataset.revealSig) {
@@ -2198,9 +2509,11 @@
                 cardType: gameAdapter?.cardType || 'ITALIAN',
                 className: 'seat-card',
                 alt: t('game.cardBack.alt'),
+                flippable: gameLayout?.classList.contains('is-two-player') === true,
                 spread: gameAdapter?.opponentCardSpread,
                 lift: gameAdapter?.opponentCardLift,
-                fromRect: deckRect
+                fromRect: deckRect,
+                ...animationOptions
             });
         }
 
@@ -2224,9 +2537,8 @@
         // for every hand and every game mode (no per-game deck-draw animation needed).
 
         // Deal newly drawn cards into the hand WITHOUT clones: each real card element
-        // flies from the deck to its own fanned slot by animating composable --deal-*
-        // CSS vars (which add onto the slot transform), then flips itself face-up via
-        // its innate cardApi. One DOM element per card — no duplicate backs, no pile.
+        // flies from the deck to its own fanned slot through the shared transfer, then
+        // flips itself face-up via its innate cardApi. One element per card.
         function dealCardsIntoHand(cards, useTrumpForLastDraw) {
             const rawTowerRect = dom.deckTower?.getBoundingClientRect();
             const deckRect = (rawTowerRect && rawTowerRect.width && rawTowerRect.height)

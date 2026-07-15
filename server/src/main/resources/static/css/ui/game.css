@@ -392,6 +392,35 @@
             transition: transform 160ms ease-in-out;
         }
 
+        /* The shared deck-to-seat flight owns transform while a new opponent
+           card is being dealt; do not let the hand's settle transition fight it. */
+        .seat-card.is-dealing {
+            transition: none;
+        }
+
+        /* Keep the reveal anchored at the hand's visual bottom edge. */
+        .seat-card.opponent-drawn-card {
+            /* Top seats are rotated 180deg, so their local top edge is the
+               visual top edge; scaling from the local bottom extends toward
+               the table. */
+            transform-origin: 50% 100%;
+            overflow: visible;
+            z-index: 1000 !important;
+        }
+
+        .seat-card.opponent-drawn-card .card-inner {
+            transform-origin: 50% 100%;
+        }
+
+        html[data-game-ui="fullscreen"] .seat-card.opponent-drawn-card {
+            /* Fullscreen seats are not rotated, so use their local top edge. */
+            transform-origin: 50% 0%;
+        }
+
+        html[data-game-ui="fullscreen"] .seat-card.opponent-drawn-card .card-inner {
+            transform-origin: 50% 0%;
+        }
+
         .seat-card:first-child {
             margin-left: 0;
         }
@@ -417,6 +446,12 @@
             display: block;
             position: relative;
             overflow: visible;
+        }
+
+        /* The normal table centre sits slightly above the felt midpoint. In a 1v1
+           replay, move the recalled trick back down to the exact vertical centre. */
+        .game-layout.is-two-player .trick-area.is-previous-round-replay {
+            transform: translateY(clamp(10px, 2vh, 20px));
         }
 
         .game-hand {
@@ -535,6 +570,23 @@
         .trick-card.is-handoff-hidden {
             opacity: 0;
             transition: none;
+        }
+
+        .trick-card.is-previous-round-replay {
+            overflow: visible;
+        }
+
+        .replay-card-player {
+            position: absolute;
+            bottom: calc(100% + 0.25rem);
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--seat-text);
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
+            white-space: nowrap;
+            pointer-events: none;
         }
 
         .deck-stack {
@@ -820,6 +872,7 @@
             gap: 0.2rem;
             margin: 0 auto;
             min-height: 0;
+            position: relative;
             color: var(--seat-text);
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
         }
@@ -834,40 +887,103 @@
 
         .player-summary-card {
             min-width: 140px;
-            padding: 0.4rem 0.8rem;
+            padding: 0;
             border-radius: 16px;
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: 2.3rem auto 2.3rem;
+            grid-template-rows: auto auto;
+            grid-template-areas:
+                "back identity forward"
+                "back sort forward";
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
             background: color-mix(in oklab, var(--color-bg) 62%, rgba(12, 18, 15, 0.2));
             border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
             box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
             backdrop-filter: blur(8px);
+            overflow: hidden;
         }
 
         .hand-sort-controls {
             display: flex;
+            align-items: center;
+            justify-content: center;
             gap: 0.28rem;
         }
 
-        .hand-sort-button {
-            border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
+        .player-summary-identity {
+            grid-area: identity;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.55rem 0.22rem;
+        }
+
+        .hand-sort-controls {
+            grid-area: sort;
+            padding: 0.08rem 0.35rem 0.36rem;
+        }
+
+        .hand-sort-button,
+        .player-summary .prev-round-button {
+            border: 1px solid color-mix(in oklab, #8e1d24 72%, transparent);
             border-radius: 999px;
             padding: 0.22rem 0.48rem;
-            background: transparent;
-            color: var(--seat-text);
+            background: #a9242b;
+            color: #fff7f5;
             font: inherit;
             font-size: 0.68rem;
             font-weight: 800;
             cursor: pointer;
         }
 
+        .player-summary .prev-round-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            align-self: stretch;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+            border-width: 0 1px 0 0;
+            border-radius: 0;
+            background: rgba(0, 0, 0, 0.18);
+            transform: none;
+            box-shadow: none;
+            text-transform: none;
+            letter-spacing: normal;
+            backdrop-filter: none;
+        }
+
+        .player-summary #prev-round-back { grid-area: back; }
+
+        .player-summary #prev-round-forward {
+            grid-area: forward;
+            border-width: 0 0 0 1px;
+        }
+
+        .player-summary .prev-round-button:disabled {
+            cursor: default;
+            opacity: 0.45;
+        }
+
+        .player-summary .prev-round-button:not(:disabled):hover {
+            transform: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--seat-text);
+            box-shadow: none;
+        }
+
+        .player-summary .prev-round-button .uc-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+
         .hand-sort-button.is-active {
-            background: var(--color-primary);
-            border-color: var(--color-primary);
-            color: var(--color-on-primary, #fff);
+            background: #bd2d34;
+            border-color: #f27478;
+            color: #fff;
         }
 
         .player-summary-name {
@@ -1040,7 +1156,11 @@
         .seat-avatar {
             width: var(--avatar-size);
             height: var(--avatar-size);
-            border-radius: 19px;
+            /* Timer-ring geometry derives from these, so variants that resize or
+               re-round the avatar only set the vars and the ring stays concentric. */
+            --ring-radius: 19px;
+            --ring-offset: 3px;
+            border-radius: var(--ring-radius);
             background: linear-gradient(155deg, color-mix(in oklab, var(--color-accent) 92%, white 8%), color-mix(in oklab, var(--color-accent) 78%, black 22%));
             color: #fff;
             font-weight: 900;
@@ -1059,15 +1179,17 @@
         .seat-avatar::before {
             content: "";
             position: absolute;
-            inset: -3px;
-            border-radius: 19px;
-            padding: 4px;
+            inset: calc(-1 * var(--ring-offset));
+            /* Outer radius = avatar radius + gap, so the ring's corners follow the
+               avatar's corners instead of pinching tighter than them. */
+            border-radius: calc(var(--ring-radius) + var(--ring-offset));
+            padding: var(--ring-width, 4px);
             background: conic-gradient(from 0deg,
                 rgba(255, 255, 255, 0) calc((1 - var(--turn-progress, 0)) * 1turn),
                 var(--turn-frame-color) calc((1 - var(--turn-progress, 0)) * 1turn));
             opacity: 0;
             transform: scale(0.94);
-            transition: opacity 180ms ease, transform 180ms ease, filter 220ms ease, background 240ms ease;
+            transition: opacity 180ms ease, transform 180ms ease, filter 220ms ease;
             -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
             -webkit-mask-composite: xor;
             mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -1342,7 +1464,7 @@
             }
 
             .player-summary-card {
-                padding: 0.3rem 0.7rem;
+                padding: 0;
             }
 
             .player-seat {
@@ -1353,18 +1475,14 @@
                 width: 20px;
             }
 
-            /* Extra .game-layout ancestor: the base .table-surface rule appears
-               LATER in this file and would win a specificity tie. */
-            .game-layout .table-surface > .prev-round-toggle {
-                bottom: 2%;
+            .player-seat.has-turn-indicator .seat-avatar::before,
+            .player-summary.has-turn-indicator .seat-avatar::before {
+                filter: none;
             }
 
-            /* Mobile avatars are ~32px; the 4px timer ring reads as invisible.
-               Push it out and thicken it so the countdown is obvious. */
-            .seat-avatar::before {
-                inset: -6px;
-                padding: 5px;
-                border-radius: 22px;
+            .player-seat.is-turn-warning .seat-avatar::before,
+            .player-summary.is-turn-warning .seat-avatar::before {
+                animation: none;
             }
 
             .deck-stack {
@@ -1394,7 +1512,7 @@
 
             .player-summary-card {
                 min-width: 128px;
-                padding: 0.5rem 0.8rem;
+                padding: 0;
             }
         }
 
@@ -1518,6 +1636,69 @@
             }
         }
 
+        /* Gecko pays heavily for filters/backdrop roots on moving mobile cards.
+           Native transform animations still preserve motion without repainting these effects. */
+        @supports (-moz-appearance: none) {
+            @media (max-width: 900px) {
+                .game-hand-card {
+                    will-change: auto;
+                }
+
+                /* Keep the transform transition: raise/press/return lifts must
+                   animate (Gecko runs transform transitions on the compositor;
+                   flight cleanups are guarded by commitWithoutTransition). */
+                .hand-card {
+                    box-shadow: none;
+                }
+
+                .hand-card.is-disabled,
+                .hand-card.is-illegal,
+                .trick-card,
+                .drag-ghost,
+                .player-seat.is-turn {
+                    filter: none;
+                }
+
+                .chat-sidebar,
+                .table-turn-message,
+                .player-summary-card,
+                .trump-zoom,
+                .teammate-hand-panel {
+                    backdrop-filter: none;
+                }
+
+                /* Cards animate over the felt every play/draw; each frame re-rasters
+                   the damaged tiles UNDER them, and Gecko's mobile GPU path pays for
+                   every blur primitive in those tiles. Swap the big blurred shadows
+                   for gradient vignettes (near-identical look, no per-frame blur). */
+                .table-surface {
+                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+                }
+
+                .table-felt {
+                    box-shadow: none;
+                    background: radial-gradient(circle at 35% 35%, var(--felt-glow), transparent 55%),
+                    radial-gradient(circle at 65% 65%, rgba(0, 0, 0, 0.2), transparent 55%),
+                    radial-gradient(ellipse at 50% 50%, transparent 62%, rgba(0, 0, 0, 0.3) 100%),
+                    linear-gradient(160deg, var(--felt), var(--felt-dark));
+                }
+
+                .table-rim {
+                    box-shadow: none;
+                }
+
+                .seat-card,
+                .deal-card,
+                .game-moving-card {
+                    box-shadow: none;
+                }
+
+                .player-seat {
+                    text-shadow: none;
+                }
+            }
+        }
+
         /* ===== CARD FLIP STRUCTURE ===== */
 
         .card-wrap {
@@ -1528,10 +1709,27 @@
             overflow: hidden;
             display: block;
             background: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .card-wrap img {
+            -webkit-user-drag: none;
         }
 
         .card-wrap[data-card-type="ITALIAN"] {
             aspect-ratio: 300 / 546;
+        }
+
+        .card-wrap:not(.is-flippable) {
+            perspective: none;
+        }
+
+        .card-wrap:not(.is-flippable) > :is(.card-front, .card-back) {
+            transform: none;
+            backface-visibility: visible;
+            -webkit-backface-visibility: visible;
         }
 
         .card-inner {
@@ -1552,6 +1750,7 @@
             -webkit-backface-visibility: hidden;
             border-radius: inherit;
             overflow: hidden;
+            image-rendering: high-quality;
         }
 
         .card-front img,
@@ -1650,182 +1849,6 @@
             color: #fff;
         }
 
-        /* ===== PREVIOUS ROUND PANEL ===== */
-
-        .prev-round-toggle {
-            /* Hidden until at least one completed round has been recorded. */
-            display: none;
-            position: fixed;
-            bottom: 1.3rem;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 900;
-            padding: 0.46rem 1.05rem;
-            border-radius: 20px;
-            background: color-mix(in oklab, var(--panel-bg) 72%, transparent);
-            border: 1px solid color-mix(in oklab, var(--panel-border) 70%, transparent);
-            color: color-mix(in oklab, var(--seat-text) 82%, transparent);
-            cursor: pointer;
-            font: 800 0.72rem/1 "Trebuchet MS", "Segoe UI", sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-            transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease, color 200ms ease;
-            white-space: nowrap;
-        }
-
-        .prev-round-toggle.has-data {
-            display: inline-block;
-        }
-
-        .prev-round-toggle:hover {
-            transform: translateX(-50%) translateY(-2px);
-            background: color-mix(in oklab, var(--panel-bg) 88%, transparent);
-            color: var(--seat-text);
-            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
-        }
-
-        .table-surface > .prev-round-toggle {
-            position: absolute;
-            left: 50%;
-            bottom: 10%;
-            z-index: 8;
-            pointer-events: auto;
-        }
-
-        .table-surface > .prev-round-toggle:hover {
-            transform: translateX(-50%) translateY(-2px);
-        }
-
-        .prev-round-panel {
-            --prev-round-card-width: clamp(72px, 8vh, 100px);
-            /* Native card art ratio (300x546) so the wrapper box matches the image and
-               the card fits fully inside the panel with rounded corners. */
-            --prev-round-card-height: calc(var(--prev-round-card-width) * 546 / 300);
-            position: fixed;
-            bottom: 4rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(10px);
-            width: max-content;
-            max-width: min(96vw, 860px);
-            background: color-mix(in oklab, var(--panel-bg) 92%, transparent);
-            border: 1px solid var(--panel-border);
-            border-radius: 18px;
-            padding: clamp(0.8rem, 1.5vh, 1rem) clamp(1rem, 2vw, 1.45rem) clamp(1.4rem, 2.4vh, 1.9rem);
-            backdrop-filter: blur(16px);
-            box-shadow: var(--panel-shadow);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 220ms ease, transform 220ms ease;
-            z-index: 899;
-            overflow: visible;
-        }
-
-        .table-surface > .prev-round-panel {
-            position: absolute;
-            left: 50%;
-            bottom: 20%;
-            width: max-content;
-            max-width: calc(100vw - 2rem);
-            z-index: 9;
-        }
-
-        .prev-round-panel.is-open {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .prev-round-title {
-            font-size: 0.7rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0;
-            color: var(--seat-muted);
-            margin-bottom: 0.85rem;
-            text-align: center;
-        }
-
-        .prev-round-cards {
-            display: flex;
-            gap: clamp(0.7rem, 1.2vw, 1rem);
-            row-gap: 0.6rem;
-            justify-content: center;
-            flex-wrap: nowrap;
-            align-items: flex-start;
-            min-width: 0;
-            /* `overflow-x: auto` + `overflow-y: visible` makes the browser clamp
-               overflow-y to auto and clip the cards' bottoms — keep both visible. */
-            overflow: visible;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-
-        .prev-round-cards::-webkit-scrollbar {
-            display: none;
-        }
-
-        .prev-round-entry {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.32rem;
-            flex: 0 0 auto;
-            min-height: calc(var(--prev-round-card-height) + 1.25rem);
-        }
-
-        /* Size the card wrapper (and the legacy direct-child fallback img) to the native
-           card ratio, and clip to rounded corners so the card fits fully inside the panel. */
-        .prev-round-card-img,
-        .prev-round-entry > img {
-            width: var(--prev-round-card-width);
-            aspect-ratio: 300 / 546;
-            height: auto;
-            border-radius: 9px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
-            display: block;
-        }
-
-        /* The inner faces fill the wrapper (native ratio → no distortion) and round with it. */
-        .prev-round-card-img .card-front,
-        .prev-round-card-img .card-back {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 9px;
-        }
-
-        .prev-round-player {
-            font-size: 0.66rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            color: var(--seat-muted);
-            max-width: var(--prev-round-card-width);
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Highlight the card(s) played by the round winner. */
-        .prev-round-entry.is-winner .prev-round-player {
-            color: var(--gold);
-        }
-
-        .prev-round-entry.is-winner .prev-round-card-img,
-        .prev-round-entry.is-winner img {
-            outline: 2px solid var(--gold);
-            outline-offset: 1px;
-            box-shadow: 0 0 14px rgba(240, 180, 77, 0.45), 0 8px 16px rgba(0, 0, 0, 0.28);
-        }
-
-        .prev-round-empty {
-            font-size: 0.82rem;
-            color: var(--seat-muted);
-        }
-
         /* ===== TEAMMATE HAND BUTTON ===== */
         /* Single static button/panel (see fragments/game/teammate-hand.html), same
            structure as the "Last Round" button — fixed to the viewport by default,
@@ -1882,9 +1905,8 @@
             50% { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 0 0 8px rgba(55, 155, 90, 0); }
         }
 
-        /* Fixed to the viewport (like .prev-round-panel) rather than confined to the
-           table, so it always paints above the hand regardless of where the toggle
-           button itself lives in the DOM. */
+        /* Fixed to the viewport so it always paints above the hand regardless of
+           where the toggle button itself lives in the DOM. */
         .teammate-hand-panel {
             position: fixed;
             bottom: 4rem;
@@ -1904,8 +1926,7 @@
             backdrop-filter: blur(16px);
         }
 
-        /* Inside the table the panel anchors below the top toggle, mirroring the
-           prev-round panel that anchors above its bottom toggle. */
+        /* Inside the table the panel anchors below the top toggle. */
         .table-surface > .teammate-hand-panel {
             position: absolute;
             left: 50%;
@@ -1986,6 +2007,14 @@
            Desktop (>900px) is never affected. */
 
         @media (max-width: 900px) {
+            /* The mobile game board is a full-viewport app surface (fullscreen mode
+               already hides the footer). In classic mode the footer peeked in as a
+               black band over the game background's darkest corner, right where the
+               floating chat toggle sits — hide it on phones in every game mode. */
+            body.game-page .footer {
+                display: none;
+            }
+
             html[data-game-ui="fullscreen"] .game-layout,
             html[data-game-ui="fullscreen"] .game-layout.is-two-player,
             html[data-game-ui="fullscreen"] .game-layout.is-three-player,
@@ -2073,7 +2102,10 @@
             html[data-game-ui="fullscreen"] .hand-zone {
                 transform: none;
                 width: 100%;
-                padding: 0.1rem 0.35rem;
+                /* Real side margin so a full (e.g. 10-card Treseta) fan never runs
+                   edge-to-edge — layoutZone spreads cards over this element's width,
+                   so padding here directly becomes hand margin. */
+                padding: 0.1rem clamp(1rem, 5vw, 1.75rem);
             }
 
             html[data-game-ui="fullscreen"] .hand-cards {
@@ -2101,6 +2133,13 @@
 
             html[data-game-ui="fullscreen"] .player-ring .seat-avatar {
                 order: 0;
+            }
+
+            html[data-game-ui="fullscreen"] .player-ring .player-seat[data-seat-side="top"] .seat-avatar {
+                width: clamp(32px, 8vw, 40px);
+                height: clamp(32px, 8vw, 40px);
+                --ring-radius: 15px;
+                font-size: 0.95rem;
             }
 
             html[data-game-ui="fullscreen"] .player-ring .seat-team-badge {
@@ -2186,40 +2225,53 @@
                 bottom: 31%;
             }
 
-            /* --- Self summary: compact pill in the top-left corner (mirrors the
-               opponent top-centre), out of the hand's way. --- */
+            /* --- Self summary: compact pill in the top-center lane. --- */
 
             html[data-game-ui="fullscreen"] .player-summary {
                 position: fixed;
-                top: calc(var(--header-height) + 0.4rem);
-                left: 0.5rem;
+                top: calc(var(--header-height) + 0.25rem);
+                left: 50%;
                 margin: 0;
+                transform: translateX(-50%);
                 z-index: 9;
             }
 
             html[data-game-ui="fullscreen"] .player-summary-card {
                 min-width: 0;
-                padding: 0.26rem 0.55rem;
-                gap: 0.4rem;
-            }
-
-            /* --- Round-history toggle: top-right corner; panel drops beneath it. --- */
-
-            html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-toggle {
-                left: auto;
-                right: 0.55rem;
-                top: 0.55rem;
-                bottom: auto;
+                padding: 0;
                 transform: none;
             }
 
-            html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-toggle:hover {
-                transform: translateY(-2px);
+            html[data-game-ui="fullscreen"] .player-summary-identity {
+                gap: 0.25rem;
+                padding: 0.2rem 0.3rem 0.1rem;
             }
 
-            html[data-game-ui="fullscreen"] .game-layout .table-surface > .prev-round-panel {
-                top: 3.1rem;
-                bottom: auto;
+            html[data-game-ui="fullscreen"] .player-summary-identity .seat-avatar {
+                width: 1.8rem;
+                height: 1.8rem;
+                --ring-radius: 9px;
+                --ring-width: 3px;
+                font-size: 0.8rem;
+            }
+
+            html[data-game-ui="fullscreen"] .player-summary-name {
+                max-width: 4.5rem;
+                font-size: 0.62rem;
+            }
+
+            html[data-game-ui="fullscreen"] .player-summary-points {
+                font-size: 0.9rem;
+            }
+
+            html[data-game-ui="fullscreen"] .hand-sort-controls {
+                gap: 0.12rem;
+                padding: 0.02rem 0.2rem 0.12rem;
+            }
+
+            html[data-game-ui="fullscreen"] .hand-sort-button {
+                padding: 0.12rem 0.28rem;
+                font-size: 0.56rem;
             }
 
             /* Top seats hug the screen edge — the teammate toggle hangs BELOW

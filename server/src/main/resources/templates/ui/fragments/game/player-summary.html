@@ -1,0 +1,16 @@
+<th:block th:fragment="playerSummary(showPlayerSummary)" xmlns:th="http://www.thymeleaf.org">
+    <div id="player-summary" class="player-summary" th:if="${showPlayerSummary}" style="visibility:hidden">
+        <div class="player-summary-card">
+            <th:block th:replace="~{ui/fragments/game/previous-round :: previousRound(null)}"></th:block>
+            <div class="player-summary-identity">
+                <div id="player-summary-avatar" class="seat-avatar">P</div>
+                <div id="player-summary-name" class="player-summary-name"></div>
+                <div id="player-summary-points" class="player-summary-points">0</div>
+            </div>
+            <div class="hand-sort-controls" th:aria-label="#{game.sort.aria}">
+                <button id="hand-sort-suit" class="hand-sort-button" type="button" th:text="#{game.sort.suit}">Suit</button>
+                <button id="hand-sort-rank" class="hand-sort-button" type="button" th:text="#{game.sort.rank}">Rank</button>
+            </div>
+        </div>
+    </div>
+</th:block>

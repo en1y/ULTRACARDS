@@ -314,6 +314,17 @@
     margin-bottom: 1.4rem;
 }
 
+/* Chrome otherwise opens this native list with a white surface and our light
+   profile text, making the non-selected languages unreadable. */
+.profile-language-field select {
+    color-scheme: dark;
+}
+
+.profile-language-field select option {
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+
 .profile-actions #save-profile {
     width: 100%;
     min-width: 0;
@@ -441,7 +452,7 @@
 
 .profile-stats-controls {
     display: grid;
-    grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.75fr) minmax(220px, 1fr);
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
     gap: 1rem;
     margin-bottom: 1.35rem;
 }

@@ -6,17 +6,7 @@
 
         <div class="hand-row">
             <th:block th:replace="~{ui/fragments/game/hand :: hand('', ${handId}, ${ownerId}, null, 0, ${handType})}"></th:block>
-            <div id="player-summary" class="player-summary" th:if="${showPlayerSummary}" style="visibility:hidden">
-                <div class="player-summary-card">
-                    <div id="player-summary-avatar" class="seat-avatar">P</div>
-                    <div id="player-summary-name" class="player-summary-name"></div>
-                    <div id="player-summary-points" class="player-summary-points">0</div>
-                    <div class="hand-sort-controls" th:aria-label="#{game.sort.aria}">
-                        <button id="hand-sort-suit" class="hand-sort-button" type="button" th:text="#{game.sort.suit}">Suit</button>
-                        <button id="hand-sort-rank" class="hand-sort-button" type="button" th:text="#{game.sort.rank}">Rank</button>
-                    </div>
-                </div>
-            </div>
+            <th:block th:replace="~{ui/fragments/game/player-summary :: playerSummary(${showPlayerSummary})}"></th:block>
         </div>
 
         <th:block th:replace="~{ui/fragments/game/animation-layer :: animationLayer}"></th:block>
