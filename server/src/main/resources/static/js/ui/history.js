@@ -179,17 +179,15 @@
     const params = new URLSearchParams({
       offset: String(offset),
       result: resultSelect.value,
-      timeSort: timeSortSelect.value
+      timeSort: timeSortSelect.value,
+      gameType: gameTypeSelect.value
     });
 
     try {
       const response = await fetch(`/api/games/history?${params}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Could not load history');
       const games = await response.json();
-      const filteredGames = gameTypeSelect.value === 'all'
-        ? games
-        : games.filter((game) => String(game.gameType || '').toLowerCase() === gameTypeSelect.value);
-      renderGames(filteredGames, reset, games.length >= 20);
+      renderGames(games, reset, games.length >= 20);
     } catch (error) {
       if (offset === 0) {
         list.innerHTML = `<article class="card history-card history-error">${t('history.loadFailed')}</article>`;
