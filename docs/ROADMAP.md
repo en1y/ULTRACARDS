@@ -81,7 +81,7 @@
 
 ---
 
-# v0.2.3 → v0.3.0 — Second Game (Treseta)
+# v0.2.3 → v0.3.0 — Second Game (Treseta) ✅
 
 - Reuse all the existing game logic to create Treseta logic in the `game-logic` -> `games` -> `treseta` module
 - Create server-side logic for Treseta in the `server` module while creating all the necessary endpoints 
