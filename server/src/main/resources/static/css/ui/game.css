@@ -537,6 +537,13 @@
             margin: 0;
         }
 
+        /* Firefox keeps an enlarged 3D card face as a blurred raster. The 1v1
+           opponent-draw reveal uses a direct, non-3D overlay instead. */
+        .game-animation-layer > .opponent-drawn-overlay {
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.26);
+            transform-origin: 50% 50%;
+        }
+
         .game-moving-card,
         .game-animation-layer .deal-card,
         .game-animation-layer .drag-ghost {

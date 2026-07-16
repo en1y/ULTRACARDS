@@ -108,6 +108,7 @@
             delayedTableUpdateTimer: null,
             delayedTablePayload: null,
             delayedTablePending: false,
+            gameUpdateVersion: 0,
             endState: null,
             endRedirectTimer: null,
             endRedirectInterval: null,
@@ -126,6 +127,8 @@
             teammateAutoCloseTimer: null,
             opponentDrawReveal: null,
             opponentDrawRevealTimer: null,
+            lastOpponentDraw: null,
+            previousRoundDrawPending: false,
             previousRound: null,
             previousRoundReplayActive: false,
             previousRoundReplayView: null,
@@ -285,9 +288,11 @@
         }
 
         function resetPreviousRoundReplay() {
+            const replayWasActive = state.previousRoundReplayActive;
             state.previousRoundReplayActive = false;
             state.previousRoundReplayView = null;
             state.previousRoundAnimating = false;
+            if (replayWasActive) clearPreviousRoundOpponentDraw();
             syncHand();
             refreshPrevRoundControls();
         }
@@ -297,9 +302,17 @@
             const renderedCards = state.previousRoundReplayView?.renderedCards || [];
             state.previousRoundReplayActive = false;
             state.previousRoundReplayView = null;
+            clearPreviousRoundOpponentDraw();
             renderTrick(state.game?.playedCards || [], renderedCards);
             clearPreviousRoundLabels();
             syncHand();
+        }
+
+        function clearPreviousRoundOpponentDraw() {
+            dom.ring?.querySelectorAll('.seat-cards[data-opponent-reveal-sig]').forEach((cards) => {
+                cards.querySelectorAll('.opponent-drawn-card').forEach((card) => clearOpponentDrawnCard(card));
+                delete cards.dataset.opponentRevealSig;
+            });
         }
 
         function renderPreviousRoundReplay(data) {
@@ -307,7 +320,7 @@
             if (!view) return;
             const cards = view.phase === 'current'
                 ? view.currentCards.slice(0, view.currentCount)
-                : data.cards.slice(0, view.previousCount);
+                : view.phase === 'previous' ? data.cards.slice(0, view.previousCount) : [];
             renderTrick(cards, view.renderedCards);
             view.renderedCards = cards;
             if (view.phase === 'previous') {
@@ -316,6 +329,27 @@
             } else {
                 clearPreviousRoundLabels();
             }
+        }
+
+        function replayPreviousRoundOpponentDraw(data) {
+            const drawn = Array.isArray(data?.opponentDrawnCards) ? data.opponentDrawnCards : [];
+            const card = drawn[drawn.length - 1];
+            if (gameEl.dataset.gameType !== 'treseta' || buildPlayers(state.game).length !== 2 || !card) return;
+            const opponent = buildPlayers(state.game).find((player) => !isCurrentUser(player));
+            const seat = opponent?.id != null
+                ? dom.ring?.querySelector(`[data-player-id="${CSS.escape(String(opponent.id))}"]`)
+                : null;
+            const cards = seat?.querySelector('.seat-cards');
+            const count = cards?.children.length || 0;
+            if (!cards || !count) return;
+            renderOpponentDrawnSeatCards(cards, count, seat.dataset.seatSide || 'center', [card], count);
+        }
+
+        function hasPreviousRoundOpponentDraw(data) {
+            return gameEl.dataset.gameType === 'treseta'
+                && buildPlayers(state.game).length === 2
+                && Array.isArray(data?.opponentDrawnCards)
+                && data.opponentDrawnCards.length > 0;
         }
 
         function replayPreviousRound(direction) {
@@ -338,6 +372,13 @@
                 if (view.phase === 'current' && view.currentCount > 1) {
                     view.currentCount--;
                 } else if (view.phase === 'current') {
+                    if (hasPreviousRoundOpponentDraw(data)) {
+                        view.phase = 'drawn';
+                    } else {
+                        view.phase = 'previous';
+                        view.previousCount = data.cards.length;
+                    }
+                } else if (view.phase === 'drawn') {
                     view.phase = 'previous';
                     view.previousCount = data.cards.length;
                 } else if (view.previousCount > 1) {
@@ -348,6 +389,13 @@
             } else if (view.phase === 'previous' && view.previousCount < data.cards.length) {
                 view.previousCount++;
             } else if (view.phase === 'previous') {
+                if (hasPreviousRoundOpponentDraw(data)) {
+                    view.phase = 'drawn';
+                } else {
+                    view.phase = 'current';
+                    view.currentCount = view.currentCards.length ? 1 : 0;
+                }
+            } else if (view.phase === 'drawn') {
                 view.phase = 'current';
                 view.currentCount = view.currentCards.length ? 1 : 0;
             } else if (view.currentCount < view.currentCards.length) {
@@ -367,6 +415,8 @@
 
             state.previousRoundAnimating = true;
             renderPreviousRoundReplay(data);
+            if (view.phase === 'drawn') replayPreviousRoundOpponentDraw(data);
+            else clearPreviousRoundOpponentDraw();
             syncHand();
             refreshPrevRoundControls();
             window.setTimeout(() => {
@@ -568,9 +618,10 @@
                             clearTimeout(state.opponentDrawRevealTimer);
                         }
                         const token = (state.opponentDrawReveal?.token || 0) + 1;
+                        const gameUpdateVersion = state.gameUpdateVersion;
                         // The private draw event is published before the public game
-                        // snapshot. Reserve the new slots now so syncBackCards can
-                        // create them and fly their backs from the deck immediately.
+                        // snapshot. Preserve the current slot count so the reveal can
+                        // start once the matching public snapshot is rendered.
                         const opponent = buildPlayers(state.game).find((player) => !isCurrentUser(player));
                         const opponentSeat = opponent?.id != null
                             ? dom.ring?.querySelector(`[data-player-id="${CSS.escape(String(opponent.id))}"]`)
@@ -578,8 +629,30 @@
                         const currentCount = Number(opponent?.cards) || 0;
                         const renderedCount = opponentSeat?.querySelector('.seat-cards')?.children.length || 0;
                         const targetCount = Math.max(currentCount, renderedCount);
+                        state.lastOpponentDraw = drawn.slice(-1);
+                        if (state.previousRoundDrawPending && state.previousRound) {
+                            state.previousRound.opponentDrawnCards = state.lastOpponentDraw;
+                            PreviousRoundStore.save(gameId, state.previousRound);
+                            state.previousRoundDrawPending = false;
+                            state.lastOpponentDraw = null;
+                        }
                         state.opponentDrawReveal = {cards: drawn, token, targetCount};
-                        renderPlayers(state.game);
+                        // The draw event lands between the old and new public game
+                        // snapshots. Let the new snapshot start the reveal once;
+                        // a late event still gets a short fallback render.
+                        window.setTimeout(() => {
+                            if (state.opponentDrawReveal?.token === token
+                                && state.gameUpdateVersion === gameUpdateVersion
+                                && state.game) {
+                                const playersCount = buildPlayers(state.game).length;
+                                const playedCount = Array.isArray(state.game.playedCards)
+                                    ? state.game.playedCards.length
+                                    : 0;
+                                if (!playersCount || playedCount < playersCount) {
+                                    renderPlayers(state.game);
+                                }
+                            }
+                        }, 350);
                         state.opponentDrawRevealTimer = setTimeout(() => {
                             if (state.opponentDrawReveal?.token !== token) return;
                             hideOpponentDrawnCards().finally(() => {
@@ -707,6 +780,7 @@
          * @param {GameResult|null} result
          */
         function applyGame(game, gameEvent, result, skipTableDelay = false) {
+            state.gameUpdateVersion++;
             clearPreviousRoundLabels();
             game.playersTurn = normalizePlayer(game.playersTurn);
             if (Number(game.turnDurationSeconds) > 0) {
@@ -797,14 +871,13 @@
                         const delayedPayload = state.delayedTablePayload;
                         state.delayedTablePayload = null;
                         state.delayedTablePending = false;
+                        setRoundClearing(false);
                         if (delayedPayload) {
                             applyGame(delayedPayload.game, delayedPayload.gameEvent, delayedPayload.result, true);
                         }
-                        setRoundClearing(false);
                         state.playing = false;
-                        // The round state was rendered while the clear lock was
-                        // active, so refresh the card classes after unlocking or
-                        // they can remain visually disabled for the new round.
+                        // Refresh the hand after the delayed state is applied and
+                        // both round locks are released.
                         syncHand();
                     });
                 }, 1100);
@@ -1145,11 +1218,23 @@
                     winners: Array.isArray(pending?.winners) && pending.winners.length
                         ? pending.winners
                         : (fallbackWinner ? [fallbackWinner] : []),
+                    // In 1v1 Treseta this is the one public opponent draw from the
+                    // completed round; replay never restores a hidden hand.
+                    opponentDrawnCards: state.lastOpponentDraw || [],
                     timestamp: Date.now()
                 };
                 state.previousRound = roundData;
                 PreviousRoundStore.save(gameId, roundData);
                 state.pendingRound = null;
+                state.lastOpponentDraw = null;
+                state.previousRoundDrawPending = !roundData.opponentDrawnCards.length;
+                if (state.previousRoundDrawPending) {
+                    window.setTimeout(() => {
+                        if (state.previousRound?.timestamp === roundData.timestamp) {
+                            state.previousRoundDrawPending = false;
+                        }
+                    }, 2000);
+                }
                 refreshPrevRoundButton();
             }
 
@@ -1276,7 +1361,8 @@
                         : null;
                     if (revealed) {
                         renderTeammateSeatCards(cards, revealed);
-                    } else if (players.length === 2 && !isSelf && state.opponentDrawReveal?.cards?.length) {
+                    } else if (players.length === 2 && !isSelf && !state.roundClearing
+                        && state.opponentDrawReveal?.cards?.length) {
                         renderOpponentDrawnSeatCards(
                             cards,
                             cardsCount,
@@ -1287,8 +1373,7 @@
                     } else {
                         if (cards.dataset.opponentRevealSig) {
                             cards.querySelectorAll('.opponent-drawn-card').forEach((card) => {
-                                card.cardApi?.showBack();
-                                card.classList.remove('opponent-drawn-card');
+                                clearOpponentDrawnCard(card);
                             });
                             delete cards.dataset.opponentRevealSig;
                         }
@@ -2370,6 +2455,58 @@
             });
         }
 
+        function clearOpponentDrawnCard(card) {
+            if (!card) return;
+            card.cardApi?.showBack();
+            card.style.visibility = '';
+            card.__ucOpponentRevealOverlay?.remove();
+            delete card.__ucOpponentRevealOverlay;
+            card.classList.remove('opponent-drawn-card');
+        }
+
+        function showFirefoxOpponentDrawnCard(back, card, seatSide) {
+            const rect = back.getBoundingClientRect();
+            const handWidth = dom.hand?.querySelector('.hand-card')?.offsetWidth || rect.width;
+            const height = handWidth * 546 / 300;
+            const reveal = window.UltracardsGameUi?.renderCardImage({
+                card,
+                className: 'opponent-drawn-overlay',
+                alt: t('game.card.alt')
+            });
+            if (!reveal || !rect.width) return;
+            const rotation = getSeatHandRotate(seatSide);
+            const startScale = Math.max(0.18, Math.min(1, rect.width / handWidth));
+            const revealTransform = (scale) => {
+                const lift = -((height * (1 - scale)) / 2);
+                return `translateY(${lift}px) rotate(${rotation}) scale(${scale})`;
+            };
+            reveal.style.width = `${handWidth}px`;
+            reveal.style.height = `${height}px`;
+            reveal.style.left = `${rect.left + (rect.width - handWidth) / 2}px`;
+            reveal.style.top = `${rect.top}px`;
+            reveal.style.transform = revealTransform(startScale);
+            reveal.style.opacity = '0';
+            let layer = document.getElementById('game-animation-layer');
+            if (!layer) {
+                layer = document.createElement('div');
+                layer.id = 'game-animation-layer';
+                layer.className = 'game-animation-layer';
+                document.body.appendChild(layer);
+            }
+            layer.appendChild(reveal);
+            back.style.visibility = 'hidden';
+            back.__ucOpponentRevealOverlay = reveal;
+            reveal.__ucOpponentRevealTransform = revealTransform;
+            reveal.__ucOpponentRevealStartScale = startScale;
+            // Animate the sharp, non-3D overlay from the dealt back's size. Gecko
+            // rasterizes a scaled card-inner layer, but keeps this direct image crisp.
+            window.UltracardsGameUi?.animateElement(reveal, {
+                transform: [revealTransform(startScale), revealTransform(1)],
+                opacity: [0.18, 1],
+                duration: 260
+            });
+        }
+
         function renderOpponentDrawnSeatCards(cardsEl, cardsCount, seatSide, drawnCards, targetCount) {
             const drawn = Array.isArray(drawnCards) ? drawnCards : [];
             const count = Math.max(Number(cardsCount) || 0, Number(targetCount) || 0, drawn.length);
@@ -2380,15 +2517,18 @@
                 // previous face-up cards back without rebuilding the whole hand, so
                 // only the newly added back cards fly in from the deck.
                 cardsEl.querySelectorAll('.opponent-drawn-card').forEach((card) => {
-                    card.cardApi?.showBack();
-                    card.classList.remove('opponent-drawn-card');
+                    clearOpponentDrawnCard(card);
                 });
             }
             cardsEl.dataset.opponentRevealSig = sig;
-            // Keep the normal anonymous backs and replace only the newly drawn
-            // positions with face-up cards. The existing fan/slot geometry remains
-            // identical, so the reveal does not move the opponent's whole hand.
-            syncSeatCards(cardsEl, count, seatSide, {forceDealCount: drawn.length});
+            // A 1v1 play-and-draw normally keeps the opponent hand at the same size.
+            // Reuse that existing slot instead of forcing its back to deal from the
+            // deck first; the face reveal below is the single draw animation. Only
+            // wait for the generic deal animation when the hand truly gains a slot.
+            const existingCount = Array.from(cardsEl.children)
+                .filter((el) => !el.classList.contains('game-hand-placeholder')).length;
+            syncSeatCards(cardsEl, count, seatSide);
+            const revealDelay = existingCount < count ? 560 : 0;
             const children = Array.from(cardsEl.children);
             const start = Math.max(0, children.length - drawn.length);
             drawn.forEach((card, index) => {
@@ -2397,6 +2537,10 @@
                 back.classList.add('opponent-drawn-card');
                 window.setTimeout(() => {
                     if (cardsEl.dataset.opponentRevealSig !== sig || !back.isConnected) return;
+                    if (useNativeCardAnimations) {
+                        showFirefoxOpponentDrawnCard(back, card, seatSide);
+                        return;
+                    }
                     Promise.resolve(back.cardApi.flip(card)).then(() => {
                         if (cardsEl.dataset.opponentRevealSig !== sig || !back.isConnected) return;
                         // Keep the landed card readable at a larger size before the
@@ -2404,12 +2548,7 @@
                         const inner = back.querySelector('.card-inner');
                         if (!inner) return;
                         const scale = opponentRevealScale(back);
-                        if (useNativeCardAnimations && window.UltracardsGameUi?.animateElement) {
-                            window.UltracardsGameUi.animateElement(inner, {
-                                transform: ['rotateY(180deg) scale(1)', `rotateY(180deg) scale(${scale})`],
-                                duration: 120
-                            });
-                        } else if (window.gsap) {
+                        if (window.gsap) {
                             window.gsap.to(inner, {
                                 scale,
                                 duration: 0.12,
@@ -2417,7 +2556,7 @@
                             });
                         }
                     });
-                }, 560 + index * 45);
+                }, revealDelay + index * 45);
             });
         }
 
@@ -2436,28 +2575,19 @@
             if (!cards.length) return Promise.resolve();
             if (useNativeCardAnimations && window.UltracardsGameUi?.animateElement) {
                 return Promise.all(cards.map(async (card) => {
-                    const inner = card.querySelector('.card-inner');
-                    if (!inner) {
-                        card.cardApi?.showBack();
+                    const reveal = card.__ucOpponentRevealOverlay;
+                    if (reveal) {
+                        const transform = reveal.__ucOpponentRevealTransform;
+                        const startScale = reveal.__ucOpponentRevealStartScale || 1;
+                        await window.UltracardsGameUi.animateElement(reveal, {
+                            transform: transform ? [transform(1), transform(startScale)] : undefined,
+                            opacity: [1, 1],
+                            duration: 220
+                        });
+                        clearOpponentDrawnCard(card);
                         return;
                     }
-                    await window.UltracardsGameUi.animateElement(inner, {
-                        transform: [
-                            `rotateY(180deg) scale(${opponentRevealScale(card)})`,
-                            'rotateY(180deg) scale(0.96)'
-                        ],
-                        duration: 180
-                    });
-                    await window.UltracardsGameUi.animateElement(inner, {
-                        transform: ['rotateY(180deg) scale(0.96)', 'rotateY(90deg) scale(0.96)'],
-                        duration: 140
-                    });
-                    card.cardApi?.showBack();
-                    await window.UltracardsGameUi.animateElement(inner, {
-                        transform: ['rotateY(0deg) scale(0.96)', 'rotateY(0deg) scale(1)'],
-                        duration: 160
-                    });
-                    inner.style.transform = '';
+                    clearOpponentDrawnCard(card);
                 }));
             }
             if (!window.gsap) {

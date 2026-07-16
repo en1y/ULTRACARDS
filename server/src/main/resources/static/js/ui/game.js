@@ -628,11 +628,7 @@
         if (!cardsEl) return;
         const count = Math.max(Number(cardsCount) || 0, 0);
         const existingCards = Array.from(cardsEl.children).filter((el) => !el.classList.contains('game-hand-placeholder'));
-        const forceDealCount = Math.min(
-            Math.max(Number(options?.forceDealCount) || 0, 0),
-            count
-        );
-        if (existingCards.length === count && forceDealCount === 0) return;
+        if (existingCards.length === count) return;
         const first = new Map(existingCards.map((el) => [el, el.getBoundingClientRect()]));
         while (existingCards.length > count) existingCards.pop()?.remove();
         while (existingCards.length < count) {
@@ -646,7 +642,6 @@
             existingCards.push(card);
         }
         const total = existingCards.length;
-        const forceDealStart = total - forceDealCount;
         existingCards.forEach((card, index) => {
             const centeredIndex = index - ((total - 1) / 2);
             const rotate = centeredIndex * (options?.spread ?? 5);
@@ -664,8 +659,7 @@
         existingCards.forEach((card, index) => {
             const previous = first.get(card);
             const next = card.getBoundingClientRect();
-            const forceDeal = index >= forceDealStart;
-            if (previous && !forceDeal) {
+            if (previous) {
                 animateFromRect(card, previous, next, MOTION.quickMs);
                 return;
             }
@@ -1104,8 +1098,8 @@
     // ---- Reusable flying-animation helpers (customizable parameters) ----
 
     // Fly a card that is ALREADY placed in its slot, starting visually from `fromRect`.
-    // Firefox uses a native transform animation; other browsers keep the composable
-    // deal variables. `faceDown:true` shows the back during flight
+    // Keep the flight in the composable deal variables so it layers with the fanned
+    // hand transform consistently in every browser. `faceDown:true` shows the back during flight
     // (deal); otherwise the card keeps its face (return). Params: duration(ms), ease,
     // spin(deg), fromScale, faceDown, delay(ms), onLand(el).
     function flyIntoSlot(el, fromRect, options) {
@@ -1126,7 +1120,10 @@
             });
             options?.onLand?.(el);
         };
-        if (useNativeCardAnimations && typeof el.animate === 'function') {
+        // The native transform path composes an extra scale with Firefox's computed
+        // fan transform, causing newly drawn cards to zoom. Keep it only as the
+        // no-GSAP fallback; the normal game pages load GSAP before this script.
+        if (!gsap && typeof el.animate === 'function') {
             const computedTransform = getComputedStyle(el).transform;
             const baseTransform = computedTransform === 'none' ? '' : computedTransform;
             const startTransform = `translate3d(${dx}px, ${dy}px, 0) rotate(${options?.spin ?? 8}deg) scale(${options?.fromScale ?? 1.04}) ${baseTransform}`.trim();
