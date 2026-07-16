@@ -225,10 +225,12 @@ public class LobbyService {
     public GameLobbyDTO kickPlayer(@NotNull Long playerToKickId, UserEntity owner) {
         var lobby = lobbyManager.getLobby(owner);
         if (lobby != null) {
-            var removed = lobby.removeUser(userService.getUserById(playerToKickId));
+            var player = userService.getUserById(playerToKickId);
+            var removed = lobby.removeUser(player);
             if (removed) {
                 syncLobbyConfig(lobby);
                 lobbyCache.remove(playerToKickId);
+                eventPublisher.publishKicked(player, lobby.getId());
                 eventPublisher.publish(lobby, UPDATED);
                 return lobby.createLobbyDTO(true);
             }

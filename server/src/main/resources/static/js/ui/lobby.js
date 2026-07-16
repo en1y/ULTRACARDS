@@ -119,7 +119,11 @@
                         if (!payload || !payload.type) {
                             return;
                         }
-                        if (payload.type === 'DELETED') {
+                        if (payload.type === 'DELETED' || payload.type === 'KICKED') {
+                            if (payload.type === 'KICKED') {
+                                window.location.href = '/';
+                                return;
+                            }
                             persistLobbyClosedNotice(payload.lobbyDto || state.lobby);
                             window.location.href = '/';
                             return;
@@ -149,7 +153,7 @@
                         console.error('Lobby websocket parse error', error);
                     }
                 };
-                client.subscribe('/topic/lobbies', handleLobbyEvent);
+                client.subscribe('/user/queue/lobby', handleLobbyEvent);
                 client.subscribe(`/topic/lobbies/${state.lobby.id}/chat`, (message) => {
                     try {
                         const payload = JSON.parse(message.body);

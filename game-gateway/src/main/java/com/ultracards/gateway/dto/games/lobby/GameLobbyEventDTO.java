@@ -20,7 +20,6 @@ public class GameLobbyEventDTO {
     }
 
     public enum GameLobbyEventType {
-        // TODO: Consider adding JOIN, LEAVE, KICKED events for faster client processing. Do not forget to change lobbyEventPublisher if adding new Enum types
-        CREATED, UPDATED, DELETED, STARTED
+        CREATED, UPDATED, DELETED, STARTED, KICKED
     }
 }

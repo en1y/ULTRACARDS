@@ -3,6 +3,7 @@ package com.ultracards.server.service.lobby;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
+import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.service.games.GameManager;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import java.util.List;
 import java.util.UUID;
 
 import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.STARTED;
@@ -31,9 +33,13 @@ class LobbyEventPublisherTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void startedPublishesOneTypedPrivateEventContainingTheGameId() throws Exception {
+    void startedPublishesPrivateEventOnlyToLobbyMembers() throws Exception {
         var lobbyId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
+        var firstPlayer = new UserEntity("first@example.com", "First");
+        firstPlayer.setId(1L);
+        var secondPlayer = new UserEntity("second@example.com", "Second");
+        secondPlayer.setId(2L);
         var publicLobby = new GameLobbyDTO();
         publicLobby.setId(lobbyId);
         var privateLobby = new GameLobbyDTO();
@@ -42,6 +48,7 @@ class LobbyEventPublisherTest {
         var game = mock(GameEntity.class);
         when(lobby.createLobbyDTO(false)).thenReturn(publicLobby);
         when(lobby.createLobbyDTO(true)).thenReturn(privateLobby);
+        when(lobby.getUsers()).thenReturn(List.of(firstPlayer, secondPlayer));
         when(gameManager.getGameByLobbyId(lobbyId)).thenReturn(game);
         when(game.getId()).thenReturn(gameId);
 
@@ -49,10 +56,11 @@ class LobbyEventPublisherTest {
 
         verify(messagingTemplate).convertAndSend(eq("/topic/lobbies"), any(GameLobbyEventDTO.class));
         var payload = ArgumentCaptor.forClass(Object.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/lobbies/" + lobbyId), payload.capture());
+        verify(messagingTemplate).convertAndSendToUser(eq("1"), eq("/queue/lobby"), payload.capture());
+        verify(messagingTemplate).convertAndSendToUser(eq("2"), eq("/queue/lobby"), payload.capture());
         verifyNoMoreInteractions(messagingTemplate);
 
-        var event = assertInstanceOf(GameLobbyEventDTO.class, payload.getValue());
+        var event = assertInstanceOf(GameLobbyEventDTO.class, payload.getAllValues().getFirst());
         assertEquals(STARTED, event.getType());
         assertEquals(gameId, event.getGameId());
 
