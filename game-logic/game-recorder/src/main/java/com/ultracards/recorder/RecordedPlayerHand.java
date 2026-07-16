@@ -11,6 +11,9 @@ public class RecordedPlayerHand {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "round_id", nullable = false)
+    private RecordedRound round;
     @Embedded
     private RecordedPlayer player;
     @ElementCollection
@@ -27,6 +30,14 @@ public class RecordedPlayerHand {
 
     public RecordedPlayer player() {
         return player;
+    }
+
+    RecordedRound round() {
+        return round;
+    }
+
+    void setRound(RecordedRound round) {
+        this.round = round;
     }
 
     public List<RecordedCard> cards() {

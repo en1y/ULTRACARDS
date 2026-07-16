@@ -15,12 +15,10 @@ public class RecordedRound {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "game_id", nullable = false)
     private RecordedGame game;
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "round_id")
+    @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderColumn(name = "hand_order")
     private List<RecordedPlayerHand> startingHands = new ArrayList<>();
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "round_id")
+    @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("order ASC")
     private List<RecordedPlay> plays = new ArrayList<>();
     @Embedded
@@ -36,8 +34,14 @@ public class RecordedRound {
 
     public RecordedRound(int order, List<RecordedPlayerHand> hands, List<RecordedPlay> plays, RecordedPlayer winner, Map<String, String> attributes) {
         this.order = order;
-        this.startingHands.addAll(hands);
-        this.plays.addAll(plays);
+        for (var hand : hands) {
+            hand.setRound(this);
+            this.startingHands.add(hand);
+        }
+        for (var play : plays) {
+            play.setRound(this);
+            this.plays.add(play);
+        }
         this.winner = winner;
         this.attributes.putAll(attributes);
     }

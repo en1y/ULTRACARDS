@@ -10,6 +10,9 @@ public class RecordedPlay {
     private Long id;
     @Column(name = "play_order", nullable = false)
     private int order;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "round_id", nullable = false)
+    private RecordedRound round;
     @Embedded
     private RecordedPlayer player;
     @Embedded
@@ -26,6 +29,14 @@ public class RecordedPlay {
 
     public int order() {
         return order;
+    }
+
+    RecordedRound round() {
+        return round;
+    }
+
+    void setRound(RecordedRound round) {
+        this.round = round;
     }
 
     public RecordedPlayer player() {
