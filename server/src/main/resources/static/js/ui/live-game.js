@@ -2116,7 +2116,9 @@
                     overlay = document.createElement('div');
                     overlay.className = 'trump-zoom';
                     const big = document.createElement('img');
-                    big.src = src;
+                    const zoomUrl = new URL(src, window.location.href);
+                    zoomUrl.searchParams.set('zoom', 'true');
+                    big.src = zoomUrl;
                     big.alt = t('briskula.trumpCard.alt');
                     big.addEventListener('mouseleave', clear);
                     overlay.appendChild(big);

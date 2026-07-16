@@ -1295,10 +1295,8 @@
         }
 
         .trump-zoom img {
-            /* Italian card art is 300 x 546. Do not upscale it in the modal:
-               Firefox's enlarged raster is visibly softer than Chrome's. */
-            max-width: min(92vw, 300px);
-            max-height: min(92vh, 546px);
+            max-width: 92vw;
+            max-height: 92vh;
             border-radius: 12px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
         }

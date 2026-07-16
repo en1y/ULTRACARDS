@@ -16,4 +16,14 @@ class CardImageServiceTest {
         assertTrue(image.getWidth() <= 300);
         assertTrue(image.getHeight() <= 546);
     }
+
+    @Test
+    void rendersZoomCardFacesAtTripleResolution() throws Exception {
+        var image = ImageIO.read(new ByteArrayInputStream(
+                new CardImageService().italianCardFace("COPPE", "ACE", true)
+        ));
+
+        assertTrue(image.getWidth() == 900);
+        assertTrue(image.getHeight() == 1638);
+    }
 }
