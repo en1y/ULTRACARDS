@@ -16,7 +16,7 @@ public class RecordedRound {
     @JoinColumn(name = "game_id", nullable = false)
     private RecordedGame game;
     @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderColumn(name = "hand_order")
+    @OrderBy("order ASC")
     private List<RecordedPlayerHand> startingHands = new ArrayList<>();
     @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("order ASC")
@@ -34,8 +34,10 @@ public class RecordedRound {
 
     public RecordedRound(int order, List<RecordedPlayerHand> hands, List<RecordedPlay> plays, RecordedPlayer winner, Map<String, String> attributes) {
         this.order = order;
-        for (var hand : hands) {
+        for (var index = 0; index < hands.size(); index++) {
+            var hand = hands.get(index);
             hand.setRound(this);
+            hand.setOrder(index);
             this.startingHands.add(hand);
         }
         for (var play : plays) {

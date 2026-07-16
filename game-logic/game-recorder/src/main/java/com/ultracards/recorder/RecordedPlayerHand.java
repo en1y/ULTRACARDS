@@ -14,6 +14,8 @@ public class RecordedPlayerHand {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "round_id", nullable = false)
     private RecordedRound round;
+    @Column(name = "hand_order", nullable = false)
+    private int order;
     @Embedded
     private RecordedPlayer player;
     @ElementCollection
@@ -38,6 +40,14 @@ public class RecordedPlayerHand {
 
     void setRound(RecordedRound round) {
         this.round = round;
+    }
+
+    int order() {
+        return order;
+    }
+
+    void setOrder(int order) {
+        this.order = order;
     }
 
     public List<RecordedCard> cards() {
