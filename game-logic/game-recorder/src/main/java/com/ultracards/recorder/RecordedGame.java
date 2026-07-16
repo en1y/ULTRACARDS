@@ -27,8 +27,7 @@ public class RecordedGame {
     @CollectionTable(name = "recorded_game_players", joinColumns = @JoinColumn(name = "game_id"))
     @OrderColumn(name = "player_order")
     private List<RecordedPlayer> players = new ArrayList<>();
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "game_id")
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("order ASC")
     private List<RecordedRound> rounds = new ArrayList<>();
     @ElementCollection
@@ -101,6 +100,7 @@ public class RecordedGame {
     }
 
     void addRound(RecordedRound round) {
+        round.setGame(this);
         rounds.add(round);
     }
 }

@@ -12,6 +12,9 @@ public class RecordedRound {
     private Long id;
     @Column(name = "round_order", nullable = false)
     private int order;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "game_id", nullable = false)
+    private RecordedGame game;
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "round_id")
     @OrderColumn(name = "hand_order")
@@ -41,6 +44,14 @@ public class RecordedRound {
 
     public int order() {
         return order;
+    }
+
+    RecordedGame game() {
+        return game;
+    }
+
+    void setGame(RecordedGame game) {
+        this.game = game;
     }
 
     public List<RecordedPlayerHand> startingHands() {
