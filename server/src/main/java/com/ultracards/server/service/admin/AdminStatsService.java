@@ -37,28 +37,33 @@ public class AdminStatsService {
     public AdminStatsDiffDTO patch(UserEntity actor, Long userId, String gameTypeValue, String mode,
                                    AdminStatsPatchDTO patch) {
         requireReason(patch.reason());
+        if (patch.played() == null || patch.wins() == null)
+            throw badRequest("Both played and wins are required");
         if (patch.played() < 0 || patch.wins() < 0 || patch.wins() > patch.played())
             throw badRequest("Statistics require 0 <= wins <= played");
         var user = findUser(userId);
         var gameType = parseGameType(gameTypeValue);
+        var normalizedMode = parseMode(gameType, mode);
         var before = snapshot(user);
         var expected = calculate(userId, gameType);
-        var expectedLine = expected.modes.get(mode.trim().toUpperCase());
-        var warning = expectedLine != null && (expectedLine.getPlayed() != patch.played() || expectedLine.getWins() != patch.wins())
+        var expectedLine = expected.modes.get(normalizedMode);
+        var expectedPlayed = expectedLine == null ? 0 : expectedLine.getPlayed();
+        var expectedWins = expectedLine == null ? 0 : expectedLine.getWins();
+        var warning = expectedPlayed != patch.played() || expectedWins != patch.wins()
                 ? "Override differs from completed recorded-game history" : null;
 
         if (patch.dryRun()) {
-            return new AdminStatsDiffDTO(before, previewOverride(before, gameType, mode, patch), warning, true);
+            return new AdminStatsDiffDTO(before, previewOverride(before, gameType, normalizedMode, patch), warning, true);
         }
 
         if (gameType == GameType.BRISKULA) {
             var stats = briskulaRepository.findByUser(user).orElseGet(() -> briskulaRepository.save(new UserBriskulaStats(user)));
-            var config = parseBriskulaMode(mode);
+            var config = BriskulaGameConfig.valueOf(normalizedMode);
             stats.getConfigStats().put(config, new GameStats(patch.played(), patch.wins(), patch.lastPlayedAt()));
             briskulaRepository.save(stats);
         } else {
             var stats = tresetaRepository.findByUser(user).orElseGet(() -> tresetaRepository.save(new UserTresetaStats(user)));
-            var config = parseTresetaMode(mode);
+            var config = TresetaGameConfig.valueOf(normalizedMode);
             stats.getConfigStats().put(config, new GameStats(patch.played(), patch.wins(), patch.lastPlayedAt()));
             tresetaRepository.save(stats);
         }
@@ -291,6 +296,10 @@ public class AdminStatsService {
     private TresetaGameConfig parseTresetaMode(String value) {
         try { return TresetaGameConfig.valueOf(value.trim().toUpperCase()); }
         catch (RuntimeException ex) { throw badRequest("Unknown Treseta mode: " + value); }
+    }
+
+    private String parseMode(GameType type, String value) {
+        return type == GameType.BRISKULA ? parseBriskulaMode(value).name() : parseTresetaMode(value).name();
     }
 
     private void requireReason(String reason) {
