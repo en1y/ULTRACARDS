@@ -47,7 +47,14 @@ final class ConfigStore {
 
     void add(String name, String url) {
         validateName(name);
-        config.setProperty("server." + name, stripSlash(url));
+        var key = "server." + name;
+        var normalizedUrl = stripSlash(url);
+        var previousUrl = config.getProperty(key);
+        config.setProperty(key, normalizedUrl);
+        if (previousUrl != null && !previousUrl.equals(normalizedUrl)) {
+            credentials.remove("token." + name);
+            saveCredentials();
+        }
         if (activeProfile() == null) config.setProperty("active", name);
         saveConfig();
     }

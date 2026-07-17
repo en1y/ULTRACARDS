@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -31,6 +32,18 @@ class UltracardsAdminCliTest {
 
         assertEquals("local", store.activeProfile());
         assertEquals("http://localhost:8080", store.activeUrl());
+    }
+
+    @Test
+    void changingAProfileUrlDropsTheTokenBoundToTheOldServer() {
+        var store = new ConfigStore(directory);
+        store.add("production", "https://old.example.com");
+        store.token("old-server-token");
+
+        store.add("production", "https://new.example.com");
+
+        assertEquals("https://new.example.com", store.activeUrl());
+        assertNull(store.token());
     }
 
     @Test
@@ -79,6 +92,24 @@ class UltracardsAdminCliTest {
     }
 
     @Test
+    void persistsServerSideTokenClearingImmediatelyAfterAResponse() {
+        var store = new ConfigStore(directory);
+        store.add("local", "http://localhost:8080");
+        store.token("expired-token");
+        var template = new UltracardsAdminCli(store).restTemplateWithImmediateTokenPersistence();
+        var mockServer = MockRestServiceServer.bindTo(template).build();
+        var headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE, "refreshToken=; Path=/; Max-Age=0; HttpOnly");
+        mockServer.expect(request -> assertEquals("http://localhost:8080/expired", request.getURI().toString()))
+                .andRespond(withSuccess().headers(headers));
+
+        template.getForEntity("http://localhost:8080/expired", Void.class);
+        mockServer.verify();
+
+        assertNull(store.token());
+    }
+
+    @Test
     void helpProvidesAFirstRunPathAndDescribesTheCommandGroups() {
         var output = new StringWriter();
         var command = new UltracardsAdminCli(new ConfigStore(directory)).commandLine();
@@ -115,6 +146,18 @@ class UltracardsAdminCliTest {
         assertEquals(OutputWriter.Format.JSON, root.output);
         assertTrue(root.utc);
         assertTrue(root.noColor);
+    }
+
+    @Test
+    void repeatedShellParsesResetInheritedConfirmationFlags() {
+        var root = new UltracardsAdminCli(new ConfigStore(directory));
+        var command = root.commandLine();
+
+        command.parseArgs("server", "list", "--yes");
+        assertTrue(root.yes);
+
+        command.parseArgs("server", "list");
+        assertFalse(root.yes);
     }
 
     @Test
