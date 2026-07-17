@@ -185,41 +185,72 @@ public class LobbyService {
     public GameLobbyDTO updateLobby(@Valid GameLobbyDTO lobbyDTO, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyDTO.getId());
         if (lobby != null && lobby.getOwner().equals(user)) {
-            var config = lobbyDTO.getGameConfig();
-            if ((config instanceof BriskulaGameConfigDTO briskulaConfig
-                    && briskulaConfig.getNumberOfPlayers() < lobby.getUsers().size())
-                    || (config instanceof TresetaGameConfigDTO tresetaConfig
-                    && tresetaConfig.getNumberOfPlayers() < lobby.getUsers().size()))
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Kick a player before reducing the game mode player count");
-
-            var previousUsers = new ArrayList<>(lobby.getUsers());
-            lobby.setName(lobbyDTO.getName());
-            lobby.setMinPlayers(lobbyDTO.getMinPlayers());
-            lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
-
-            var isPublic = lobbyDTO.getIsPublic();
-            if (isPublic != null)
-                lobby.setLobbyState(lobbyDTO.getIsPublic() ? LobbyState.PUBLIC : LobbyState.PRIVATE);
-
-            try {
-                if (config != null) {
-                    if (config instanceof BriskulaGameConfigDTO briskulaConfig) {
-                        lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
-                    } else if (config instanceof TresetaGameConfigDTO tresetaConfig) {
-                        lobby.setGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
-                    } else {
-                        lobby.setGameConfig(config);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn(e.getMessage());
-            }
-            removeStaleLobbyCacheEntries(lobby, previousUsers);
-            eventPublisher.publish(lobby, UPDATED);
-            return lobby.createLobbyDTO(true);
+            return applyUpdate(lobby, lobbyDTO);
         }
         return null;
+    }
+
+    public GameLobbyDTO updateLobby(UUID lobbyId, String name, Boolean isPublic, String mode) {
+        var lobby = lobbyManager.getLobby(lobbyId);
+        if (lobby == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        if (lobby.isStarted()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Started lobbies cannot be updated");
+        var dto = lobby.createLobbyDTO(true);
+        if (name != null) dto.setName(name);
+        if (isPublic != null) dto.setIsPublic(isPublic);
+        if (mode != null) applyMode(dto, mode);
+        return applyUpdate(lobby, dto);
+    }
+
+    private GameLobbyDTO applyUpdate(LobbyEntity lobby, GameLobbyDTO lobbyDTO) {
+        var config = lobbyDTO.getGameConfig();
+        if ((config instanceof BriskulaGameConfigDTO briskulaConfig
+                && briskulaConfig.getNumberOfPlayers() < lobby.getUsers().size())
+                || (config instanceof TresetaGameConfigDTO tresetaConfig
+                && tresetaConfig.getNumberOfPlayers() < lobby.getUsers().size()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Kick a player before reducing the game mode player count");
+
+        var previousUsers = new ArrayList<>(lobby.getUsers());
+        lobby.setName(lobbyDTO.getName());
+        lobby.setMinPlayers(lobbyDTO.getMinPlayers());
+        lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
+        if (lobbyDTO.getIsPublic() != null)
+            lobby.setLobbyState(lobbyDTO.getIsPublic() ? LobbyState.PUBLIC : LobbyState.PRIVATE);
+
+        if (config != null) {
+            if (config instanceof BriskulaGameConfigDTO briskulaConfig)
+                lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
+            else if (config instanceof TresetaGameConfigDTO tresetaConfig)
+                lobby.setGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
+            else lobby.setGameConfig(config);
+        }
+        removeStaleLobbyCacheEntries(lobby, previousUsers);
+        eventPublisher.publish(lobby, UPDATED);
+        return lobby.createLobbyDTO(true);
+    }
+
+    private void applyMode(GameLobbyDTO dto, String mode) {
+        try {
+            if (dto.getGameType() == GameTypeDTO.Briskula) {
+                var config = BriskulaGameConfig.valueOf(mode.trim().toUpperCase());
+                dto.setMinPlayers(config.getNumberOfPlayers());
+                dto.setMaxPlayers(config.getNumberOfPlayers());
+                dto.setGameConfig(new BriskulaGameConfigDTO(config.getNumberOfPlayers(), config.getCardsInHandNum(),
+                        config.areTeamsEnabled(), null));
+                return;
+            }
+            if (dto.getGameType() == GameTypeDTO.Treseta) {
+                var config = TresetaGameConfig.valueOf(mode.trim().toUpperCase());
+                dto.setMinPlayers(config.getNumberOfPlayers());
+                dto.setMaxPlayers(config.getNumberOfPlayers());
+                dto.setGameConfig(new TresetaGameConfigDTO(config.getNumberOfPlayers(), config.getCardsInHandNum(),
+                        config.areTeamsEnabled(), null));
+                return;
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This game type has no configurable modes");
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown lobby mode: " + mode);
+        }
     }
 
     public GameLobbyDTO kickPlayer(@NotNull Long playerToKickId, UserEntity owner) {
@@ -236,6 +267,21 @@ public class LobbyService {
             }
         }
         return null;
+    }
+
+    public GameLobbyDTO kickPlayer(UUID lobbyId, Long playerToKickId) {
+        var lobby = lobbyManager.getLobby(lobbyId);
+        if (lobby == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        if (lobby.getOwner().getId().equals(playerToKickId))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The lobby owner cannot be kicked; close the lobby instead");
+        var player = userService.getUserById(playerToKickId);
+        if (player == null || !lobby.removeUser(player))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player is not in this lobby");
+        syncLobbyConfig(lobby);
+        lobbyCache.remove(playerToKickId);
+        eventPublisher.publishKicked(player, lobby.getId());
+        eventPublisher.publish(lobby, UPDATED);
+        return lobby.createLobbyDTO(true);
     }
 
     public Boolean deleteLobby(UserEntity user) {
@@ -262,13 +308,30 @@ public class LobbyService {
     public Boolean openLobby(LobbyEntity lobby) {
         if (lobby.isStarted()) lobby.setStarted(false);
         var closedAt = Instant.now().plusSeconds(lobbyTimer);
+        scheduleClose(lobby, closedAt);
+        return true;
+    }
+
+    public GameLobbyDTO extendLobby(UUID lobbyId, long seconds) {
+        var lobby = lobbyManager.getLobby(lobbyId);
+        if (lobby == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        if (lobby.isStarted()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Started lobbies cannot be extended");
+        if (seconds < 60 || seconds > 86_400)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Extension must be between 60 and 86400 seconds");
+        var base = lobby.getClosedAt() != null && lobby.getClosedAt().isAfter(Instant.now())
+                ? lobby.getClosedAt() : Instant.now();
+        scheduleClose(lobby, base.plusSeconds(seconds));
+        eventPublisher.publish(lobby, UPDATED);
+        return lobby.createLobbyDTO(true);
+    }
+
+    private void scheduleClose(LobbyEntity lobby, Instant closedAt) {
         lobby.setClosedAt(closedAt);
         taskScheduler.schedule(() -> {
             // stale timers from previous openLobby calls see a newer closedAt and do nothing
             if (!lobby.isStarted() && closedAt.equals(lobby.getClosedAt()))
                 deleteLobby(lobby);
         }, closedAt);
-        return true;
     }
 
     public List<GameLobbyDTO> getLobbies() {
@@ -279,6 +342,23 @@ public class LobbyService {
                 res.add(l.createLobbyDTO(false));
         }
         return res;
+    }
+
+    public List<GameLobbyDTO> getAllLobbiesForAdministration() {
+        var lobbies = lobbyManager.getLobbies();
+        var output = new ArrayList<GameLobbyDTO>(lobbies.size());
+        synchronized (lobbies) {
+            for (var lobby : lobbies) output.add(lobby.createLobbyDTO(true));
+        }
+        return output;
+    }
+
+    public LobbyEntity getLobbyEntity(UUID lobbyId) {
+        return lobbyManager.getLobby(lobbyId);
+    }
+
+    public Boolean deleteLobby(UUID lobbyId) {
+        return deleteLobby(lobbyManager.getLobby(lobbyId));
     }
 
     public List<GameLobbyDTO> getLobbies(String gameType, Integer gameSettingId) {

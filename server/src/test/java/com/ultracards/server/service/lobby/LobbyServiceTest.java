@@ -183,6 +183,56 @@ class LobbyServiceTest {
     }
 
     @Test
+    void adminUpdateRejectsStartedLobby() {
+        var lobbyId = UUID.randomUUID();
+        var lobby = mock(LobbyEntity.class);
+        when(lobbyManager.getLobby(lobbyId)).thenReturn(lobby);
+        when(lobby.isStarted()).thenReturn(true);
+
+        assertThatThrownBy(() -> lobbyService.updateLobby(lobbyId, "Renamed", null, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void adminKickCannotRemoveLobbyOwner() {
+        var owner = user(1L, "Owner");
+        var lobbyId = UUID.randomUUID();
+        var lobby = mock(LobbyEntity.class);
+        when(lobbyManager.getLobby(lobbyId)).thenReturn(lobby);
+        when(lobby.getOwner()).thenReturn(owner);
+
+        assertThatThrownBy(() -> lobbyService.kickPlayer(lobbyId, owner.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("close the lobby")
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verifyNoInteractions(userService, eventPublisher);
+    }
+
+    @Test
+    void adminExtensionEnforcesOneMinuteToTwentyFourHours() {
+        var lobbyId = UUID.randomUUID();
+        var lobby = mock(LobbyEntity.class);
+        when(lobbyManager.getLobby(lobbyId)).thenReturn(lobby);
+
+        assertThatThrownBy(() -> lobbyService.extendLobby(lobbyId, 59))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThatThrownBy(() -> lobbyService.extendLobby(lobbyId, 86_401))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        verifyNoInteractions(taskScheduler, eventPublisher);
+    }
+
+    @Test
     void startsTresetaOnlyForOwnerWithExactConfiguredPlayerCount() {
         var owner = user(1L, "Owner");
         var player = user(2L, "Player");

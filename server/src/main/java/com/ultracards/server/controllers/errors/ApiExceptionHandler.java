@@ -1,5 +1,10 @@
 package com.ultracards.server.controllers.errors;
 
+import com.ultracards.gateway.dto.admin.AdminApiErrorDTO;
+import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.service.admin.AdminAuditService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -22,9 +27,12 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice(basePackages = "com.ultracards.server.controllers")
 public class ApiExceptionHandler {
+    @Autowired(required = false)
+    private AdminAuditService adminAuditService;
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+    public ResponseEntity<AdminApiErrorDTO> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+                                                                          HttpServletRequest request) {
         var errors = new LinkedHashMap<String, String>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.putIfAbsent(fieldError.getField(), resolveMessage(fieldError));
@@ -34,6 +42,7 @@ public class ApiExceptionHandler {
                 .map(this::resolveMessage)
                 .toList();
 
+        auditRejectedMutation(request, "Validation failure");
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Validation failure",
@@ -43,7 +52,8 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<ApiErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+    public ResponseEntity<AdminApiErrorDTO> handleHandlerMethodValidation(HandlerMethodValidationException ex,
+                                                                          HttpServletRequest request) {
         var errors = ex.getParameterValidationResults().stream()
                 .filter(result -> !result.getResolvableErrors().isEmpty())
                 .collect(Collectors.toMap(
@@ -57,6 +67,7 @@ public class ApiExceptionHandler {
                 .map(this::resolveMessage)
                 .toList();
 
+        auditRejectedMutation(request, "Validation failure");
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Validation failure",
@@ -66,7 +77,9 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+    public ResponseEntity<AdminApiErrorDTO> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                                                          HttpServletRequest request) {
+        auditRejectedMutation(request, "Bad request body");
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Bad request body",
@@ -76,9 +89,11 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
+    public ResponseEntity<AdminApiErrorDTO> handleResponseStatusException(ResponseStatusException ex,
+                                                                           HttpServletRequest request) {
         var reason = ex.getReason();
         var message = (reason == null || reason.isBlank()) ? "Request failed" : reason;
+        auditRejectedMutation(request, message);
         return buildResponse(
                 ex.getStatusCode(),
                 message,
@@ -88,7 +103,7 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleUnhandledException(Exception ex) {
+    public ResponseEntity<AdminApiErrorDTO> handleUnhandledException(Exception ex) {
         log.error("Unhandled API exception", ex);
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -98,13 +113,13 @@ public class ApiExceptionHandler {
         );
     }
 
-    private ResponseEntity<ApiErrorResponse> buildResponse(
+    private ResponseEntity<AdminApiErrorDTO> buildResponse(
             HttpStatusCode status,
             String message,
             Map<String, String> errors,
             List<String> globalErrors
     ) {
-        var body = new ApiErrorResponse(
+        var body = new AdminApiErrorDTO(
                 status.value(),
                 message,
                 errors,
@@ -130,11 +145,18 @@ public class ApiExceptionHandler {
         return "Invalid value";
     }
 
-    public record ApiErrorResponse(
-            int status,
-            String message,
-            Map<String, String> errors,
-            List<String> globalErrors
-    ) {
+    private void auditRejectedMutation(HttpServletRequest request, String safeReason) {
+        if (adminAuditService == null || request == null || "GET".equals(request.getMethod())
+                || !request.getRequestURI().startsWith("/api/admin/v1/")) return;
+        try {
+            var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            var principal = authentication == null ? null : authentication.getPrincipal();
+            var actorId = principal instanceof UserEntity user ? user.getId() : null;
+            adminAuditService.record(actorId, "REJECTED_" + request.getMethod(), "ADMIN_API",
+                    request.getRequestURI(), null, safeReason, "REJECTED");
+        } catch (RuntimeException auditFailure) {
+            log.warn("Could not record rejected admin mutation", auditFailure);
+        }
     }
+
 }

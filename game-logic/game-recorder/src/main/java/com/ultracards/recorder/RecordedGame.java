@@ -58,6 +58,10 @@ public class RecordedGame {
         return name;
     }
 
+    public void rename(String name) {
+        this.name = name;
+    }
+
     public Long ownerUserId() {
         return ownerUserId;
     }

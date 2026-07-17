@@ -122,6 +122,11 @@ public class SessionService {
         sessionRepository.delete(session);
     }
 
+    @Transactional
+    public void revokeAllSessions(Long userId) {
+        sessionRepository.deleteAllByUserId(userId);
+    }
+
     private void updateSessionByRequest(UserSession session, HttpServletRequest request) {
         session.setDeviceId(request.getHeader("X-Client-Device-Id"));
         session.setClientType(getClientType(request));

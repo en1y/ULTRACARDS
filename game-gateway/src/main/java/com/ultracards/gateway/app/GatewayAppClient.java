@@ -5,6 +5,7 @@ import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import com.ultracards.gateway.service.AuthenticationService;
+import com.ultracards.gateway.service.AdminService;
 import com.ultracards.gateway.service.CardImageService;
 import com.ultracards.gateway.service.ChatService;
 import com.ultracards.gateway.service.ChatWsService;
@@ -46,6 +47,7 @@ public class GatewayAppClient implements AutoCloseable {
     private final CardImageService cards;
     private final ServerService server;
     private final UiPageService uiPages;
+    private final AdminService admin;
     private final List<StompGatewayService> sockets = new CopyOnWriteArrayList<>();
     private final AtomicBoolean closed = new AtomicBoolean();
 
@@ -74,6 +76,7 @@ public class GatewayAppClient implements AutoCloseable {
         this.cards = new CardImageService(restTemplate, serverUrl, tokenHolder);
         this.server = new ServerService(restTemplate, serverUrl);
         this.uiPages = new UiPageService(restTemplate, serverUrl, tokenHolder);
+        this.admin = new AdminService(restTemplate, serverUrl, tokenHolder);
     }
 
     public GatewayAsync async() {
@@ -126,6 +129,10 @@ public class GatewayAppClient implements AutoCloseable {
 
     public UiPageService uiPages() {
         return uiPages;
+    }
+
+    public AdminService admin() {
+        return admin;
     }
 
     public CompletableFuture<GameWsService> gameSocket() {

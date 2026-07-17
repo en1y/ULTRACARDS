@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import com.ultracards.server.bootstrap.BootstrapAdminCommand;
 
 @SpringBootApplication(
         scanBasePackages = {"com.ultracards.config", "com.ultracards.server", "com.ultracards.ui", "com.ultracards.filters", "com.ultracards.gateway.dto"},
@@ -20,7 +21,10 @@ public class UltracardsServer {
 
     private static final Logger log = LoggerFactory.getLogger(UltracardsServer.class);
 
-    static void main(String[] args) {
+    public static void main(String[] args) {
+        if (args.length > 0 && "bootstrap-admin".equals(args[0])) {
+            System.exit(BootstrapAdminCommand.run(java.util.Arrays.copyOfRange(args, 1, args.length)));
+        }
         var application = new SpringApplication(UltracardsServer.class);
         application.addListeners(new DatabaseStartupCheckService());
         application.addListeners(new MailStartupCheckService());
