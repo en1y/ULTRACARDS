@@ -16,6 +16,7 @@
         <module>game-gateway</module>
         <module>game-logic</module>
         <module>ui</module>
+        <module>server-cli</module>
     </modules>
 
     <dependencyManagement>
@@ -75,6 +76,7 @@
 
         <!-- Lombok -->
         <projectlombok.version>1.18.44</projectlombok.version>
+        <picocli.version>4.7.7</picocli.version>
 
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>

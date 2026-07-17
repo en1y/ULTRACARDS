@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+exec java -jar "$(dirname "$0")/target/ultracards-admin.jar" "$@"
