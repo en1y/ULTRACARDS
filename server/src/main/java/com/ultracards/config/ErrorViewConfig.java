@@ -1,6 +1,7 @@
 package com.ultracards.config;
 
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.enums.UserRole;
 import org.springframework.boot.webmvc.autoconfigure.error.ErrorViewResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,6 +38,7 @@ public class ErrorViewConfig {
         var isAuthenticated = user != null;
 
         model.put("isAuthenticated", isAuthenticated);
+        model.put("isAdmin", isAuthenticated && user.hasRole(UserRole.ADMIN));
         if (isAuthenticated) {
             model.put("username", user.getUsername());
         }

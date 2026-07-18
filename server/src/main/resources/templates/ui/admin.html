@@ -3,95 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Administration · ULTRACARDS</title>
+    <title th:text="#{admin.title} + ' · ULTRACARDS'">Administration · ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/admin.css}">
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/js/ui/admin.js}" defer></script>
 </head>
-<body>
+<body th:attr="data-admin-page=${adminPage}">
 <div th:replace="~{ui/fragments/header :: header}"></div>
 
 <main class="admin-shell">
     <header class="admin-heading">
         <div>
-            <p class="admin-eyebrow">Operations</p>
-            <h1>Administration</h1>
-            <p>Live server controls. Changes are audited and require a reason.</p>
+            <p class="admin-eyebrow" th:text="#{admin.eyebrow}">Operations</p>
+            <h1 th:text="#{admin.title}">Administration</h1>
+            <p th:text="#{admin.description}">Safe, audited controls for the running server.</p>
         </div>
-        <button class="btn" type="button" data-action="refresh">Refresh</button>
+        <button class="btn" type="button" data-action="refresh"><img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true"><span th:text="#{admin.refresh}">Refresh</span></button>
     </header>
-
-    <p id="admin-status" class="admin-status" aria-live="polite">Loading administration data…</p>
-
-    <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
+    <p id="admin-status" class="admin-status" aria-live="polite" th:text="#{admin.loading}">Loading administration data…</p>
 
     <nav class="admin-tabs" aria-label="Administration sections">
-        <button type="button" class="is-active" data-panel="users" aria-controls="admin-users">Users</button>
-        <button type="button" data-panel="lobbies" aria-controls="admin-lobbies">Live lobbies</button>
-        <button type="button" data-panel="games" aria-controls="admin-games">Recorded games</button>
-        <button type="button" data-panel="sessions" aria-controls="admin-sessions">Sessions</button>
-        <button type="button" data-panel="availability" aria-controls="admin-availability">Availability</button>
-        <button type="button" data-panel="audit" aria-controls="admin-audit">Audit</button>
-        <button type="button" data-panel="notify" aria-controls="admin-notify">Notify</button>
+        <a th:href="@{/admin}" th:classappend="${adminPage == 'dashboard'} ? 'is-active'" th:attr="aria-current=${adminPage == 'dashboard'} ? 'page'"><img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.overview}">Overview</span></a>
+        <a th:href="@{/admin/users}" th:classappend="${adminPage == 'users'} ? 'is-active'" th:attr="aria-current=${adminPage == 'users'} ? 'page'"><img class="uc-icon" data-icon="person" th:src="@{/pics/light/person.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.users}">Users</span></a>
+        <a th:href="@{/admin/stats}" th:classappend="${adminPage == 'stats'} ? 'is-active'" th:attr="aria-current=${adminPage == 'stats'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.stats}">Stats</span></a>
+        <a th:href="@{/admin/lobbies}" th:classappend="${adminPage == 'lobbies'} ? 'is-active'" th:attr="aria-current=${adminPage == 'lobbies'} ? 'page'"><img class="uc-icon" data-icon="group" th:src="@{/pics/light/group.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.lobbies}">Live lobbies</span></a>
+        <a th:href="@{/admin/games}" th:classappend="${adminPage == 'games'} ? 'is-active'" th:attr="aria-current=${adminPage == 'games'} ? 'page'"><img class="uc-icon" data-icon="casino" th:src="@{/pics/light/casino.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.games}">Games</span></a>
+        <a th:href="@{/admin/sessions}" th:classappend="${adminPage == 'sessions'} ? 'is-active'" th:attr="aria-current=${adminPage == 'sessions'} ? 'page'"><img class="uc-icon" data-icon="devices" th:src="@{/pics/light/devices.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.sessions}">Sessions</span></a>
+        <a th:href="@{/admin/availability}" th:classappend="${adminPage == 'availability'} ? 'is-active'" th:attr="aria-current=${adminPage == 'availability'} ? 'page'"><img class="uc-icon" data-icon="toggle_on" th:src="@{/pics/light/toggle_on.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.availability}">Availability</span></a>
+        <a th:href="@{/admin/database}" th:classappend="${adminPage == 'database'} ? 'is-active'" th:attr="aria-current=${adminPage == 'database'} ? 'page'"><img class="uc-icon" data-icon="database" th:src="@{/pics/light/database.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.database}">Database</span></a>
+        <a th:href="@{/admin/audit}" th:classappend="${adminPage == 'audit'} ? 'is-active'" th:attr="aria-current=${adminPage == 'audit'} ? 'page'"><img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.audit}">Audit</span></a>
+        <a th:href="@{/admin/notifications}" th:classappend="${adminPage == 'notifications'} ? 'is-active'" th:attr="aria-current=${adminPage == 'notifications'} ? 'page'"><img class="uc-icon" data-icon="notifications" th:src="@{/pics/light/notifications.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.notify}">Notify</span></a>
     </nav>
 
-    <section id="admin-users" class="admin-panel" data-section="users">
-        <div class="admin-panel-heading"><div><h2>Users</h2><p>Filter and safely enable or disable accounts.</p></div></div>
-        <form class="admin-filters" data-filters="users">
-            <label>Status <select name="status"><option value="">All</option><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
-            <label>Role <select name="role"><option value="">All</option><option>USER</option><option>MODERATOR</option><option>ADMIN</option></select></label>
+    <section class="admin-panel" data-section="dashboard" th:hidden="${adminPage != 'dashboard'}">
+        <div class="admin-panel-heading"><div><h2 th:text="#{admin.overview.title}">System overview</h2><p th:text="#{admin.overview.copy}">Live counts and health signals.</p></div></div>
+        <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
+        <section id="admin-overview-breakdown" class="admin-breakdowns" aria-label="Detailed breakdowns"></section>
+    </section>
+
+    <section class="admin-panel" data-section="users" th:hidden="${adminPage != 'users'}">
+        <div id="admin-user-list">
+            <div class="admin-panel-heading"><div><h2 th:text="#{admin.users.title}">Users</h2><p th:text="#{admin.users.copy}">Search by username, email, or exact numeric ID.</p></div></div>
+            <form class="admin-filters" data-filters="users">
+                <label class="admin-search"><span th:text="#{admin.users.search}">Search</span> <input name="query" type="search" placeholder="Username, email, or exact ID" autocomplete="off"></label>
+                <label><span th:text="#{admin.users.match}">Match</span> <select name="exact"><option value="false" th:text="#{admin.users.contains}">Contains</option><option value="true" th:text="#{admin.users.exact}">Exact username/email</option></select></label>
+                <label><span th:text="#{admin.users.status}">Status</span> <select name="status"><option value="">All</option><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
+                <label><span th:text="#{admin.users.role}">Role</span> <select name="role"><option value="">All</option><option>USER</option><option>MODERATOR</option><option>ADMIN</option></select></label>
+                <label><span th:text="#{admin.users.sort}">Sort</span> <select name="sort"><option value="userCreatedAt" th:text="#{admin.users.newest}">Newest</option><option value="userCreatedAtOldest" th:text="#{admin.users.oldest}">Oldest</option><option value="username" th:text="#{admin.users.username}">Username</option><option value="email" th:text="#{admin.users.email}">Email</option><option value="id" th:text="#{admin.users.id}">ID</option></select></label>
+                <button class="btn" type="submit" th:text="#{admin.users.searchButton}">Search</button>
+            </form>
+            <div class="admin-results" data-results="users"></div>
+        </div>
+        <div id="admin-user-detail" hidden></div>
+    </section>
+
+    <section class="admin-panel" data-section="stats" th:hidden="${adminPage != 'stats'}">
+        <div class="admin-panel-heading"><div><h2 th:text="#{admin.stats.title}">User statistics</h2><p th:text="#{admin.stats.copy}">Inspect and correct one user’s stats with an audit reason.</p></div></div>
+        <form class="admin-filters" id="admin-stats-lookup">
+            <label><span th:text="#{admin.stats.user}">User</span> <input name="userQuery" required placeholder="Username, email, or ID" autocomplete="off"></label>
+            <button class="btn" type="submit" th:text="#{admin.stats.load}">Load stats</button>
+        </form>
+        <p id="admin-stats-context" class="admin-meta" th:text="#{admin.stats.context}">Load a user to inspect every game mode and add missing stat rows.</p>
+        <div class="admin-results" data-results="stats"></div>
+        <div id="admin-stats-diff" class="admin-stat-diff" hidden aria-live="polite"></div>
+        <form id="admin-stats-edit" class="admin-form" hidden>
+            <input name="userId" type="hidden">
+            <label>Game <select name="gameType"><option value="briskula">Briskula</option><option value="treseta">Treseta</option></select></label>
+            <label>Mode <select name="mode" required></select></label>
+            <label>Played <input name="played" type="number" min="0" inputmode="numeric"></label>
+            <label>Wins <input name="wins" type="number" min="0" inputmode="numeric"></label>
+            <label>Last played <input name="lastPlayedAt" type="datetime-local"></label>
+            <label>Reason <input name="reason" required maxlength="250"></label>
+            <label class="admin-check"><input name="dryRun" type="checkbox" checked> Preview only</label>
+            <p class="admin-meta" th:text="#{admin.stats.previewHint}">Use Preview first to see the resulting totals.</p>
+            <button class="btn btn-accent" type="submit" th:text="#{admin.stats.preview}">Preview stats change</button>
+            <button class="btn" type="button" data-action="rebuild-stats" th:text="#{admin.stats.rebuild}">Rebuild from game history</button>
+        </form>
+    </section>
+
+    <section class="admin-panel" data-section="lobbies" th:hidden="${adminPage != 'lobbies'}"><div class="admin-panel-heading"><div><h2>Live lobbies</h2><p>Inspect, edit, extend, or safely close current rooms.</p></div></div><div class="admin-results" data-results="lobbies"></div></section>
+    <section class="admin-panel" data-section="games" th:hidden="${adminPage != 'games'}"><div class="admin-panel-heading"><div><h2>Recorded games</h2><p>Browse and filter recorded games. Owners and players link to their accounts.</p></div></div><form class="admin-filters" data-filters="games"><label>Game <select name="gameType"><option value="">All</option><option value="BRISKULA">Briskula</option><option value="TRESETA">Treseta</option></select></label><label>Mode <select name="mode"><option value="">All</option><option>TWO_PLAYERS</option><option>TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH</option><option>THREE_PLAYERS</option><option>FOUR_PLAYERS_NO_TEAMS</option><option>FOUR_PLAYERS_WITH_TEAMS</option></select></label><label>State <select name="completed"><option value="">All</option><option value="true">Completed</option><option value="false">Incomplete</option></select></label><label>Sort <select name="sort"><option value="createdAt">Newest</option><option value="createdAtOldest">Oldest</option><option value="endedAt">Recently ended</option><option value="name">Name</option></select></label><button class="btn" type="submit">Apply</button></form><div class="admin-results" data-results="games"></div></section>
+    <section class="admin-panel" data-section="sessions" th:hidden="${adminPage != 'sessions'}"><div class="admin-panel-heading"><div><h2>Sessions</h2><p>Device activity only; token values are never rendered. Each session links to its user.</p></div></div><form class="admin-filters" data-filters="sessions"><label>User ID <input name="userId" type="number" min="1" inputmode="numeric"></label><label>State <select name="valid"><option value="">All</option><option value="true">Active</option><option value="false">Expired</option></select></label><button class="btn" type="submit">Apply</button></form><div class="admin-results" data-results="sessions"></div></section>
+    <section class="admin-panel" data-section="availability" th:hidden="${adminPage != 'availability'}"><div class="admin-panel-heading"><div><h2>Game availability</h2><p>Enable or disable a game or mode with a recorded reason.</p></div></div><div class="admin-results" data-results="availability"></div></section>
+    <section class="admin-panel" data-section="database" th:hidden="${adminPage != 'database'}">
+        <div class="admin-panel-heading"><div><h2>Database</h2><p>A lite browser over safe operational tables. Raw SQL and credential tables remain unavailable.</p></div></div>
+        <div class="admin-results" data-results="database"></div>
+        <div id="admin-database-tables" class="admin-db-tables" aria-label="Browsable tables"></div>
+        <div class="admin-results" data-results="database-browser"></div>
+    </section>
+    <section class="admin-panel" data-section="audit" th:hidden="${adminPage != 'audit'}">
+        <div class="admin-panel-heading"><div><h2>Audit history</h2><p>Latest administrative actions and outcomes. Filter by target to trace one record.</p></div></div>
+        <form class="admin-filters" data-filters="audit">
+            <label>Target type <select name="targetType"><option value="">All</option><option>USER</option><option>LOBBY</option><option>GAME</option><option>NOTIFICATION</option><option>STATS</option><option>SESSION</option></select></label>
+            <label>Target ID <input name="targetId" placeholder="Exact target ID" autocomplete="off"></label>
             <button class="btn" type="submit">Apply</button>
         </form>
-        <div class="admin-results" data-results="users"></div>
-    </section>
-
-    <section id="admin-lobbies" class="admin-panel" data-section="lobbies" hidden>
-        <div class="admin-panel-heading"><div><h2>Live lobbies</h2><p>Current rooms update when you refresh.</p></div></div>
-        <div class="admin-results" data-results="lobbies"></div>
-    </section>
-
-    <section id="admin-games" class="admin-panel" data-section="games" hidden>
-        <div class="admin-panel-heading"><div><h2>Recorded games</h2><p>Browse game history without exposing player credentials.</p></div></div>
-        <form class="admin-filters" data-filters="games">
-            <label>Game <input name="gameType" placeholder="e.g. BRISKULA"></label>
-            <label>State <select name="completed"><option value="">All</option><option value="true">Completed</option><option value="false">Incomplete</option></select></label>
-            <button class="btn" type="submit">Apply</button>
-        </form>
-        <div class="admin-results" data-results="games"></div>
-    </section>
-
-    <section id="admin-sessions" class="admin-panel" data-section="sessions" hidden>
-        <div class="admin-panel-heading"><div><h2>Sessions</h2><p>See device and activity information, never token values.</p></div></div>
-        <form class="admin-filters" data-filters="sessions">
-            <label>User ID <input name="userId" type="number" min="1" inputmode="numeric"></label>
-            <label>State <select name="valid"><option value="">All</option><option value="true">Active</option><option value="false">Expired</option></select></label>
-            <button class="btn" type="submit">Apply</button>
-        </form>
-        <div class="admin-results" data-results="sessions"></div>
-    </section>
-
-    <section id="admin-availability" class="admin-panel" data-section="availability" hidden>
-        <div class="admin-panel-heading"><div><h2>Game availability</h2><p>Disable a game or mode with a recorded reason.</p></div></div>
-        <div class="admin-results" data-results="availability"></div>
-    </section>
-
-    <section id="admin-audit" class="admin-panel" data-section="audit" hidden>
-        <div class="admin-panel-heading"><div><h2>Audit history</h2><p>Latest administrative actions and outcomes.</p></div></div>
         <div class="admin-results" data-results="audit"></div>
     </section>
-
-    <section id="admin-notify" class="admin-panel" data-section="notify" hidden>
-        <div class="admin-panel-heading"><div><h2>Send notification</h2><p>Use a specific user ID, or deliberately notify everyone.</p></div></div>
-        <form id="admin-notification-form" class="admin-notification-form">
-            <label>User ID <input name="userId" type="number" min="1" inputmode="numeric" placeholder="Leave empty for all users"></label>
-            <label>Message <textarea name="message" required maxlength="500" rows="4"></textarea></label>
-            <label>Reason <input name="reason" required maxlength="250"></label>
-            <button class="btn btn-accent" type="submit">Send notification</button>
-        </form>
-    </section>
+    <section class="admin-panel" data-section="notifications" th:hidden="${adminPage != 'notifications'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.notify.title}">Send notification</h2><p th:text="#{admin.notify.copy}">Use a specific user ID, or deliberately notify everyone.</p></div></div><form id="admin-notification-form" class="admin-form"><label><span th:text="#{admin.notify.userId}">User ID</span> <input name="userId" type="number" min="1" inputmode="numeric" th:placeholder="#{admin.notify.userPlaceholder}" placeholder="Leave empty for all users"></label><label><span th:text="#{admin.notify.message}">Message</span> <textarea name="message" required maxlength="500" rows="4"></textarea></label><label><span th:text="#{admin.notify.reason}">Reason</span> <input name="reason" required maxlength="250"></label><button class="btn btn-accent" type="submit" th:text="#{admin.notify.send}">Send notification</button></form></section>
 </main>
+
+<dialog id="admin-user-editor" class="admin-dialog">
+    <form id="admin-user-form" class="admin-form" method="dialog">
+        <header class="admin-panel-heading"><div><h2>Edit user</h2><p id="admin-user-caption"></p></div><button class="btn" type="button" data-action="close-user-editor">Close</button></header>
+        <input name="id" type="hidden">
+        <label>Username <input name="username" required maxlength="30"></label>
+        <label>Email <input name="email" required type="email" maxlength="150"></label>
+        <label>Status <select name="status"><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
+        <fieldset><legend>Roles</legend><label class="admin-check"><input name="MODERATOR" type="checkbox"> Moderator</label><label class="admin-check"><input name="ADMIN" type="checkbox"> Administrator</label></fieldset>
+        <label>Reason <input name="reason" required maxlength="250" placeholder="Required for every change"></label>
+        <label class="admin-check"><input name="dryRun" type="checkbox"> Preview only</label>
+        <div class="admin-actions"><button class="btn btn-accent" type="button" data-action="save-user">Save user</button></div>
+    </form>
+</dialog>
+<dialog id="admin-lobby-editor" class="admin-dialog">
+    <form id="admin-lobby-form" class="admin-form" method="dialog">
+        <header class="admin-panel-heading"><div><h2>Edit lobby</h2><p id="admin-lobby-caption"></p></div><button class="btn" type="button" data-action="close-lobby-editor">Close</button></header>
+        <input name="id" type="hidden">
+        <label>Name <input name="name" required maxlength="100"></label>
+        <label>Visibility <select name="visibility"><option value="public">Public</option><option value="private">Private</option></select></label>
+        <label>Reason <input name="reason" required maxlength="250" placeholder="Required for every change"></label>
+        <div id="admin-lobby-players" class="admin-results" aria-label="Lobby players"></div>
+        <div class="admin-actions"><button class="btn btn-accent" type="button" data-action="save-lobby">Save lobby</button></div>
+    </form>
+</dialog>
+<dialog id="admin-action-dialog" class="admin-dialog">
+    <form id="admin-action-form" class="admin-form" method="dialog">
+        <header class="admin-panel-heading"><div><h2 id="admin-action-title">Confirm change</h2><p id="admin-action-description"></p></div></header>
+        <div id="admin-action-fields" class="admin-form"></div>
+        <div class="admin-actions"><button class="btn" value="cancel" formnovalidate type="submit">Cancel</button><button id="admin-action-confirm" class="btn btn-accent" value="confirm" type="submit">Confirm</button></div>
+    </form>
+</dialog>
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
 </body>
 </html>
