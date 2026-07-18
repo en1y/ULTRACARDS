@@ -18,14 +18,14 @@ class SystemCommands implements Runnable {
         spec.commandLine().usage(System.out);
     }
 
-    @Command(name = "status", description = "Show version, availability, and live object counts.")
+    @Command(name = "status", aliases = "health", description = "Show version, availability, and live object counts.")
     static class Status extends CliCommand {
         public Integer call() {
             return root().withClient(client -> ok(client.admin().status()));
         }
     }
 
-    @Command(name = "doctor", description = "Fail when the server or database health check is unhealthy.")
+    @Command(name = "doctor", aliases = "check", description = "Fail when the server or database health check is unhealthy.")
     static class Doctor extends CliCommand {
         public Integer call() {
             return root().withClient(client -> {
@@ -48,17 +48,18 @@ class NotifyCommands implements Runnable {
 
     @Command(name = "user", description = "Send a message to one user.")
     static class User extends CliCommand {
-        @Parameters(index = "0") Long id;
+        @Parameters(index = "0", paramLabel = "USER") String target;
         @Option(names = "--message", required = true) String message;
         @Option(names = "--reason", required = true) String reason;
 
         public Integer call() {
-            return root().withClient(client ->
-                    ok(client.admin().notifyUser(id, new AdminNotificationRequestDTO(message, reason))));
+            return root().withClient(client -> ok(client.admin().notifyUser(
+                    UserCommands.resolveUserId(target, page -> client.admin().users(page, 200)),
+                    new AdminNotificationRequestDTO(message, reason))));
         }
     }
 
-    @Command(name = "all", description = "Broadcast a message to every user after confirmation.")
+    @Command(name = "all", aliases = "broadcast", description = "Broadcast a message to every user after confirmation.")
     static class All extends CliCommand {
         @Option(names = "--message", required = true) String message;
         @Option(names = "--reason", required = true) String reason;
@@ -79,17 +80,18 @@ class AuditCommands implements Runnable {
         spec.commandLine().usage(System.out);
     }
 
-    @Command(name = "list", description = "List audit events newest first.")
+    @Command(name = "list", aliases = "ls", description = "List audit events newest first.")
     static class ListEvents extends CliCommand {
         @Option(names = "--page", defaultValue = "0") int page;
         @Option(names = "--size", defaultValue = "25") int size;
+        @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
 
         public Integer call() {
-            return root().withClient(client -> ok(client.admin().audit(page, size)));
+            return root().withClient(client -> ok(pages(page, size, all, client.admin()::audit)));
         }
     }
 
-    @Command(name = "show", description = "Show one audit event by UUID.")
+    @Command(name = "show", aliases = "get", description = "Show one audit event by UUID.")
     static class Show extends CliCommand {
         @Parameters(index = "0") UUID id;
 

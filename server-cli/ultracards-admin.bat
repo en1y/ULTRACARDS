@@ -1,2 +1,2 @@
 @echo off
-java -jar "%~dp0target\ultracards-admin.jar" %*
+java --enable-native-access=ALL-UNNAMED -jar "%~dp0target\ultracards-admin.jar" %*

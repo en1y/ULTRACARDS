@@ -66,6 +66,9 @@ public class AdminService {
     public List<AdminLobbyDTO> lobbies() {
         return get("/lobbies", new ParameterizedTypeReference<>() {});
     }
+    public List<AdminGameAvailabilityDTO> gameAvailability() {
+        return get("/games", new ParameterizedTypeReference<>() {});
+    }
 
     public AdminUserSummaryDTO patchUser(Long id, AdminUserPatchDTO patch) {
         return exchange("/users/" + id, HttpMethod.PATCH, patch, AdminUserSummaryDTO.class);
@@ -91,6 +94,9 @@ public class AdminService {
     }
     public AdminLobbyDTO extendLobby(UUID id, AdminLobbyExtendDTO request) {
         return exchange("/lobbies/" + id + "/extend", HttpMethod.POST, request, AdminLobbyDTO.class);
+    }
+    public AdminGameAvailabilityDTO patchGameAvailability(String game, AdminGameAvailabilityPatchDTO patch) {
+        return exchange("/games/" + encode(game), HttpMethod.PATCH, patch, AdminGameAvailabilityDTO.class);
     }
 
     public AdminRecordedGameDTO patchGame(UUID id, AdminRecordedGamePatchDTO patch) {

@@ -9,7 +9,7 @@ import java.util.ArrayList;
 
 @Command(name = "server", description = "Manage named server profiles.",
         subcommands = {ServerCommands.Add.class, ServerCommands.ListProfiles.class,
-                ServerCommands.Use.class, ServerCommands.Remove.class})
+                ServerCommands.Current.class, ServerCommands.Use.class, ServerCommands.Remove.class})
 class ServerCommands implements Runnable {
     @Spec CommandSpec spec;
 
@@ -17,18 +17,21 @@ class ServerCommands implements Runnable {
         spec.commandLine().usage(System.out);
     }
 
-    @Command(name = "add", description = "Save a server URL and select it when it is the first profile.")
+    @Command(name = "add", aliases = "set", description = "Save a server URL and select it when it is the first profile.")
     static class Add extends CliCommand {
         @Parameters(index = "0", paramLabel = "NAME") String name;
         @Parameters(index = "1", paramLabel = "URL") String url;
+        @picocli.CommandLine.Option(names = "--use", description = "Select this profile after saving it.")
+        boolean use;
 
         public Integer call() {
             root().store.add(name, url);
+            if (use) root().store.use(name);
             return ok("Saved server profile " + name);
         }
     }
 
-    @Command(name = "list", description = "Show saved profiles and the active connection target.")
+    @Command(name = "list", aliases = "ls", description = "Show saved profiles and the active connection target.")
     static class ListProfiles extends CliCommand {
         public Integer call() {
             var profiles = new ArrayList<ServerProfile>();
@@ -39,7 +42,19 @@ class ServerCommands implements Runnable {
         }
     }
 
-    @Command(name = "use", description = "Select the profile used by subsequent commands.")
+    @Command(name = "current", aliases = "status", description = "Show the profile selected for this command.")
+    static class Current extends CliCommand {
+        public Integer call() {
+            var name = root().selectedProfile();
+            if (name == null) throw new UltracardsAdminCli.CliStateException(
+                    "No active server. Run: server add <name> <url>");
+            var url = root().store.url(name);
+            if (url == null) throw new UltracardsAdminCli.CliStateException("Unknown server profile: " + name);
+            return ok(new CurrentProfile(name, url, root().store.tokenFor(name) != null));
+        }
+    }
+
+    @Command(name = "use", aliases = {"switch", "select"}, description = "Select the profile used by subsequent commands.")
     static class Use extends CliCommand {
         @Parameters(index = "0", paramLabel = "NAME") String name;
 
@@ -49,7 +64,7 @@ class ServerCommands implements Runnable {
         }
     }
 
-    @Command(name = "remove", description = "Remove a profile and its locally stored session.")
+    @Command(name = "remove", aliases = {"rm", "delete"}, description = "Remove a profile and its locally stored session.")
     static class Remove extends CliCommand {
         @Parameters(index = "0", paramLabel = "NAME") String name;
 
@@ -63,4 +78,5 @@ class ServerCommands implements Runnable {
     }
 
     private record ServerProfile(String active, String name, String url) {}
+    private record CurrentProfile(String name, String url, boolean authenticated) {}
 }

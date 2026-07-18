@@ -16,6 +16,7 @@ import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.users.UserService;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
+import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import jakarta.validation.Valid;
@@ -47,6 +48,7 @@ public class LobbyService {
     private final LobbyManager lobbyManager;
     private final UserService userService;
     private final GameService gameService;
+    private final GameAvailabilityService gameAvailabilityService;
     private final ChatService chatService;
     private final UltrakillLevelService ultrakillLevelService;
     private final NotificationService notificationService;
@@ -63,6 +65,7 @@ public class LobbyService {
             LobbyManager lobbyManager,
             UserService userService,
             GameService gameService,
+            GameAvailabilityService gameAvailabilityService,
             ChatService chatService,
             UltrakillLevelService ultrakillLevelService,
             NotificationService notificationService,
@@ -73,6 +76,7 @@ public class LobbyService {
         this.lobbyManager = lobbyManager;
         this.userService = userService;
         this.gameService = gameService;
+        this.gameAvailabilityService = gameAvailabilityService;
         this.chatService = chatService;
         this.ultrakillLevelService = ultrakillLevelService;
         this.notificationService = notificationService;
@@ -84,6 +88,7 @@ public class LobbyService {
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
         if (getLobbyByUser(owner) != null)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already in a lobby");
+        gameAvailabilityService.requireEnabled(gameLobbyDTO.getGameType(), gameLobbyDTO.getGameConfig());
 
         var levelNumbers = ultrakillLevelService.findLevelNumbers(gameLobbyDTO.getName(), 1);
         if (levelNumbers.length > 0)
@@ -152,6 +157,7 @@ public class LobbyService {
     public Boolean startLobby(UserEntity user) {
         var lobby = lobbyManager.getLobby(user);
         if (lobby != null && lobby.getOwner().equals(user) && hasRequiredPlayers(lobby)) {
+            gameAvailabilityService.requireEnabled(lobby.getGameType(), lobby.getGameConfig());
             gameService.startGame(lobby);
             lobby.setStarted(true);
             eventPublisher.publish(lobby, STARTED);
@@ -203,6 +209,7 @@ public class LobbyService {
 
     private GameLobbyDTO applyUpdate(LobbyEntity lobby, GameLobbyDTO lobbyDTO) {
         var config = lobbyDTO.getGameConfig();
+        gameAvailabilityService.requireEnabled(lobby.getGameType(), config);
         if ((config instanceof BriskulaGameConfigDTO briskulaConfig
                 && briskulaConfig.getNumberOfPlayers() < lobby.getUsers().size())
                 || (config instanceof TresetaGameConfigDTO tresetaConfig

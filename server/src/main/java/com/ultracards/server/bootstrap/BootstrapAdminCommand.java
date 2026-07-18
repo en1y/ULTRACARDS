@@ -10,8 +10,7 @@ public final class BootstrapAdminCommand {
     private BootstrapAdminCommand() {}
 
     public static int run(String[] args) {
-        String email = null;
-        String username = null;
+        Long userId = null;
         var force = false;
         var springArgs = new ArrayList<String>();
         for (var i = 0; i < args.length; i++) {
@@ -21,17 +20,15 @@ public final class BootstrapAdminCommand {
                 return 0;
             }
             if ("--force".equals(arg)) { force = true; continue; }
-            if (arg.startsWith("--email=")) { email = arg.substring("--email=".length()); continue; }
-            if (arg.startsWith("--username=")) { username = arg.substring("--username=".length()); continue; }
-            if ("--email".equals(arg) && i + 1 < args.length) { email = args[++i]; continue; }
-            if ("--username".equals(arg) && i + 1 < args.length) { username = args[++i]; continue; }
+            if (arg.startsWith("--user-id=")) { userId = parseUserId(arg.substring("--user-id=".length())); continue; }
+            if ("--user-id".equals(arg) && i + 1 < args.length) { userId = parseUserId(args[++i]); continue; }
             if (arg.startsWith("--spring.") || arg.startsWith("--app.database.")) { springArgs.add(arg); continue; }
             System.err.println("Unknown bootstrap option: " + arg);
             usage();
             return 2;
         }
-        if (email == null || email.isBlank() || !email.contains("@")) {
-            System.err.println("A valid --email is required");
+        if (userId == null || userId <= 0) {
+            System.err.println("A positive --user-id is required");
             usage();
             return 2;
         }
@@ -41,7 +38,7 @@ public final class BootstrapAdminCommand {
         application.setBannerMode(Banner.Mode.OFF);
         try (var context = application.run(springArgs.toArray(String[]::new))) {
             var result = context.getBean(BootstrapAdminExecutor.class)
-                    .execute(email.trim().toLowerCase(), username, force);
+                    .execute(userId, force);
             var stream = result.exitCode() == 0 ? System.out : System.err;
             stream.println(result.message());
             return result.exitCode();
@@ -51,6 +48,11 @@ public final class BootstrapAdminCommand {
         }
     }
 
+    private static Long parseUserId(String value) {
+        try { return Long.valueOf(value); }
+        catch (NumberFormatException ex) { return null; }
+    }
+
     private static String rootMessage(Throwable error) {
         var current = error;
         while (current.getCause() != null) current = current.getCause();
@@ -58,6 +60,6 @@ public final class BootstrapAdminCommand {
     }
 
     private static void usage() {
-        System.out.println("Usage: java -jar server.jar bootstrap-admin --email <address> [--username <name>] [--force] [--spring.profiles.active=<profile>]");
+        System.out.println("Usage: java -jar server.jar bootstrap-admin --user-id <id> [--force] [--spring.profiles.active=<profile>]");
     }
 }

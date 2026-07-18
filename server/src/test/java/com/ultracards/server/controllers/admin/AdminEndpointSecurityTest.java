@@ -4,6 +4,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.service.admin.AdminAuditService;
 import com.ultracards.server.service.admin.AdminGameRecordService;
+import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.admin.AdminLobbyService;
 import com.ultracards.server.service.admin.AdminNotificationService;
 import com.ultracards.server.service.admin.AdminReportService;
@@ -89,6 +90,7 @@ class AdminEndpointSecurityTest {
                 () -> get("/api/admin/v1/lobbies"),
                 () -> get("/api/admin/v1/users"),
                 () -> get("/api/admin/v1/game-records/00000000-0000-0000-0000-000000000001"),
+                () -> get("/api/admin/v1/games"),
                 () -> get("/api/admin/v1/stats/users/1"),
                 () -> get("/api/admin/v1/reports/overview"),
                 () -> get("/api/admin/v1/audit"),
@@ -128,6 +130,7 @@ class AdminEndpointSecurityTest {
         @Bean AdminLobbyService adminLobbyService() { return mock(AdminLobbyService.class); }
         @Bean AdminUserService adminUserService() { return mock(AdminUserService.class); }
         @Bean AdminGameRecordService adminGameRecordService() { return mock(AdminGameRecordService.class); }
+        @Bean GameAvailabilityService gameAvailabilityService() { return mock(GameAvailabilityService.class); }
         @Bean AdminStatsService adminStatsService() { return mock(AdminStatsService.class); }
         @Bean AdminReportService adminReportService() { return mock(AdminReportService.class); }
         @Bean AdminAuditService adminAuditService() { return mock(AdminAuditService.class); }
@@ -144,6 +147,11 @@ class AdminEndpointSecurityTest {
 
         @Bean AdminGameRecordController adminGameRecordController(AdminGameRecordService service) {
             return new AdminGameRecordController(service);
+        }
+
+        @Bean AdminGameAvailabilityController adminGameAvailabilityController(GameAvailabilityService availability,
+                                                                               AdminAuditService audit) {
+            return new AdminGameAvailabilityController(availability, audit);
         }
 
         @Bean AdminStatsController adminStatsController(AdminStatsService service) {

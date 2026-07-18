@@ -8,6 +8,10 @@ import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.auth.SessionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,6 +34,20 @@ class AdminUserServiceTest {
         service = new AdminUserService(repository, sessionService, auditService);
         ReflectionTestUtils.setField(service, "maxUsernameLength", 30);
         ReflectionTestUtils.setField(service, "maxEmailLength", 150);
+    }
+
+    @Test
+    void listsUsersByIdAscending() {
+        when(repository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        service.list(0, 25);
+
+        var pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findAll(pageable.capture());
+        assertThat(pageable.getValue().getSort().getOrderFor("id"))
+                .isNotNull()
+                .extracting(Sort.Order::getDirection)
+                .isEqualTo(Sort.Direction.ASC);
     }
 
     @Test

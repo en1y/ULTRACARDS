@@ -36,7 +36,7 @@ public class AdminUserService {
         var safePage = Math.max(0, page);
         var safeSize = Math.max(1, Math.min(200, size));
         var users = userRepository.findAll(PageRequest.of(safePage, safeSize,
-                Sort.by(Sort.Direction.DESC, "userCreatedAt")));
+                Sort.by(Sort.Direction.ASC, "id")));
         return new AdminPageDTO<>(users.getContent().stream().map(this::toDto).toList(),
                 users.getNumber(), users.getSize(), users.getTotalElements(), users.getTotalPages());
     }

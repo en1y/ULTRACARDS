@@ -1,12 +1,10 @@
 package com.ultracards.server.bootstrap;
 
-import com.ultracards.gateway.dto.EmailDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.enums.UserStatus;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.admin.AdminAuditService;
-import com.ultracards.server.service.users.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
@@ -22,7 +20,6 @@ import static org.mockito.Mockito.*;
 
 class BootstrapAdminExecutorTest {
     private final UserRepository repository = mock(UserRepository.class);
-    private final UserService userService = mock(UserService.class);
     private final AdminAuditService auditService = mock(AdminAuditService.class);
     private final TransactionTemplate transactions = mock(TransactionTemplate.class);
     private BootstrapAdminExecutor executor;
@@ -33,36 +30,46 @@ class BootstrapAdminExecutorTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));
         });
-        executor = new BootstrapAdminExecutor(repository, userService, auditService, transactions);
+        executor = new BootstrapAdminExecutor(repository, auditService, transactions);
     }
 
     @Test
     void refusesWhenAnAdministratorAlreadyExists() {
         when(repository.findAllByRoleForUpdate(UserRole.ADMIN)).thenReturn(List.of(user(1L, "admin@example.com")));
 
-        var result = executor.execute("other@example.com", "Other", false);
+        var result = executor.execute(2L, false);
 
         assertThat(result.exitCode()).isEqualTo(5);
-        verifyNoInteractions(userService, auditService);
+        verifyNoInteractions(auditService);
     }
 
     @Test
-    void createsAndAuditsTheFirstAdministrator() {
-        var created = user(7L, "admin@example.com");
+    void promotesAndAuditsTheFirstAdministrator() {
+        var existing = user(7L, "admin@example.com");
         when(repository.findAllByRoleForUpdate(UserRole.ADMIN)).thenReturn(List.of());
-        when(repository.findByEmail("admin@example.com")).thenReturn(Optional.empty());
-        when(userService.createUser(any(EmailDTO.class))).thenReturn(created);
+        when(repository.findById(7L)).thenReturn(Optional.of(existing));
 
-        var result = executor.execute("admin@example.com", "Administrator", false);
+        var result = executor.execute(7L, false);
 
         assertThat(result.exitCode()).isZero();
-        assertThat(created.getUsername()).isEqualTo("Administrator");
-        assertThat(created.getRoles()).contains(UserRole.USER, UserRole.ADMIN);
-        assertThat(created.isEnabled()).isTrue();
-        assertThat(created.getStatus()).isEqualTo(UserStatus.ACTIVE);
-        verify(repository).saveAndFlush(created);
+        assertThat(existing.getRoles()).contains(UserRole.USER, UserRole.ADMIN);
+        assertThat(existing.isEnabled()).isTrue();
+        assertThat(existing.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        verify(repository).saveAndFlush(existing);
         verify(auditService).record(isNull(), eq("BOOTSTRAP_ADMIN"), eq("USER"), eq("7"),
                 eq("local bootstrap"), anyString(), eq("SUCCESS"));
+    }
+
+    @Test
+    void rejectsAnUnknownUserId() {
+        when(repository.findAllByRoleForUpdate(UserRole.ADMIN)).thenReturn(List.of());
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        var result = executor.execute(99L, false);
+
+        assertThat(result.exitCode()).isEqualTo(5);
+        assertThat(result.message()).isEqualTo("User 99 does not exist");
+        verifyNoInteractions(auditService);
     }
 
     @Test
@@ -71,15 +78,14 @@ class BootstrapAdminExecutorTest {
         existing.setEnabled(false);
         existing.setStatus(UserStatus.DISABLED);
         when(repository.findAllByRoleForUpdate(UserRole.ADMIN)).thenReturn(List.of(user(1L, "old@example.com")));
-        when(repository.findByEmail("recover@example.com")).thenReturn(Optional.of(existing));
+        when(repository.findById(9L)).thenReturn(Optional.of(existing));
 
-        var result = executor.execute("recover@example.com", "Recovery", true);
+        var result = executor.execute(9L, true);
 
         assertThat(result.exitCode()).isZero();
         assertThat(existing.getRoles()).contains(UserRole.USER, UserRole.ADMIN);
         assertThat(existing.isEnabled()).isTrue();
         assertThat(existing.getStatus()).isEqualTo(UserStatus.ACTIVE);
-        verifyNoInteractions(userService);
     }
 
     private UserEntity user(Long id, String email) {

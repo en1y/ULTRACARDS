@@ -41,9 +41,10 @@ final class ConfigStore {
     String activeProfile() { return config.getProperty("active"); }
 
     String activeUrl() {
-        var active = activeProfile();
-        return active == null ? null : config.getProperty("server." + active);
+        return url(activeProfile());
     }
+
+    String url(String profile) { return profile == null ? null : config.getProperty("server." + profile); }
 
     void add(String name, String url) {
         validateName(name);
@@ -74,9 +75,10 @@ final class ConfigStore {
     }
 
     String token() {
-        var active = activeProfile();
-        return active == null ? null : credentials.getProperty("token." + active);
+        return tokenFor(activeProfile());
     }
+
+    String tokenFor(String profile) { return profile == null ? null : credentials.getProperty("token." + profile); }
 
     Path historyFile() {
         try { Files.createDirectories(directory); }
@@ -85,10 +87,14 @@ final class ConfigStore {
     }
 
     void token(String token) {
-        var active = activeProfile();
-        if (active == null) throw new IllegalStateException("No active server profile");
-        if (token == null || token.isBlank()) credentials.remove("token." + active);
-        else credentials.setProperty("token." + active, token);
+        tokenFor(activeProfile(), token);
+    }
+
+    void tokenFor(String profile, String token) {
+        if (profile == null) throw new IllegalStateException("No active server profile");
+        if (url(profile) == null) throw new IllegalArgumentException("Unknown server profile: " + profile);
+        if (token == null || token.isBlank()) credentials.remove("token." + profile);
+        else credentials.setProperty("token." + profile, token);
         saveCredentials();
     }
 

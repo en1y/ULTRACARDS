@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Command(name = "db", description = "Run safe database edits, rebuilds, and reports.",
         subcommands = {DbCommands.Edit.class, DbCommands.Stats.class, DbCommands.Overview.class,
-                DbCommands.Users.class, DbCommands.Games.class, DbCommands.Sessions.class})
+                DbCommands.Game.class, DbCommands.Users.class, DbCommands.Games.class, DbCommands.Sessions.class})
 class DbCommands implements Runnable {
     @Spec CommandSpec spec;
 
@@ -34,7 +34,7 @@ class DbCommands implements Runnable {
 
     @Command(name = "user", description = "Edit allowlisted user fields with optional dry-run.")
     static class EditUser extends CliCommand {
-        @Parameters(index = "0") Long id;
+        @Parameters(index = "0", paramLabel = "USER") String target;
         @Option(names = "--username") String username;
         @Option(names = "--email") String email;
         @Option(names = "--enabled") Boolean enabled;
@@ -44,8 +44,14 @@ class DbCommands implements Runnable {
 
         public Integer call() {
             return root().withClient(client -> {
+                var id = UserCommands.resolveUserId(target, page -> client.admin().users(page, 200));
                 var patch = new AdminUserPatchDTO(username, email, enabled, status, reason, dryRun);
-                if (!dryRun && !root().confirmChange("user " + id, client.admin().user(id), patch)) return 5;
+                if (!dryRun) {
+                    var current = client.admin().user(id);
+                    var proposed = client.admin().patchUser(id,
+                            new AdminUserPatchDTO(username, email, enabled, status, reason, true));
+                    if (!root().confirmChange("user " + id, current, proposed)) return 5;
+                }
                 return ok(client.admin().patchUser(id, patch));
             });
         }
@@ -69,23 +75,34 @@ class DbCommands implements Runnable {
 
     @Command(name = "stats", description = "Override one per-mode statistics row with an audit reason.")
     static class EditStats extends CliCommand {
-        @Option(names = "--user", required = true) Long userId;
-        @Option(names = "--game", required = true) String game;
-        @Option(names = "--mode", required = true) String mode;
-        @Option(names = "--played", required = true) int played;
-        @Option(names = "--wins", required = true) int wins;
+        @Option(names = "--user", required = true, paramLabel = "USER") String user;
+        @Option(names = "--game", required = true) StatsGame game;
+        @Option(names = "--mode", required = true) Mode mode;
+        @Option(names = "--played", description = "Replace the played count; omit to preserve it.") Integer played;
+        @Option(names = "--wins", description = "Replace the win count; omit to preserve it.") Integer wins;
         @Option(names = "--last-played-at") Instant lastPlayedAt;
         @Option(names = "--reason", required = true) String reason;
         @Option(names = "--dry-run") boolean dryRun;
 
         public Integer call() {
             return root().withClient(client -> {
+                var userId = UserCommands.resolveUserId(user, page -> client.admin().users(page, 200));
                 var patch = new AdminStatsPatchDTO(played, wins, lastPlayedAt, reason, dryRun);
                 if (!dryRun && !root().confirmChange("statistics for user " + userId + " / " + game + " / " + mode,
                         client.admin().stats(userId), patch)) return 5;
-                return ok(client.admin().patchStats(userId, game, mode, patch));
+                return ok(client.admin().patchStats(userId, game.name(), mode.name(), patch));
             });
         }
+    }
+
+    enum StatsGame { BRISKULA, TRESETA }
+
+    enum Mode {
+        TWO_PLAYERS,
+        TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH,
+        THREE_PLAYERS,
+        FOUR_PLAYERS_NO_TEAMS,
+        FOUR_PLAYERS_WITH_TEAMS
     }
 
     @Command(name = "stats", description = "Rebuild statistics from completed recordings.", subcommands = RebuildStats.class)
@@ -99,16 +116,17 @@ class DbCommands implements Runnable {
 
     @Command(name = "rebuild", description = "Preview or replace aggregates derived from recorded history.")
     static class RebuildStats extends CliCommand {
-        @Option(names = "--user", required = true) Long userId;
-        @Option(names = "--game") String game;
+        @Option(names = "--user", required = true, paramLabel = "USER") String user;
+        @Option(names = "--game") StatsGame game;
         @Option(names = "--reason", required = true) String reason;
         @Option(names = "--dry-run") boolean dryRun;
 
         public Integer call() {
             return root().withClient(client -> {
+                var userId = UserCommands.resolveUserId(user, page -> client.admin().users(page, 200));
                 if (!dryRun && !root().confirmChange("statistics for user " + userId, client.admin().stats(userId),
                         "rebuild from completed " + (game == null ? "all" : game) + " recordings")) return 5;
-                return ok(client.admin().rebuildStats(userId, game, reason, dryRun));
+                return ok(client.admin().rebuildStats(userId, game == null ? null : game.name(), reason, dryRun));
             });
         }
     }
@@ -120,45 +138,64 @@ class DbCommands implements Runnable {
         }
     }
 
-    @Command(name = "users", description = "Report users with allowlisted filters and sorting.")
+    @Command(name = "game", aliases = "game-record", description = "Show one recorded game by UUID.")
+    static class Game extends CliCommand {
+        @Parameters(index = "0", paramLabel = "ID") UUID id;
+
+        public Integer call() {
+            return root().withClient(client -> ok(client.admin().game(id)));
+        }
+    }
+
+    @Command(name = "users", aliases = "user-report", description = "Report users with allowlisted filters and sorting.")
     static class Users extends CliCommand {
         @Option(names = "--page", defaultValue = "0") int page;
         @Option(names = "--size", defaultValue = "25") int size;
+        @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
         @Option(names = "--status") String status;
         @Option(names = "--role") String role;
         @Option(names = "--sort") String sort;
         @Option(names = "--direction") String direction;
 
         public Integer call() {
-            return root().withClient(client -> ok(client.admin().reportUsers(page, size, status, role, sort, direction)));
+            return root().withClient(client -> ok(pages(page, size, all,
+                    (page, size) -> client.admin().reportUsers(page, size, status, role, sort, direction))));
         }
     }
 
-    @Command(name = "games", description = "Report completed or incomplete recorded games.")
+    @Command(name = "games", aliases = "game-report", description = "Report completed or incomplete recorded games.")
     static class Games extends CliCommand {
         @Option(names = "--page", defaultValue = "0") int page;
         @Option(names = "--size", defaultValue = "25") int size;
+        @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
         @Option(names = "--game") String game;
         @Option(names = "--completed") Boolean completed;
         @Option(names = "--sort") String sort;
         @Option(names = "--direction") String direction;
 
         public Integer call() {
-            return root().withClient(client -> ok(client.admin().games(page, size, game, completed, sort, direction)));
+            return root().withClient(client -> ok(pages(page, size, all,
+                    (page, size) -> client.admin().games(page, size, game, completed, sort, direction))));
         }
     }
 
-    @Command(name = "sessions", description = "Report session validity without credential material.")
+    @Command(name = "sessions", aliases = "session-report", description = "Report session validity without credential material.")
     static class Sessions extends CliCommand {
         @Option(names = "--page", defaultValue = "0") int page;
         @Option(names = "--size", defaultValue = "25") int size;
-        @Option(names = "--user") Long userId;
+        @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
+        @Option(names = "--user", paramLabel = "USER") String user;
         @Option(names = "--valid") Boolean valid;
         @Option(names = "--sort") String sort;
         @Option(names = "--direction") String direction;
 
         public Integer call() {
-            return root().withClient(client -> ok(client.admin().sessions(page, size, userId, valid, sort, direction)));
+            return root().withClient(client -> {
+                var userId = user == null ? null : UserCommands.resolveUserId(user,
+                        current -> client.admin().users(current, 200));
+                return ok(pages(page, size, all,
+                        (page, size) -> client.admin().sessions(page, size, userId, valid, sort, direction)));
+            });
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.ultracards.server.controllers.admin;
 
 import com.ultracards.server.service.admin.*;
+import com.ultracards.server.service.games.GameAvailabilityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +19,7 @@ class AdminControllerArchitectureTest {
         assertController(AdminAuditController.class, AdminAuditService.class);
         assertController(AdminSystemController.class, AdminSystemService.class);
         assertController(AdminNotificationController.class, AdminNotificationService.class);
+        assertController(AdminGameAvailabilityController.class, GameAvailabilityService.class);
     }
 
     private void assertController(Class<?> controller, Class<?> service) {

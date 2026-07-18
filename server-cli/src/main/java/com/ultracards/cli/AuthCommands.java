@@ -31,7 +31,7 @@ class Logout extends CliCommand {
             client.authentication().logout(client.tokenHolder());
             return null;
         });
-        root().store.token(null);
+        root().store.tokenFor(root().selectedProfile(), null);
         return ok("Logged out");
     }
 }

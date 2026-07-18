@@ -11,6 +11,7 @@ import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.games.GameService;
+import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import com.ultracards.server.service.users.UserService;
@@ -38,6 +39,7 @@ class LobbyServiceTest {
     private final LobbyManager lobbyManager = mock(LobbyManager.class);
     private final UserService userService = mock(UserService.class);
     private final GameService gameService = mock(GameService.class);
+    private final GameAvailabilityService gameAvailabilityService = mock(GameAvailabilityService.class);
     private final ChatService chatService = mock(ChatService.class);
     private final UltrakillLevelService ultrakillLevelService = mock(UltrakillLevelService.class);
     private final NotificationService notificationService = mock(NotificationService.class);
@@ -53,6 +55,7 @@ class LobbyServiceTest {
                 lobbyManager,
                 userService,
                 gameService,
+                gameAvailabilityService,
                 chatService,
                 ultrakillLevelService,
                 notificationService,
@@ -133,6 +136,21 @@ class LobbyServiceTest {
                 .isEqualTo(HttpStatus.CONFLICT);
 
         verifyNoInteractions(lobbyManager, ultrakillLevelService, chatService, eventPublisher, taskScheduler);
+    }
+
+    @Test
+    void rejectsLobbyCreationForDisabledGameModes() {
+        var user = user(1L, "User");
+        var request = new GameLobbyDTO();
+        request.setGameType(GameTypeDTO.Briskula);
+        request.setGameConfig(new BriskulaGameConfigDTO(3, 3, false, null));
+        var disabled = new ResponseStatusException(HttpStatus.CONFLICT, "Game availability is disabled for BRISKULA / THREE_PLAYERS");
+        org.mockito.Mockito.doThrow(disabled).when(gameAvailabilityService).requireEnabled(
+                request.getGameType(), request.getGameConfig());
+
+        assertThatThrownBy(() -> lobbyService.createLobby(user, request)).isSameAs(disabled);
+
+        verifyNoInteractions(lobbyManager, chatService, eventPublisher, taskScheduler);
     }
 
     @Test

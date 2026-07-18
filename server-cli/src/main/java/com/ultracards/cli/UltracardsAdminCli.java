@@ -17,21 +17,29 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 
-@Command(name = "ultracards-admin", mixinStandardHelpOptions = true, version = "0.3.0",
-        header = {"@|bold,cyan ULTRACARDS ADMIN|@", "Secure remote operations for ULTRACARDS servers."},
-        description = "Manage accounts, live lobbies, reports, statistics, notifications, and audit history.",
+@Command(name = "ultracards-admin", mixinStandardHelpOptions = true, version = UltracardsAdminCli.VERSION,
+        header = {"@|bold,red ULTRACARDS ADMIN|@", "Secure remote operations for ULTRACARDS servers."},
+        description = "Manage accounts, game availability, live lobbies, reports, statistics, notifications, and audit history.",
         footer = {"", "@|faint Start here:|@", "  ultracards-admin server add local https://cards.example.com",
-                "  ultracards-admin login --email admin@example.com", "", "Use @|bold help <command>|@ or @|bold <command> --help|@ for details."},
+                "  ultracards-admin login --email admin@example.com", "", "@|faint Common tasks:|@",
+                "  ultracards-admin game disable BRISKULA --mode THREE_PLAYERS --reason maintenance",
+                "  ultracards-admin db edit stats --user ada --game BRISKULA --mode TWO_PLAYERS --wins 12 --reason correction",
+                "", "Use @|bold help <command>|@ or @|bold <command> --help|@ for details."},
         subcommands = {ServerCommands.class, Login.class, Logout.class, WhoAmI.class,
-                UserCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
-                NotifyCommands.class, AuditCommands.class, Shell.class, Completion.class, HelpCommand.class})
-public class UltracardsAdminCli implements Runnable {
+                UserCommands.class, GameCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
+                NotifyCommands.class, AuditCommands.class, Shell.class, Clear.class, Completion.class, HelpCommand.class})
+public class UltracardsAdminCli implements Callable<Integer> {
+    static final String VERSION = "0.3.0";
     @Spec CommandSpec spec;
     @Option(names = "--output", defaultValue = "TABLE", scope = ScopeType.INHERIT, paramLabel = "FORMAT",
             description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
     OutputWriter.Format output;
+    @Option(names = {"-p", "--profile"}, scope = ScopeType.INHERIT, paramLabel = "NAME",
+            description = "Use a saved server profile for this command without switching the default.")
+    String profile;
     @Option(names = "--explain", scope = ScopeType.INHERIT, description = "Explain report filters, counts, and timestamps.")
     boolean explain;
     @Option(names = "--allow-insecure", scope = ScopeType.INHERIT, description = "Allow plain HTTP to a non-local server.")
@@ -63,13 +71,15 @@ public class UltracardsAdminCli implements Runnable {
 
     CommandLine commandLine() {
         var colors = new CommandLine.Help.ColorScheme.Builder(Ansi.AUTO)
-                .commands(Style.bold, Style.fg_cyan)
-                .options(Style.fg_cyan)
+                .commands(Style.bold, Style.fg_red)
+                .options(Style.fg_red)
                 .parameters(Style.fg_yellow)
                 .optionParams(Style.italic)
                 .errors(Style.bold, Style.fg_red)
                 .build();
-        return new CommandLine(this)
+        var command = new CommandLine(this);
+        addHelpOptions(command);
+        return command
                 .setColorScheme(colors)
                 .setCaseInsensitiveEnumValuesAllowed(true)
                 .setSubcommandsCaseInsensitive(true)
@@ -96,16 +106,27 @@ public class UltracardsAdminCli implements Runnable {
                 });
     }
 
-    @Override public void run() { spec.commandLine().usage(System.out); }
+    private void addHelpOptions(CommandLine command) {
+        for (var child : new java.util.HashSet<>(command.getSubcommands().values())) {
+            if (!(child.getCommand() instanceof HelpCommand))
+                child.getCommandSpec().mixinStandardHelpOptions(true).version(VERSION);
+            addHelpOptions(child);
+        }
+    }
+
+    @Override public Integer call() throws Exception {
+        return Shell.open(this);
+    }
 
     <T> T withClient(Function<GatewayAppClient, T> work) {
+        var profile = selectedProfile();
         var url = requireServerUrl();
         validateTransport(url);
-        var holder = new ClientTokenHolder(store.token());
+        var holder = new ClientTokenHolder(store.tokenFor(profile));
         try (var client = new GatewayAppClient(restTemplateWithImmediateTokenPersistence(), url, wsUrl(url), holder,
                 com.ultracards.gateway.app.GatewayAsync.direct())) {
             var result = work.apply(client);
-            store.token(holder.getToken());
+            store.tokenFor(profile, holder.getToken());
             return result;
         }
     }
@@ -119,7 +140,7 @@ public class UltracardsAdminCli implements Runnable {
                 for (var cookie : cookies) {
                     if (!cookie.startsWith("refreshToken=")) continue;
                     var token = cookie.split(";", 2)[0].split("=", 2)[1];
-                    store.token(token.isBlank() ? null : token);
+                    store.tokenFor(selectedProfile(), token.isBlank() ? null : token);
                     break;
                 }
             }
@@ -175,9 +196,15 @@ public class UltracardsAdminCli implements Runnable {
     }
 
     private String requireServerUrl() {
-        var url = store.activeUrl();
-        if (url == null) throw new CliStateException("No active server. Run: server add <name> <url>");
+        var profile = selectedProfile();
+        var url = store.url(profile);
+        if (profile == null) throw new CliStateException("No active server. Run: server add <name> <url>");
+        if (url == null) throw new CliStateException("Unknown server profile: " + profile);
         return url;
+    }
+
+    String selectedProfile() {
+        return profile == null || profile.isBlank() ? store.activeProfile() : profile;
     }
 
     private void validateTransport(String url) {
@@ -234,8 +261,8 @@ public class UltracardsAdminCli implements Runnable {
         };
     }
 
-    private static final class CliStateException extends IllegalStateException {
-        private CliStateException(String message) { super(message); }
+    static final class CliStateException extends IllegalStateException {
+        CliStateException(String message) { super(message); }
     }
 
 }
