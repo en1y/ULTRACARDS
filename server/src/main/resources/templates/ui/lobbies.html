@@ -29,6 +29,27 @@
                 <div class="lobbies-hero-actions">
                     <button class="btn-accent" type="button" data-action="open-create-lobby" th:text="#{createLobby.submit}">Create Lobby</button>
                 </div>
+                <form id="join-code-form" class="card lobbies-code-join lobbies-hero-code-join" th:aria-label="#{lobbies.joinByCode.aria}">
+                    <div>
+                        <p class="lobbies-eyebrow" th:text="#{common.inviteCode}">Invite code</p>
+                        <h2 th:text="#{lobbies.joinByCode}">Join by code</h2>
+                    </div>
+                    <div class="lobbies-code-row">
+                        <input id="join-code-input"
+                               class="lobbies-code-input"
+                               type="text"
+                               inputmode="text"
+                               maxlength="6"
+                               autocomplete="off"
+                               autocapitalize="characters"
+                               placeholder="ABC123">
+                        <button id="join-code-submit" class="btn btn-accent" type="submit" disabled>
+                            <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
+                            <span th:text="#{common.join}">Join</span>
+                        </button>
+                    </div>
+                    <p id="join-code-status" class="lobbies-code-status" aria-live="polite" th:text="#{lobbies.codeStatus.hint}">Enter a 6-character lobby code.</p>
+                </form>
             </div>
         </section>
 
@@ -95,28 +116,6 @@
                         </article>
                         <div id="lobbies-grid" class="lobbies-grid"></div>
                     </div>
-
-                    <form id="join-code-form" class="card lobbies-code-join" th:aria-label="#{lobbies.joinByCode.aria}">
-                        <div>
-                            <p class="lobbies-eyebrow" th:text="#{common.inviteCode}">Invite code</p>
-                            <h2 th:text="#{lobbies.joinByCode}">Join by code</h2>
-                        </div>
-                        <div class="lobbies-code-row">
-                            <input id="join-code-input"
-                                   class="lobbies-code-input"
-                                   type="text"
-                                   inputmode="text"
-                                   maxlength="6"
-                                   autocomplete="off"
-                                   autocapitalize="characters"
-                                   placeholder="ABC123">
-                            <button id="join-code-submit" class="btn btn-accent" type="submit" disabled>
-                                <img class="uc-icon" data-icon="login" th:src="@{/pics/light/login.svg}" alt="" aria-hidden="true" />
-                                <span th:text="#{common.join}">Join</span>
-                            </button>
-                        </div>
-                        <p id="join-code-status" class="lobbies-code-status" aria-live="polite" th:text="#{lobbies.codeStatus.hint}">Enter a 6-character lobby code.</p>
-                    </form>
                 </div>
             </section>
         </section>

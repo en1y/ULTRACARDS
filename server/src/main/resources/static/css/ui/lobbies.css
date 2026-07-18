@@ -35,6 +35,21 @@
             font-weight: 800;
         }
 
+        .lobbies-hero-code-join {
+            position: static;
+            margin-top: 0.25rem;
+            padding: 1rem 0 0;
+            border: 0;
+            border-top: 1px solid var(--color-border);
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .lobbies-hero-code-join h2 {
+            font-size: 1.2rem;
+        }
+
         .lobbies-layout {
             grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
             gap: 1.5rem;
@@ -91,7 +106,7 @@
 
         .lobbies-browser {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+            grid-template-columns: minmax(0, 1fr);
             gap: 1rem;
             align-items: start;
         }
@@ -203,8 +218,7 @@
         }
 
         .lobbies-code-join {
-            position: sticky;
-            top: 5.5rem;
+            position: static;
             padding: 1rem;
             display: grid;
             gap: 0.75rem;
@@ -310,6 +324,53 @@
         }
 
         @media (max-width: 760px) {
+            .lobbies-page,
+            .lobbies-hero,
+            .lobbies-hero-copy,
+            .lobbies-hero-stats,
+            .lobbies-layout,
+            .lobbies-content,
+            .lobbies-list-head,
+            .lobbies-browser,
+            .lobbies-list,
+            .lobbies-grid,
+            .lobby-card,
+            .lobbies-code-join,
+            .lobbies-hero > *,
+            .lobbies-layout > *,
+            .lobbies-content > *,
+            .lobbies-browser > *,
+            .lobbies-list > *,
+            .lobbies-grid > *,
+            .lobby-card-head,
+            .lobby-card-title,
+            .lobby-card-settings,
+            .lobby-card-players,
+            .lobby-card-footer,
+            .lobby-empty-actions,
+            .lobbies-sidebar-actions,
+            .lobbies-filter-group,
+            .lobbies-dynamic-settings,
+            .lobbies-hero-actions,
+            .lobbies-code-row,
+            .lobbies-code-status {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+
+            .lobbies-layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .lobbies-content {
+                grid-column: 1 / -1;
+            }
+
+            .lobbies-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
             .lobbies-hero {
                 grid-template-columns: 1fr;
                 gap: 1rem;
@@ -317,6 +378,19 @@
 
             .lobbies-hero-stats {
                 min-width: 0;
+            }
+
+            .lobbies-hero-actions,
+            .lobbies-hero-actions .btn-accent {
+                width: 100%;
+            }
+
+            .lobby-card-title {
+                flex: 1 1 auto;
+            }
+
+            .lobby-card-footer .btn {
+                width: 100%;
             }
 
             .lobbies-sidebar {
@@ -392,5 +466,14 @@
 
             .lobbies-code-row {
                 grid-template-columns: 1fr;
+            }
+
+            .lobbies-hero-code-join .lobbies-code-row {
+                gap: 0.65rem;
+            }
+
+            .lobbies-hero-code-join .lobbies-code-row > * {
+                width: 100%;
+                min-width: 0;
             }
         }

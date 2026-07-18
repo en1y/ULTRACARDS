@@ -193,6 +193,22 @@
     padding: 0 1rem 1rem;
 }
 
+@media (max-width: 760px) {
+    .create-lobby-modal,
+    .create-lobby-header,
+    .create-lobby-form,
+    .create-lobby-body,
+    .create-lobby-field,
+    .create-lobby-settings,
+    .create-lobby-status,
+    .create-lobby-actions {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+
 #create-lobby-submit:disabled {
     cursor: not-allowed;
     opacity: 0.6;

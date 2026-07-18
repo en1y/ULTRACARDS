@@ -1,6 +1,6 @@
 .lobby-page {
-            width: min(100%, 90rem);
-            gap: 1.5rem;
+    width: min(100%, 90rem);
+    gap: 1.5rem;
             padding-block: 1.5rem 2rem;
             position: relative;
         }
@@ -769,6 +769,24 @@
         }
 
         @media (max-width: 860px) {
+            .lobby-page,
+            .lobby-layout,
+            .lobby-panel,
+            .lobby-title-row,
+            .lobby-meta,
+            .lobby-meta-row,
+            .lobby-actions,
+            .player-row,
+            .chat-panel,
+            .chat-header,
+            .chat-messages,
+            .chat-form,
+            .chat-form textarea {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+
             .lobby-layout {
                 grid-template-columns: 1fr;
             }
