@@ -113,9 +113,13 @@ const gameSettingsAnimationDurationMs = 420;
             let emptyState = document.getElementById('lobbies-empty');
             const activeCount = document.getElementById('active-lobbies-count');
             const activeFilterLabel = document.getElementById('active-filter-label');
+            const activeFilterSummary = document.getElementById('active-filter-summary');
             const gameTypeSelect = document.getElementById('game-type');
             const applyFiltersButton = document.getElementById('apply-filters-button');
             const clearFiltersButton = document.getElementById('clear-filters-button');
+            const filterPanel = document.getElementById('lobbies-filter-panel');
+            const openFiltersButton = document.getElementById('open-filters-button');
+            const closeFiltersButton = document.getElementById('close-filters-button');
             const joinCodeForm = document.getElementById('join-code-form');
             const joinCodeInput = document.getElementById('join-code-input');
             const joinCodeSubmit = document.getElementById('join-code-submit');
@@ -136,6 +140,33 @@ const gameSettingsAnimationDurationMs = 420;
 
             if (!grid) {
                 return;
+            }
+
+            function setFilterPanelOpen(isOpen) {
+                filterPanel?.classList.toggle('is-open', isOpen);
+                openFiltersButton?.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) {
+                    filterPanel?.querySelector('select')?.focus();
+                }
+            }
+
+            function syncFilterSummary() {
+                if (!activeFilterSummary) {
+                    return;
+                }
+
+                if (filterState.gameType === 'all') {
+                    activeFilterSummary.textContent = t('common.allGames');
+                    return;
+                }
+
+                const gameName = getGameTypeDisplayName(filterState.gameType);
+                const setting = filterState.settingKey
+                    ? getGameTypeSetting(filterState.gameType, filterState.settingKey)
+                    : null;
+                activeFilterSummary.textContent = setting?.ui_text
+                    ? `${gameName} · ${setting.ui_text}`
+                    : gameName;
             }
 
             function normalizeCode(value) {
@@ -422,6 +453,7 @@ const gameSettingsAnimationDurationMs = 420;
                 filterState.settingKey = nextFilter.settingKey;
                 filterState.settingId = nextFilter.settingId;
                 persistFilter(nextFilter);
+                syncFilterSummary();
             }
 
             async function refreshLobbies(nextFilter) {
@@ -458,6 +490,7 @@ const gameSettingsAnimationDurationMs = 420;
                 const nextFilter = getSelectedFilter();
                 try {
                     await refreshLobbies(nextFilter);
+                    setFilterPanelOpen(false);
                 } catch (error) {
                     showToast(t('lobbies.toast.filterFailed.title'), error?.message || t('lobbies.toast.filterFailed.body'));
                 }
@@ -475,6 +508,7 @@ const gameSettingsAnimationDurationMs = 420;
                         settingKey: '',
                         settingId: null
                     });
+                    setFilterPanelOpen(false);
                 } catch (error) {
                     showToast(t('lobbies.toast.resetFailed.title'), error?.message || t('lobbies.toast.resetFailed.body'));
                 }
@@ -623,6 +657,8 @@ const gameSettingsAnimationDurationMs = 420;
 
             applyFiltersButton?.addEventListener('click', applySelectedFilters);
             clearFiltersButton?.addEventListener('click', clearFilters);
+            openFiltersButton?.addEventListener('click', () => setFilterPanelOpen(true));
+            closeFiltersButton?.addEventListener('click', () => setFilterPanelOpen(false));
             gameTypeSelect?.addEventListener('change', (event) => {
                 handleGameTypeChange(event.currentTarget);
             });

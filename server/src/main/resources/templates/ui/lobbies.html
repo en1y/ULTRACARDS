@@ -17,11 +17,15 @@
     <main class="lobbies-page">
         <section class="lobbies-hero container">
             <div class="lobbies-hero-copy">
+                <p class="lobbies-eyebrow" th:text="#{lobbies.openRooms}">Open rooms</p>
                 <h1 th:text="#{lobbies.title}">Find an ULTRAlobby</h1>
+                <p th:text="#{home.findGame.copy}">Browse open lobbies.</p>
             </div>
             <div class="lobbies-hero-stats card">
-                <strong th:text="#{createLobby.title}">Create lobby</strong>
-                <p th:text="#{lobbies.hero.copy}">Create a new lobby for a new ULTRAexperience</p>
+                <div>
+                    <span class="lobbies-hero-action-label" th:text="#{createLobby.title}">Create lobby</span>
+                    <p th:text="#{lobbies.hero.copy}">Create a new lobby for a new ULTRAexperience</p>
+                </div>
                 <div class="lobbies-hero-actions">
                     <button class="btn-accent" type="button" data-action="open-create-lobby" th:text="#{createLobby.submit}">Create Lobby</button>
                 </div>
@@ -29,12 +33,13 @@
         </section>
 
         <section class="container lobbies-layout">
-            <aside class="card lobbies-sidebar">
+            <aside id="lobbies-filter-panel" class="card lobbies-sidebar">
                 <div class="lobbies-panel-head">
                     <div>
                         <p class="lobbies-eyebrow" th:text="#{common.filters}">Filters</p>
                         <h2 th:text="#{lobbies.filterTitle}">Filter the lobby list</h2>
                     </div>
+                    <button id="close-filters-button" class="btn lobbies-filter-close" type="button" th:text="#{common.close}">Close</button>
                 </div>
 
                 <div class="lobbies-filter-group">
@@ -67,8 +72,14 @@
                     <div>
                         <p class="lobbies-eyebrow" th:text="#{lobbies.openRooms}">Open rooms</p>
                         <h2 th:text="#{lobbies.available}">Available lobbies</h2>
+                        <p id="active-filter-summary" class="lobbies-filter-summary" aria-live="polite"></p>
                     </div>
-                    <span id="active-lobbies-count" class="chip" th:text="#{lobbies.activeCount(${#lists.size(lobbies)})}">0 active</span>
+                    <div class="lobbies-list-head-actions">
+                        <span id="active-lobbies-count" class="chip" th:text="#{lobbies.activeCount(${#lists.size(lobbies)})}">0 active</span>
+                        <button id="open-filters-button" class="btn lobbies-filter-trigger" type="button" aria-controls="lobbies-filter-panel" aria-expanded="false">
+                            <span th:text="#{common.filters}">Filters</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="lobbies-browser">

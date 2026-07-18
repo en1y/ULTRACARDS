@@ -1,5 +1,80 @@
 .lobbies-page {
-            padding-top: 1rem;
+            padding-top: 0;
+        }
+
+        .lobbies-hero {
+            padding-top: 2rem;
+            padding-bottom: 1.5rem;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: end;
+        }
+
+        .lobbies-hero-copy {
+            padding: 0;
+        }
+
+        .lobbies-hero-copy h1 {
+            margin-top: 0.4rem;
+        }
+
+        .lobbies-hero-copy > p:last-child {
+            margin: 0;
+            color: var(--color-text-muted);
+            font-size: 1.05rem;
+        }
+
+        .lobbies-hero-stats {
+            min-width: min(22rem, 100%);
+            padding: 1rem 1.1rem;
+            gap: 0.85rem;
+        }
+
+        .lobbies-hero-action-label {
+            display: block;
+            font-size: 1.05rem;
+            font-weight: 800;
+        }
+
+        .lobbies-layout {
+            grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+            gap: 1.5rem;
+        }
+
+        .lobbies-sidebar {
+            top: 1.25rem;
+            padding: 1rem;
+        }
+
+        .lobbies-panel-head h2,
+        .lobbies-list-head h2 {
+            font-size: 1.25rem;
+        }
+
+        .lobbies-filter-close,
+        .lobbies-filter-trigger {
+            display: none;
+        }
+
+        .lobbies-list-head {
+            align-items: center;
+            padding-bottom: 0.9rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .lobbies-list-head-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .lobbies-filter-summary {
+            min-height: 1.2rem;
+            margin-top: 0.35rem;
+            font-size: 0.9rem;
+        }
+
+        .lobbies-filter-summary:empty {
+            display: none;
         }
 
         .lobbies-filter-summary,
@@ -24,8 +99,9 @@
         .lobby-card {
             display: grid;
             gap: 1rem;
-            padding: 1.1rem;
+            padding: 1rem;
             background: var(--color-bg);
+            border-color: color-mix(in oklab, var(--color-border) 82%, var(--color-accent));
         }
 
         .lobby-card-head,
@@ -75,6 +151,10 @@
             border: 1px solid var(--color-border);
             border-radius: var(--radius-md);
             background: color-mix(in oklab, var(--color-surface) 80%, transparent);
+        }
+
+        .lobby-card-settings p {
+            color: var(--color-text);
         }
 
         .lobby-card-settings strong {
@@ -229,9 +309,63 @@
             }
         }
 
+        @media (max-width: 760px) {
+            .lobbies-hero {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .lobbies-hero-stats {
+                min-width: 0;
+            }
+
+            .lobbies-sidebar {
+                position: fixed;
+                inset: 0 auto 0 0;
+                z-index: 70;
+                width: min(22rem, calc(100% - 2rem));
+                max-width: none;
+                overflow-y: auto;
+                border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+                transform: translateX(-105%);
+                transition: transform 220ms ease;
+            }
+
+            .lobbies-sidebar.is-open {
+                transform: translateX(0);
+            }
+
+            .lobbies-filter-close,
+            .lobbies-filter-trigger {
+                display: inline-flex;
+            }
+
+            body:has(.lobbies-sidebar.is-open)::after {
+                content: '';
+                position: fixed;
+                inset: 0;
+                z-index: 65;
+                background: rgba(0, 0, 0, 0.5);
+            }
+        }
+
         @media (max-width: 640px) {
             .lobbies-page {
-                padding-top: 0.5rem;
+                padding-top: 0;
+            }
+
+            .lobbies-hero {
+                padding-top: 1.25rem;
+            }
+
+            .lobbies-list-head {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .lobbies-list-head-actions {
+                width: 100%;
+                justify-content: space-between;
             }
 
             .lobbies-toast {
