@@ -92,3 +92,40 @@ and sticking to the existing abstracted `GameController`.
 pretty similar in gameplay so there shouldn't be too much work if the game logic is separated from briskula.js correctly
 
 ---
+
+## v0.3.1 - Server administration CLI
+
+- Add dedicated admin controllers and services under `/api/admin/v1/**`.
+- Add a standalone `server-cli` module that uses `game-gateway` to manage server profiles, authenticate remotely, administer users and live lobbies, inspect reports, send notifications, and review audit history.
+- Support typed, allowlisted edits for users, recorded-game names, and statistics, including dry runs, confirmations, rebuild-from-history, and operator reasons.
+
+---
+
+## v0.3.2 - Administration web UI
+
+- Add an admin-only web interface in the `server` module for the operations exposed by the dedicated admin APIs.
+- Provide dashboards for system health, users, live lobbies, recorded games, statistics, sessions, notifications, reports, and audit history.
+- Reuse the typed admin API and gateway contracts introduced for the CLI instead of duplicating administrative business logic in UI controllers.
+- Include responsive tables, filtering, pagination, clear empty/error states, dry-run previews, destructive-action confirmations, and accessible status feedback.
+- Keep credentials and sensitive session data out of rendered pages and require `ADMIN` authorization for every administration route.
+
+---
+
+## v0.3.3 - Leaderboards
+
+- Add leaderboard services and endpoints backed by persisted game statistics and completed recorded games.
+- Provide overall, per-game, and per-mode rankings with pagination, allowlisted filters, deterministic tie-breaking, and the current user's position.
+- Rank meaningful measures such as wins, games played, and win rate while applying a documented minimum-games threshold where needed.
+- Reuse the existing statistics rebuild and correction paths so leaderboards do not maintain a separate editable source of truth.
+- Add typed `game-gateway` contracts and tests for ranking accuracy, ties, filters, pagination, incomplete recordings, and statistics corrections.
+
+---
+
+## v0.3.4 - Game guide pages
+
+- Add public guide pages in the `server` module that explain how Briskula and Treseta are played.
+- Cover setup, turn flow, card values, scoring, teams, supported modes, winning conditions, and short gameplay examples for each game.
+- Derive mode names and rule details from the existing game configuration and logic instead of duplicating conflicting rules in the UI.
+- Reuse the existing Thymeleaf fragments and multilingual support, with responsive layouts, accessible navigation, and links from relevant lobby and game pages.
+
+---
