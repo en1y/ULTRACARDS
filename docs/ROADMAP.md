@@ -93,7 +93,7 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.1 - Server administration CLI
+## v0.3.1 - Server administration CLI ✅
 
 - Add dedicated admin controllers and services under `/api/admin/v1/**`.
 - Add a standalone `server-cli` module that uses `game-gateway` to manage server profiles, authenticate remotely, administer users and live lobbies, inspect reports, send notifications, and review audit history.

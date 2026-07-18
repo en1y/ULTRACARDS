@@ -18,7 +18,7 @@ if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=prod"
 
 rem General properties: application.properties
 if "%APP_TITLE%"=="" set "APP_TITLE=ULTRACARDS Server"
-if "%APP_VERSION%"=="" set "APP_VERSION=0.3.0"
+if "%APP_VERSION%"=="" set "APP_VERSION=0.3.1"
 if "%SERVER_PORT%"=="" set "SERVER_PORT=8080"
 if "%SPRING_PROFILES_DEFAULT%"=="" set "SPRING_PROFILES_DEFAULT=dev"
 if "%SPRING_CONFIG_IMPORT%"=="" set "SPRING_CONFIG_IMPORT=optional:classpath:ultrakill-levels.properties"

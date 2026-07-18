@@ -9,6 +9,9 @@ import java.util.UUID;
 
 public interface BriskulaGameRepository extends JpaRepository<RecordedBriskulaGame, UUID> {
 
+    long countByEndedAtIsNull();
+    long countByEndedAtIsNotNull();
+
     @Query(value = """
             SELECT game.*, briskula.game_config, briskula.teams_enabled, briskula.trump_suit, briskula.trump_value
             FROM recorded_briskula_games briskula JOIN recorded_games game ON game.id = briskula.id

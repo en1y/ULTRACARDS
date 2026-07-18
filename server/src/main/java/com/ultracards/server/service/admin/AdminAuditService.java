@@ -1,0 +1,54 @@
+package com.ultracards.server.service.admin;
+
+import com.ultracards.gateway.dto.admin.AdminAuditEventDTO;
+import com.ultracards.gateway.dto.admin.AdminPageDTO;
+import com.ultracards.server.entity.admin.AdminAuditEvent;
+import com.ultracards.server.repositories.admin.AdminAuditEventRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class AdminAuditService {
+    private final AdminAuditEventRepository repository;
+
+    @Transactional
+    public void record(Long actorId, String action, String targetType, String targetId,
+                       String reason, String summary, String outcome) {
+        repository.save(new AdminAuditEvent(actorId, action, targetType, targetId,
+                clean(reason, 512), clean(summary, 1024), outcome));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminAuditEventDTO> list(int page, int size) {
+        var safePage = Math.max(0, page);
+        var safeSize = Math.max(1, Math.min(200, size));
+        var result = repository.findAllByOrderByOccurredAtDesc(PageRequest.of(safePage, safeSize));
+        return new AdminPageDTO<>(result.getContent().stream().map(this::toDto).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminAuditEventDTO get(UUID id) {
+        return repository.findById(id).map(this::toDto)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Audit event not found"));
+    }
+
+    private AdminAuditEventDTO toDto(AdminAuditEvent event) {
+        return new AdminAuditEventDTO(event.getId(), event.getActorUserId(), event.getAction(),
+                event.getTargetType(), event.getTargetId(), event.getReason(), event.getSummary(),
+                event.getOutcome(), event.getOccurredAt());
+    }
+
+    private String clean(String value, int max) {
+        if (value == null) return null;
+        var clean = value.replaceAll("[\\r\\n\\t]+", " ").trim();
+        return clean.length() <= max ? clean : clean.substring(0, max);
+    }
+}

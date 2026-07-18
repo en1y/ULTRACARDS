@@ -77,6 +77,7 @@ public class WebSecurityConfig {
                                 "/api/users/*/profile"
                         ).permitAll()
                         // backend API
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // TODO: check whether i should to make any more of the api calls public
                         .requestMatchers("/api/**").authenticated()
                         // Everything else public

@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TresetaGameRepository extends JpaRepository<RecordedTresetaGame, UUID> {
+    long countByEndedAtIsNull();
+    long countByEndedAtIsNotNull();
     @Query(value = """
             SELECT game.*, treseta.game_config, treseta.teams_enabled
             FROM recorded_treseta_games treseta JOIN recorded_games game ON game.id = treseta.id
