@@ -7,7 +7,7 @@
     <groupId>en1y.ultracards</groupId>
     <artifactId>ULTRACARDS</artifactId>
     <!--    semantic versioning    -->
-    <version>0.3.0</version>
+    <version>0.3.1</version>
     <name>ULTRACARDS parent</name>
 
     <packaging>pom</packaging>
