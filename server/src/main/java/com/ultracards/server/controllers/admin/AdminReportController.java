@@ -19,21 +19,27 @@ public class AdminReportController {
     @GetMapping("/users")
     public AdminPageDTO<AdminUserSummaryDTO> users(@RequestParam(defaultValue = "0") int page,
                                                    @RequestParam(defaultValue = "25") int size,
+                                                   @RequestParam(required = false) String query,
+                                                   @RequestParam(defaultValue = "false") boolean exact,
                                                    @RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String role,
                                                    @RequestParam(required = false) String sort,
                                                    @RequestParam(required = false) String direction) {
-        return adminReportService.users(page, size, status, role, sort, direction);
+        return adminReportService.users(page, size, query, exact, status, role, sort, direction);
     }
+
+    @GetMapping("/database")
+    public AdminDatabaseOverviewDTO database() { return adminReportService.database(); }
 
     @GetMapping("/games")
     public AdminPageDTO<AdminRecordedGameDTO> games(@RequestParam(defaultValue = "0") int page,
                                                      @RequestParam(defaultValue = "25") int size,
                                                      @RequestParam(required = false) String gameType,
                                                      @RequestParam(required = false) Boolean completed,
+                                                     @RequestParam(required = false) String mode,
                                                      @RequestParam(required = false) String sort,
                                                      @RequestParam(required = false) String direction) {
-        return adminReportService.games(page, size, gameType, completed, sort, direction);
+        return adminReportService.games(page, size, gameType, completed, mode, sort, direction);
     }
 
     @GetMapping("/sessions")

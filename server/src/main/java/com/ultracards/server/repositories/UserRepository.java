@@ -39,13 +39,25 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             select distinct u from UserEntity u left join u.roles r
             where (:status is null or u.status = :status)
               and (:role is null or r = :role)
+              and (:query is null
+                   or (:exact = true and (lower(u.username) = lower(:query) or lower(u.email) = lower(:query)))
+                   or (:exact = false and (lower(u.username) like lower(concat('%', :query, '%'))
+                                            or lower(u.email) like lower(concat('%', :query, '%'))))
+                   or cast(u.id as string) = :query)
             """, countQuery = """
             select count(distinct u.id) from UserEntity u left join u.roles r
             where (:status is null or u.status = :status)
               and (:role is null or r = :role)
+              and (:query is null
+                   or (:exact = true and (lower(u.username) = lower(:query) or lower(u.email) = lower(:query)))
+                   or (:exact = false and (lower(u.username) like lower(concat('%', :query, '%'))
+                                            or lower(u.email) like lower(concat('%', :query, '%'))))
+                   or cast(u.id as string) = :query)
             """)
     Page<UserEntity> findAdminReport(@Param("status") com.ultracards.server.enums.UserStatus status,
                                      @Param("role") com.ultracards.server.enums.UserRole role,
+                                     @Param("query") String query,
+                                     @Param("exact") boolean exact,
                                      Pageable pageable);
 
     @EntityGraph(attributePaths = "roles")

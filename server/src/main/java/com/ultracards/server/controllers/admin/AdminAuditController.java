@@ -22,8 +22,10 @@ public class AdminAuditController {
 
     @GetMapping
     public AdminPageDTO<AdminAuditEventDTO> list(@RequestParam(defaultValue = "0") int page,
-                                                  @RequestParam(defaultValue = "25") int size) {
-        return adminAuditService.list(page, size);
+                                                  @RequestParam(defaultValue = "25") int size,
+                                                  @RequestParam(required = false) String targetType,
+                                                  @RequestParam(required = false) String targetId) {
+        return adminAuditService.list(page, size, targetType, targetId);
     }
 
     @GetMapping("/{id}")

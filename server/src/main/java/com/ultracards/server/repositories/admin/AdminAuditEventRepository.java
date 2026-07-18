@@ -9,4 +9,6 @@ import java.util.UUID;
 
 public interface AdminAuditEventRepository extends JpaRepository<AdminAuditEvent, UUID> {
     Page<AdminAuditEvent> findAllByOrderByOccurredAtDesc(Pageable pageable);
+
+    Page<AdminAuditEvent> findByTargetTypeAndTargetIdOrderByOccurredAtDesc(String targetType, String targetId, Pageable pageable);
 }

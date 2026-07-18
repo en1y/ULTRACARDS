@@ -27,9 +27,16 @@ public class AdminAuditService {
 
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminAuditEventDTO> list(int page, int size) {
-        var safePage = Math.max(0, page);
-        var safeSize = Math.max(1, Math.min(200, size));
-        var result = repository.findAllByOrderByOccurredAtDesc(PageRequest.of(safePage, safeSize));
+        return list(page, size, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminAuditEventDTO> list(int page, int size, String targetType, String targetId) {
+        var pageRequest = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(200, size)));
+        var filtered = targetType != null && !targetType.isBlank() && targetId != null && !targetId.isBlank();
+        var result = filtered
+                ? repository.findByTargetTypeAndTargetIdOrderByOccurredAtDesc(targetType.trim().toUpperCase(), targetId.trim(), pageRequest)
+                : repository.findAllByOrderByOccurredAtDesc(pageRequest);
         return new AdminPageDTO<>(result.getContent().stream().map(this::toDto).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }

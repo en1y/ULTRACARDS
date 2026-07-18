@@ -3,11 +3,13 @@ package com.ultracards.server.controllers.admin;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.service.admin.AdminAuditService;
+import com.ultracards.server.service.admin.AdminDatabaseService;
 import com.ultracards.server.service.admin.AdminGameRecordService;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.admin.AdminLobbyService;
 import com.ultracards.server.service.admin.AdminNotificationService;
 import com.ultracards.server.service.admin.AdminReportService;
+import com.ultracards.server.service.admin.AdminSessionService;
 import com.ultracards.server.service.admin.AdminStatsService;
 import com.ultracards.server.service.admin.AdminSystemService;
 import com.ultracards.server.service.admin.AdminUserService;
@@ -35,6 +37,7 @@ import java.util.function.Supplier;
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
@@ -93,8 +96,16 @@ class AdminEndpointSecurityTest {
                 () -> get("/api/admin/v1/games"),
                 () -> get("/api/admin/v1/stats/users/1"),
                 () -> get("/api/admin/v1/reports/overview"),
+                () -> get("/api/admin/v1/reports/database"),
+                () -> get("/api/admin/v1/database/notifications"),
                 () -> get("/api/admin/v1/audit"),
                 () -> get("/api/admin/v1/system/status"),
+                () -> post("/api/admin/v1/sessions/00000000-0000-0000-0000-000000000001/expire?reason=security-test"),
+                () -> delete("/api/admin/v1/sessions/00000000-0000-0000-0000-000000000001?reason=security-test"),
+                () -> get("/admin"),
+                () -> get("/admin/users"),
+                () -> get("/admin/stats"),
+                () -> get("/admin/database"),
                 () -> post("/api/admin/v1/notifications/users/1")
                         .contentType("application/json")
                         .content("{\"message\":\"maintenance\",\"reason\":\"security test\"}")
@@ -120,6 +131,7 @@ class AdminEndpointSecurityTest {
                     .anonymous(anonymous -> anonymous.disable())
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/admin/**").hasRole(UserRole.ADMIN.name())
+                            .requestMatchers("/admin/**").hasRole(UserRole.ADMIN.name())
                             .anyRequest().permitAll())
                     .exceptionHandling(errors -> errors
                             .authenticationEntryPoint((request, response, exception) -> response.setStatus(401))
@@ -134,7 +146,9 @@ class AdminEndpointSecurityTest {
         @Bean AdminStatsService adminStatsService() { return mock(AdminStatsService.class); }
         @Bean AdminReportService adminReportService() { return mock(AdminReportService.class); }
         @Bean AdminAuditService adminAuditService() { return mock(AdminAuditService.class); }
+        @Bean AdminDatabaseService adminDatabaseService() { return mock(AdminDatabaseService.class); }
         @Bean AdminSystemService adminSystemService() { return mock(AdminSystemService.class); }
+        @Bean AdminSessionService adminSessionService() { return mock(AdminSessionService.class); }
         @Bean AdminNotificationService adminNotificationService() { return mock(AdminNotificationService.class); }
 
         @Bean AdminLobbyController adminLobbyController(AdminLobbyService service) {
@@ -166,12 +180,24 @@ class AdminEndpointSecurityTest {
             return new AdminAuditController(service);
         }
 
+        @Bean AdminDatabaseController adminDatabaseController(AdminDatabaseService service) {
+            return new AdminDatabaseController(service);
+        }
+
         @Bean AdminSystemController adminSystemController(AdminSystemService service) {
             return new AdminSystemController(service);
         }
 
+        @Bean AdminSessionController adminSessionController(AdminSessionService service) {
+            return new AdminSessionController(service);
+        }
+
         @Bean AdminNotificationController adminNotificationController(AdminNotificationService service) {
             return new AdminNotificationController(service);
+        }
+
+        @Bean AdminPageController adminPageController() {
+            return new AdminPageController();
         }
     }
 }

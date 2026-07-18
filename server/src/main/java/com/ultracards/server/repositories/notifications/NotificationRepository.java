@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface NotificationRepository extends JpaRepository<NotificationEntity, UUID> {
 
@@ -16,6 +18,12 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
 
     @EntityGraph(attributePaths = {"sender", "recipient"})
     List<NotificationEntity> findByRecipientIdAndReadFalseOrderByCreatedAtDesc(Long recipientId);
+
+    @EntityGraph(attributePaths = {"sender", "recipient"})
+    Page<NotificationEntity> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"sender", "recipient"})
+    Page<NotificationEntity> findByRecipientIdOrderByCreatedAtDesc(Long recipientId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"sender", "recipient"})
     Optional<NotificationEntity> findByIdAndRecipientId(UUID id, Long recipientId);

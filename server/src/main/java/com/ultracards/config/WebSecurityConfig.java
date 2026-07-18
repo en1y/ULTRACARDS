@@ -70,6 +70,7 @@ public class WebSecurityConfig {
                                 "/lobbies/**",
                                 "/game/**"
                         ).authenticated()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         // Public user search endpoints
                         .requestMatchers(HttpMethod.GET,
                                 "/api/users/search/username/**",

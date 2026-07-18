@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administration · ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/admin.css}">
+    <script th:src="@{/js/theme.js}" defer></script>
+    <script th:src="@{/js/ui/admin.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{ui/fragments/header :: header}"></div>
+
+<main class="admin-shell">
+    <header class="admin-heading">
+        <div>
+            <p class="admin-eyebrow">Operations</p>
+            <h1>Administration</h1>
+            <p>Live server controls. Changes are audited and require a reason.</p>
+        </div>
+        <button class="btn" type="button" data-action="refresh">Refresh</button>
+    </header>
+
+    <p id="admin-status" class="admin-status" aria-live="polite">Loading administration data…</p>
+
+    <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
+
+    <nav class="admin-tabs" aria-label="Administration sections">
+        <button type="button" class="is-active" data-panel="users" aria-controls="admin-users">Users</button>
+        <button type="button" data-panel="lobbies" aria-controls="admin-lobbies">Live lobbies</button>
+        <button type="button" data-panel="games" aria-controls="admin-games">Recorded games</button>
+        <button type="button" data-panel="sessions" aria-controls="admin-sessions">Sessions</button>
+        <button type="button" data-panel="availability" aria-controls="admin-availability">Availability</button>
+        <button type="button" data-panel="audit" aria-controls="admin-audit">Audit</button>
+        <button type="button" data-panel="notify" aria-controls="admin-notify">Notify</button>
+    </nav>
+
+    <section id="admin-users" class="admin-panel" data-section="users">
+        <div class="admin-panel-heading"><div><h2>Users</h2><p>Filter and safely enable or disable accounts.</p></div></div>
+        <form class="admin-filters" data-filters="users">
+            <label>Status <select name="status"><option value="">All</option><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
+            <label>Role <select name="role"><option value="">All</option><option>USER</option><option>MODERATOR</option><option>ADMIN</option></select></label>
+            <button class="btn" type="submit">Apply</button>
+        </form>
+        <div class="admin-results" data-results="users"></div>
+    </section>
+
+    <section id="admin-lobbies" class="admin-panel" data-section="lobbies" hidden>
+        <div class="admin-panel-heading"><div><h2>Live lobbies</h2><p>Current rooms update when you refresh.</p></div></div>
+        <div class="admin-results" data-results="lobbies"></div>
+    </section>
+
+    <section id="admin-games" class="admin-panel" data-section="games" hidden>
+        <div class="admin-panel-heading"><div><h2>Recorded games</h2><p>Browse game history without exposing player credentials.</p></div></div>
+        <form class="admin-filters" data-filters="games">
+            <label>Game <input name="gameType" placeholder="e.g. BRISKULA"></label>
+            <label>State <select name="completed"><option value="">All</option><option value="true">Completed</option><option value="false">Incomplete</option></select></label>
+            <button class="btn" type="submit">Apply</button>
+        </form>
+        <div class="admin-results" data-results="games"></div>
+    </section>
+
+    <section id="admin-sessions" class="admin-panel" data-section="sessions" hidden>
+        <div class="admin-panel-heading"><div><h2>Sessions</h2><p>See device and activity information, never token values.</p></div></div>
+        <form class="admin-filters" data-filters="sessions">
+            <label>User ID <input name="userId" type="number" min="1" inputmode="numeric"></label>
+            <label>State <select name="valid"><option value="">All</option><option value="true">Active</option><option value="false">Expired</option></select></label>
+            <button class="btn" type="submit">Apply</button>
+        </form>
+        <div class="admin-results" data-results="sessions"></div>
+    </section>
+
+    <section id="admin-availability" class="admin-panel" data-section="availability" hidden>
+        <div class="admin-panel-heading"><div><h2>Game availability</h2><p>Disable a game or mode with a recorded reason.</p></div></div>
+        <div class="admin-results" data-results="availability"></div>
+    </section>
+
+    <section id="admin-audit" class="admin-panel" data-section="audit" hidden>
+        <div class="admin-panel-heading"><div><h2>Audit history</h2><p>Latest administrative actions and outcomes.</p></div></div>
+        <div class="admin-results" data-results="audit"></div>
+    </section>
+
+    <section id="admin-notify" class="admin-panel" data-section="notify" hidden>
+        <div class="admin-panel-heading"><div><h2>Send notification</h2><p>Use a specific user ID, or deliberately notify everyone.</p></div></div>
+        <form id="admin-notification-form" class="admin-notification-form">
+            <label>User ID <input name="userId" type="number" min="1" inputmode="numeric" placeholder="Leave empty for all users"></label>
+            <label>Message <textarea name="message" required maxlength="500" rows="4"></textarea></label>
+            <label>Reason <input name="reason" required maxlength="250"></label>
+            <button class="btn btn-accent" type="submit">Send notification</button>
+        </form>
+    </section>
+</main>
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+</body>
+</html>
