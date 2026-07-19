@@ -68,6 +68,7 @@ class AdminTemplateRenderingTest {
 
             assertThat(template).contains("header.adminHacks.enableTitle");
             assertThat(template).contains("data-admin-mode-lock-dialog");
+            assertThat(template).contains("th:if=\"${isFakeAdmin}\"");
             assertThat(template).doesNotContain("fake-admin-button-badge");
             assertThat(script).contains("header.adminHacks.disableTitle");
             assertThat(script).contains("/api/admin-mode/toggle");

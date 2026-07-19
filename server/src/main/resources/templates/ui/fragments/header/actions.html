@@ -58,7 +58,7 @@
             <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.admin}">Admin</span>
           </a>
-          <button class="menu-item fake-admin-button" th:if="${isFakeAdmin and !isAdmin}" type="button" role="menuitem"
+          <button class="menu-item fake-admin-button" th:if="${isFakeAdmin}" type="button" role="menuitem"
                   th:aria-label="#{header.menu.fakeAdmin}" aria-pressed="false" data-action="admin-mode-toggle">
             <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
             <span class="fake-admin-button-label" th:text="#{header.menu.fakeAdmin}">Admin hacks</span>
