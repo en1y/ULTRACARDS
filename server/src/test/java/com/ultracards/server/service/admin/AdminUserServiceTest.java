@@ -57,7 +57,7 @@ class AdminUserServiceTest {
         when(repository.findByIdForUpdate(2L)).thenReturn(Optional.of(target));
 
         var result = service.patch(actor, 2L,
-                new AdminUserPatchDTO("New", null, null, null, "preview", true));
+                new AdminUserPatchDTO("New", null, null, null, null, "preview", true));
 
         assertThat(result.username()).isEqualTo("New");
         assertThat(target.getUsername()).isEqualTo("Old");
@@ -72,7 +72,7 @@ class AdminUserServiceTest {
         when(repository.findByIdForUpdate(2L)).thenReturn(Optional.of(target));
 
         service.patch(actor, 2L,
-                new AdminUserPatchDTO(null, "new@example.com", null, null, "correct address", false));
+                new AdminUserPatchDTO(null, "new@example.com", null, null, null, "correct address", false));
 
         assertThat(target.getEmail()).isEqualTo("new@example.com");
         verify(repository).save(target);
@@ -90,7 +90,7 @@ class AdminUserServiceTest {
         when(repository.findByIdForUpdate(2L)).thenReturn(Optional.of(target));
 
         service.patch(actor, 2L,
-                new AdminUserPatchDTO(null, null, true, null, "restore access", false));
+                new AdminUserPatchDTO(null, null, true, null, null, "restore access", false));
 
         assertThat(target.isEnabled()).isTrue();
         assertThat(target.getStatus()).isEqualTo(UserStatus.ACTIVE);
@@ -114,10 +114,27 @@ class AdminUserServiceTest {
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(actor));
 
         assertThatThrownBy(() -> service.patch(actor, 1L,
-                new AdminUserPatchDTO(null, null, false, null, "self disable", false)))
+                new AdminUserPatchDTO(null, null, false, null, null, "self disable", false)))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void fakeAdminFlagIsPreviewedAndSaved() {
+        var actor = user(1L, "admin@example.com", "Admin", UserRole.ADMIN);
+        var target = user(2L, "user@example.com", "User", UserRole.USER);
+        when(repository.findByIdForUpdate(2L)).thenReturn(Optional.of(target));
+
+        var preview = service.patch(actor, 2L,
+                new AdminUserPatchDTO(null, null, null, true, null, "preview", true));
+        assertThat(preview.fakeAdmin()).isTrue();
+        assertThat(target.isFakeAdmin()).isFalse();
+
+        service.patch(actor, 2L,
+                new AdminUserPatchDTO(null, null, null, true, null, "enable fake admin", false));
+        assertThat(target.isFakeAdmin()).isTrue();
+        verify(repository).save(target);
     }
 
     @Test

@@ -31,5 +31,9 @@ class I18nModelAdviceTest {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         assertTrue(advice.isAdmin());
+        assertFalse(advice.isFakeAdmin());
+
+        user.setFakeAdmin(true);
+        assertTrue(advice.isFakeAdmin());
     }
 }

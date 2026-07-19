@@ -90,6 +90,7 @@ public class AdminUndoService {
         var user = userRepository.findById(Long.valueOf(targetId)).orElseThrow(() -> notFound("User no longer exists"));
         user.setEmail(state.get("email").asText()); user.setUsername(state.get("username").asText());
         user.setEnabled(state.get("enabled").asBoolean()); user.setStatus(UserStatus.valueOf(state.get("status").asText()));
+        user.setFakeAdmin(state.path("fakeAdmin").asBoolean(false));
         var roles = new java.util.HashSet<UserRole>();
         state.get("roles").forEach(role -> roles.add(UserRole.valueOf(role.asText())));
         user.setRoles(roles); userRepository.save(user);

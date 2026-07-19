@@ -103,7 +103,7 @@ class UserCommands implements Runnable {
         abstract boolean enabled();
 
         public Integer call() {
-            var patch = new AdminUserPatchDTO(null, null, enabled(), enabled() ? "ACTIVE" : "DISABLED", reason, false);
+            var patch = new AdminUserPatchDTO(null, null, enabled(), null, enabled() ? "ACTIVE" : "DISABLED", reason, false);
             return root().withClient(client -> {
                 var id = resolveUserId(target, page -> client.admin().users(page, 200));
                 var current = client.admin().user(id);

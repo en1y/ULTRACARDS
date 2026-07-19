@@ -1554,6 +1554,96 @@ body.friends-drawer-open .uc-header.hidden {
   border-color: var(--color-border);
 }
 
+.fake-admin-button {
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-color: color-mix(in oklab, var(--color-accent) 70%, var(--color-border));
+  background: color-mix(in oklab, var(--color-accent) 14%, var(--color-surface));
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.fake-admin-button:hover {
+  background: color-mix(in oklab, var(--color-accent) 23%, var(--color-surface));
+}
+
+.fake-admin-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.fake-admin-button .theme-toggle-track {
+  background: color-mix(in oklab, var(--color-accent) 40%, var(--color-surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent) 75%, var(--color-border));
+}
+
+.fake-admin-button[aria-pressed="true"] {
+  border-color: color-mix(in oklab, var(--color-success) 70%, var(--color-border));
+  background: color-mix(in oklab, var(--color-success) 16%, var(--color-surface));
+  box-shadow: inset 3px 0 0 var(--color-success);
+}
+
+.fake-admin-button[aria-pressed="true"]:hover {
+  background: color-mix(in oklab, var(--color-success) 25%, var(--color-surface));
+}
+
+.fake-admin-button[aria-pressed="true"] .theme-toggle-track {
+  background: color-mix(in oklab, var(--color-success) 40%, var(--color-surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-success) 75%, var(--color-border));
+}
+
+.fake-admin-button-label {
+  margin-right: auto;
+}
+
+.admin-mode-dialog {
+  width: min(calc(100% - 2rem), 28rem);
+  padding: 1.4rem;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
+  border-radius: 24px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-modal);
+}
+
+.admin-mode-dialog::backdrop {
+  background: color-mix(in srgb, #000 68%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.admin-mode-dialog form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-mode-dialog .uc-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.admin-mode-dialog h2,
+.admin-mode-dialog p {
+  margin: 0;
+}
+
+.admin-mode-dialog p {
+  color: var(--color-text-muted);
+}
+
+.admin-mode-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.fake-admin-button .theme-toggle-thumb {
+  transform: translateX(0);
+}
+
+.fake-admin-button[aria-pressed="true"] .theme-toggle-thumb {
+  transform: translateX(26px);
+}
+
 .menu-item.danger {
   border-color: color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
 }
@@ -1566,6 +1656,10 @@ body.friends-drawer-open .uc-header.hidden {
 .uc-header .btn:hover,
 .uc-header .uc-brand:hover {
   border-color: var(--color-accent);
+}
+
+.uc-header .fake-admin-button[aria-pressed="true"]:hover {
+  border-color: color-mix(in oklab, var(--color-success) 70%, var(--color-border));
 }
 
 @media (max-width: 880px) {

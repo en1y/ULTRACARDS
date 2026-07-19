@@ -434,9 +434,9 @@ class UltracardsAdminCliTest {
 
     @Test
     void userTargetsResolveIdsEmailsAndUsernamesAcrossPages() {
-        var first = new AdminUserSummaryDTO(7L, "first@example.com", "first", true, "ACTIVE",
+        var first = new AdminUserSummaryDTO(7L, "first@example.com", "first", true, false, "ACTIVE",
                 Set.of("USER"), null, null, null);
-        var second = new AdminUserSummaryDTO(9L, "second@example.com", "second", true, "ACTIVE",
+        var second = new AdminUserSummaryDTO(9L, "second@example.com", "second", true, false, "ACTIVE",
                 Set.of("USER"), null, null, null);
         var requested = new ArrayList<Integer>();
 
@@ -520,7 +520,7 @@ class UltracardsAdminCliTest {
 
         var review = output.toString(StandardCharsets.UTF_8);
         assertTrue(review.contains("Proposed  AdminUserSummaryDTO[id=1, email=old@example.com, username=bozo, "
-                + "enabled=true, status=ACTIVE"), review);
+                + "enabled=true, fakeAdmin=false, status=ACTIVE"), review);
         assertFalse(review.contains("Proposed  AdminUserPatchDTO"), review);
     }
 

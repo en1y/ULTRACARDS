@@ -8,6 +8,7 @@ public record AdminUserSummaryDTO(
         String email,
         String username,
         boolean enabled,
+        boolean fakeAdmin,
         String status,
         Set<String> roles,
         Instant createdAt,

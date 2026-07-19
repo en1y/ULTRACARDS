@@ -39,6 +39,7 @@ public class ErrorViewConfig {
 
         model.put("isAuthenticated", isAuthenticated);
         model.put("isAdmin", isAuthenticated && user.hasRole(UserRole.ADMIN));
+        model.put("isFakeAdmin", isAuthenticated && user.isFakeAdmin());
         if (isAuthenticated) {
             model.put("username", user.getUsername());
         }

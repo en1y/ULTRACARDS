@@ -33,4 +33,11 @@ public class I18nModelAdvice {
         var principal = authentication == null ? null : authentication.getPrincipal();
         return principal instanceof UserEntity user && user.hasRole(UserRole.ADMIN);
     }
+
+    @ModelAttribute("isFakeAdmin")
+    public boolean isFakeAdmin() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        var principal = authentication == null ? null : authentication.getPrincipal();
+        return principal instanceof UserEntity user && user.isFakeAdmin();
+    }
 }

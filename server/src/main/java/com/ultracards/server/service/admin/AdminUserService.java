@@ -56,6 +56,7 @@ public class AdminUserService {
         var nextUsername = patch.username() == null ? user.getUsername() : validateUsername(patch.username());
         var nextEmail = patch.email() == null ? user.getEmail() : validateEmail(user, patch.email());
         var nextEnabled = patch.enabled() == null ? user.isEnabled() : patch.enabled();
+        var nextFakeAdmin = patch.fakeAdmin() == null ? user.isFakeAdmin() : patch.fakeAdmin();
         var nextStatus = patch.status() == null ? user.getStatus() : parseStatus(patch.status());
         if (patch.enabled() != null)
             nextStatus = patch.enabled() ? UserStatus.ACTIVE : UserStatus.DISABLED;
@@ -65,7 +66,7 @@ public class AdminUserService {
         if ((!nextEnabled || nextStatus != UserStatus.ACTIVE) && user.hasRole(UserRole.ADMIN))
             guardAdminRemoval(actor, user);
 
-        var preview = toDto(user, nextEmail, nextUsername, nextEnabled, nextStatus, user.getRoles());
+        var preview = toDto(user, nextEmail, nextUsername, nextEnabled, nextFakeAdmin, nextStatus, user.getRoles());
         if (patch.dryRun()) return preview;
 
         var emailChanged = !user.getEmail().equalsIgnoreCase(nextEmail);
@@ -73,6 +74,7 @@ public class AdminUserService {
         user.setEmail(nextEmail);
         user.setUsername(nextUsername);
         user.setEnabled(nextEnabled);
+        user.setFakeAdmin(nextFakeAdmin);
         user.setStatus(nextStatus);
         userRepository.save(user);
         if (emailChanged || disabled) sessionService.revokeAllSessions(user.getId());
@@ -135,6 +137,7 @@ public class AdminUserService {
         var state = new HashMap<String, Object>();
         state.put("email", before.getEmail()); state.put("username", before.getUsername());
         state.put("enabled", before.isEnabled()); state.put("status", before.getStatus().name());
+        state.put("fakeAdmin", before.isFakeAdmin());
         state.put("roles", before.getRoles().stream().map(Enum::name).toList());
         return state;
     }
@@ -181,14 +184,14 @@ public class AdminUserService {
     }
 
     AdminUserSummaryDTO toDto(UserEntity user) {
-        return toDto(user, user.getEmail(), user.getUsername(), user.isEnabled(), user.getStatus(), user.getRoles());
+        return toDto(user, user.getEmail(), user.getUsername(), user.isEnabled(), user.isFakeAdmin(), user.getStatus(), user.getRoles());
     }
 
-    private AdminUserSummaryDTO toDto(UserEntity user, String email, String username, boolean enabled,
+    private AdminUserSummaryDTO toDto(UserEntity user, String email, String username, boolean enabled, boolean fakeAdmin,
                                       UserStatus status, java.util.Set<UserRole> roles) {
         var roleNames = new HashSet<String>();
         for (var role : roles) roleNames.add(role.name());
-        return new AdminUserSummaryDTO(user.getId(), email, username, enabled, status.name(), roleNames,
+        return new AdminUserSummaryDTO(user.getId(), email, username, enabled, fakeAdmin, status.name(), roleNames,
                 user.getUserCreatedAt(), user.getUpdatedAt(), user.getLastLoginAt());
     }
 

@@ -41,6 +41,7 @@ class DbCommands implements Runnable {
         @Option(names = "--username") String username;
         @Option(names = "--email") String email;
         @Option(names = "--enabled") Boolean enabled;
+        @Option(names = "--fake-admin", description = "Show or hide the inert Admin button for this user.") Boolean fakeAdmin;
         @Option(names = "--status") String status;
         @Option(names = "--reason", required = true) String reason;
         @Option(names = "--dry-run") boolean dryRun;
@@ -48,11 +49,11 @@ class DbCommands implements Runnable {
         public Integer call() {
             return root().withClient(client -> {
                 var id = UserCommands.resolveUserId(target, page -> client.admin().users(page, 200));
-                var patch = new AdminUserPatchDTO(username, email, enabled, status, reason, dryRun);
+                var patch = new AdminUserPatchDTO(username, email, enabled, fakeAdmin, status, reason, dryRun);
                 if (!dryRun) {
                     var current = client.admin().user(id);
                     var proposed = client.admin().patchUser(id,
-                            new AdminUserPatchDTO(username, email, enabled, status, reason, true));
+                            new AdminUserPatchDTO(username, email, enabled, fakeAdmin, status, reason, true));
                     if (!root().confirmChange("user " + id, current, proposed)) return 5;
                 }
                 return ok(client.admin().patchUser(id, patch));

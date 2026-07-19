@@ -40,6 +40,9 @@ public class UserEntity implements UserDetails {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Column(name = "fake_admin", nullable = false)
+    private boolean fakeAdmin;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private UserStatus status = UserStatus.ACTIVE;

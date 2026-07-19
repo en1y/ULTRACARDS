@@ -58,6 +58,12 @@
             <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.admin}">Admin</span>
           </a>
+          <button class="menu-item fake-admin-button" th:if="${isFakeAdmin and !isAdmin}" type="button" role="menuitem"
+                  th:aria-label="#{header.menu.fakeAdmin}" aria-pressed="false" data-action="admin-mode-toggle">
+            <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
+            <span class="fake-admin-button-label" th:text="#{header.menu.fakeAdmin}">Admin hacks</span>
+            <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-thumb"></span></span>
+          </button>
           <div class="profile-menu-divider" role="separator"></div>
           <button class="menu-item danger" type="button" role="menuitem" data-action="logout">
             <img class="uc-icon" data-icon="logout" th:src="@{/pics/light/logout.svg}" alt="" aria-hidden="true" />
@@ -108,4 +114,27 @@
     <div class="notification-toast-stack" th:if="${isAuthenticated}" data-notification-toasts
          aria-live="polite" aria-atomic="false"></div>
   </div>
+
+  <dialog class="admin-mode-dialog" data-admin-mode-dialog>
+    <form method="dialog" data-admin-mode-form>
+      <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
+      <h2 data-admin-mode-title th:text="#{header.adminHacks.enableTitle}">Enable admin hacks?</h2>
+      <p data-admin-mode-copy th:text="#{header.adminHacks.enableCopy}">Enable advanced administrator controls for this session.</p>
+      <div class="admin-mode-dialog-actions">
+        <button class="btn" type="submit" value="cancel" th:text="#{common.cancel}">Cancel</button>
+        <button class="btn btn-accent" type="submit" value="confirm" data-admin-mode-confirm th:text="#{header.adminHacks.enableConfirm}">Enable hacks</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="admin-mode-dialog" data-admin-mode-lock-dialog>
+    <form method="dialog">
+      <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
+      <h2 th:text="#{header.adminHacks.lockedTitle}">Admin hacks enabled</h2>
+      <p th:text="#{header.adminHacks.locked}">Admin hacks will stay on for the next hour.</p>
+      <div class="admin-mode-dialog-actions">
+        <button class="btn btn-accent" type="submit" th:text="#{common.close}">Close</button>
+      </div>
+    </form>
+  </dialog>
 </th:block>
