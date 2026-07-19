@@ -22,8 +22,11 @@ public class AdminDatabaseController {
     @GetMapping("/notifications")
     public AdminPageDTO<NotificationDTO> notifications(@RequestParam(defaultValue = "0") int page,
                                                         @RequestParam(defaultValue = "25") int size,
-                                                        @RequestParam(required = false) Long userId) {
-        return adminDatabaseService.notifications(page, size, userId);
+                                                        @RequestParam(required = false) Long userId,
+                                                        @RequestParam(required = false) String type,
+                                                        @RequestParam(required = false) Boolean read,
+                                                        @RequestParam(required = false) String query) {
+        return adminDatabaseService.notifications(page, size, userId, type, read, query);
     }
 
     @PatchMapping("/notifications/{id}")

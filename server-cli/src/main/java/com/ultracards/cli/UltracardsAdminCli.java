@@ -30,7 +30,8 @@ import java.util.function.Function;
                 "", "Use @|bold help <command>|@ or @|bold <command> --help|@ for details."},
         subcommands = {ServerCommands.class, Login.class, Logout.class, WhoAmI.class,
                 UserCommands.class, GameCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
-                NotifyCommands.class, AuditCommands.class, Shell.class, Clear.class, Completion.class, HelpCommand.class})
+                OverviewCommands.class,
+                NotifyCommands.class, AuditCommands.class, SessionCommands.class, Shell.class, Clear.class, Completion.class, HelpCommand.class})
 public class UltracardsAdminCli implements Callable<Integer> {
     static final String VERSION = "0.3.2";
     @Spec CommandSpec spec;

@@ -1,6 +1,7 @@
 package com.ultracards.cli;
 
 import com.ultracards.gateway.dto.admin.AdminRecordedGamePatchDTO;
+import com.ultracards.gateway.dto.admin.AdminNotificationPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminStatsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminUserPatchDTO;
 import picocli.CommandLine.Command;
@@ -10,11 +11,13 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Command(name = "db", description = "Run safe database edits, rebuilds, and reports.",
         subcommands = {DbCommands.Edit.class, DbCommands.Stats.class, DbCommands.Overview.class,
-                DbCommands.Game.class, DbCommands.Users.class, DbCommands.Games.class, DbCommands.Sessions.class})
+                DbCommands.Game.class, DbCommands.Users.class, DbCommands.Games.class, DbCommands.Sessions.class,
+                DbCommands.Tokens.class, DbCommands.Notifications.class, DbCommands.DeleteGames.class})
 class DbCommands implements Runnable {
     @Spec CommandSpec spec;
 
@@ -60,12 +63,19 @@ class DbCommands implements Runnable {
     @Command(name = "game-record", description = "Rename a recorded game without changing gameplay data.")
     static class EditGame extends CliCommand {
         @Parameters(index = "0") UUID id;
-        @Option(names = "--name", required = true) String name;
+        @Option(names = "--name") String name;
+        @Option(names = "--delete") boolean delete;
         @Option(names = "--reason", required = true) String reason;
         @Option(names = "--dry-run") boolean dryRun;
 
         public Integer call() {
             return root().withClient(client -> {
+                if (delete) {
+                    if (!root().confirmChange("recorded game " + id, client.admin().game(id), "delete")) return 5;
+                    client.admin().deleteGame(id, reason);
+                    return ok("Recorded game deleted");
+                }
+                if (name == null || name.isBlank()) throw new IllegalArgumentException("--name is required unless --delete is used");
                 var patch = new AdminRecordedGamePatchDTO(name, reason, dryRun);
                 if (!dryRun && !root().confirmChange("recorded game " + id, client.admin().game(id), patch)) return 5;
                 return ok(client.admin().patchGame(id, patch));
@@ -154,12 +164,14 @@ class DbCommands implements Runnable {
         @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
         @Option(names = "--status") String status;
         @Option(names = "--role") String role;
+        @Option(names = "--query") String query;
+        @Option(names = "--exact") Boolean exact;
         @Option(names = "--sort") String sort;
         @Option(names = "--direction") String direction;
 
         public Integer call() {
             return root().withClient(client -> ok(pages(page, size, all,
-                    (page, size) -> client.admin().reportUsers(page, size, status, role, sort, direction))));
+                    (page, size) -> client.admin().reportUsers(page, size, query, exact, status, role, sort, direction))));
         }
     }
 
@@ -170,12 +182,14 @@ class DbCommands implements Runnable {
         @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
         @Option(names = "--game") String game;
         @Option(names = "--completed") Boolean completed;
+        @Option(names = "--mode") String mode;
+        @Option(names = "--query") String query;
         @Option(names = "--sort") String sort;
         @Option(names = "--direction") String direction;
 
         public Integer call() {
             return root().withClient(client -> ok(pages(page, size, all,
-                    (page, size) -> client.admin().games(page, size, game, completed, sort, direction))));
+                    (page, size) -> client.admin().games(page, size, game, completed, mode, query, sort, direction))));
         }
     }
 
@@ -185,7 +199,9 @@ class DbCommands implements Runnable {
         @Option(names = "--size", defaultValue = "25") int size;
         @Option(names = "--all", description = "Fetch every page from the selected starting page.") boolean all;
         @Option(names = "--user", paramLabel = "USER") String user;
+        @Option(names = "--id") UUID id;
         @Option(names = "--valid") Boolean valid;
+        @Option(names = "--query") String query;
         @Option(names = "--sort") String sort;
         @Option(names = "--direction") String direction;
 
@@ -194,7 +210,87 @@ class DbCommands implements Runnable {
                 var userId = user == null ? null : UserCommands.resolveUserId(user,
                         current -> client.admin().users(current, 200));
                 return ok(pages(page, size, all,
-                        (page, size) -> client.admin().sessions(page, size, userId, valid, sort, direction)));
+                        (page, size) -> client.admin().sessions(page, size, id, userId, valid, query, sort, direction)));
+            });
+        }
+    }
+
+    @Command(name = "tokens", description = "Report session tokens without exposing credential material.")
+    static class Tokens extends CliCommand {
+        @Option(names = "--page", defaultValue = "0") int page;
+        @Option(names = "--size", defaultValue = "25") int size;
+        @Option(names = "--all") boolean all;
+        @Option(names = "--id") UUID id;
+        @Option(names = "--user") Long userId;
+        @Option(names = "--active") Boolean active;
+
+        public Integer call() {
+            return root().withClient(client -> ok(pages(page, size, all,
+                    (current, count) -> client.admin().tokens(current, count, id, userId, active))));
+        }
+    }
+
+    @Command(name = "notifications", aliases = "notification", description = "Browse and edit persisted notifications.",
+            subcommands = {Notifications.ListNotifications.class, Notifications.Edit.class, Notifications.Delete.class})
+    static class Notifications implements Runnable {
+        @Spec CommandSpec spec;
+        public void run() { spec.commandLine().usage(System.out); }
+
+        @Command(name = "list", aliases = "ls")
+        static class ListNotifications extends CliCommand {
+            @Option(names = "--page", defaultValue = "0") int page;
+            @Option(names = "--size", defaultValue = "25") int size;
+            @Option(names = "--all") boolean all;
+            @Option(names = "--user") Long userId;
+            @Option(names = "--type") String type;
+            @Option(names = "--read") Boolean read;
+            @Option(names = "--query") String query;
+
+            public Integer call() {
+                return root().withClient(client -> ok(pages(page, size, all,
+                        (current, count) -> client.admin().notifications(current, count, userId, type, read, query))));
+            }
+        }
+
+        @Command(name = "edit")
+        static class Edit extends CliCommand {
+            @Parameters(index = "0") UUID id;
+            @Option(names = "--message") String message;
+            @Option(names = "--read") Boolean read;
+            @Option(names = "--reason", required = true) String reason;
+
+            public Integer call() {
+                if (message == null && read == null) throw new IllegalArgumentException("Provide --message or --read");
+                return root().withClient(client -> ok(client.admin().patchNotification(id,
+                        new AdminNotificationPatchDTO(message, read, reason))));
+            }
+        }
+
+        @Command(name = "delete", aliases = {"rm", "remove"})
+        static class Delete extends CliCommand {
+            @Parameters(index = "0..*") List<UUID> ids;
+            @Option(names = "--reason", required = true) String reason;
+
+            public Integer call() {
+                return root().withClient(client -> {
+                    if (!root().confirm("Delete " + ids.size() + " notification(s)?")) return 5;
+                    for (var id : ids) client.admin().deleteNotification(id, reason);
+                    return ok("Notification(s) deleted");
+                });
+            }
+        }
+    }
+
+    @Command(name = "delete-games", description = "Delete one or more recorded game histories.")
+    static class DeleteGames extends CliCommand {
+        @Parameters(index = "0..*", paramLabel = "ID") List<UUID> ids;
+        @Option(names = "--reason", required = true) String reason;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                if (!root().confirm("Delete " + ids.size() + " recorded game(s)?")) return 5;
+                for (var id : ids) client.admin().deleteGame(id, reason);
+                return ok("Recorded game(s) deleted");
             });
         }
     }

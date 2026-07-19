@@ -61,12 +61,15 @@
     });
     document.addEventListener("change", event => { if (event.target.matches("input[type=\"checkbox\"]")) updateBulkBars(); });
     const content = (target, value) => { (Array.isArray(value) ? value : [value]).forEach(part => { if (part == null) return; target.append(part instanceof Node ? part : document.createTextNode(String(part))); }); };
-    const row = (name, title, meta, actions = []) => {
+    const row = (name, title, meta, actions = [], chips = []) => {
         const node = element("article", null, "admin-row");
         const details = element("div");
+        const headRow = element("div", null, "admin-row-head");
         const heading = element("h3"); content(heading, title);
+        headRow.append(heading);
+        if (chips.length) { const badges = element("div", null, "admin-chips"); badges.append(...chips); headRow.append(badges); }
         const metaLine = element("p", null, "admin-meta"); content(metaLine, meta);
-        details.append(heading, metaLine); node.append(details);
+        details.append(headRow, metaLine); node.append(details);
         if (actions.length) { const controls = element("div", null, "admin-actions"); controls.append(...actions); node.append(controls); }
         results(name).append(node);
     };
@@ -168,41 +171,111 @@
     };
 
     const loadOverview = async () => {
-        const [overview, system] = await Promise.all([request("/reports/overview"), request("/system/status")]);
+        const [overview, system, db] = await Promise.all([request("/reports/overview"), request("/system/status"), request("/reports/database").catch(() => null)]);
         const container = document.querySelector("#admin-overview"); container.replaceChildren();
-        const metric = (label, value, href) => {
-            const node = href ? link(href, null, "admin-metric admin-metric-link") : element("article", null, "admin-metric");
-            node.append(element("span", label), element("strong", String(value))); container.append(node);
+        const heroes = element("div", null, "admin-metrics-row");
+        const hero = (label, value, href, variant) => {
+            const node = link(href, null, `admin-hero admin-hero-${variant}`);
+            node.append(element("span", label, "admin-hero-label"), element("strong", String(value)));
+            heroes.append(node);
+            return node;
         };
-        metric(tr("admin.overview.users", "Users"), overview.users, "/admin/users");
-        metric(tr("admin.overview.online", "Online now"), overview.onlineUsers, "/admin/sessions?valid=true");
-        metric(tr("admin.overview.validSessions", "Valid sessions"), overview.validSessions, "/admin/sessions");
-        metric(tr("admin.overview.liveLobbies", "Live lobbies"), system.activeLobbies, "/admin/lobbies");
-        metric(tr("admin.overview.liveGames", "Live games"), system.activeGames, "/admin/games");
-        metric(tr("admin.overview.database", "Database"), system.databaseAvailable ? tr("admin.overview.available", "Available") : tr("admin.overview.unavailable", "Unavailable"), "/admin/database");
+        hero(tr("admin.overview.users", "Registered players"), overview.users, "/admin/users", "a");
+        hero(tr("admin.overview.online", "Playing right now"), overview.onlineUsers, "/admin/sessions?valid=true", "b");
+        const activeToday = overview.onlineUsersToday ?? 0;
+        const percent = overview.users ? Math.round(activeToday / overview.users * 100) : 0;
+        const activeHero = link("/admin/sessions", null, "admin-hero admin-hero-c");
+        const ring = element("span", null, "admin-ring");
+        ring.style.setProperty("--ring", percent);
+        ring.append(element("strong", `${percent}%`));
+        const activeCopy = element("span", null, "admin-hero-ring-copy");
+        activeCopy.append(element("span", tr("admin.overview.activeToday", "Active today"), "admin-hero-label"), element("strong", `${activeToday} / ${overview.users}`));
+        activeHero.append(activeCopy, ring);
+        heroes.append(activeHero);
+        container.append(heroes);
+        const tiles = element("div", null, "admin-tiles");
+        const counts = db?.recordsByArea || {};
+        const tile = (label, value, href, state) => {
+            const node = link(href, null, "admin-tile");
+            node.append(element("strong", String(value), state === undefined ? "" : state ? "is-good" : "is-bad"), element("span", label));
+            tiles.append(node);
+        };
+        tile(tr("admin.overview.validSessions", "Enabled sessions"), overview.validSessions, "/admin/sessions?valid=true");
+        tile(tr("admin.overview.liveLobbies", "Live lobbies"), system.activeLobbies, "/admin/lobbies");
+        tile(tr("admin.overview.liveGames", "Live games"), system.activeGames, "/admin/games");
+        if (counts["Sessions"] != null) tile(tr("admin.db.table.sessions", "Sessions"), counts["Sessions"], "/admin/database?table=sessions");
+        if (counts["Tokens"] != null) tile(tr("admin.db.table.tokens", "Tokens"), counts["Tokens"], "/admin/database?table=tokens");
+        if (counts["Recorded games"] != null) tile(tr("admin.db.table.games", "Recorded games"), counts["Recorded games"], "/admin/games");
+        if (counts["Notifications"] != null) tile(tr("admin.db.table.notifications", "Notifications"), counts["Notifications"], "/admin/database?table=notifications");
+        if (counts["Admin audit events"] != null) tile(tr("admin.db.table.audit", "Audit events"), counts["Admin audit events"], "/admin/audit");
+        tile(`${tr("admin.overview.database", "Database")}${db?.flywayVersion ? ` · Flyway ${db.flywayVersion}` : ""}`,
+            system.databaseAvailable ? tr("admin.overview.available", "Available") : tr("admin.overview.unavailable", "Unavailable"),
+            "/admin/database", system.databaseAvailable);
+        container.append(tiles);
         const breakdown = document.querySelector("#admin-overview-breakdown"); breakdown.replaceChildren();
-        const group = (title, entries, href) => {
-            const card = element("article", null, "admin-breakdown");
-            card.append(element("h3", title));
-            const list = element("div", null, "admin-chips");
-            Object.entries(entries || {}).forEach(([key, count]) => list.append(link(href(key), `${key} · ${count}`, "admin-chip admin-chip-link")));
-            card.append(list); breakdown.append(card);
+        const seriesColor = index => `var(--admin-c${index % 5})`;
+        const card = title => { const node = element("article", null, "admin-breakdown"); node.append(element("h3", title)); breakdown.append(node); return node; };
+        const legend = (entries, href) => {
+            const chips = element("div", null, "admin-chips");
+            entries.forEach(([key, count], index) => {
+                const item = link(href(key), null, "admin-chip admin-chip-link");
+                const dot = element("span", null, "admin-dot"); dot.style.background = seriesColor(index);
+                item.append(dot, document.createTextNode(`${key} · ${count}`));
+                chips.append(item);
+            });
+            return chips;
         };
-        group(tr("admin.overview.byStatus", "Users by status"), overview.usersByStatus, key => `/admin/users?status=${key}`);
-        group(tr("admin.overview.byRole", "Users by role"), overview.usersByRole, key => `/admin/users?role=${key}`);
-        group(tr("admin.overview.completed", "Completed games"), overview.completedGames, key => `/admin/games?gameType=${key}&completed=true`);
-        group(tr("admin.overview.incomplete", "Incomplete games"), overview.incompleteGames, key => `/admin/games?gameType=${key}&completed=false`);
+        const donutCard = (title, values, href) => {
+            const node = card(title);
+            const entries = Object.entries(values || {});
+            if (!entries.length) return node.append(element("p", tr("admin.overview.noData", "No data yet."), "admin-empty"));
+            const total = entries.reduce((sum, [, count]) => sum + count, 0);
+            const donut = element("div", null, "admin-donut");
+            let angle = 0;
+            donut.style.background = total ? `conic-gradient(${entries.map(([, count], index) => {
+                const start = angle; angle += count / total * 360;
+                return `${seriesColor(index)} ${start}deg ${angle}deg`;
+            }).join(", ")})` : "var(--color-surface-2)";
+            const hole = element("span", null, "admin-donut-hole");
+            hole.append(element("strong", String(total)), element("span", tr("admin.overview.total", "Total")));
+            donut.append(hole);
+            const chart = element("div", null, "admin-chart-row");
+            chart.append(donut, legend(entries, href));
+            node.append(chart);
+        };
+        const barsCard = (title, values, href) => {
+            const node = card(title);
+            const entries = Object.entries(values || {});
+            if (!entries.length) return node.append(element("p", tr("admin.overview.noData", "No data yet."), "admin-empty"));
+            const max = Math.max(...entries.map(([, count]) => count), 1);
+            const bars = element("div", null, "admin-bars");
+            entries.forEach(([key, count]) => {
+                const column = link(href(key), null, "admin-bar-col");
+                column.title = `${key} · ${count}`;
+                const bar = element("span", null, "admin-bar");
+                bar.style.height = `${Math.max(6, Math.round(count / max * 78))}px`;
+                column.append(element("strong", String(count)), bar, element("span", key, "admin-bar-label"));
+                bars.append(column);
+            });
+            node.append(bars);
+        };
+        donutCard(tr("admin.overview.byStatus", "Users by status"), overview.usersByStatus, key => `/admin/users?status=${key}`);
+        donutCard(tr("admin.overview.byRole", "Users by role"), overview.usersByRole, key => `/admin/users?role=${key}`);
+        barsCard(tr("admin.overview.completed", "Recorded games"), overview.completedGames, key => `/admin/games?gameType=${key}&completed=true`);
     };
 
     const userCard = user => {
-        const card = link(userHref(user.id), null, "admin-row admin-row-link");
+        const card = link(userHref(user.id), null, "admin-row admin-row-link admin-user-row");
+        const avatar = element("span", (user.username || "?").trim().charAt(0).toUpperCase() || "?", "admin-avatar");
         const details = element("div");
-        details.append(element("h3", `${user.username} · #${user.id}`));
-        details.append(element("p", `${user.email} · ${tr("admin.common.created", "Created")} ${formatTime(user.createdAt)} · ${tr("admin.col.lastLogin", "Last login")} ${formatTime(user.lastLoginAt)}`, "admin-meta"));
+        const headRow = element("div", null, "admin-row-head");
+        headRow.append(element("h3", `${user.username} · #${user.id}`));
         const chips = element("div", null, "admin-chips");
         chips.append(chip(user.status, statusClass(user.status)), ...[...user.roles].filter(role => role !== "USER").map(role => chip(role)));
-        details.append(chips);
-        card.append(details, element("span", "→", "admin-row-arrow"));
+        headRow.append(chips);
+        details.append(headRow);
+        details.append(element("p", `${user.email} · ${tr("admin.common.created", "Created")} ${formatTime(user.createdAt)} · ${tr("admin.col.lastLogin", "Last login")} ${formatTime(user.lastLoginAt)}`, "admin-meta"));
+        card.append(avatar, details, element("span", "→", "admin-row-arrow"));
         return card;
     };
     const loadUsers = async (currentPage = 0) => {
@@ -310,14 +383,24 @@
 
     const loadLobbies = async () => {
         const data = await request("/lobbies"); clear("lobbies"); if (!data.length) return empty("lobbies", tr("admin.lobbies.empty", "There are no live lobbies."));
-        data.forEach(item => { const lobby = item.lobby; const game = lobby.gameType?.name || lobby.gameType?.game || tr("admin.common.game", "Game"); row("lobbies", lobby.name, `${game} · ${item.state} · ${tr("admin.lobbies.players", `${lobby.players?.length || 0}/${lobby.maxPlayers} players`, lobby.players?.length || 0, lobby.maxPlayers)}`, [button(tr("admin.common.edit", "Edit"), "edit-lobby", lobby.id), button(tr("admin.lobbies.extend", "Extend"), "extend-lobby", lobby.id), button(tr("admin.lobbies.close", "Close lobby"), "close-lobby", lobby.id, true)]); });
+        data.forEach(item => {
+            const lobby = item.lobby; const game = lobby.gameType?.name || lobby.gameType?.game || tr("admin.common.game", "Game");
+            row("lobbies", lobby.name, game,
+                [button(tr("admin.common.edit", "Edit"), "edit-lobby", lobby.id), button(tr("admin.lobbies.extend", "Extend"), "extend-lobby", lobby.id), button(tr("admin.lobbies.close", "Close lobby"), "close-lobby", lobby.id, true)],
+                [chip(item.state, "is-good"), chip(tr("admin.lobbies.players", `${lobby.players?.length || 0}/${lobby.maxPlayers} players`, lobby.players?.length || 0, lobby.maxPlayers))]);
+        });
     };
+    const gameChips = game => [
+        chip(game.gameType),
+        ...(game.mode ? [chip(game.mode)] : []),
+        game.endedAt ? chip(tr("admin.games.completed", "Completed"), "is-good") : chip(tr("admin.common.incomplete", "Incomplete"), "is-warn")
+    ];
     const gameMeta = game => {
-        const meta = [`${game.gameType}${game.mode ? ` · ${game.mode}` : ""} · ${tr("admin.games.players", `${game.players?.length || 0} players`, game.players?.length || 0)} · ${tr("admin.games.rounds", `${game.rounds || 0} rounds`, game.rounds || 0)}`];
+        const meta = [`${tr("admin.games.rounds", `${game.rounds || 0} rounds`, game.rounds || 0)}`];
         if (game.ownerUserId != null) meta.push(` · ${tr("admin.games.owner", "Owner")} `, userLink(game.ownerUserId, `#${game.ownerUserId}`));
         if (game.players?.length) { meta.push(` · ${tr("admin.games.playersLabel", "Players")}: `, ...playerLinks(game.players)); }
         meta.push(` · ${tr("admin.games.winners", "Winners")}: `); if (game.winners?.length) meta.push(...playerLinks(game.winners)); else meta.push("—");
-        meta.push(game.endedAt ? ` · ${tr("admin.games.ended", `Ended ${formatTime(game.endedAt)}`, formatTime(game.endedAt))}` : ` · ${tr("admin.common.incomplete", "Incomplete")}`);
+        if (game.endedAt) meta.push(` · ${tr("admin.games.ended", `Ended ${formatTime(game.endedAt)}`, formatTime(game.endedAt))}`);
         return meta;
     };
     const loadGames = async (currentPage = 0) => {
@@ -326,7 +409,7 @@
         const direction = values.sort === "createdAtOldest" ? "asc" : values.sort === "name" ? "asc" : "desc";
         const data = await request(`/reports/games${query({ page: currentPage, size: 20, ...values, sort, direction })}`); clear("games");
         if (!data.items.length) return empty("games", tr("admin.games.empty", "No recorded games match these filters."));
-        data.items.forEach(game => row("games", game.name || tr("admin.games.fallbackName", `${game.gameType} game`, game.gameType), gameMeta(game), [button(tr("admin.games.rename", "Rename"), "rename-game", game.id), button(tr("admin.common.delete", "Delete"), "delete-game", game.id, true)])); renderPaged("games", data);
+        data.items.forEach(game => row("games", game.name || tr("admin.games.fallbackName", `${game.gameType} game`, game.gameType), gameMeta(game), [button(tr("admin.games.rename", "Rename"), "rename-game", game.id), button(tr("admin.common.delete", "Delete"), "delete-game", game.id, true)], gameChips(game))); renderPaged("games", data);
     };
     const sessionMeta = session => [
         `${session.clientType || tr("admin.sessions.unknownDevice", "Unknown device")} · ${session.os || tr("admin.sessions.unknownOs", "Unknown OS")} · ${[session.country, session.region].filter(Boolean).join(", ") || tr("admin.sessions.unknownLocation", "Unknown location")} · ${tr("admin.sessions.seen", `Seen ${formatTime(session.lastSeenAt)}`, formatTime(session.lastSeenAt))} · ${tr("admin.sessions.tokenExpires", `Token expires ${formatTime(session.tokenExpiresAt)}`, formatTime(session.tokenExpiresAt))}`,
@@ -337,10 +420,19 @@
         if (!data.items.length) return empty("sessions", tr("admin.sessions.empty", "No sessions match these filters."));
         results("sessions").append(bulkBar(tr("admin.bulk.sessions", "Delete selected sessions"), "delete-selected-sessions", "sessions"));
         data.items.forEach(session => row("sessions",
-            [userLink(session.userId), ` · ${session.active ? tr("admin.common.active", "Active") : tr("admin.common.expired", "Expired")}`],
+            [userLink(session.userId)],
             sessionMeta(session),
-            [selectBox("sessions", session.id), ...(session.active ? [button(tr("admin.sessions.expire", "Expire session"), "expire-session", session.id, true)] : []), button(tr("admin.common.delete", "Delete"), "delete-session", session.id, true)]));
+            [selectBox("sessions", session.id), ...(session.active ? [button(tr("admin.sessions.expire", "Expire session"), "expire-session", session.id, true)] : []), button(tr("admin.common.delete", "Delete"), "delete-session", session.id, true)],
+            [stateChip(session.active)]));
         renderPaged("sessions", data);
+    };
+    const toggleGame = async (game, mode, wanted) => {
+        const enabled = wanted === "enable"; const rule = `${game}${mode ? ` ${mode}` : ""}`;
+        const values = await askAction({ title: enabled ? tr("admin.availability.enableTitle", "Enable game") : tr("admin.availability.disableTitle", "Disable game"), description: enabled ? tr("admin.availability.enableCopy", `Enable ${rule} for players?`, rule) : tr("admin.availability.disableCopy", `Disable ${rule} for players?`, rule), confirmLabel: enabled ? tr("admin.availability.enable", "Enable") : tr("admin.availability.disable", "Disable"), danger: !enabled, fields: [reasonField()] });
+        if (!values) return false;
+        await request(`/games/${encodeURIComponent(game)}`, { method: "PATCH", body: JSON.stringify({ mode: mode || null, enabled, reason: values.reason }) });
+        await refreshAvailabilityContext();
+        return true;
     };
     const loadAvailability = async () => {
         const data = await request("/games"); clear("availability"); if (!data.length) return empty("availability", tr("admin.availability.empty", "No game availability rules are configured."));
@@ -352,9 +444,23 @@
         });
         const availabilityRow = (item, label) => {
             const node = element("article", null, "admin-row"); const details = element("div");
-            details.append(element("h3", label), element("p", item.enabled ? tr("admin.availability.available", "Available to players") : tr("admin.availability.unavailable", "Unavailable to players"), "admin-meta"));
-            node.append(details, element("div", null, "admin-actions"));
-            node.lastElementChild.append(button(item.enabled ? tr("admin.availability.disable", "Disable") : tr("admin.availability.enable", "Enable"), "toggle-game", `${item.game}|${item.mode || ""}|${item.enabled ? "disable" : "enable"}`, !item.enabled));
+            const headRow = element("div", null, "admin-row-head");
+            headRow.append(element("h3", label));
+            details.append(headRow, element("p", item.enabled ? tr("admin.availability.available", "Available to players") : tr("admin.availability.unavailable", "Unavailable to players"), "admin-meta"));
+            const select = element("select", null, `admin-toggle ${item.enabled ? "is-good" : "is-bad"}`);
+            const enabledOption = element("option", tr("admin.common.enabled", "Enabled")); enabledOption.value = "enable";
+            const disabledOption = element("option", tr("admin.common.disabled", "Disabled")); disabledOption.value = "disable";
+            select.append(enabledOption, disabledOption);
+            select.value = item.enabled ? "enable" : "disable";
+            select.setAttribute("aria-label", `${item.game}${item.mode ? ` ${item.mode}` : ""}`);
+            select.addEventListener("change", async () => {
+                try {
+                    if (!await toggleGame(item.game, item.mode || "", select.value)) select.value = item.enabled ? "enable" : "disable";
+                } catch (error) { select.value = item.enabled ? "enable" : "disable"; setStatus(error.message, true); }
+            });
+            const controls = element("div", null, "admin-actions");
+            controls.append(select);
+            node.append(details, controls);
             return node;
         };
         [...games.entries()].sort(([left], [right]) => left.localeCompare(right)).forEach(([game, group]) => {
@@ -377,8 +483,9 @@
         const values = formValues(document.querySelector('[data-filters="audit"]'));
         const data = await request(`/audit${query({ page: currentPage, size: 20, ...values })}`); clear("audit");
         if (!data.items.length) return empty("audit", tr("admin.audit.empty", "No administrative actions match this filter."));
-        data.items.forEach(event => row("audit", `${event.action} · ${event.outcome}`, auditMeta(event),
-            event.undoable && !event.undone ? [button(tr("admin.audit.undo", "Undo"), "undo-audit", event.id, true)] : [])); renderPaged("audit", data);
+        data.items.forEach(event => row("audit", event.action, auditMeta(event),
+            event.undoable && !event.undone ? [button(tr("admin.audit.undo", "Undo"), "undo-audit", event.id, true)] : [],
+            [chip(event.outcome, event.outcome === "SUCCESS" ? "is-good" : "is-bad"), ...(event.undone ? [chip(tr("admin.audit.undoneChip", "Undone"), "is-warn")] : [])])); renderPaged("audit", data);
     };
 
     const notificationActions = notification => [button(tr("admin.common.edit", "Edit"), "edit-database-notification", notification.id), button(tr("admin.common.delete", "Delete"), "delete-database-notification", notification.id, true)];
@@ -402,6 +509,7 @@
         sessions: {
             label: tr("admin.db.table.sessions", "Sessions"), area: "Sessions",
             filters: [
+                { name: "query", label: tr("admin.users.search", "Search"), type: "search", placeholder: tr("admin.sessions.searchPlaceholder", "Device, OS, or location") },
                 { name: "id", label: tr("admin.db.sessionId", "Session ID") },
                 { name: "userId", label: tr("admin.common.userId", "User ID"), type: "number" },
                 { name: "valid", label: tr("admin.common.state", "State"), options: [allOption, { value: "true", label: tr("admin.common.active", "Active") }, { value: "false", label: tr("admin.common.expired", "Expired") }] }
@@ -438,6 +546,7 @@
         games: {
             label: tr("admin.db.table.games", "Recorded games"), area: "Recorded games",
             filters: [
+                { name: "query", label: tr("admin.users.search", "Search"), type: "search", placeholder: tr("admin.games.namePlaceholder", "Game name") },
                 { name: "gameType", label: tr("admin.games.game", "Game"), options: [allOption, { value: "BRISKULA", label: "Briskula" }, { value: "TRESETA", label: "Treseta" }] },
                 { name: "mode", label: tr("admin.games.mode", "Mode"), options: [allOption, ...[...new Set([...modes.briskula, ...modes.treseta])].map(value => ({ value, label: value }))] },
                 { name: "completed", label: tr("admin.games.state", "State"), options: [allOption, { value: "true", label: tr("admin.games.completed", "Completed") }, { value: "false", label: tr("admin.games.incomplete", "Incomplete") }] }
@@ -457,7 +566,10 @@
         notifications: {
             label: tr("admin.db.table.notifications", "Notifications"), area: "Notifications",
             filters: [
-                { name: "userId", label: tr("admin.common.userId", "User ID"), type: "number" }
+                { name: "query", label: tr("admin.users.search", "Search"), type: "search", placeholder: tr("admin.notify.message", "Message") },
+                { name: "userId", label: tr("admin.common.userId", "User ID"), type: "number" },
+                { name: "type", label: tr("admin.common.type", "Type"), options: [allOption, ...["GAME_INVITE", "FRIEND_INVITE", "TEXT"].map(value => ({ value, label: value }))] },
+                { name: "read", label: tr("admin.common.read", "Read"), options: [allOption, { value: "true", label: tr("admin.common.read", "Read") }, { value: "false", label: tr("admin.common.unread", "Unread") }] }
             ],
             load: async currentPage => {
                 const data = await request(`/database/notifications${query({ page: currentPage, size: 20, ...state.dbFilters })}`);
@@ -514,6 +626,7 @@
                 input.append(...field.options.map(option => { const node = element("option", option.label); node.value = option.value; return node; }));
             } else {
                 input = document.createElement("input"); input.name = field.name; input.type = field.type || "text"; input.autocomplete = "off";
+                if (field.placeholder) input.placeholder = field.placeholder;
             }
             if (state.dbFilters[field.name] != null) input.value = state.dbFilters[field.name];
             label.append(input); return label;
@@ -629,6 +742,10 @@
         event.preventDefault();
         if (form.dataset.filters === "users" && state.userDetailId) { state.userDetailId = null; history.replaceState(null, "", "/admin/users"); document.querySelector("#admin-user-detail").hidden = true; document.querySelector("#admin-user-list").hidden = false; }
         refresh();
+    }));
+    // Dropdown filters apply themselves; the button stays for text inputs.
+    document.querySelectorAll("form.admin-filters").forEach(form => form.addEventListener("change", event => {
+        if (event.target instanceof HTMLSelectElement) form.requestSubmit();
     }));
     document.querySelector('[data-action="refresh"]').addEventListener("click", refresh);
     document.querySelector("#admin-stats-lookup")?.addEventListener("submit", event => { event.preventDefault(); loadStatsForQuery(formValues(event.currentTarget).userQuery).catch(error => setStatus(error.message, true)); });
@@ -753,19 +870,80 @@
                 await loadDatabaseTable(); setStatus(tr("admin.bulk.deletedCount", `Deleted ${ids.length} records.`, ids.length)); return;
             }
             if (control.dataset.action === "toggle-game") {
-                const [game, mode, wanted] = control.dataset.value.split("|"); const enabled = wanted === "enable"; const rule = `${game}${mode ? ` ${mode}` : ""}`;
-                const values = await askAction({ title: enabled ? tr("admin.availability.enableTitle", "Enable game") : tr("admin.availability.disableTitle", "Disable game"), description: enabled ? tr("admin.availability.enableCopy", `Enable ${rule} for players?`, rule) : tr("admin.availability.disableCopy", `Disable ${rule} for players?`, rule), confirmLabel: enabled ? tr("admin.availability.enable", "Enable") : tr("admin.availability.disable", "Disable"), danger: !enabled, fields: [reasonField()] });
-                if (!values) return; await request(`/games/${encodeURIComponent(game)}`, { method: "PATCH", body: JSON.stringify({ mode: mode || null, enabled, reason: values.reason }) }); await refreshAvailabilityContext();
+                const [game, mode, wanted] = control.dataset.value.split("|");
+                await toggleGame(game, mode, wanted);
             }
         } catch (error) { setStatus(error.message, true); }
     });
-    document.querySelector("#admin-notification-form")?.addEventListener("submit", async event => { event.preventDefault(); const values = formValues(event.currentTarget); const recipient = values.userId ? `/users/${values.userId}` : "/all"; if (!await confirmAction(tr("admin.notify.send", "Send notification"), values.userId ? tr("admin.notifications.sendOneCopy", `Send this notification to user #${values.userId}?`, values.userId) : tr("admin.notifications.sendAllCopy", "Send this notification to every user?"), !values.userId)) return; try { await request(`/notifications${recipient}`, { method: "POST", body: JSON.stringify({ message: values.message, reason: values.reason }) }); event.currentTarget.reset(); setStatus(tr("admin.notifications.sent", "Notification sent.")); } catch (error) { setStatus(error.message, true); } });
+    const notifyForm = document.querySelector("#admin-notification-form");
+    if (notifyForm) {
+        const userLabel = document.querySelector("#admin-notify-user");
+        const picked = document.querySelector("#admin-notify-picked");
+        const options = document.querySelector("#admin-user-options");
+        const userField = notifyForm.elements.userRef;
+        let matches = [];
+        const syncMode = () => {
+            const oneUser = notifyForm.elements.mode.value === "user";
+            userLabel.hidden = !oneUser; userField.required = oneUser;
+            if (!oneUser) { picked.hidden = true; }
+        };
+        notifyForm.elements.mode.addEventListener("change", syncMode);
+        const showPicked = user => { picked.textContent = `${user.username} · #${user.id} · ${user.email}`; picked.hidden = false; };
+        const findPicked = value => matches.find(user => value.includes(`#${user.id}`) || value === user.username || value === user.email);
+        let searchTimer;
+        userField?.addEventListener("input", () => {
+            picked.hidden = true;
+            clearTimeout(searchTimer);
+            const value = userField.value.trim();
+            const exact = findPicked(value);
+            if (exact) return showPicked(exact);
+            if (value.length < 2) return;
+            searchTimer = setTimeout(async () => {
+                try {
+                    const data = await request(`/reports/users${query({ query: value, size: 8 })}`);
+                    matches = data.items;
+                    options.replaceChildren(...data.items.map(user => {
+                        const option = element("option");
+                        option.value = `${user.username} · #${user.id}`;
+                        option.label = user.email;
+                        return option;
+                    }));
+                    const match = findPicked(userField.value.trim());
+                    if (match) showPicked(match);
+                } catch { /* suggestions are best-effort */ }
+            }, 250);
+        });
+        const resolveUserId = async value => {
+            const ref = /#(\d+)/.exec(value);
+            if (ref) return ref[1];
+            if (/^\d+$/.test(value)) return value;
+            const data = await request(`/reports/users${query({ query: value, exact: true, size: 2 })}`);
+            if (data.items.length === 1) return String(data.items[0].id);
+            throw new Error(tr("admin.notify.pickUser", "Pick a user from the list or enter an ID."));
+        };
+        notifyForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            const values = formValues(notifyForm);
+            try {
+                const userId = values.mode === "user" ? await resolveUserId(values.userRef.trim()) : null;
+                if (!await confirmAction(tr("admin.notify.send", "Send notification"), userId ? tr("admin.notifications.sendOneCopy", `Send this notification to user #${userId}?`, userId) : tr("admin.notifications.sendAllCopy", "Send this notification to every user?"), !userId)) return;
+                await request(`/notifications${userId ? `/users/${userId}` : "/all"}`, { method: "POST", body: JSON.stringify({ message: values.message, reason: values.reason }) });
+                notifyForm.reset(); syncMode(); picked.hidden = true;
+                setStatus(tr("admin.notifications.sent", "Notification sent."));
+            } catch (error) { setStatus(error.message, true); }
+        });
+        syncMode();
+    }
     populateModes();
 
     document.querySelectorAll("form.admin-filters[data-filters]").forEach(form => {
         for (const [key, value] of params) { const field = form.elements[key]; if (field && !(field instanceof RadioNodeList) && field.tagName !== "FIELDSET") field.value = value; }
     });
-    if (page === "notifications" && params.get("userId")) document.querySelector("#admin-notification-form").elements.userId.value = params.get("userId");
+    if (page === "notifications" && params.get("userId")) {
+        notifyForm.elements.mode.value = "user";
+        notifyForm.elements.userRef.value = `#${params.get("userId")}`;
+        notifyForm.elements.mode.dispatchEvent(new Event("change"));
+    }
     const statsUser = params.get("userId");
     if (page === "stats" && statsUser) { document.querySelector("#admin-stats-lookup").elements.userQuery.value = statsUser; loadStats(statsUser).then(() => setStatus(tr("admin.updated", `Updated ${new Date().toLocaleTimeString()}.`, new Date().toLocaleTimeString()))).catch(error => setStatus(error.message, true)); } else refresh();
 })();

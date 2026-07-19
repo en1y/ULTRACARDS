@@ -9,6 +9,7 @@ public record AdminOverviewDTO(
         Map<String, Long> usersByRole,
         long validSessions,
         long onlineUsers,
+        long onlineUsersToday,
         Map<String, Long> completedGames,
         Map<String, Long> incompleteGames,
         int activeLobbies,
