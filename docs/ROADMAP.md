@@ -101,7 +101,7 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.2 - Administration web UI
+## v0.3.2 - Administration web UI ✅
 
 - Add an admin-only web interface in the `server` module for the operations exposed by the dedicated admin APIs.
 - Provide dashboards for system health, users, live lobbies, recorded games, statistics, sessions, notifications, reports, and audit history.
