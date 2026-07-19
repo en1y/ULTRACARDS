@@ -41,7 +41,7 @@ public class AdminGameRecordService {
         game.rename(name);
         repository.save(game);
         auditService.record(actor.getId(), "UPDATE_GAME_RECORD", "RECORDED_GAME", id.toString(), patch.reason(),
-                "name changed from '" + oldName + "' to '" + name + "'", "SUCCESS");
+                "name changed from '" + oldName + "' to '" + name + "'", "SUCCESS", Map.of("name", oldName));
         return toDto(game);
     }
 

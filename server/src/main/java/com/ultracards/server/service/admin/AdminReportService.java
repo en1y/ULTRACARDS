@@ -29,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -140,14 +141,20 @@ public class AdminReportService {
 
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminSessionDTO> sessions(int page, int size) {
-        return sessions(page, size, null, null, null, null);
+        return sessions(page, size, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminSessionDTO> sessions(int page, int size, Long userId, Boolean valid,
                                                   String sortValue, String directionValue) {
+        return sessions(page, size, null, userId, valid, sortValue, directionValue);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminSessionDTO> sessions(int page, int size, UUID id, Long userId, Boolean valid,
+                                                  String sortValue, String directionValue) {
         var now = Instant.now();
-        var result = sessionRepository.findAdminReport(userId, valid, now,
+        var result = sessionRepository.findAdminReport(id, userId, valid, now,
                 page(page, size, sort(sortValue, "lastSeenAt", "lastSeenAt", "firstSeenAt", "lastAuthenticatedAt", "userId", "id"), directionValue));
         return new AdminPageDTO<>(result.getContent().stream().map(session -> toDto(session, now)).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
@@ -162,7 +169,25 @@ public class AdminReportService {
         var token = session.getToken();
         return new AdminSessionDTO(session.getId(), session.getUserId(), session.getClientType(), session.getOs(),
                 session.getCountry(), session.getRegion(), session.getFirstSeenAt(), session.getLastSeenAt(),
-                session.getLastAuthenticatedAt(), token.getExpiresAt(), token.isActive() && token.getExpiresAt().isAfter(now));
+                session.getLastAuthenticatedAt(), token.getExpiresAt(), token.isActive() && token.getExpiresAt().isAfter(now),
+                token.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminTokenDTO> tokens(int page, int size, UUID id, Long userId, Boolean active) {
+        var now = Instant.now();
+        var result = tokenRepository.findAdminReport(id, userId, active,
+                PageRequest.of(Math.max(0, page), Math.max(1, Math.min(200, size)), Sort.by(Sort.Direction.DESC, "expiresAt")));
+        var sessionsByToken = new LinkedHashMap<UUID, UUID>();
+        var tokenIds = result.getContent().stream().map(token -> token.getId()).toList();
+        if (!tokenIds.isEmpty())
+            sessionRepository.findByTokenIdIn(tokenIds).forEach(session -> sessionsByToken.put(session.getToken().getId(), session.getId()));
+        return new AdminPageDTO<>(result.getContent().stream().map(token -> new AdminTokenDTO(
+                token.getId(), token.getUser().getId(), sessionsByToken.get(token.getId()),
+                token.isActive(), token.isActive() && token.getExpiresAt().isAfter(now),
+                token.getExpiresAt(), token.getReuseUntil(),
+                token.getReplacementToken() == null ? null : token.getReplacementToken().getId())).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
     private PageRequest page(int page, int size, String sort, String direction) {

@@ -42,13 +42,23 @@ public class AdminReportController {
         return adminReportService.games(page, size, gameType, completed, mode, sort, direction);
     }
 
+    @GetMapping("/tokens")
+    public AdminPageDTO<AdminTokenDTO> tokens(@RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "25") int size,
+                                              @RequestParam(required = false) java.util.UUID id,
+                                              @RequestParam(required = false) Long userId,
+                                              @RequestParam(required = false) Boolean active) {
+        return adminReportService.tokens(page, size, id, userId, active);
+    }
+
     @GetMapping("/sessions")
     public AdminPageDTO<AdminSessionDTO> sessions(@RequestParam(defaultValue = "0") int page,
                                                    @RequestParam(defaultValue = "25") int size,
+                                                   @RequestParam(required = false) java.util.UUID id,
                                                    @RequestParam(required = false) Long userId,
                                                    @RequestParam(required = false) Boolean valid,
                                                    @RequestParam(required = false) String sort,
                                                    @RequestParam(required = false) String direction) {
-        return adminReportService.sessions(page, size, userId, valid, sort, direction);
+        return adminReportService.sessions(page, size, id, userId, valid, sort, direction);
     }
 }

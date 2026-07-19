@@ -78,7 +78,7 @@ class AdminUserServiceTest {
         verify(repository).save(target);
         verify(sessionService).revokeAllSessions(2L);
         verify(auditService).record(eq(1L), eq("UPDATE_USER"), eq("USER"), eq("2"),
-                eq("correct address"), anyString(), eq("SUCCESS"));
+                eq("correct address"), anyString(), eq("SUCCESS"), any());
     }
 
     @Test

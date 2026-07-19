@@ -15,6 +15,7 @@ import java.util.UUID;
 
 public interface SessionRepository extends JpaRepository<UserSession, UUID> {
     Optional<UserSession> findByToken(TokenEntity token);
+    List<UserSession> findByTokenIdIn(List<UUID> tokenIds);
     List<UserSession> findAllByUserId(Long userId);
     boolean existsByUserIdAndLastSeenAtAfter(Long userId, Instant lastSeenAt);
     long countByLastSeenAtAfter(Instant lastSeenAt);
@@ -28,17 +29,19 @@ public interface SessionRepository extends JpaRepository<UserSession, UUID> {
 
     @Query(value = """
             select s from UserSession s
-            where (:userId is null or s.userId = :userId)
+            where (:id is null or s.id = :id)
+              and (:userId is null or s.userId = :userId)
               and (:valid is null
                     or (:valid = true and s.token.active = true and s.token.expiresAt > :now)
                     or (:valid = false and (s.token.active = false or s.token.expiresAt <= :now)))
             """, countQuery = """
             select count(s) from UserSession s
-            where (:userId is null or s.userId = :userId)
+            where (:id is null or s.id = :id)
+              and (:userId is null or s.userId = :userId)
               and (:valid is null
                     or (:valid = true and s.token.active = true and s.token.expiresAt > :now)
                     or (:valid = false and (s.token.active = false or s.token.expiresAt <= :now)))
             """)
-    Page<UserSession> findAdminReport(@Param("userId") Long userId, @Param("valid") Boolean valid,
+    Page<UserSession> findAdminReport(@Param("id") UUID id, @Param("userId") Long userId, @Param("valid") Boolean valid,
                                       @Param("now") Instant now, Pageable pageable);
 }

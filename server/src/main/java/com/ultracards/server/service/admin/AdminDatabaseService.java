@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +41,7 @@ public class AdminDatabaseService {
     public NotificationDTO patchNotification(UserEntity actor, UUID id, AdminNotificationPatchDTO patch) {
         requireReason(patch.reason());
         var notification = notificationRepository.findById(id).orElseThrow(() -> notFound("Notification not found"));
+        var before = notificationState(notification);
         if (patch.message() != null) {
             var message = patch.message().trim();
             if (message.isBlank() || message.length() > 512) throw badRequest("Message must contain 1 to 512 characters");
@@ -50,16 +52,27 @@ public class AdminDatabaseService {
             else notification.markUnread();
         }
         notificationRepository.save(notification);
-        auditService.record(actor.getId(), "UPDATE_NOTIFICATION", "NOTIFICATION", id.toString(), patch.reason(), "updated notification fields", "SUCCESS");
+        auditService.record(actor.getId(), "UPDATE_NOTIFICATION", "NOTIFICATION", id.toString(), patch.reason(), "updated notification fields", "SUCCESS", before);
         return notification.toDto();
     }
 
     @Transactional
     public void deleteNotification(UserEntity actor, UUID id, String reason) {
         requireReason(reason);
-        if (!notificationRepository.existsById(id)) throw notFound("Notification not found");
-        notificationRepository.deleteById(id);
-        auditService.record(actor.getId(), "DELETE_NOTIFICATION", "NOTIFICATION", id.toString(), reason, "deleted notification", "SUCCESS");
+        var notification = notificationRepository.findById(id).orElseThrow(() -> notFound("Notification not found"));
+        var before = notificationState(notification);
+        notificationRepository.delete(notification);
+        auditService.record(actor.getId(), "DELETE_NOTIFICATION", "NOTIFICATION", id.toString(), reason, "deleted notification", "SUCCESS", before);
+    }
+
+    private HashMap<String, Object> notificationState(com.ultracards.server.entity.notifications.NotificationEntity n) {
+        var state = new HashMap<String, Object>();
+        state.put("id", n.getId()); state.put("recipientId", n.getRecipient().getId());
+        state.put("senderId", n.getSender() == null ? null : n.getSender().getId());
+        state.put("type", n.getType().name()); state.put("message", n.getMessage());
+        state.put("lobbyId", n.getLobbyId()); state.put("friendRequestId", n.getFriendRequestId());
+        state.put("read", n.isRead()); state.put("createdAt", n.getCreatedAt()); state.put("readAt", n.getReadAt());
+        return state;
     }
 
     private void requireReason(String reason) {
