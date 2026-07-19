@@ -36,4 +36,15 @@ public class AdminGameAvailabilityController {
                 patch.reason(), result.enabled() ? "enabled" : "disabled", "SUCCESS");
         return result;
     }
+
+    @DeleteMapping("/{game}")
+    public AdminGameAvailabilityDTO reset(@AuthenticationPrincipal UserEntity actor, @PathVariable String game,
+                                          @RequestParam(required = false) String mode, @RequestParam String reason) {
+        if (reason.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A nonblank reason is required");
+        var result = gameAvailabilityService.reset(game, mode);
+        var target = result.mode() == null ? result.game() : result.game() + ":" + result.mode();
+        auditService.record(actor.getId(), "RESET_GAME_AVAILABILITY", "GAME", target, reason,
+                "removed explicit availability setting", "SUCCESS");
+        return result;
+    }
 }

@@ -46,7 +46,7 @@ class AdminGameRecordServiceTest {
         verify(game).rename("New name");
         verify(repository).save(game);
         verify(auditService).record(eq(1L), eq("UPDATE_GAME_RECORD"), eq("RECORDED_GAME"),
-                eq(id.toString()), eq("fix display"), anyString(), eq("SUCCESS"));
+                eq(id.toString()), eq("fix display"), anyString(), eq("SUCCESS"), any());
     }
 
     private RecordedGame game(UUID id, String name) {

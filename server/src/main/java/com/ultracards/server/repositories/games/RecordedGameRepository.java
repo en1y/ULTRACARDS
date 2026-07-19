@@ -28,6 +28,9 @@ public interface RecordedGameRepository extends JpaRepository<RecordedGame, UUID
               and (:completed is null
                     or (:completed = true and g.endedAt is not null)
                     or (:completed = false and g.endedAt is null))
+              and (:mode is null
+                    or (type(g) = RecordedBriskulaGame and treat(g as RecordedBriskulaGame).gameConfig = :mode)
+                    or (type(g) = RecordedTresetaGame and treat(g as RecordedTresetaGame).gameConfig = :mode))
             """, countQuery = """
             select count(g) from RecordedGame g
             where (:gameType is null
@@ -36,8 +39,12 @@ public interface RecordedGameRepository extends JpaRepository<RecordedGame, UUID
               and (:completed is null
                     or (:completed = true and g.endedAt is not null)
                     or (:completed = false and g.endedAt is null))
+              and (:mode is null
+                    or (type(g) = RecordedBriskulaGame and treat(g as RecordedBriskulaGame).gameConfig = :mode)
+                    or (type(g) = RecordedTresetaGame and treat(g as RecordedTresetaGame).gameConfig = :mode))
             """)
     Page<RecordedGame> findAdminReport(@Param("gameType") String gameType,
                                        @Param("completed") Boolean completed,
+                                       @Param("mode") String mode,
                                        Pageable pageable);
 }

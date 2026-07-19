@@ -12,6 +12,8 @@ public record AdminAuditEventDTO(
         String reason,
         String summary,
         String outcome,
-        Instant occurredAt
+        Instant occurredAt,
+        boolean undoable,
+        boolean undone
 ) {
 }

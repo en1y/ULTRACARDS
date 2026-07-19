@@ -14,6 +14,7 @@ public record AdminSessionDTO(
         Instant lastSeenAt,
         Instant lastAuthenticatedAt,
         Instant tokenExpiresAt,
-        boolean active
+        boolean active,
+        UUID tokenId
 ) {
 }

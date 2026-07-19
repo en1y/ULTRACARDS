@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +52,7 @@ public class AdminUserService {
     public AdminUserSummaryDTO patch(UserEntity actor, Long id, AdminUserPatchDTO patch) {
         requireReason(patch.reason());
         var user = lock(id);
+        var before = userState(user);
         var nextUsername = patch.username() == null ? user.getUsername() : validateUsername(patch.username());
         var nextEmail = patch.email() == null ? user.getEmail() : validateEmail(user, patch.email());
         var nextEnabled = patch.enabled() == null ? user.isEnabled() : patch.enabled();
@@ -74,7 +77,7 @@ public class AdminUserService {
         userRepository.save(user);
         if (emailChanged || disabled) sessionService.revokeAllSessions(user.getId());
         auditService.record(actor.getId(), "UPDATE_USER", "USER", id.toString(), patch.reason(),
-                "updated allowlisted user fields", "SUCCESS");
+                "updated allowlisted user fields", "SUCCESS", emailChanged || disabled ? null : before);
         return toDto(user);
     }
 
@@ -86,7 +89,8 @@ public class AdminUserService {
         var changed = user.addRole(role);
         userRepository.save(user);
         auditService.record(actor.getId(), "GRANT_ROLE", "USER", id.toString(), reason,
-                role.name() + (changed ? " granted" : " already present"), "SUCCESS");
+                role.name() + (changed ? " granted" : " already present"), "SUCCESS",
+                Map.of("role", role.name(), "wasPresent", !changed));
         return toDto(user);
     }
 
@@ -99,7 +103,8 @@ public class AdminUserService {
         var changed = user.removeRole(role);
         userRepository.save(user);
         auditService.record(actor.getId(), "REVOKE_ROLE", "USER", id.toString(), reason,
-                role.name() + (changed ? " revoked" : " was absent"), "SUCCESS");
+                role.name() + (changed ? " revoked" : " was absent"), "SUCCESS",
+                Map.of("role", role.name(), "wasPresent", changed));
         return toDto(user);
     }
 
@@ -124,6 +129,14 @@ public class AdminUserService {
 
     private UserEntity find(Long id) {
         return userRepository.findById(id).orElseThrow(() -> notFound("User not found"));
+    }
+
+    private HashMap<String, Object> userState(UserEntity before) {
+        var state = new HashMap<String, Object>();
+        state.put("email", before.getEmail()); state.put("username", before.getUsername());
+        state.put("enabled", before.isEnabled()); state.put("status", before.getStatus().name());
+        state.put("roles", before.getRoles().stream().map(Enum::name).toList());
+        return state;
     }
 
     private UserEntity lock(Long id) {

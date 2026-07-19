@@ -1,6 +1,9 @@
 package com.ultracards.config;
 
+import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.enums.UserRole;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
@@ -22,5 +25,12 @@ public class I18nModelAdvice {
     @ModelAttribute("lang")
     public String lang() {
         return I18nConfig.supportedLanguage(LocaleContextHolder.getLocale());
+    }
+
+    @ModelAttribute("isAdmin")
+    public boolean isAdmin() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        var principal = authentication == null ? null : authentication.getPrincipal();
+        return principal instanceof UserEntity user && user.hasRole(UserRole.ADMIN);
     }
 }

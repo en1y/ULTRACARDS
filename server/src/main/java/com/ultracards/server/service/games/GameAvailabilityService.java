@@ -51,6 +51,14 @@ public class GameAvailabilityService {
         return new AdminGameAvailabilityDTO(game.name(), ALL_MODES.equals(mode) ? null : mode, enabled);
     }
 
+    @Transactional
+    public AdminGameAvailabilityDTO reset(String gameValue, String modeValue) {
+        var game = game(gameValue);
+        var mode = mode(game, modeValue);
+        repository.findByGameTypeAndMode(game, mode).ifPresent(repository::delete);
+        return new AdminGameAvailabilityDTO(game.name(), ALL_MODES.equals(mode) ? null : mode, true);
+    }
+
     @Transactional(readOnly = true)
     public void requireEnabled(GameTypeDTO gameType, GameConfigDTO config) {
         var game = GameType.fromDTO(gameType);

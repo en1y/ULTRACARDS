@@ -31,11 +31,18 @@ public class AdminAuditEvent {
     private String summary;
     @Column(nullable = false, length = 32)
     private String outcome;
+    @Column(name = "undo_payload", columnDefinition = "TEXT")
+    private String undoPayload;
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
     public AdminAuditEvent(Long actorUserId, String action, String targetType, String targetId,
                            String reason, String summary, String outcome) {
+        this(actorUserId, action, targetType, targetId, reason, summary, outcome, null);
+    }
+
+    public AdminAuditEvent(Long actorUserId, String action, String targetType, String targetId,
+                           String reason, String summary, String outcome, String undoPayload) {
         this.id = UUID.randomUUID();
         this.actorUserId = actorUserId;
         this.action = action;
@@ -44,6 +51,7 @@ public class AdminAuditEvent {
         this.reason = reason;
         this.summary = summary;
         this.outcome = outcome;
+        this.undoPayload = undoPayload;
         this.occurredAt = Instant.now();
     }
 }

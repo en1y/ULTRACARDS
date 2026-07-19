@@ -26,4 +26,9 @@ public class AdminGameRecordController {
                                       @RequestBody AdminRecordedGamePatchDTO patch) {
         return adminGameRecordService.patch(actor, id, patch);
     }
+
+    @DeleteMapping("/{id}")
+    public void delete(@AuthenticationPrincipal UserEntity actor, @PathVariable UUID id, @RequestParam String reason) {
+        adminGameRecordService.delete(actor, id, reason);
+    }
 }
