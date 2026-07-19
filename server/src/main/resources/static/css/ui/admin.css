@@ -16,7 +16,7 @@
 .admin-breakdowns { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .75rem; margin-top: .75rem; }
 .admin-breakdown { padding: .85rem 1rem; }
 .admin-breakdown h3 { margin: 0 0 .55rem; font-size: .85rem; color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-.admin-tabs { display: flex; gap: .5rem; overflow-x: auto; margin: 1.25rem 0; padding-bottom: .2rem; }
+.admin-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.25rem 0; }
 .admin-tabs a { display: inline-flex; align-items: center; gap: .45rem; flex: 0 0 auto; min-height: 2.75rem; padding: .55rem .85rem; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-bg); color: var(--color-text); white-space: nowrap; text-decoration: none; }
 .admin-tabs .uc-icon { width: 1.05rem; height: 1.05rem; }
 .admin-tabs a.is-active { border-color: var(--color-accent); background: color-mix(in oklab, var(--color-accent) 14%, var(--color-bg)); }
@@ -38,6 +38,12 @@
 .admin-actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: end; }
 .admin-actions .btn { min-height: 2.5rem; }
 .admin-actions a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+.admin-availability-group { border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); overflow: hidden; }
+.admin-availability-group summary { display: flex; align-items: center; gap: .6rem; padding: .85rem; cursor: pointer; }
+.admin-availability-group summary span { color: var(--color-text-muted); font-size: .85rem; }
+.admin-availability-group summary::marker { color: var(--color-accent); }
+.admin-availability-modes { display: grid; gap: .55rem; padding: 0 .7rem .7rem; }
+.admin-availability-modes .admin-row { background: var(--color-bg); }
 .admin-empty { margin: 0; padding: 1rem; color: var(--color-text-muted); text-align: center; }
 .admin-pagination { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding-top: .6rem; color: var(--color-text-muted); }
 .admin-page-buttons { display: flex; gap: .35rem; }
