@@ -27,6 +27,18 @@ public class AdminService {
 
     public AdminStatusDTO status() { return get("/system/status", AdminStatusDTO.class); }
     public AdminOverviewDTO overview() { return get("/reports/overview", AdminOverviewDTO.class); }
+    public AdminDatabaseOverviewDTO database() { return get("/reports/database", AdminDatabaseOverviewDTO.class); }
+    public AdminDashboardDTO dashboard() {
+        var overview = overview();
+        var status = status();
+        AdminDatabaseOverviewDTO database;
+        try {
+            database = database();
+        } catch (RuntimeException ignored) {
+            database = null;
+        }
+        return new AdminDashboardDTO(overview, status, database);
+    }
     public AdminUserSummaryDTO user(Long id) { return get("/users/" + id, AdminUserSummaryDTO.class); }
     public AdminStatsDTO stats(Long id) { return get("/stats/users/" + id, AdminStatsDTO.class); }
     public AdminRecordedGameDTO game(UUID id) { return get("/game-records/" + id, AdminRecordedGameDTO.class); }
@@ -39,29 +51,33 @@ public class AdminService {
     public AdminPageDTO<AdminRecordedGameDTO> games(int page, int size) {
         return get("/reports/games?page=" + page + "&size=" + size, new ParameterizedTypeReference<>() {});
     }
-    public AdminPageDTO<AdminUserSummaryDTO> reportUsers(int page, int size, String status, String role,
-                                                         String sort, String direction) {
+    public AdminPageDTO<AdminUserSummaryDTO> reportUsers(int page, int size, String query, Boolean exact,
+                                                         String status, String role, String sort, String direction) {
         return get("/reports/users?page=" + page + "&size=" + size + query("status", status)
-                + query("role", role) + query("sort", sort) + query("direction", direction),
+                + query("role", role) + query("sort", sort) + query("direction", direction)
+                + query("query", query) + query("exact", exact),
                 new ParameterizedTypeReference<>() {});
     }
     public AdminPageDTO<AdminRecordedGameDTO> games(int page, int size, String gameType, Boolean completed,
-                                                    String sort, String direction) {
+                                                    String mode, String query, String sort, String direction) {
         return get("/reports/games?page=" + page + "&size=" + size + query("gameType", gameType)
-                + query("completed", completed) + query("sort", sort) + query("direction", direction),
+                + query("completed", completed) + query("mode", mode) + query("query", query)
+                + query("sort", sort) + query("direction", direction),
                 new ParameterizedTypeReference<>() {});
     }
     public AdminPageDTO<AdminSessionDTO> sessions(int page, int size) {
         return get("/reports/sessions?page=" + page + "&size=" + size, new ParameterizedTypeReference<>() {});
     }
-    public AdminPageDTO<AdminSessionDTO> sessions(int page, int size, Long userId, Boolean valid,
-                                                  String sort, String direction) {
+    public AdminPageDTO<AdminSessionDTO> sessions(int page, int size, UUID id, Long userId, Boolean valid,
+                                                  String query, String sort, String direction) {
         return get("/reports/sessions?page=" + page + "&size=" + size + query("userId", userId)
-                + query("valid", valid) + query("sort", sort) + query("direction", direction),
+                + query("id", id) + query("valid", valid) + query("query", query)
+                + query("sort", sort) + query("direction", direction),
                 new ParameterizedTypeReference<>() {});
     }
-    public AdminPageDTO<AdminAuditEventDTO> audit(int page, int size) {
-        return get("/audit?page=" + page + "&size=" + size, new ParameterizedTypeReference<>() {});
+    public AdminPageDTO<AdminAuditEventDTO> audit(int page, int size, String targetType, String targetId) {
+        return get("/audit?page=" + page + "&size=" + size + query("targetType", targetType)
+                + query("targetId", targetId), new ParameterizedTypeReference<>() {});
     }
     public List<AdminLobbyDTO> lobbies() {
         return get("/lobbies", new ParameterizedTypeReference<>() {});
@@ -98,9 +114,16 @@ public class AdminService {
     public AdminGameAvailabilityDTO patchGameAvailability(String game, AdminGameAvailabilityPatchDTO patch) {
         return exchange("/games/" + encode(game), HttpMethod.PATCH, patch, AdminGameAvailabilityDTO.class);
     }
+    public AdminGameAvailabilityDTO resetGameAvailability(String game, String mode, String reason) {
+        return exchange("/games/" + encode(game) + "?reason=" + encode(reason) + query("mode", mode),
+                HttpMethod.DELETE, null, AdminGameAvailabilityDTO.class);
+    }
 
     public AdminRecordedGameDTO patchGame(UUID id, AdminRecordedGamePatchDTO patch) {
         return exchange("/game-records/" + id, HttpMethod.PATCH, patch, AdminRecordedGameDTO.class);
+    }
+    public void deleteGame(UUID id, String reason) {
+        exchange("/game-records/" + id + "?reason=" + encode(reason), HttpMethod.DELETE, null, Void.class);
     }
     public AdminStatsDiffDTO patchStats(Long userId, String gameType, String mode, AdminStatsPatchDTO patch) {
         return exchange("/stats/users/" + userId + "/" + encode(gameType) + "/" + encode(mode), HttpMethod.PATCH, patch, AdminStatsDiffDTO.class);
@@ -116,6 +139,32 @@ public class AdminService {
     }
     public List<NotificationDTO> notifyAll(AdminNotificationRequestDTO request) {
         return exchange("/notifications/all", HttpMethod.POST, request, new ParameterizedTypeReference<>() {});
+    }
+
+    public AdminPageDTO<AdminTokenDTO> tokens(int page, int size, UUID id, Long userId, Boolean active) {
+        return get("/reports/tokens?page=" + page + "&size=" + size + query("id", id)
+                + query("userId", userId) + query("active", active), new ParameterizedTypeReference<>() {});
+    }
+    public AdminPageDTO<NotificationDTO> notifications(int page, int size, Long userId, String type,
+                                                        Boolean read, String query) {
+        return get("/database/notifications?page=" + page + "&size=" + size + query("userId", userId)
+                + query("type", type) + query("read", read) + query("query", query),
+                new ParameterizedTypeReference<>() {});
+    }
+    public NotificationDTO patchNotification(UUID id, AdminNotificationPatchDTO patch) {
+        return exchange("/database/notifications/" + id, HttpMethod.PATCH, patch, NotificationDTO.class);
+    }
+    public void deleteNotification(UUID id, String reason) {
+        exchange("/database/notifications/" + id + "?reason=" + encode(reason), HttpMethod.DELETE, null, Void.class);
+    }
+    public void expireSession(UUID id, String reason) {
+        exchange("/sessions/" + id + "/expire?reason=" + encode(reason), HttpMethod.POST, null, Void.class);
+    }
+    public void deleteSession(UUID id, String reason) {
+        exchange("/sessions/" + id + "?reason=" + encode(reason), HttpMethod.DELETE, null, Void.class);
+    }
+    public void undoAudit(UUID id, String reason) {
+        exchange("/audit/" + id + "/undo?reason=" + encode(reason), HttpMethod.POST, null, Void.class);
     }
 
     private <T> T get(String path, Class<T> type) { return exchange(path, HttpMethod.GET, null, type); }
