@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.admin.AdminNotificationPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminPageDTO;
 import com.ultracards.gateway.dto.notifications.NotificationDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.enums.NotificationType;
 import com.ultracards.server.repositories.notifications.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -29,10 +30,23 @@ public class AdminDatabaseService {
 
     @Transactional(readOnly = true)
     public AdminPageDTO<NotificationDTO> notifications(int page, int size, Long recipientId) {
+        return notifications(page, size, recipientId, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<NotificationDTO> notifications(int page, int size, Long recipientId, String typeValue,
+                                                       Boolean read, String query) {
+        NotificationType type = null;
+        if (typeValue != null && !typeValue.isBlank()) {
+            try {
+                type = NotificationType.valueOf(typeValue.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw badRequest("Unknown notification type: " + typeValue);
+            }
+        }
+        var pattern = query == null || query.isBlank() ? null : "%" + query.trim().toLowerCase() + "%";
         var pageRequest = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(100, size)), Sort.unsorted());
-        var result = recipientId == null
-                ? notificationRepository.findAllByOrderByCreatedAtDesc(pageRequest)
-                : notificationRepository.findByRecipientIdOrderByCreatedAtDesc(recipientId, pageRequest);
+        var result = notificationRepository.findAdminReport(recipientId, type, read, pattern, pageRequest);
         return new AdminPageDTO<>(result.getContent().stream().map(notification -> notification.toDto()).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }

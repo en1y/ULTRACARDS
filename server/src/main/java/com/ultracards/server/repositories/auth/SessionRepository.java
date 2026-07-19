@@ -34,6 +34,11 @@ public interface SessionRepository extends JpaRepository<UserSession, UUID> {
               and (:valid is null
                     or (:valid = true and s.token.active = true and s.token.expiresAt > :now)
                     or (:valid = false and (s.token.active = false or s.token.expiresAt <= :now)))
+              and (:query is null
+                    or lower(coalesce(s.clientType, '')) like :query
+                    or lower(coalesce(s.os, '')) like :query
+                    or lower(coalesce(s.country, '')) like :query
+                    or lower(coalesce(s.region, '')) like :query)
             """, countQuery = """
             select count(s) from UserSession s
             where (:id is null or s.id = :id)
@@ -41,7 +46,12 @@ public interface SessionRepository extends JpaRepository<UserSession, UUID> {
               and (:valid is null
                     or (:valid = true and s.token.active = true and s.token.expiresAt > :now)
                     or (:valid = false and (s.token.active = false or s.token.expiresAt <= :now)))
+              and (:query is null
+                    or lower(coalesce(s.clientType, '')) like :query
+                    or lower(coalesce(s.os, '')) like :query
+                    or lower(coalesce(s.country, '')) like :query
+                    or lower(coalesce(s.region, '')) like :query)
             """)
     Page<UserSession> findAdminReport(@Param("id") UUID id, @Param("userId") Long userId, @Param("valid") Boolean valid,
-                                      @Param("now") Instant now, Pageable pageable);
+                                      @Param("query") String query, @Param("now") Instant now, Pageable pageable);
 }

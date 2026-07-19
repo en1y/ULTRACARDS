@@ -70,7 +70,9 @@ public class AdminReportService {
         incomplete.put("BRISKULA", briskulaGameRepository.countByEndedAtIsNull());
         incomplete.put("TRESETA", tresetaGameRepository.countByEndedAtIsNull());
         return new AdminOverviewDTO(users.size(), status, roles, sessionRepository.countValid(now),
-                sessionRepository.countOnlineUsers(now.minusSeconds(onlineTimeoutSeconds)), completed, incomplete,
+                sessionRepository.countOnlineUsers(now.minusSeconds(onlineTimeoutSeconds)),
+                sessionRepository.countOnlineUsers(now.truncatedTo(java.time.temporal.ChronoUnit.DAYS)),
+                completed, incomplete,
                 lobbyManager.getLobbies().size(), gameManager.getGames().size(), flywayVersion(), now);
     }
 
@@ -130,10 +132,16 @@ public class AdminReportService {
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminRecordedGameDTO> games(int page, int size, String gameTypeValue, Boolean completed,
                                                     String modeValue, String sortValue, String directionValue) {
+        return games(page, size, gameTypeValue, completed, modeValue, null, sortValue, directionValue);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminRecordedGameDTO> games(int page, int size, String gameTypeValue, Boolean completed,
+                                                    String modeValue, String nameValue, String sortValue, String directionValue) {
         var gameType = optionalChoice(gameTypeValue, "game type", "BRISKULA", "TRESETA");
         var mode = optionalChoice(modeValue, "game mode", "TWO_PLAYERS", "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH",
                 "THREE_PLAYERS", "FOUR_PLAYERS_NO_TEAMS", "FOUR_PLAYERS_WITH_TEAMS");
-        var result = recordedGameRepository.findAdminReport(gameType, completed, mode,
+        var result = recordedGameRepository.findAdminReport(gameType, completed, mode, containsPattern(nameValue),
                 page(page, size, sort(sortValue, "createdAt", "createdAt", "endedAt", "name", "id"), directionValue));
         return new AdminPageDTO<>(result.getContent().stream().map(adminGameRecordService::toDto).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
@@ -153,11 +161,21 @@ public class AdminReportService {
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminSessionDTO> sessions(int page, int size, UUID id, Long userId, Boolean valid,
                                                   String sortValue, String directionValue) {
+        return sessions(page, size, id, userId, valid, null, sortValue, directionValue);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminSessionDTO> sessions(int page, int size, UUID id, Long userId, Boolean valid,
+                                                  String queryValue, String sortValue, String directionValue) {
         var now = Instant.now();
-        var result = sessionRepository.findAdminReport(id, userId, valid, now,
+        var result = sessionRepository.findAdminReport(id, userId, valid, containsPattern(queryValue), now,
                 page(page, size, sort(sortValue, "lastSeenAt", "lastSeenAt", "firstSeenAt", "lastAuthenticatedAt", "userId", "id"), directionValue));
         return new AdminPageDTO<>(result.getContent().stream().map(session -> toDto(session, now)).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    static String containsPattern(String value) {
+        return value == null || value.isBlank() ? null : "%" + value.trim().toLowerCase() + "%";
     }
 
     String flywayVersion() {

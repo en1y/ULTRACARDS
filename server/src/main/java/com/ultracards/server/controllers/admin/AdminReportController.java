@@ -37,9 +37,10 @@ public class AdminReportController {
                                                      @RequestParam(required = false) String gameType,
                                                      @RequestParam(required = false) Boolean completed,
                                                      @RequestParam(required = false) String mode,
+                                                     @RequestParam(required = false) String query,
                                                      @RequestParam(required = false) String sort,
                                                      @RequestParam(required = false) String direction) {
-        return adminReportService.games(page, size, gameType, completed, mode, sort, direction);
+        return adminReportService.games(page, size, gameType, completed, mode, query, sort, direction);
     }
 
     @GetMapping("/tokens")
@@ -57,8 +58,9 @@ public class AdminReportController {
                                                    @RequestParam(required = false) java.util.UUID id,
                                                    @RequestParam(required = false) Long userId,
                                                    @RequestParam(required = false) Boolean valid,
+                                                   @RequestParam(required = false) String query,
                                                    @RequestParam(required = false) String sort,
                                                    @RequestParam(required = false) String direction) {
-        return adminReportService.sessions(page, size, id, userId, valid, sort, direction);
+        return adminReportService.sessions(page, size, id, userId, valid, query, sort, direction);
     }
 }
