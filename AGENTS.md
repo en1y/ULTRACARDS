@@ -22,6 +22,14 @@ ULTRACARDS is a Java 25 multi-module Maven project. The root `pom.xml` aggregate
 
 Use Java 25, UTF-8, and 4-space indentation. Keep packages under `com.ultracards` for application code and under `en1y.ultracards` for Maven coordinates. Name classes in `PascalCase`, methods and fields in `camelCase`, constants in `UPPER_SNAKE_CASE`, and SQL migrations as `V<N>__short_description.sql`. Prefer `var` for local variables when the inferred type remains clear, and avoid lambdas or stream pipelines in favor of simple loops. Prefer existing Spring, DTO, template, and Lombok patterns before adding new abstractions.
 
+## Date and Time Conventions
+
+Treat Monday as the first day of the week and use 24-hour time formatting throughout the application and user-facing UI.
+
+## Frontend UI Verification
+
+When updating frontend UI, test the resulting UX on both mobile and PC/desktop layouts before submitting the change.
+
 ## Testing Guidelines
 
 The server module includes JUnit 5, Mockito, Spring Boot Test, and Spring Security Test. Add tests under the matching module's `src/test/java` tree and name them `*Test.java` for unit tests or `*IT.java` for integration tests. Cover game rules, DTO validation, service behavior, controller security paths, and Flyway-affecting database changes. Run `mvn test` before submitting changes.
