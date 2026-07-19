@@ -154,10 +154,16 @@
             if (field.maxLength != null) input.maxLength = field.maxLength;
             input.required = Boolean(field.required); label.append(input); return label;
         }));
-        const finish = result => { form.removeEventListener("submit", submit); dialog.removeEventListener("close", close); resolve(result); };
+        const finish = result => { form.removeEventListener("submit", submit); form.removeEventListener("keydown", submitOnEnter); dialog.removeEventListener("close", close); resolve(result); };
         const submit = event => { const values = formValues(form); finish(event.submitter?.value === "confirm" ? values : null); };
+        const submitOnEnter = event => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement) || event.key !== "Enter" || event.shiftKey || target.matches("textarea")) return;
+            event.preventDefault();
+            if (form.reportValidity()) confirmButton.click();
+        };
         const close = () => finish(null);
-        form.addEventListener("submit", submit); dialog.addEventListener("close", close, { once: true }); dialog.showModal();
+        form.addEventListener("submit", submit); form.addEventListener("keydown", submitOnEnter); dialog.addEventListener("close", close, { once: true }); dialog.showModal();
     });
     const confirmAction = (title, description, danger = false) => askAction({ title, description, confirmLabel: danger ? tr("admin.common.confirmChange", "Confirm change") : tr("admin.common.continue", "Continue"), danger });
     const reasonField = () => ({ name: "reason", label: tr("admin.common.reason", "Reason"), required: true, maxLength: 250 });
@@ -271,7 +277,7 @@
         const headRow = element("div", null, "admin-row-head");
         headRow.append(element("h3", `${user.username} · #${user.id}`));
         const chips = element("div", null, "admin-chips");
-        chips.append(chip(user.status, statusClass(user.status)), ...[...user.roles].filter(role => role !== "USER").map(role => chip(role)));
+        chips.append(chip(user.status, statusClass(user.status)), ...[...user.roles].filter(role => role !== "USER").map(role => chip(role)), ...(user.fakeAdmin ? [chip(tr("admin.user.fakeAdmin", "Fake admin"), "is-warn")] : []));
         headRow.append(chips);
         details.append(headRow);
         details.append(element("p", `${user.email} · ${tr("admin.common.created", "Created")} ${formatTime(user.createdAt)} · ${tr("admin.col.lastLogin", "Last login")} ${formatTime(user.lastLoginAt)}`, "admin-meta"));
@@ -324,10 +330,10 @@
         const identity = element("div");
         identity.append(element("h2", user.username));
         const chips = element("div", null, "admin-chips");
-        chips.append(chip(user.status, statusClass(user.status)), ...[...user.roles].map(role => chip(role)));
+        chips.append(chip(user.status, statusClass(user.status)), ...[...user.roles].map(role => chip(role)), ...(user.fakeAdmin ? [chip(tr("admin.user.fakeAdmin", "Fake admin"), "is-warn")] : []));
         identity.append(chips, element("p", `#${user.id} · ${user.email}`, "admin-meta"));
         const actions = element("div", null, "admin-actions");
-        actions.append(button(tr("admin.user.editAccount", "Edit account"), "edit-user", String(user.id), true), button(tr("admin.user.revokeSessions", "Revoke sessions"), "revoke-user-sessions", String(user.id)),
+        actions.append(button(tr("admin.user.editAccount", "Edit account"), "edit-user", String(user.id), true), button(user.fakeAdmin ? tr("admin.user.removeFakeAdmin", "Remove fake admin") : tr("admin.user.makeFakeAdmin", "Make fake admin"), "toggle-fake-admin", String(user.id)), button(tr("admin.user.revokeSessions", "Revoke sessions"), "revoke-user-sessions", String(user.id)),
             link(`/admin/stats?userId=${user.id}`, tr("admin.user.editStats", "Edit stats"), "btn"), link(`/admin/notifications?userId=${user.id}`, tr("admin.user.sendNotification", "Send notification"), "btn"));
         head.append(identity, actions);
         detail.append(head);
@@ -501,8 +507,8 @@
             ],
             load: async currentPage => {
                 const data = await request(`/reports/users${query({ page: currentPage, size: 20, sort: "id", direction: "asc", ...state.dbFilters })}`);
-                return { data, table: table(["ID", tr("admin.users.username", "Username"), tr("admin.users.email", "Email"), tr("admin.users.status", "Status"), tr("admin.col.roles", "Roles"), tr("admin.common.created", "Created"), tr("admin.col.lastLogin", "Last login")], data.items.map(user => [
-                    userLink(user.id, `#${user.id}`), userLink(user.id, user.username), user.email, chip(user.status, statusClass(user.status)), [...user.roles].join(", "), formatTime(user.createdAt), formatTime(user.lastLoginAt)
+                return { data, table: table(["ID", tr("admin.users.username", "Username"), tr("admin.users.email", "Email"), tr("admin.users.status", "Status"), tr("admin.col.roles", "Roles"), tr("admin.user.fakeAdmin", "Fake admin"), tr("admin.common.created", "Created"), tr("admin.col.lastLogin", "Last login")], data.items.map(user => [
+                    userLink(user.id, `#${user.id}`), userLink(user.id, user.username), user.email, chip(user.status, statusClass(user.status)), [...user.roles].join(", "), user.fakeAdmin ? chip(tr("admin.user.fakeAdmin", "Fake admin"), "is-warn") : "—", formatTime(user.createdAt), formatTime(user.lastLoginAt)
                 ]), true) };
             }
         },
@@ -754,6 +760,14 @@
         try { const result = await request(`/stats/users/${values.userId}/${encodeURIComponent(values.gameType)}/${encodeURIComponent(values.mode)}`, { method: "PATCH", body: JSON.stringify(body) }); if (result.dryRun) { renderStats(result.after); renderStatsDiff(result.before, result.after); } else await loadStats(values.userId); setStatus(result.warning || (result.dryRun ? "Stats preview is ready; nothing changed." : "Stats updated.")); } catch (error) { setStatus(error.message, true); }
     });
     document.querySelector("#admin-stats-edit")?.elements.gameType.addEventListener("change", populateModes);
+    document.addEventListener("keydown", event => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || event.key !== "Enter" || event.shiftKey || target.matches("textarea")) return;
+        const form = target.closest("#admin-user-form, #admin-lobby-form");
+        if (!form) return;
+        event.preventDefault();
+        form.querySelector('[data-action="save-user"], [data-action="save-lobby"]')?.click();
+    });
     const gamesFilter = document.querySelector('[data-filters="games"]');
     gamesFilter?.elements.gameType.addEventListener("change", () => {
         const available = { BRISKULA: modes.briskula, TRESETA: modes.treseta }[gamesFilter.elements.gameType.value] || [...new Set([...modes.briskula, ...modes.treseta])];
@@ -774,7 +788,7 @@
             if (control.dataset.action === "close-lobby-editor") { document.querySelector("#admin-lobby-editor").close(); return; }
             if (control.dataset.action === "edit-user") {
                 const user = await request(`/users/${control.dataset.value}`); state.currentUser = user;
-                const form = document.querySelector("#admin-user-form"); form.elements.id.value = user.id; form.elements.username.value = user.username; form.elements.email.value = user.email; form.elements.status.value = user.status; form.elements.MODERATOR.checked = user.roles.includes("MODERATOR"); form.elements.ADMIN.checked = user.roles.includes("ADMIN"); form.elements.reason.value = ""; form.elements.dryRun.checked = false;
+                const form = document.querySelector("#admin-user-form"); form.elements.id.value = user.id; form.elements.username.value = user.username; form.elements.email.value = user.email; form.elements.status.value = user.status; form.elements.fakeAdmin.checked = user.fakeAdmin; form.elements.MODERATOR.checked = user.roles.includes("MODERATOR"); form.elements.ADMIN.checked = user.roles.includes("ADMIN"); form.elements.reason.value = ""; form.elements.dryRun.checked = false;
                 document.querySelector("#admin-user-caption").textContent = `${user.username} · #${user.id}`; document.querySelector("#admin-user-editor").showModal(); return;
             }
             if (control.dataset.action === "load-stats") { await loadStats(control.dataset.value); return; }
@@ -783,13 +797,22 @@
                 form.hidden = false; form.elements.gameType.value = target.gameType; populateModes(); form.elements.mode.value = target.mode; form.elements.played.value = target.played; form.elements.wins.value = target.wins; form.elements.lastPlayedAt.value = formDateTime(target.lastPlayedAt); form.elements.reason.value = ""; form.elements.dryRun.checked = true; form.elements.reason.focus(); return;
             }
             if (control.dataset.action === "save-user") {
-                const form = document.querySelector("#admin-user-form"); const values = formValues(form); const user = state.currentUser; const dryRun = values.dryRun === "on"; const changedFields = user.username !== values.username || user.email !== values.email || user.status !== values.status;
+                const form = document.querySelector("#admin-user-form"); const values = formValues(form); const user = state.currentUser; const dryRun = values.dryRun === "on"; const fakeAdmin = values.fakeAdmin === "on"; const changedFields = user.username !== values.username || user.email !== values.email || user.status !== values.status || user.fakeAdmin !== fakeAdmin;
                 if (!values.reason.trim()) throw new Error(tr("admin.common.reasonRequired", "A reason is required."));
                 if (!dryRun && !await confirmAction(tr("admin.user.saveTitle", "Save user"), tr("admin.user.saveCopy", `Save changes for ${user.username}?`, user.username))) return;
-                if (changedFields) await request(`/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ username: values.username, email: values.email, status: values.status, reason: values.reason, dryRun }) });
+                if (changedFields) await request(`/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ username: values.username, email: values.email, status: values.status, fakeAdmin, reason: values.reason, dryRun }) });
                 if (!dryRun) for (const role of ["MODERATOR", "ADMIN"]) { const hasRole = user.roles.includes(role); const wantsRole = values[role] === "on"; if (hasRole !== wantsRole) await request(`/users/${user.id}/roles/${role}${query({ reason: values.reason })}`, { method: wantsRole ? "PUT" : "DELETE" }); }
                 setStatus(dryRun ? "User field preview is ready; role changes were not applied." : tr("admin.user.saved", "User updated."));
                 if (!dryRun) { document.querySelector("#admin-user-editor").close(); await (state.userDetailId ? loadUserDetail(state.userDetailId) : loadUsers()); } return;
+            }
+            if (control.dataset.action === "toggle-fake-admin") {
+                const user = state.currentUser; const fakeAdmin = !user.fakeAdmin;
+                const label = fakeAdmin ? tr("admin.user.makeFakeAdmin", "Make fake admin") : tr("admin.user.removeFakeAdmin", "Remove fake admin");
+                const values = await askAction({ title: label, description: tr("admin.user.fakeAdminCopy", "Show or hide this user's inert Admin button.", user.username), confirmLabel: label, fields: [reasonField()] });
+                if (!values) return;
+                await request(`/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ fakeAdmin, reason: values.reason, dryRun: false }) });
+                setStatus(fakeAdmin ? tr("admin.user.fakeAdminEnabled", "Fake admin enabled.") : tr("admin.user.fakeAdminDisabled", "Fake admin removed."));
+                await loadUserDetail(user.id); return;
             }
             if (control.dataset.action === "revoke-user-sessions") {
                 const values = await askAction({ title: tr("admin.user.revokeSessions", "Revoke sessions"), description: tr("admin.user.revokeCopy", "Sign this user out of every device."), confirmLabel: tr("admin.user.revokeSessions", "Revoke sessions"), danger: true, fields: [reasonField()] });

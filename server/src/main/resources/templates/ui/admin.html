@@ -137,6 +137,7 @@
         <label><span th:text="#{admin.users.username}">Username</span> <input name="username" required maxlength="30"></label>
         <label><span th:text="#{admin.users.email}">Email</span> <input name="email" required type="email" maxlength="150"></label>
         <label><span th:text="#{admin.users.status}">Status</span> <select name="status"><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
+        <label class="admin-check"><input name="fakeAdmin" type="checkbox"> <span th:text="#{admin.user.fakeAdmin}">Fake admin</span></label>
         <fieldset><legend th:text="#{admin.col.roles}">Roles</legend><label class="admin-check"><input name="MODERATOR" type="checkbox"> Moderator</label><label class="admin-check"><input name="ADMIN" type="checkbox"> Administrator</label></fieldset>
         <label><span th:text="#{admin.common.reason}">Reason</span> <input name="reason" required maxlength="250"></label>
         <label class="admin-check"><input name="dryRun" type="checkbox"> <span th:text="#{admin.stats.preview}">Preview only</span></label>
