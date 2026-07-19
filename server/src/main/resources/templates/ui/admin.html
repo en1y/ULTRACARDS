@@ -14,96 +14,120 @@
 <div th:replace="~{ui/fragments/header :: header}"></div>
 
 <main class="admin-shell">
-    <header class="admin-heading">
-        <div>
-            <p class="admin-eyebrow" th:text="#{admin.eyebrow}">Operations</p>
-            <h1 th:text="#{admin.title}">Administration</h1>
-            <p th:text="#{admin.description}">Safe, audited controls for the running server.</p>
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar-head">
+                <p class="admin-eyebrow" th:text="#{admin.eyebrow}">Operations</p>
+                <h1 th:text="#{admin.title}">Administration</h1>
+            </div>
+            <nav class="admin-nav" aria-label="Administration sections">
+                <p class="admin-nav-group" th:text="#{admin.nav.general}">General</p>
+                <a th:href="@{/admin}" th:classappend="${adminPage == 'dashboard'} ? 'is-active'" th:attr="aria-current=${adminPage == 'dashboard'} ? 'page'"><img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.overview}">Overview</span></a>
+                <p class="admin-nav-group" th:text="#{admin.nav.people}">People</p>
+                <a th:href="@{/admin/users}" th:classappend="${adminPage == 'users'} ? 'is-active'" th:attr="aria-current=${adminPage == 'users'} ? 'page'"><img class="uc-icon" data-icon="person" th:src="@{/pics/light/person.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.users}">Users</span></a>
+                <a th:href="@{/admin/stats}" th:classappend="${adminPage == 'stats'} ? 'is-active'" th:attr="aria-current=${adminPage == 'stats'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.stats}">Stats</span></a>
+                <a th:href="@{/admin/sessions}" th:classappend="${adminPage == 'sessions'} ? 'is-active'" th:attr="aria-current=${adminPage == 'sessions'} ? 'page'"><img class="uc-icon" data-icon="devices" th:src="@{/pics/light/devices.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.sessions}">Sessions</span></a>
+                <p class="admin-nav-group" th:text="#{admin.nav.live}">Live activity</p>
+                <a th:href="@{/admin/lobbies}" th:classappend="${adminPage == 'lobbies'} ? 'is-active'" th:attr="aria-current=${adminPage == 'lobbies'} ? 'page'"><img class="uc-icon" data-icon="group" th:src="@{/pics/light/group.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.lobbies}">Live lobbies</span></a>
+                <a th:href="@{/admin/games}" th:classappend="${adminPage == 'games'} ? 'is-active'" th:attr="aria-current=${adminPage == 'games'} ? 'page'"><img class="uc-icon" data-icon="casino" th:src="@{/pics/light/casino.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.games}">Games</span></a>
+                <a th:href="@{/admin/availability}" th:classappend="${adminPage == 'availability'} ? 'is-active'" th:attr="aria-current=${adminPage == 'availability'} ? 'page'"><img class="uc-icon" data-icon="toggle_on" th:src="@{/pics/light/toggle_on.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.availability}">Availability</span></a>
+                <p class="admin-nav-group" th:text="#{admin.nav.system}">System</p>
+                <a th:href="@{/admin/database}" th:classappend="${adminPage == 'database'} ? 'is-active'" th:attr="aria-current=${adminPage == 'database'} ? 'page'"><img class="uc-icon" data-icon="database" th:src="@{/pics/light/database.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.database}">Database</span></a>
+                <a th:href="@{/admin/audit}" th:classappend="${adminPage == 'audit'} ? 'is-active'" th:attr="aria-current=${adminPage == 'audit'} ? 'page'"><img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.audit}">Audit</span></a>
+                <a th:href="@{/admin/notifications}" th:classappend="${adminPage == 'notifications'} ? 'is-active'" th:attr="aria-current=${adminPage == 'notifications'} ? 'page'"><img class="uc-icon" data-icon="notifications" th:src="@{/pics/light/notifications.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.notify}">Notify</span></a>
+            </nav>
+            <div class="admin-sidebar-foot">
+                <p class="admin-meta" th:text="#{admin.description}">Safe, audited controls for the running server.</p>
+                <button class="btn btn-accent" type="button" data-action="refresh"><img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true"><span th:text="#{admin.refresh}">Refresh</span></button>
+            </div>
+        </aside>
+
+        <div class="admin-content">
+            <p id="admin-status" class="admin-status" aria-live="polite" th:text="#{admin.loading}">Loading administration data…</p>
+
+            <section class="admin-panel" data-section="dashboard" th:hidden="${adminPage != 'dashboard'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.overview.title}">System overview</h2><p th:text="#{admin.overview.copy}">Live counts and health signals.</p></div></div>
+                <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
+                <section id="admin-overview-breakdown" class="admin-breakdowns" aria-label="Detailed breakdowns"></section>
+            </section>
+
+            <section class="admin-panel" data-section="users" th:hidden="${adminPage != 'users'}">
+                <div id="admin-user-list">
+                    <div class="admin-panel-heading"><div><h2 th:text="#{admin.users.title}">Users</h2><p th:text="#{admin.users.copy}">Search by username, email, or exact numeric ID.</p></div></div>
+                    <form class="admin-filters" data-filters="users">
+                        <label class="admin-search"><span th:text="#{admin.users.search}">Search</span> <input name="query" type="search" placeholder="Username, email, or exact ID" autocomplete="off"></label>
+                        <label><span th:text="#{admin.users.match}">Match</span> <select name="exact"><option value="false" th:text="#{admin.users.contains}">Contains</option><option value="true" th:text="#{admin.users.exact}">Exact username/email</option></select></label>
+                        <label><span th:text="#{admin.users.status}">Status</span> <select name="status"><option value="">All</option><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
+                        <label><span th:text="#{admin.users.role}">Role</span> <select name="role"><option value="">All</option><option>USER</option><option>MODERATOR</option><option>ADMIN</option></select></label>
+                        <label><span th:text="#{admin.users.sort}">Sort</span> <select name="sort"><option value="userCreatedAtOldest" th:text="#{admin.users.oldest}">Oldest</option><option value="userCreatedAt" th:text="#{admin.users.newest}">Newest</option><option value="username" th:text="#{admin.users.username}">Username</option><option value="email" th:text="#{admin.users.email}">Email</option><option value="id" th:text="#{admin.users.id}">ID</option></select></label>
+                        <button class="btn" type="submit" th:text="#{admin.users.searchButton}">Search</button>
+                    </form>
+                    <div class="admin-results" data-results="users"></div>
+                </div>
+                <div id="admin-user-detail" hidden></div>
+            </section>
+
+            <section class="admin-panel" data-section="stats" th:hidden="${adminPage != 'stats'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.stats.title}">User statistics</h2><p th:text="#{admin.stats.copy}">Inspect and correct one user’s stats with an audit reason.</p></div></div>
+                <form class="admin-filters" id="admin-stats-lookup">
+                    <label><span th:text="#{admin.stats.user}">User</span> <input name="userQuery" required placeholder="Username, email, or ID" autocomplete="off"></label>
+                    <button class="btn" type="submit" th:text="#{admin.stats.load}">Load stats</button>
+                </form>
+                <p id="admin-stats-context" class="admin-meta" th:text="#{admin.stats.context}">Load a user to inspect every game mode and add missing stat rows.</p>
+                <div class="admin-stats-layout">
+                    <div class="admin-stats-main">
+                        <div class="admin-results" data-results="stats"></div>
+                        <div id="admin-stats-diff" class="admin-stat-diff" hidden aria-live="polite"></div>
+                    </div>
+                    <aside class="admin-stats-side">
+                        <h3 th:text="#{admin.stats.editorTitle}">Stat editor</h3>
+                        <form id="admin-stats-edit" class="admin-form" hidden>
+                            <input name="userId" type="hidden">
+                            <label>Game <select name="gameType"><option value="briskula">Briskula</option><option value="treseta">Treseta</option></select></label>
+                            <label>Mode <select name="mode" required></select></label>
+                            <label>Played <input name="played" type="number" min="0" inputmode="numeric"></label>
+                            <label>Wins <input name="wins" type="number" min="0" inputmode="numeric"></label>
+                            <label>Last played <input name="lastPlayedAt" type="datetime-local"></label>
+                            <label>Reason <input name="reason" required maxlength="250"></label>
+                            <label class="admin-check"><input name="dryRun" type="checkbox" checked> Preview only</label>
+                            <p class="admin-meta" th:text="#{admin.stats.previewHint}">Use Preview first to see the resulting totals.</p>
+                            <button class="btn btn-accent" type="submit" th:text="#{admin.stats.preview}">Preview stats change</button>
+                            <button class="btn" type="button" data-action="rebuild-stats" th:text="#{admin.stats.rebuild}">Rebuild from game history</button>
+                        </form>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="admin-panel" data-section="lobbies" th:hidden="${adminPage != 'lobbies'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.lobbies.title}">Live lobbies</h2><p th:text="#{admin.lobbies.copy}">Inspect, edit, extend, or safely close current rooms.</p></div></div><div class="admin-results" data-results="lobbies"></div></section>
+            <section class="admin-panel" data-section="games" th:hidden="${adminPage != 'games'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.games.title}">Recorded games</h2><p th:text="#{admin.games.copy}">Browse and filter recorded games.</p></div></div><form class="admin-filters" data-filters="games"><label class="admin-search"><span th:text="#{admin.users.search}">Search</span> <input name="query" type="search" th:placeholder="#{admin.games.namePlaceholder}" placeholder="Game name" autocomplete="off"></label><label><span th:text="#{admin.games.game}">Game</span><select name="gameType"><option value="" th:text="#{admin.common.all}">All</option><option value="BRISKULA">Briskula</option><option value="TRESETA">Treseta</option></select></label><label><span th:text="#{admin.games.mode}">Mode</span> <select name="mode"><option value="" th:text="#{admin.common.all}">All</option><option>TWO_PLAYERS</option><option>TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH</option><option>THREE_PLAYERS</option><option>FOUR_PLAYERS_NO_TEAMS</option><option>FOUR_PLAYERS_WITH_TEAMS</option></select></label><label><span th:text="#{admin.games.state}">State</span> <select name="completed"><option value="" th:text="#{admin.common.all}">All</option><option value="true" th:text="#{admin.games.completed}">Completed</option><option value="false" th:text="#{admin.games.incomplete}">Incomplete</option></select></label><label><span th:text="#{admin.users.sort}">Sort</span> <select name="sort"><option value="createdAt" th:text="#{admin.games.sortNewest}">Newest</option><option value="createdAtOldest" th:text="#{admin.games.sortOldest}">Oldest</option><option value="endedAt" th:text="#{admin.games.sortEnded}">Recently ended</option><option value="name" th:text="#{admin.games.sortName}">Name</option></select></label><button class="btn" type="submit" th:text="#{admin.games.apply}">Apply</button></form><div class="admin-results" data-results="games"></div></section>
+            <section class="admin-panel" data-section="sessions" th:hidden="${adminPage != 'sessions'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.sessions.title}">Sessions</h2><p th:text="#{admin.sessions.copy}">Device activity only; token values are never rendered.</p></div></div><form class="admin-filters" data-filters="sessions"><label class="admin-search"><span th:text="#{admin.users.search}">Search</span> <input name="query" type="search" th:placeholder="#{admin.sessions.searchPlaceholder}" placeholder="Device, OS, or location" autocomplete="off"></label><label><span th:text="#{admin.common.userId}">User ID</span> <input name="userId" type="number" min="1" inputmode="numeric"></label><label><span th:text="#{admin.common.state}">State</span> <select name="valid"><option value="" th:text="#{admin.common.all}">All</option><option value="true" th:text="#{admin.common.active}">Active</option><option value="false" th:text="#{admin.common.expired}">Expired</option></select></label><button class="btn" type="submit" th:text="#{admin.common.apply}">Apply</button></form><div class="admin-results" data-results="sessions"></div></section>
+            <section class="admin-panel" data-section="availability" th:hidden="${adminPage != 'availability'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.availability.title}">Game availability</h2><p th:text="#{admin.availability.copy}">Enable or disable a game or mode with a recorded reason.</p></div></div><div class="admin-results" data-results="availability"></div></section>
+            <section class="admin-panel" data-section="database" th:hidden="${adminPage != 'database'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.database.title}">Database</h2><p th:text="#{admin.database.copy}">A lite browser over safe operational tables.</p></div></div>
+                <div class="admin-results" data-results="database"></div>
+                <div id="admin-database-tables" class="admin-db-tables" aria-label="Browsable tables"></div>
+                <form id="admin-database-filters" class="admin-filters" hidden></form>
+                <div class="admin-results" data-results="database-browser"></div>
+            </section>
+            <section class="admin-panel" data-section="audit" th:hidden="${adminPage != 'audit'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.audit.title}">Audit history</h2><p th:text="#{admin.audit.copy}">Latest administrative actions and outcomes.</p></div></div>
+                <form class="admin-filters" data-filters="audit">
+                    <label><span th:text="#{admin.audit.targetType}">Target type</span> <select name="targetType"><option value="" th:text="#{admin.common.all}">All</option><option>USER</option><option>LOBBY</option><option>GAME</option><option>NOTIFICATION</option><option>STATS</option><option>SESSION</option></select></label>
+                    <label><span th:text="#{admin.audit.targetId}">Target ID</span> <input name="targetId" th:placeholder="#{admin.audit.targetIdPlaceholder}" placeholder="Exact target ID" autocomplete="off"></label>
+                    <button class="btn" type="submit" th:text="#{admin.common.apply}">Apply</button>
+                </form>
+                <div class="admin-results" data-results="audit"></div>
+            </section>
+            <section class="admin-panel" data-section="notifications" th:hidden="${adminPage != 'notifications'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.notify.title}">Send notification</h2><p th:text="#{admin.notify.copy}">Use a specific user ID, or deliberately notify everyone.</p></div></div><form id="admin-notification-form" class="admin-form">
+        <label><span th:text="#{admin.notify.recipient}">Recipient</span> <select name="mode"><option value="all" th:text="#{admin.notify.everyone}">Everyone</option><option value="user" th:text="#{admin.notify.oneUser}">Specific user</option></select></label>
+        <label id="admin-notify-user" hidden><span th:text="#{admin.stats.user}">User</span> <input name="userRef" list="admin-user-options" th:placeholder="#{admin.notify.userSearchPlaceholder}" placeholder="Type a username, email, or ID" autocomplete="off"><datalist id="admin-user-options"></datalist></label>
+        <p id="admin-notify-picked" class="admin-meta" hidden></p>
+        <label><span th:text="#{admin.notify.message}">Message</span> <textarea name="message" required maxlength="500" rows="4"></textarea></label>
+        <label><span th:text="#{admin.notify.reason}">Reason</span> <input name="reason" required maxlength="250"></label>
+        <button class="btn btn-accent" type="submit" th:text="#{admin.notify.send}">Send notification</button>
+    </form></section>
         </div>
-        <button class="btn" type="button" data-action="refresh"><img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true"><span th:text="#{admin.refresh}">Refresh</span></button>
-    </header>
-    <p id="admin-status" class="admin-status" aria-live="polite" th:text="#{admin.loading}">Loading administration data…</p>
-
-    <nav class="admin-tabs" aria-label="Administration sections">
-        <a th:href="@{/admin}" th:classappend="${adminPage == 'dashboard'} ? 'is-active'" th:attr="aria-current=${adminPage == 'dashboard'} ? 'page'"><img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.overview}">Overview</span></a>
-        <a th:href="@{/admin/users}" th:classappend="${adminPage == 'users'} ? 'is-active'" th:attr="aria-current=${adminPage == 'users'} ? 'page'"><img class="uc-icon" data-icon="person" th:src="@{/pics/light/person.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.users}">Users</span></a>
-        <a th:href="@{/admin/stats}" th:classappend="${adminPage == 'stats'} ? 'is-active'" th:attr="aria-current=${adminPage == 'stats'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.stats}">Stats</span></a>
-        <a th:href="@{/admin/lobbies}" th:classappend="${adminPage == 'lobbies'} ? 'is-active'" th:attr="aria-current=${adminPage == 'lobbies'} ? 'page'"><img class="uc-icon" data-icon="group" th:src="@{/pics/light/group.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.lobbies}">Live lobbies</span></a>
-        <a th:href="@{/admin/games}" th:classappend="${adminPage == 'games'} ? 'is-active'" th:attr="aria-current=${adminPage == 'games'} ? 'page'"><img class="uc-icon" data-icon="casino" th:src="@{/pics/light/casino.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.games}">Games</span></a>
-        <a th:href="@{/admin/sessions}" th:classappend="${adminPage == 'sessions'} ? 'is-active'" th:attr="aria-current=${adminPage == 'sessions'} ? 'page'"><img class="uc-icon" data-icon="devices" th:src="@{/pics/light/devices.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.sessions}">Sessions</span></a>
-        <a th:href="@{/admin/availability}" th:classappend="${adminPage == 'availability'} ? 'is-active'" th:attr="aria-current=${adminPage == 'availability'} ? 'page'"><img class="uc-icon" data-icon="toggle_on" th:src="@{/pics/light/toggle_on.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.availability}">Availability</span></a>
-        <a th:href="@{/admin/database}" th:classappend="${adminPage == 'database'} ? 'is-active'" th:attr="aria-current=${adminPage == 'database'} ? 'page'"><img class="uc-icon" data-icon="database" th:src="@{/pics/light/database.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.database}">Database</span></a>
-        <a th:href="@{/admin/audit}" th:classappend="${adminPage == 'audit'} ? 'is-active'" th:attr="aria-current=${adminPage == 'audit'} ? 'page'"><img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.audit}">Audit</span></a>
-        <a th:href="@{/admin/notifications}" th:classappend="${adminPage == 'notifications'} ? 'is-active'" th:attr="aria-current=${adminPage == 'notifications'} ? 'page'"><img class="uc-icon" data-icon="notifications" th:src="@{/pics/light/notifications.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.notify}">Notify</span></a>
-    </nav>
-
-    <section class="admin-panel" data-section="dashboard" th:hidden="${adminPage != 'dashboard'}">
-        <div class="admin-panel-heading"><div><h2 th:text="#{admin.overview.title}">System overview</h2><p th:text="#{admin.overview.copy}">Live counts and health signals.</p></div></div>
-        <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
-        <section id="admin-overview-breakdown" class="admin-breakdowns" aria-label="Detailed breakdowns"></section>
-    </section>
-
-    <section class="admin-panel" data-section="users" th:hidden="${adminPage != 'users'}">
-        <div id="admin-user-list">
-            <div class="admin-panel-heading"><div><h2 th:text="#{admin.users.title}">Users</h2><p th:text="#{admin.users.copy}">Search by username, email, or exact numeric ID.</p></div></div>
-            <form class="admin-filters" data-filters="users">
-                <label class="admin-search"><span th:text="#{admin.users.search}">Search</span> <input name="query" type="search" placeholder="Username, email, or exact ID" autocomplete="off"></label>
-                <label><span th:text="#{admin.users.match}">Match</span> <select name="exact"><option value="false" th:text="#{admin.users.contains}">Contains</option><option value="true" th:text="#{admin.users.exact}">Exact username/email</option></select></label>
-                <label><span th:text="#{admin.users.status}">Status</span> <select name="status"><option value="">All</option><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
-                <label><span th:text="#{admin.users.role}">Role</span> <select name="role"><option value="">All</option><option>USER</option><option>MODERATOR</option><option>ADMIN</option></select></label>
-                <label><span th:text="#{admin.users.sort}">Sort</span> <select name="sort"><option value="userCreatedAt" th:text="#{admin.users.newest}">Newest</option><option value="userCreatedAtOldest" th:text="#{admin.users.oldest}">Oldest</option><option value="username" th:text="#{admin.users.username}">Username</option><option value="email" th:text="#{admin.users.email}">Email</option><option value="id" th:text="#{admin.users.id}">ID</option></select></label>
-                <button class="btn" type="submit" th:text="#{admin.users.searchButton}">Search</button>
-            </form>
-            <div class="admin-results" data-results="users"></div>
-        </div>
-        <div id="admin-user-detail" hidden></div>
-    </section>
-
-    <section class="admin-panel" data-section="stats" th:hidden="${adminPage != 'stats'}">
-        <div class="admin-panel-heading"><div><h2 th:text="#{admin.stats.title}">User statistics</h2><p th:text="#{admin.stats.copy}">Inspect and correct one user’s stats with an audit reason.</p></div></div>
-        <form class="admin-filters" id="admin-stats-lookup">
-            <label><span th:text="#{admin.stats.user}">User</span> <input name="userQuery" required placeholder="Username, email, or ID" autocomplete="off"></label>
-            <button class="btn" type="submit" th:text="#{admin.stats.load}">Load stats</button>
-        </form>
-        <p id="admin-stats-context" class="admin-meta" th:text="#{admin.stats.context}">Load a user to inspect every game mode and add missing stat rows.</p>
-        <div class="admin-results" data-results="stats"></div>
-        <div id="admin-stats-diff" class="admin-stat-diff" hidden aria-live="polite"></div>
-        <form id="admin-stats-edit" class="admin-form" hidden>
-            <input name="userId" type="hidden">
-            <label>Game <select name="gameType"><option value="briskula">Briskula</option><option value="treseta">Treseta</option></select></label>
-            <label>Mode <select name="mode" required></select></label>
-            <label>Played <input name="played" type="number" min="0" inputmode="numeric"></label>
-            <label>Wins <input name="wins" type="number" min="0" inputmode="numeric"></label>
-            <label>Last played <input name="lastPlayedAt" type="datetime-local"></label>
-            <label>Reason <input name="reason" required maxlength="250"></label>
-            <label class="admin-check"><input name="dryRun" type="checkbox" checked> Preview only</label>
-            <p class="admin-meta" th:text="#{admin.stats.previewHint}">Use Preview first to see the resulting totals.</p>
-            <button class="btn btn-accent" type="submit" th:text="#{admin.stats.preview}">Preview stats change</button>
-            <button class="btn" type="button" data-action="rebuild-stats" th:text="#{admin.stats.rebuild}">Rebuild from game history</button>
-        </form>
-    </section>
-
-    <section class="admin-panel" data-section="lobbies" th:hidden="${adminPage != 'lobbies'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.lobbies.title}">Live lobbies</h2><p th:text="#{admin.lobbies.copy}">Inspect, edit, extend, or safely close current rooms.</p></div></div><div class="admin-results" data-results="lobbies"></div></section>
-    <section class="admin-panel" data-section="games" th:hidden="${adminPage != 'games'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.games.title}">Recorded games</h2><p th:text="#{admin.games.copy}">Browse and filter recorded games.</p></div></div><form class="admin-filters" data-filters="games"><label><span th:text="#{admin.games.game}">Game</span> <select name="gameType"><option value="" th:text="#{admin.common.all}">All</option><option value="BRISKULA">Briskula</option><option value="TRESETA">Treseta</option></select></label><label><span th:text="#{admin.games.mode}">Mode</span> <select name="mode"><option value="" th:text="#{admin.common.all}">All</option><option>TWO_PLAYERS</option><option>TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH</option><option>THREE_PLAYERS</option><option>FOUR_PLAYERS_NO_TEAMS</option><option>FOUR_PLAYERS_WITH_TEAMS</option></select></label><label><span th:text="#{admin.games.state}">State</span> <select name="completed"><option value="" th:text="#{admin.common.all}">All</option><option value="true" th:text="#{admin.games.completed}">Completed</option><option value="false" th:text="#{admin.games.incomplete}">Incomplete</option></select></label><label><span th:text="#{admin.users.sort}">Sort</span> <select name="sort"><option value="createdAt" th:text="#{admin.games.sortNewest}">Newest</option><option value="createdAtOldest" th:text="#{admin.games.sortOldest}">Oldest</option><option value="endedAt" th:text="#{admin.games.sortEnded}">Recently ended</option><option value="name" th:text="#{admin.games.sortName}">Name</option></select></label><button class="btn" type="submit" th:text="#{admin.games.apply}">Apply</button></form><div class="admin-results" data-results="games"></div></section>
-    <section class="admin-panel" data-section="sessions" th:hidden="${adminPage != 'sessions'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.sessions.title}">Sessions</h2><p th:text="#{admin.sessions.copy}">Device activity only; token values are never rendered.</p></div></div><form class="admin-filters" data-filters="sessions"><label><span th:text="#{admin.common.userId}">User ID</span> <input name="userId" type="number" min="1" inputmode="numeric"></label><label><span th:text="#{admin.common.state}">State</span> <select name="valid"><option value="" th:text="#{admin.common.all}">All</option><option value="true" th:text="#{admin.common.active}">Active</option><option value="false" th:text="#{admin.common.expired}">Expired</option></select></label><button class="btn" type="submit" th:text="#{admin.common.apply}">Apply</button></form><div class="admin-results" data-results="sessions"></div></section>
-    <section class="admin-panel" data-section="availability" th:hidden="${adminPage != 'availability'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.availability.title}">Game availability</h2><p th:text="#{admin.availability.copy}">Enable or disable a game or mode with a recorded reason.</p></div></div><div class="admin-results" data-results="availability"></div></section>
-    <section class="admin-panel" data-section="database" th:hidden="${adminPage != 'database'}">
-        <div class="admin-panel-heading"><div><h2 th:text="#{admin.database.title}">Database</h2><p th:text="#{admin.database.copy}">A lite browser over safe operational tables.</p></div></div>
-        <div class="admin-results" data-results="database"></div>
-        <div id="admin-database-tables" class="admin-db-tables" aria-label="Browsable tables"></div>
-        <form id="admin-database-filters" class="admin-filters" hidden></form>
-        <div class="admin-results" data-results="database-browser"></div>
-    </section>
-    <section class="admin-panel" data-section="audit" th:hidden="${adminPage != 'audit'}">
-        <div class="admin-panel-heading"><div><h2 th:text="#{admin.audit.title}">Audit history</h2><p th:text="#{admin.audit.copy}">Latest administrative actions and outcomes.</p></div></div>
-        <form class="admin-filters" data-filters="audit">
-            <label><span th:text="#{admin.audit.targetType}">Target type</span> <select name="targetType"><option value="" th:text="#{admin.common.all}">All</option><option>USER</option><option>LOBBY</option><option>GAME</option><option>NOTIFICATION</option><option>STATS</option><option>SESSION</option></select></label>
-            <label><span th:text="#{admin.audit.targetId}">Target ID</span> <input name="targetId" th:placeholder="#{admin.audit.targetIdPlaceholder}" placeholder="Exact target ID" autocomplete="off"></label>
-            <button class="btn" type="submit" th:text="#{admin.common.apply}">Apply</button>
-        </form>
-        <div class="admin-results" data-results="audit"></div>
-    </section>
-    <section class="admin-panel" data-section="notifications" th:hidden="${adminPage != 'notifications'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.notify.title}">Send notification</h2><p th:text="#{admin.notify.copy}">Use a specific user ID, or deliberately notify everyone.</p></div></div><form id="admin-notification-form" class="admin-form"><label><span th:text="#{admin.notify.userId}">User ID</span> <input name="userId" type="number" min="1" inputmode="numeric" th:placeholder="#{admin.notify.userPlaceholder}" placeholder="Leave empty for all users"></label><label><span th:text="#{admin.notify.message}">Message</span> <textarea name="message" required maxlength="500" rows="4"></textarea></label><label><span th:text="#{admin.notify.reason}">Reason</span> <input name="reason" required maxlength="250"></label><button class="btn btn-accent" type="submit" th:text="#{admin.notify.send}">Send notification</button></form></section>
+    </div>
 </main>
 
 <dialog id="admin-user-editor" class="admin-dialog">
