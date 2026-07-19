@@ -8,7 +8,8 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
 @Command(name = "game", aliases = "games", description = "Enable or disable game types and modes.",
-        subcommands = {GameCommands.ListGames.class, GameCommands.Enable.class, GameCommands.Disable.class})
+        subcommands = {GameCommands.ListGames.class, GameCommands.Enable.class, GameCommands.Disable.class,
+                GameCommands.Reset.class})
 class GameCommands implements Runnable {
     @Spec CommandSpec spec;
 
@@ -49,6 +50,20 @@ class GameCommands implements Runnable {
     @Command(name = "disable", description = "Disable a game or one of its modes for new and starting lobbies.")
     static class Disable extends Change {
         boolean enabled() { return false; }
+    }
+
+    @Command(name = "reset", description = "Reset a game or mode to its default availability rule.")
+    static class Reset extends CliCommand {
+        @Parameters(index = "0", paramLabel = "GAME") Game game;
+        @Option(names = "--mode") Mode mode;
+        @Option(names = {"-r", "--reason"}, required = true) String reason;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                if (!root().confirm("Reset availability for " + game + (mode == null ? "" : " / " + mode) + "?")) return 5;
+                return ok(client.admin().resetGameAvailability(game.name(), mode == null ? null : mode.name(), reason));
+            });
+        }
     }
 
     enum Game { BRISKULA, TRESETA, DURAK, POKER }

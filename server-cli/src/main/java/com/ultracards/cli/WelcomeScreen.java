@@ -1,5 +1,6 @@
 package com.ultracards.cli;
 
+import com.ultracards.gateway.dto.admin.AdminDashboardDTO;
 import org.jline.terminal.Terminal;
 import picocli.CommandLine.Help.Ansi;
 
@@ -20,6 +21,7 @@ final class WelcomeScreen {
         var target = root.store.activeUrl();
         var authenticated = profile != null && root.store.token() != null;
         var writer = terminal.writer();
+        var dashboard = authenticated ? loadDashboard(root) : null;
 
         writer.println(red(ansi, titledBorder('╭', "ULTRACARDS ADMIN v" + UltracardsAdminCli.VERSION, '╮', width)));
         if (width >= 84 && !LOGO.isEmpty()) {
@@ -36,6 +38,22 @@ final class WelcomeScreen {
         line(writer, ansi, width, "Target   " + (target == null ? "add one with: server add <name> <url>" : target));
         line(writer, ansi, width, "Auth     " + (authenticated ? "saved administrator session" : "not signed in"));
 
+        writer.println(red(ansi, titledBorder('├', "SERVER OVERVIEW", '┤', width)));
+        if (dashboard == null) {
+            line(writer, ansi, width, authenticated ? "Overview unavailable; run overview to retry." : "Sign in to load server overview.");
+        } else {
+            var overview = dashboard.overview();
+            var status = dashboard.status();
+            line(writer, ansi, width, "Server   " + status.serverVersion() + " · uptime " + duration(status.uptimeSeconds()));
+            var flyway = status.flywayVersion() == null && dashboard.database() != null ? dashboard.database().flywayVersion() : status.flywayVersion();
+            line(writer, ansi, width, "Health   " + (status.databaseAvailable() ? "database available" : "database unavailable")
+                    + (flyway == null ? "" : " · Flyway " + flyway));
+            line(writer, ansi, width, String.format("Users    %,d registered · %,d online · %,d active today", overview.users(), overview.onlineUsers(), overview.onlineUsersToday()));
+            line(writer, ansi, width, String.format("Activity %,d valid sessions · %,d lobbies · %,d games", overview.validSessions(), status.activeLobbies(), status.activeGames()));
+            if (dashboard.database() != null && dashboard.database().recordsByArea() != null)
+                line(writer, ansi, width, String.format("DB       %,d records", dashboard.database().recordsByArea().values().stream().mapToLong(Long::longValue).sum()));
+        }
+
         writer.println(red(ansi, titledBorder('├', "QUICK START", '┤', width)));
         if (profile == null) {
             command(writer, ansi, width, "server add <name> <url>", "connect to a remote server");
@@ -44,6 +62,7 @@ final class WelcomeScreen {
             command(writer, ansi, width, "login --email <address>", "authenticate as an administrator");
             command(writer, ansi, width, "server list", "review configured targets");
         } else {
+            command(writer, ansi, width, "overview", "refresh the server dashboard");
             command(writer, ansi, width, "system status", "check server and database health");
             command(writer, ansi, width, "whoami", "show the active administrator");
         }
@@ -103,6 +122,23 @@ final class WelcomeScreen {
 
     private static String red(Ansi ansi, String value) {
         return ansi.string("@|bold,red " + value + "|@");
+    }
+
+    private static AdminDashboardDTO loadDashboard(UltracardsAdminCli root) {
+        try {
+            return root.withClient(client -> client.admin().dashboard());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static String duration(long seconds) {
+        var days = seconds / 86_400;
+        var hours = seconds % 86_400 / 3_600;
+        var minutes = seconds % 3_600 / 60;
+        if (days > 0) return days + "d " + hours + "h";
+        if (hours > 0) return hours + "h " + minutes + "m";
+        return minutes + "m";
     }
 
     private static List<String> loadLogo() {

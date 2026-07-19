@@ -3,6 +3,7 @@ package com.ultracards.cli;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.ultracards.gateway.dto.admin.AdminLobbyDTO;
+import com.ultracards.gateway.dto.admin.AdminDashboardDTO;
 import com.ultracards.gateway.dto.admin.AdminOverviewDTO;
 import com.ultracards.gateway.dto.admin.AdminPageDTO;
 import com.ultracards.gateway.dto.games.GameConfigDTO;
@@ -40,7 +41,7 @@ final class OutputWriter {
             var rows = rows(value, format == Format.TABLE, utc);
             if (format == Format.CSV) printCsv(rows);
             else {
-                if (explain || value instanceof AdminOverviewDTO || value instanceof AdminPageDTO<?>) explain(value, utc);
+                if (explain || value instanceof AdminOverviewDTO || value instanceof AdminDashboardDTO || value instanceof AdminPageDTO<?>) explain(value, utc);
                 printTable(rows, color);
                 if (value instanceof AdminPageDTO<?> page)
                     System.out.println(style(String.format("@|faint Page %d of %d · %,d total|@",
@@ -52,6 +53,7 @@ final class OutputWriter {
     }
 
     private List<List<String>> rows(Object value, boolean humanReadable, boolean utc) throws Exception {
+        if (value instanceof AdminDashboardDTO dashboard) return dashboardRows(dashboard);
         Object data = value instanceof AdminPageDTO<?> page ? page.items() : value;
         var values = data instanceof Collection<?> collection ? new ArrayList<>(collection) : List.of(data);
         if (values.isEmpty()) return List.of(List.of("Result"), List.of("No results"));
@@ -79,6 +81,46 @@ final class OutputWriter {
         output.add(header);
         for (var item : values) output.add(recordValues(item, components, humanReadable, utc));
         return output;
+    }
+
+    private List<List<String>> dashboardRows(AdminDashboardDTO dashboard) {
+        var overview = dashboard.overview();
+        var status = dashboard.status();
+        var database = dashboard.database();
+        var rows = new ArrayList<List<String>>();
+        rows.add(List.of("Metric", "Value"));
+        rows.add(List.of("Server version", status.serverVersion()));
+        rows.add(List.of("API version", String.valueOf(status.apiVersion())));
+        rows.add(List.of("Uptime", duration(status.uptimeSeconds())));
+        rows.add(List.of("Database", status.databaseAvailable() ? "Available" : "Unavailable"));
+        var flyway = status.flywayVersion() == null && database != null ? database.flywayVersion() : status.flywayVersion();
+        rows.add(List.of("Flyway", flyway == null ? "" : flyway));
+        rows.add(List.of("Registered users", String.valueOf(overview.users())));
+        rows.add(List.of("Online now", String.valueOf(overview.onlineUsers())));
+        rows.add(List.of("Active today", String.valueOf(overview.onlineUsersToday())));
+        rows.add(List.of("Valid sessions", String.valueOf(overview.validSessions())));
+        rows.add(List.of("Active lobbies", String.valueOf(status.activeLobbies())));
+        rows.add(List.of("Active games", String.valueOf(status.activeGames())));
+        rows.add(List.of("Completed games", String.valueOf(total(overview.completedGames()))));
+        rows.add(List.of("Incomplete games", String.valueOf(total(overview.incompleteGames()))));
+        if (database != null && database.recordsByArea() != null)
+            for (var entry : database.recordsByArea().entrySet()) rows.add(List.of(entry.getKey(), String.valueOf(entry.getValue())));
+        return rows;
+    }
+
+    private long total(java.util.Map<String, Long> values) {
+        return values == null ? 0 : values.values().stream().mapToLong(Long::longValue).sum();
+    }
+
+    private String duration(long seconds) {
+        var days = seconds / 86_400;
+        var hours = seconds % 86_400 / 3_600;
+        var minutes = seconds % 3_600 / 60;
+        var remaining = seconds % 60;
+        if (days > 0) return days + "d " + hours + "h";
+        if (hours > 0) return hours + "h " + minutes + "m";
+        if (minutes > 0) return minutes + "m " + remaining + "s";
+        return remaining + "s";
     }
 
     private LobbyRow lobbyRow(AdminLobbyDTO admin) {
@@ -189,6 +231,9 @@ final class OutputWriter {
             System.out.println("What this shows, persisted account, valid-session, and recorded-game counts plus current in-memory lobby/game counts.");
             System.out.println("Applied filters: none. Generated: " + formatInstant(overview.generatedAt(), utc) + ".");
             System.out.println("Definitions: valid sessions have active, unexpired tokens; online users were seen within the configured presence timeout. Timestamps: " + timeDefinition + ".\n");
+        } else if (value instanceof AdminDashboardDTO dashboard) {
+            System.out.println("What this shows, the same server, account, session, game, lobby, and database summary used by the web admin overview.");
+            System.out.println("Generated: " + formatInstant(dashboard.overview().generatedAt(), utc) + ". Timestamps: " + timeDefinition + ".\n");
         } else if (value instanceof AdminPageDTO<?> page) {
             System.out.println("What this shows, a server-side paginated administrative report.");
             System.out.println("Applied filters: page=" + page.page() + ", size=" + page.size() + ".");

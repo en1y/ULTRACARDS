@@ -34,7 +34,7 @@ class UserCommands implements Runnable {
 
         public Integer call() {
             return root().withClient(client -> ok(pages(page, size, all,
-                    (page, size) -> client.admin().reportUsers(page, size, status, role, sort, direction))));
+                    (page, size) -> client.admin().reportUsers(page, size, null, null, status, role, sort, direction))));
         }
     }
 
