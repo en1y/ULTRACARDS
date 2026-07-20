@@ -111,7 +111,14 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.3 - Leaderboards
+## v0.3.3 - Add Treseta declarations
+- Add logic for implementing declarations in Treseta, including the declaration types, their values, and the rules for when they can be declared.
+- Update the game logic, server endpoints, and UI to support declarations, including scoring and display of declared values.
+- Update the game history and statistics to include declaration information for completed games.
+
+---
+
+## v0.3.4 - Leaderboards
 
 - Add leaderboard services and endpoints backed by persisted game statistics and completed recorded games.
 - Provide overall, per-game, and per-mode rankings with pagination, allowlisted filters, deterministic tie-breaking, and the current user's position.
@@ -121,7 +128,7 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.4 - Game guide pages
+## v0.3.5 - Game guide pages
 
 - Add public guide pages in the `server` module that explain how Briskula and Treseta are played.
 - Cover setup, turn flow, card values, scoring, teams, supported modes, winning conditions, and short gameplay examples for each game.
