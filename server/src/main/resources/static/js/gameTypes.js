@@ -14,7 +14,7 @@ function createBriskulaRequest(lobbyName, playerNum, cardsInHandNum, teamsEnable
     })
 }
 
-function createTresetaRequest(lobbyName, playerNum, teamsEnabled=false, isPublic=true) {
+function createTresetaRequest(lobbyName, playerNum, teamsEnabled=false, isPublic=true, declarationsEnabled=false) {
     return JSON.stringify({
         id: "",
         name: lobbyName,
@@ -25,7 +25,8 @@ function createTresetaRequest(lobbyName, playerNum, teamsEnabled=false, isPublic
         gameConfig: {
             numberOfPlayers: playerNum,
             cardsInHandNum: playerNum === 3 ? 13 : 10,
-            teamsEnabled
+            teamsEnabled,
+            declarationsEnabled
         }
     });
 }
@@ -193,7 +194,10 @@ function getGameConfigDisplayName(gameType, config) {
     }
     if (normalizedGameType === 'treseta') {
         const setting = getGameTypeSetting('treseta', resolveLobbyGameSettingKey({gameType: 'Treseta', gameConfig: config}));
-        if (setting?.ui_text) return setting.ui_text;
+        const declarationsSuffix = config && typeof config === 'object' && config.declarationsEnabled
+            ? ' · ' + t('gameConfig.withDeclarations')
+            : '';
+        if (setting?.ui_text) return setting.ui_text + declarationsSuffix;
     }
 
     const configKey = resolveGameConfigKey(gameType, config);
@@ -256,13 +260,16 @@ function resolveLobbyGameSettingId(lobby) {
     return getGameTypeSettingId(gameType, settingKey);
 }
 
-function buildLobbyCreatePayload(gameType, settingKey, lobbyName, isPublic=true) {
+function buildLobbyCreatePayload(gameType, settingKey, lobbyName, isPublic=true, gameConfigExtras=null) {
     const setting = getGameTypeSetting(gameType, settingKey);
     if (!setting || typeof setting.req !== 'function') {
         throw new Error(`Unsupported game type setting: ${gameType}/${settingKey}`);
     }
     const payload = JSON.parse(setting.req(normalizeLobbyName(lobbyName)));
     payload.isPublic = isPublic;
+    if (gameConfigExtras && payload.gameConfig) {
+        Object.assign(payload.gameConfig, gameConfigExtras);
+    }
     return JSON.stringify(payload);
 }
 

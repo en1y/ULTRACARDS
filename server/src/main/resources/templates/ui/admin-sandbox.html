@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'"
+      th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UI Sandbox | ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/sandbox.css}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body class="game-page">
+<div th:replace="~{ui/fragments/header :: header}"></div>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
+
+<!-- The live-game renderer is fed by a browser-only simulator through the same
+     event contract as STOMP. No sandbox game or state is created on the server. -->
+<main class="container game-layout treseta-game-layout">
+    <div id="game-container"
+         th:attr="data-game-id='ui-sandbox',data-sandbox='1',data-current-user-id=${currentUserId},data-username=${username},data-game-type='treseta'">
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, 40, null, true, 'right', null, 'self', ${currentUserId}, 'player', true)}"></th:block>
+    </div>
+
+    <aside class="chat-sidebar sandbox-bar">
+        <div class="chat-header">
+            <div>
+                <span class="chip">Sandbox</span>
+                <h2>UI test controls</h2>
+            </div>
+        </div>
+        <div class="sandbox-controls">
+            <label class="sandbox-field">
+                <span>Game</span>
+                <select id="sandbox-game-type">
+                    <option value="treseta">Treseta</option>
+                    <option value="briskula">Briskula</option>
+                </select>
+            </label>
+            <label class="sandbox-field">
+                <span>Mode</span>
+                <select id="sandbox-mode"></select>
+            </label>
+            <label class="sandbox-field">
+                <span>Edit player</span>
+                <select id="sandbox-player"></select>
+            </label>
+            <div class="sandbox-hand-editor">
+                <div class="sandbox-hand-heading">
+                    <span>Selected hand</span>
+                    <span id="sandbox-hand-count"></span>
+                </div>
+                <div id="sandbox-hand-cards" class="sandbox-hand-cards" aria-live="polite"></div>
+                <label class="sandbox-field">
+                    <span>Card</span>
+                    <select id="sandbox-card-picker"></select>
+                </label>
+                <div class="sandbox-row">
+                    <button id="sandbox-set-card" class="btn" type="button">Add card</button>
+                    <button id="sandbox-remove-card" class="btn" type="button" disabled>Remove selected</button>
+                </div>
+                <p class="sandbox-hint">Select a hand card to replace or remove it. Opponent cards stay face-down at the table.</p>
+            </div>
+            <label id="sandbox-declaration-field" class="sandbox-field">
+                <span>Declaration</span>
+                <select id="sandbox-declaration">
+                    <option value="ACES_3">Three aces</option>
+                    <option value="ACES_4">Four aces</option>
+                    <option value="TWOS_3">Three twos</option>
+                    <option value="TWOS_4">Four twos</option>
+                    <option value="THREES_3">Three threes</option>
+                    <option value="THREES_4">Four threes</option>
+                    <option value="NAPOLITANA_C">Napolitana · cups</option>
+                    <option value="NAPOLITANA_D">Napolitana · coins</option>
+                    <option value="NAPOLITANA_S">Napolitana · swords</option>
+                    <option value="NAPOLITANA_B">Napolitana · clubs</option>
+                </select>
+            </label>
+
+            <p class="sandbox-group-label">Play</p>
+            <div class="sandbox-row">
+                <button id="sandbox-auto-play" class="btn" type="button" title="Play a legal card for the current player">Play turn</button>
+                <button id="sandbox-play-trick" class="btn" type="button" title="Auto-play until the trick is collected">Finish trick</button>
+            </div>
+            <div class="sandbox-row" id="sandbox-declare-actions">
+                <button id="sandbox-bot-declare" class="btn" type="button" title="Add a valid declaration to the selected fake player">Declare</button>
+                <button id="sandbox-rig" class="btn" type="button" title="Give the selected player a declaration-ready hand">Rig hand</button>
+            </div>
+
+            <p class="sandbox-group-label">Tweak</p>
+            <div class="sandbox-row">
+                <button id="sandbox-points-add" class="btn" type="button">+ points</button>
+                <button id="sandbox-points-remove" class="btn" type="button">− points</button>
+            </div>
+
+            <p class="sandbox-group-label">Game</p>
+            <div class="sandbox-row">
+                <button id="sandbox-end" class="btn" type="button" title="Jump to a representative result state">Show result</button>
+                <button id="sandbox-reset" class="btn btn-accent" type="button">New deal</button>
+            </div>
+            <p id="sandbox-status" class="sandbox-hint" aria-live="polite">Browser-only state using the live game renderer. Nothing is sent or recorded.</p>
+        </div>
+    </aside>
+</main>
+
+<button id="mobile-chat-toggle" class="mobile-chat-toggle" type="button" aria-label="Sandbox controls" data-chat-panel=".sandbox-bar">
+    <img class="uc-icon" data-icon="casino" th:src="@{/pics/light/casino.svg}" alt="" aria-hidden="true" />
+    <span class="mobile-chat-badge" hidden></span>
+</button>
+<script th:src="@{/js/ui/mobileChatDock.js}" defer></script>
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
+<script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
+<script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
+<script th:src="@{/js/ui/games/briskula.js}"></script>
+<script th:src="@{/js/ui/games/treseta.js}"></script>
+<script th:src="@{/js/ui/sandbox.js}"></script>
+<script th:src="@{/js/ui/live-game.js}"></script>
+</body>
+</html>

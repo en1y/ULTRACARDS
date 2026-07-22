@@ -35,6 +35,7 @@
                 <a th:href="@{/admin/database}" th:classappend="${adminPage == 'database'} ? 'is-active'" th:attr="aria-current=${adminPage == 'database'} ? 'page'"><img class="uc-icon" data-icon="database" th:src="@{/pics/light/database.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.database}">Database</span></a>
                 <a th:href="@{/admin/audit}" th:classappend="${adminPage == 'audit'} ? 'is-active'" th:attr="aria-current=${adminPage == 'audit'} ? 'page'"><img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.audit}">Audit</span></a>
                 <a th:href="@{/admin/notifications}" th:classappend="${adminPage == 'notifications'} ? 'is-active'" th:attr="aria-current=${adminPage == 'notifications'} ? 'page'"><img class="uc-icon" data-icon="notifications" th:src="@{/pics/light/notifications.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.notify}">Notify</span></a>
+                <a th:href="@{/admin/sandbox}"><img class="uc-icon" data-icon="casino" th:src="@{/pics/light/casino.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.sandbox}">UI sandbox</span></a>
             </nav>
             <div class="admin-sidebar-foot">
                 <p class="admin-meta" th:text="#{admin.description}">Safe, audited controls for the running server.</p>

@@ -30,7 +30,7 @@ public class TresetaLobbyGameConfig implements GameConfig {
     public TresetaGameConfigDTO toDto() {
         var players = orderedUsers.stream().map(u -> new GamePlayerDTO(u.getUsername(), u.getId())).toList();
         return new TresetaGameConfigDTO(gameConfig.getNumberOfPlayers(), gameConfig.getCardsInHandNum(),
-                gameConfig.areTeamsEnabled(), players);
+                gameConfig.areTeamsEnabled(), gameConfig.areDeclarationsEnabled(), players);
     }
 
     @Override
@@ -60,7 +60,8 @@ public class TresetaLobbyGameConfig implements GameConfig {
         for (var config : TresetaGameConfig.values())
             if (config.getNumberOfPlayers() == dto.getNumberOfPlayers()
                     && config.getCardsInHandNum() == dto.getCardsInHandNum()
-                    && config.areTeamsEnabled() == dto.getTeamsEnabled()) return config;
+                    && config.areTeamsEnabled() == dto.getTeamsEnabled()
+                    && config.areDeclarationsEnabled() == dto.areDeclarationsEnabled()) return config;
         throw new IllegalArgumentException("Invalid TresetaGameConfigDTO.");
     }
 }

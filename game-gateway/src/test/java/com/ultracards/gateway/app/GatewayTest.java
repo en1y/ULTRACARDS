@@ -85,7 +85,7 @@ class GatewayTest {
         var config = new TresetaGameConfigDTO(2, 10, false, List.of(player));
         var game = new TresetaGameEntityDTO(UUID.randomUUID(), UUID.randomUUID(), "Treseta",
                 List.of(player), Map.of(player, 10), List.of(), 20, Map.of(player, 0), player,
-                null, 30, config);
+                null, 30, config, List.of(), List.of());
         var event = new GameEventDTO<>(game, GameEventDTO.GameEventTypeDTO.RESULTED);
         event.setResult(new GameResultDTO(List.of(player), 33));
 

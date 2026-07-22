@@ -89,6 +89,34 @@
         return [titleElement, field];
     }
 
+    // Treseta-only game rule, kept separate from the game configuration selector.
+    function buildDeclarationsToggle() {
+        const label = document.createElement('label');
+        label.className = 'create-lobby-declarations-row';
+        label.setAttribute('for', 'create-treseta-declarations');
+
+        const copy = document.createElement('span');
+        const title = document.createElement('span');
+        title.className = 'create-lobby-meta-label';
+        title.textContent = t('treseta.declare.title');
+        copy.append(title);
+
+        const control = document.createElement('span');
+        control.className = 'create-lobby-declarations-control';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = 'create-treseta-declarations';
+        const switchElement = document.createElement('span');
+        switchElement.className = 'visibility-switch';
+        switchElement.setAttribute('aria-hidden', 'true');
+        const state = document.createElement('span');
+        state.textContent = t('gameConfig.withDeclarations');
+        control.append(input, switchElement, state);
+
+        label.append(copy, control);
+        return label;
+    }
+
     function buildSettingsNotice(title, text) {
         const titleElement = document.createElement('h3');
         titleElement.className = 'create-lobby-settings-title';
@@ -136,7 +164,11 @@
             return;
         }
 
-        setSettingsContent(buildSettingsSelect(title, selectedGame));
+        const nodes = buildSettingsSelect(title, selectedGame);
+        if (gameType === 'treseta') {
+            nodes.push(buildDeclarationsToggle());
+        }
+        setSettingsContent(nodes);
         document.getElementById('create-properties')?.addEventListener('change', syncCreateState);
         syncCreateState();
     }
@@ -194,7 +226,10 @@
                     'Content-Type': 'application/json'
                 },
                 credentials: 'include',
-                body: buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value, publicInput?.checked !== false)
+                body: buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value, publicInput?.checked !== false,
+                    gameType === 'treseta'
+                        ? {declarationsEnabled: document.getElementById('create-treseta-declarations')?.checked === true}
+                        : null)
             });
 
             if (!response.ok) {

@@ -14,6 +14,15 @@ import java.util.Set;
 public class AdminPageController {
     private static final Set<String> PAGES = Set.of("users", "lobbies", "games", "sessions", "availability", "audit", "notifications", "stats", "database");
 
+    @GetMapping("/admin/sandbox")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).ADMIN.name())")
+    public String sandbox(@AuthenticationPrincipal UserEntity user, Model model) {
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("currentUserId", user.getId());
+        return "ui/admin-sandbox";
+    }
+
     @GetMapping({"/admin", "/admin/{page}"})
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).ADMIN.name())")
     public String admin(@PathVariable(required = false) String page, @AuthenticationPrincipal UserEntity user, Model model) {

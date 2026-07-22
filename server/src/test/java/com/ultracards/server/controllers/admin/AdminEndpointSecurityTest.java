@@ -106,6 +106,7 @@ class AdminEndpointSecurityTest {
                 () -> get("/admin/users"),
                 () -> get("/admin/stats"),
                 () -> get("/admin/database"),
+                () -> get("/admin/sandbox"),
                 () -> post("/api/admin/v1/notifications/users/1")
                         .contentType("application/json")
                         .content("{\"message\":\"maintenance\",\"reason\":\"security test\"}")

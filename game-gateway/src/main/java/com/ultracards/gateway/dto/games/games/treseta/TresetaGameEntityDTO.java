@@ -21,16 +21,21 @@ public class TresetaGameEntityDTO extends GameEntityDTO {
     private GamePlayerDTO playersTurn;
     private Instant turnEndTime;
     private Integer turnDurationSeconds;
+    private List<TresetaDeclarationDTO> declarations;
+    private List<Long> canDeclareUserIds;
 
     public TresetaGameEntityDTO(UUID id, UUID lobbyId, String name, List<GamePlayerDTO> playersOrder,
                                 Map<GamePlayerDTO, Integer> playersCardsMap, List<GameCardDTO> playedCards,
                                 int cardsLeftInDeck, Map<GamePlayerDTO, Integer> pointsPerPerson,
                                 GamePlayerDTO playersTurn, Instant turnEndTime, Integer turnDurationSeconds,
-                                TresetaGameConfigDTO gameConfig) {
+                                TresetaGameConfigDTO gameConfig, List<TresetaDeclarationDTO> declarations,
+                                List<Long> canDeclareUserIds) {
         super(id, lobbyId, name, playersOrder, playersCardsMap, playedCards, cardsLeftInDeck, gameConfig);
         this.pointsPerPerson = pointsPerPerson;
         this.playersTurn = playersTurn;
         this.turnEndTime = turnEndTime;
         this.turnDurationSeconds = turnDurationSeconds;
+        this.declarations = declarations;
+        this.canDeclareUserIds = canDeclareUserIds;
     }
 }

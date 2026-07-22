@@ -72,6 +72,14 @@
                         </div>
                     </div>
                 </div>
+                <div id="lobby-declarations-row" class="lobby-meta-row lobby-declarations-row" hidden>
+                    <div class="lobby-meta-label" th:text="#{treseta.declare.title}">Declarations</div>
+                    <label id="lobby-declarations-control" class="lobby-visibility-control lobby-declarations-control" for="lobby-declarations-toggle">
+                        <input id="lobby-declarations-toggle" type="checkbox">
+                        <span class="visibility-switch" aria-hidden="true"></span>
+                        <span th:text="#{gameConfig.withDeclarations}">with declarations</span>
+                    </label>
+                </div>
                 <div class="lobby-meta-row lobby-visibility-row">
                     <div>
                         <div class="lobby-meta-label" th:text="#{lobby.visibility}">Visibility</div>

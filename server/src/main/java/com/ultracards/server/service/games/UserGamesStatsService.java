@@ -141,7 +141,9 @@ public class UserGamesStatsService {
                 stats.getUser() != null ? stats.getUser().getId() : null,
                 configStats,
                 winsAgainstUser,
-                winsWithTeammate
+                winsWithTeammate,
+                stats.getDeclarationsMade(),
+                stats.getDeclarationPoints()
         );
     }
 
@@ -164,6 +166,7 @@ public class UserGamesStatsService {
                 config.getNumberOfPlayers(),
                 config.getCardsInHandNum(),
                 config.areTeamsEnabled(),
+                config.areDeclarationsEnabled(),
                 null
         );
     }

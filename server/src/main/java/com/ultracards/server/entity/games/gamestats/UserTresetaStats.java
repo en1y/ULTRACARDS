@@ -44,6 +44,13 @@ public class UserTresetaStats implements DetailedGameStats {
     @JoinColumn(name = "user_id")
     private UserEntity user;
 
+    @Column(name = "declarations_made", nullable = false)
+    private int declarationsMade = 0;
+
+    // Points are stored multiplied by three, matching the game logic.
+    @Column(name = "declaration_points", nullable = false)
+    private int declarationPoints = 0;
+
     @ElementCollection
     @CollectionTable(
             name = "user_treseta_stats_entries",
@@ -96,6 +103,12 @@ public class UserTresetaStats implements DetailedGameStats {
 
     public UserTresetaStats(UserEntity user) {
         this.user = user;
+    }
+
+    // ponytail: additive counters only; the admin stats rebuild does not recompute them
+    public void addDeclarations(int count, int points) {
+        declarationsMade += count;
+        declarationPoints += points;
     }
 
     public void addGame(TresetaGameConfig gameConfig, boolean won) {
