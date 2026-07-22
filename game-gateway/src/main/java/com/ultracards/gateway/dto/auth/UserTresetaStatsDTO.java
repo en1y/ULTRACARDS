@@ -19,4 +19,6 @@ public class UserTresetaStatsDTO {
     private Map<String, GameStatsDTO> configStats;
     private List<TresetaMatchupStatsDTO> winsAgainstUser;
     private List<TresetaMatchupStatsDTO> winsWithTeammate;
+    private int declarationsMade;
+    private int declarationPoints;
 }

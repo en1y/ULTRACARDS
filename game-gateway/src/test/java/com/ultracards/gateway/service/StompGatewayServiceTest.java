@@ -28,7 +28,7 @@ class StompGatewayServiceTest {
         var config = new TresetaGameConfigDTO(2, 10, false, List.of(player));
         var game = new TresetaGameEntityDTO(UUID.randomUUID(), UUID.randomUUID(), "Treseta",
                 List.of(player), Map.of(player, 10), List.of(), 20, Map.of(player, 0), player,
-                Instant.parse("2026-07-11T10:00:00Z"), 30, config);
+                Instant.parse("2026-07-11T10:00:00Z"), 30, config, List.of(), List.of());
         var event = new GameEventDTO<>(game, GameEventDTO.GameEventTypeDTO.UPDATED);
         var eventType = new ParameterizedTypeReference<GameEventDTO<TresetaGameEntityDTO>>() {}.getType();
 
@@ -51,7 +51,8 @@ class StompGatewayServiceTest {
         var round = new TresetaGameHistoryDTO.TresetaRoundHistoryDTO(0, Map.of(player, List.of()),
                 List.of(), player, 3, Map.of(player, 3));
         var history = new TresetaGameHistoryDTO(UUID.randomUUID(), UUID.randomUUID(), "game", player,
-                null, null, config, List.of(player), List.of(), List.of(round), Map.of(player, 3), List.of(player));
+                null, null, config, List.of(player), List.of(), List.of(round), List.of(),
+                Map.of(player, 3), List.of(player));
 
         var copy = StompGatewayService.<TresetaGameHistoryDTO>decode(
                 mapper, mapper.writeValueAsBytes(history), TresetaGameHistoryDTO.class);

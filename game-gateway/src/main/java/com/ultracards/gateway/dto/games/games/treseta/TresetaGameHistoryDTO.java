@@ -27,6 +27,7 @@ public class TresetaGameHistoryDTO {
     private List<GamePlayerDTO> playersOrder;
     private List<List<GamePlayerDTO>> teams;
     private List<TresetaRoundHistoryDTO> rounds;
+    private List<TresetaDeclarationDTO> declarations;
     @JsonDeserialize(keyUsing = GamePlayerKeyDeserializer.class)
     private Map<GamePlayerDTO, Integer> finalPoints;
     private List<GamePlayerDTO> winners;

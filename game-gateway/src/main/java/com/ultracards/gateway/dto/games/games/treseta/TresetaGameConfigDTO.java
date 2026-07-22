@@ -18,5 +18,15 @@ public class TresetaGameConfigDTO implements GameConfigDTO {
     @NotNull private Integer numberOfPlayers;
     @NotNull private Integer cardsInHandNum;
     @NotNull private Boolean teamsEnabled;
+    private Boolean declarationsEnabled;
     private List<GamePlayerDTO> orderedUsers;
+
+    public TresetaGameConfigDTO(Integer numberOfPlayers, Integer cardsInHandNum, Boolean teamsEnabled,
+                                List<GamePlayerDTO> orderedUsers) {
+        this(numberOfPlayers, cardsInHandNum, teamsEnabled, false, orderedUsers);
+    }
+
+    public boolean areDeclarationsEnabled() {
+        return Boolean.TRUE.equals(declarationsEnabled);
+    }
 }
