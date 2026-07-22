@@ -2154,23 +2154,40 @@
             if (!ring || !isFullscreenMobile()) return;
             const gap = 8;
             const occupied = [];
+            const seats = Array.from(ring.children).filter((seat) => seat.dataset.isSelf !== '1');
+            seats.forEach((seat) => {
+                if (seat.dataset.seatTop) seat.style.top = seat.dataset.seatTop;
+            });
+            // Mobile browser chrome resizes the viewport while scrolling. Compare
+            // table seats at their page-top position so that temporary scroll
+            // coordinates cannot change the stored collision nudge.
+            const seatRect = (avatar) => {
+                const rect = avatar.getBoundingClientRect();
+                return {
+                    left: rect.left,
+                    right: rect.right,
+                    top: rect.top + window.scrollY,
+                    bottom: rect.bottom + window.scrollY,
+                    width: rect.width,
+                    height: rect.height
+                };
+            };
             const selfAvatar = dom.playerSummaryAvatar;
             if (selfAvatar && getComputedStyle(selfAvatar).visibility !== 'hidden') {
                 const rect = selfAvatar.getBoundingClientRect();
                 if (rect.width && rect.height) occupied.push(rect);
             }
-            Array.from(ring.children).forEach((seat) => {
-                if (seat.dataset.isSelf === '1') return;
+            seats.forEach((seat) => {
                 const avatar = seat.querySelector('.seat-avatar');
                 if (!avatar) return;
-                let rect = avatar.getBoundingClientRect();
+                let rect = seatRect(avatar);
                 let offset = 0;
                 occupied.forEach((other) => {
                     if (rect.right + gap <= other.left || rect.left >= other.right + gap
                         || rect.bottom + gap <= other.top || rect.top >= other.bottom + gap) return;
                     offset += Math.ceil(other.bottom + gap - rect.top);
                     seat.style.top = `calc(${seat.dataset.seatTop} + ${offset}px)`;
-                    rect = avatar.getBoundingClientRect();
+                    rect = seatRect(avatar);
                 });
                 occupied.push(rect);
             });

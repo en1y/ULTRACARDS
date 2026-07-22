@@ -2172,7 +2172,7 @@
                the card-backs fanned BELOW it (toward the table), points last.
                Cards flow under the avatar (never above it). --- */
 
-            html[data-game-ui="fullscreen"] .player-ring .player-seat {
+            html[data-game-ui="fullscreen"] .player-ring .player-seat:not(.is-self) {
                 width: clamp(84px, 24vw, 118px);
                 display: flex;
                 flex-direction: column;
