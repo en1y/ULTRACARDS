@@ -264,13 +264,15 @@
         document.body.appendChild(overlay);
     }
 
-    // A player's declared cards, rendered face-up as a badge under a seat.
+    // A player's declared cards, rendered face-up around the seat avatar.
     // Hover (desktop) enlarges a card in place; on phones a tap opens the
     // overlay instead. Shared with the game-history replay.
     function attachDeclaredBadge(seat, playerName, declarations) {
         let badge = seat.querySelector('.treseta-declared-cards');
         if (!declarations.length) {
             badge?.remove();
+            seat.style.removeProperty('--declared-under-space');
+            seat.style.removeProperty('--declared-under-space-mobile');
             return;
         }
         const signature = declarations.map((d) => d.type + ':' + (d.suits || []).join(',')).join('|');
@@ -294,11 +296,15 @@
         badge.dataset.signature = signature;
         badge.dataset.playerName = playerName || '';
         badge.dataset.declarations = JSON.stringify(declarations.map((d) => ({type: d.type, suits: d.suits})));
+        const underRows = Math.max(0, declarations.length - 2);
+        seat.style.setProperty('--declared-under-space', `${underRows * 5}rem`);
+        seat.style.setProperty('--declared-under-space-mobile', `${underRows * 3.5}rem`);
         badge.replaceChildren();
-        declarations.forEach((declaration) => {
+        declarations.forEach((declaration, index) => {
             const set = document.createElement('div');
             set.className = 'treseta-declared-set';
             set.title = typeLabel(declaration.type);
+            if (index >= 2) set.style.gridRow = String(index);
             declaredCards(declaration).forEach((card) => {
                 const el = window.UltracardsGameUi?.renderCardImage({
                     card,

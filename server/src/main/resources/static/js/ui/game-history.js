@@ -227,7 +227,9 @@
                 <div class="seat-team-badge"${teamNumber ? '' : ' hidden'}>${teamNumber ? t('gameHistory.team', teamNumber) : ''}</div>
                 <div class="seat-cards"></div>
                 <div class="seat-points"></div>`;
-            seatRegion(index, count).appendChild(seat);
+            const region = seatRegion(index, count);
+            seat.dataset.seatSide = region.id.replace('replay-seats-', '');
+            region.appendChild(seat);
             state.seats.set(key, seat);
 
             if (index === 0 && dom.selfSummary) {

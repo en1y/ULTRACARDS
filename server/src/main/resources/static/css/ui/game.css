@@ -2071,14 +2071,6 @@
            Desktop (>900px) is never affected. */
 
         @media (max-width: 900px) {
-            /* The mobile game board is a full-viewport app surface (fullscreen mode
-               already hides the footer). In classic mode the footer peeked in as a
-               black band over the game background's darkest corner, right where the
-               floating chat toggle sits — hide it on phones in every game mode. */
-            body.game-page .footer {
-                display: none;
-            }
-
             html[data-game-ui="fullscreen"] .game-layout,
             html[data-game-ui="fullscreen"] .game-layout.is-two-player,
             html[data-game-ui="fullscreen"] .game-layout.is-three-player,
@@ -2099,15 +2091,13 @@
                 padding: 0;
             }
 
-            /* The board fills the viewport — lock the page so there's nothing to
-               scroll to (the footer is hidden). Classic mode keeps its footer. */
+            /* The board fills the first viewport. Keep the page scrollable so the
+               real footer follows it in live games, the sandbox and replays. */
             html[data-game-ui="fullscreen"] body.game-page {
-                overflow: hidden;
-                height: 100svh;
-            }
-
-            html[data-game-ui="fullscreen"] body.game-page .footer {
-                display: none;
+                overflow-x: hidden;
+                overflow-y: auto;
+                height: auto;
+                min-height: 100svh;
             }
 
             html[data-game-ui="fullscreen"] .game-layout:not(.is-replay) {
@@ -2568,25 +2558,49 @@
     white-space: nowrap;
 }
 
-/* Declared cards hang under the declaring player's seat, face-up. */
+/* Declarations orbit the avatar: first on the left, second on the right and
+   every additional set in its own row below. Fixed side columns keep the
+   avatar centred even when the two declarations contain different card counts. */
 .treseta-declared-cards {
+    --declared-set-width: 108px;
     position: absolute;
-    top: calc(100% + 4px);
+    top: 0;
     left: 50%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    justify-content: center;
-    width: max-content;
+    display: grid;
+    grid-template-columns: var(--declared-set-width) calc(var(--avatar-size, 44px) + 16px) var(--declared-set-width);
+    grid-auto-rows: auto;
+    align-items: start;
+    width: calc(var(--declared-set-width) + var(--declared-set-width) + var(--avatar-size, 44px) + 16px);
     max-width: calc(100vw - 1.5rem);
     transform: translateX(-50%);
     z-index: 20;
+    pointer-events: none;
 }
 
 .treseta-declared-set {
     display: flex;
-    flex: 0 0 auto;
     gap: 0;
+    justify-self: center;
+    pointer-events: auto;
+}
+
+.treseta-declared-set:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+}
+
+.treseta-declared-set:nth-child(2) {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: start;
+}
+
+.treseta-declared-set:nth-child(n + 3) { grid-column: 2; }
+
+/* Reserve the rows below the avatar before the hidden hand/points continue. */
+.player-seat:has(.treseta-declared-set:nth-child(3)) .seat-cards {
+    margin-top: calc(0.45rem + var(--declared-under-space, 0rem));
 }
 
 .treseta-declared-card {
@@ -2720,12 +2734,29 @@
     /* Compact badges on phones; a tap opens the overlay, so no in-place zoom
        (which cannot fit the screen) — keep the badges small and still. */
     .treseta-declared-cards {
-        gap: 10px;
+        --declared-set-width: 65px;
+        grid-template-columns: var(--declared-set-width) calc(var(--avatar-size, 44px) + 12px) var(--declared-set-width);
+        row-gap: 8px;
+        width: calc(var(--declared-set-width) + var(--declared-set-width) + var(--avatar-size, 44px) + 12px);
     }
 
     .treseta-declared-card {
-        width: 30px;
-        margin-left: -14px;
+        width: 26px;
+        margin-left: -13px;
+    }
+
+    /* Fullscreen side seats start close to the viewport edge. Nudge only seats
+       with declarations inward so their left/right sets remain fully visible. */
+    .player-seat[data-seat-side="left"]:has(.treseta-declared-cards) {
+        margin-left: clamp(38px, 12vw, 50px);
+    }
+
+    .player-seat[data-seat-side="right"]:has(.treseta-declared-cards) {
+        margin-left: clamp(-50px, -12vw, -38px);
+    }
+
+    .player-seat:has(.treseta-declared-set:nth-child(3)) .seat-cards {
+        margin-top: calc(0.55rem + var(--declared-under-space-mobile, 0rem));
     }
 
     .treseta-declared-card:has(~ .treseta-declared-card:is(:hover, .is-zoomed)) {
