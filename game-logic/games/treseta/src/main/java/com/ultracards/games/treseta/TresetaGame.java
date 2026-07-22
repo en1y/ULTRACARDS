@@ -60,6 +60,19 @@ public class TresetaGame
         return players;
     }
 
+    public void declare(TresetaPlayer player, TresetaDeclaration declaration) {
+        if (!gameConfig.areDeclarationsEnabled())
+            throw new IllegalArgumentException("Declarations are not enabled in this game mode.");
+        if (getPlayingField() == null || getPlayingField().getCurrentPlayer() != player)
+            throw new IllegalArgumentException("Declarations are only allowed on the player's first turn.");
+        var awardedPoints = player.declare(declaration);
+        player.addPoints(awardedPoints, List.of());
+        if (gameConfig.areTeamsEnabled()) {
+            var players = getPlayers();
+            players.get((players.indexOf(player) + 2) % players.size()).addPoints(awardedPoints, List.of());
+        }
+    }
+
     @Override
     public boolean isGameActive() {
         for (var player : getPlayers()) {
@@ -80,7 +93,7 @@ public class TresetaGame
 
     @Override
     public void drawCards(List<TresetaPlayer> players, TresetaDeck deck) {
-        if (gameConfig.equals(TresetaGameConfig.TWO_PLAYERS)) {
+        if (gameConfig.getNumberOfPlayers() == 2) {
             for (var player : players) {
                 if (!deck.isEmpty()) player.getHand().addCard(deck.drawCard());
             }
