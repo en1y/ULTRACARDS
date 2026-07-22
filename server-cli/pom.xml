@@ -6,7 +6,7 @@
     <parent>
         <groupId>en1y.ultracards</groupId>
         <artifactId>ULTRACARDS</artifactId>
-        <version>0.3.2</version>
+        <version>0.3.3</version>
     </parent>
     <artifactId>server-cli</artifactId>
     <name>ULTRACARDS Server CLI</name>

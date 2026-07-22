@@ -33,7 +33,7 @@ import java.util.function.Function;
                 OverviewCommands.class,
                 NotifyCommands.class, AuditCommands.class, SessionCommands.class, Shell.class, Clear.class, Completion.class, HelpCommand.class})
 public class UltracardsAdminCli implements Callable<Integer> {
-    static final String VERSION = "0.3.2";
+    static final String VERSION = "0.3.3";
     @Spec CommandSpec spec;
     @Option(names = "--output", defaultValue = "TABLE", scope = ScopeType.INHERIT, paramLabel = "FORMAT",
             description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
