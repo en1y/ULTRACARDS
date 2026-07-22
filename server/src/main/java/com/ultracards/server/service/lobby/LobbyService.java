@@ -251,7 +251,7 @@ public class LobbyService {
                 dto.setMinPlayers(config.getNumberOfPlayers());
                 dto.setMaxPlayers(config.getNumberOfPlayers());
                 dto.setGameConfig(new TresetaGameConfigDTO(config.getNumberOfPlayers(), config.getCardsInHandNum(),
-                        config.areTeamsEnabled(), null));
+                        config.areTeamsEnabled(), config.areDeclarationsEnabled(), null));
                 return;
             }
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This game type has no configurable modes");

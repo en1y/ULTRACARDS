@@ -2,6 +2,7 @@ package com.ultracards.server.service.games;
 
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaDeclarationRequestDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
@@ -50,5 +51,11 @@ public class GameService {
             briskulaGameService.playCard(user, card, (BriskulaGameEntity) game);
         if (game.getGameType().equals(GameTypeDTO.Treseta))
             tresetaGameService.playCard(user, card, (TresetaGameEntity) game);
+    }
+
+    public void declare(UserEntity user, @Valid TresetaDeclarationRequestDTO declaration, GameEntity<?, ?> game) {
+        if (!game.getGameType().equals(GameTypeDTO.Treseta))
+            throw new IllegalArgumentException("Declarations are only supported in Treseta.");
+        tresetaGameService.declare(user, declaration, (TresetaGameEntity) game);
     }
 }

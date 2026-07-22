@@ -4,6 +4,7 @@ import com.ultracards.cards.ItalianCard;
 import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.games.treseta.TresetaCard;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaDeclarationRequestDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaPlayerEntity;
@@ -45,6 +46,11 @@ public class TresetaGameService {
     @Value("${app.treseta-move.timer.duration-seconds}")
     private int timerDuration;
 
+    // Declaration modes get a longer first round so players have time to select
+    // and declare their cards before playing.
+    @Value("${app.treseta-move.timer.first-round-duration-seconds}")
+    private int firstRoundTimerDuration;
+
     public TresetaGameService(GameManager gameManager, GameEventPublisher eventPublisher, LobbyManager lobbyManager,
                               UserGamesStatsService userGamesStatsService,
                               UserTresetaStatsService userTresetaStatsService,
@@ -62,7 +68,6 @@ public class TresetaGameService {
     }
 
     public void onGameStarted(TresetaGameEntity game) {
-        game.setTurnDurationSeconds(timerDuration);
         setTimer(game);
         eventPublisher.publish(game, STARTED);
     }
@@ -84,9 +89,23 @@ public class TresetaGameService {
                 finish(game);
                 return;
             }
-            if (game.getPersistedGameConfig().equals(TresetaGameConfig.TWO_PLAYERS))
+            if (game.getPersistedGameConfig().getNumberOfPlayers() == 2)
                 eventPublisher.publishOpponentDrawnCards(game, handsBeforePlay);
             setTimer(game);
+            eventPublisher.publish(game, UPDATED);
+        }
+    }
+
+    public void declare(UserEntity user, TresetaDeclarationRequestDTO dto, TresetaGameEntity game) {
+        synchronized (game) {
+            var cards = new ArrayList<TresetaCard>();
+            for (var cardDto : dto.getCards()) {
+                var card = cardDto.toCard();
+                if (!(card instanceof ItalianCard<?> italianCard))
+                    throw new IllegalArgumentException("Only Italian cards can be declared.");
+                cards.add(new TresetaCard(italianCard.getSuit(), italianCard.getValue()));
+            }
+            game.declare(user, cards);
             eventPublisher.publish(game, UPDATED);
         }
     }
@@ -101,7 +120,11 @@ public class TresetaGameService {
     }
 
     private void setTimer(TresetaGameEntity game) {
-        game.setTurnEndTime(Instant.now().plusSeconds(timerDuration));
+        var config = game.getPersistedGameConfig();
+        var firstRound = config.areDeclarationsEnabled() && game.getTurnNumber() < config.getNumberOfPlayers();
+        var duration = firstRound ? firstRoundTimerDuration : timerDuration;
+        game.setTurnDurationSeconds(duration);
+        game.setTurnEndTime(Instant.now().plusSeconds(duration));
         var turn = game.getTurnNumber();
         taskScheduler.schedule(() -> {
             if (!game.isActive() || !game.getTurnNumber().equals(turn)) return;
@@ -133,6 +156,10 @@ public class TresetaGameService {
             if (won) winnerUsers.add(player.getUser());
             userGamesStatsService.addGame(player.getUser(), GameType.TRESETA, won);
             userTresetaStatsService.addTresetaGame(player.getUser(), gameConfig, won);
+            var declarationPoints = 0;
+            for (var declaration : player.getDeclarations()) declarationPoints += declaration.getPoints();
+            userTresetaStatsService.addTresetaDeclarations(player.getUser(), player.getDeclarations().size(),
+                    declarationPoints);
         }
         updateTresetaRelationshipStats(game.getPlayers(), winnerUsers, gameConfig);
         gameRecordingService.finish(game);

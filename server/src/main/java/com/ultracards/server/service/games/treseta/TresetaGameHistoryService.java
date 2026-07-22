@@ -8,8 +8,10 @@ import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaDeclarationDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameHistoryDTO;
+import com.ultracards.games.treseta.TresetaDeclaration;
 import com.ultracards.recorder.RecordedCard;
 import com.ultracards.recorder.RecordedPlayer;
 import com.ultracards.recorder.RecordedTresetaGame;
@@ -59,6 +61,8 @@ public class TresetaGameHistoryService {
         var game = repository.findById(id).orElse(null);
         if (game == null) return null;
         var points = points(game);
+        var declarations = declarations(game);
+        addDeclarationPoints(game, points, declarations);
         var rounds = new ArrayList<TresetaGameHistoryDTO.TresetaRoundHistoryDTO>();
         for (var round : game.rounds()) {
             var plays = new ArrayList<TresetaGameHistoryDTO.TresetaCardPlayHistoryDTO>();
@@ -76,14 +80,46 @@ public class TresetaGameHistoryService {
                     player(round.winner()), value, pointsDto(game, points)));
         }
         return new TresetaGameHistoryDTO(game.id(), game.lobbyId(), game.name(), owner(game), game.createdAt(),
-                game.endedAt(), config(game), players(game), teams(game), rounds, pointsDto(game, points), winners(game, points));
+                game.endedAt(), config(game), players(game), teams(game), rounds, declarations,
+                pointsDto(game, points), winners(game, points));
     }
 
     private ShortGameHistoryDTO shortHistory(RecordedTresetaGame game) {
         var points = points(game);
+        addDeclarationPoints(game, points, declarations(game));
         for (var round : game.rounds()) add(game, points, round.winner(), Integer.parseInt(round.attributes().getOrDefault("points", "0")));
         return new ShortGameHistoryDTO(game.id(), game.lobbyId(), game.name(), GameTypeDTO.Treseta, game.createdAt(),
                 game.endedAt(), config(game), players(game), pointsDto(game, points), winners(game, points));
+    }
+
+    /**
+     * Declarations are recorded as game attributes: "declaration.N" -> "playerName|TYPE|SUIT,SUIT,...".
+     */
+    private List<TresetaDeclarationDTO> declarations(RecordedTresetaGame game) {
+        var declarations = new ArrayList<TresetaDeclarationDTO>();
+        for (int index = 0; game.attributes().containsKey("declaration." + index); index++) {
+            var encoded = game.attributes().get("declaration." + index);
+            var suitsSep = encoded.lastIndexOf('|');
+            var typeSep = encoded.lastIndexOf('|', suitsSep - 1);
+            if (suitsSep < 0 || typeSep < 0) continue;
+            var name = encoded.substring(0, typeSep);
+            var type = encoded.substring(typeSep + 1, suitsSep);
+            var suits = List.of(encoded.substring(suitsSep + 1).split(","));
+            var points = TresetaDeclaration.Type.NAPOLITANA.name().equals(type) ? 9 : (suits.size() == 4 ? 12 : 9);
+            GamePlayerDTO player = null;
+            for (var recorded : game.players()) if (recorded.name().equals(name)) player = player(recorded);
+            declarations.add(new TresetaDeclarationDTO(player, type, suits, points));
+        }
+        return declarations;
+    }
+
+    private void addDeclarationPoints(RecordedTresetaGame game, Map<Long, Integer> points,
+                                      List<TresetaDeclarationDTO> declarations) {
+        for (var declaration : declarations) {
+            if (declaration.getPlayer() == null) continue;
+            var winner = new RecordedPlayer(declaration.getPlayer().getId(), declaration.getPlayer().getName());
+            add(game, points, winner, declaration.getPoints());
+        }
     }
 
     private Map<Long, Integer> points(RecordedTresetaGame game) {
@@ -108,7 +144,7 @@ public class TresetaGameHistoryService {
     private TresetaGameConfigDTO config(RecordedTresetaGame game) {
         var config = TresetaGameConfig.valueOf(game.gameConfig());
         return new TresetaGameConfigDTO(config.getNumberOfPlayers(), config.getCardsInHandNum(),
-                game.teamsEnabled(), players(game));
+                game.teamsEnabled(), config.areDeclarationsEnabled(), players(game));
     }
 
     private List<GamePlayerDTO> players(RecordedTresetaGame game) {

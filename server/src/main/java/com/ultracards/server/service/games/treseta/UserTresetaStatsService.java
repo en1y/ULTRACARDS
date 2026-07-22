@@ -30,6 +30,11 @@ public class UserTresetaStatsService {
     }
 
     @Transactional
+    public void addTresetaDeclarations(UserEntity user, int count, int points) {
+        if (count > 0) getByUser(user).addDeclarations(count, points);
+    }
+
+    @Transactional
     public void addTresetaGameAgainstUser(UserEntity user, TresetaGameConfig gameConfig, UserEntity otherUser, boolean won) {
         getByUser(user).addGameAgainstUser(gameConfig, otherUser, won);
     }
