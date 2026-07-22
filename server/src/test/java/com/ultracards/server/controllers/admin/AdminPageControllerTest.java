@@ -27,4 +27,14 @@ class AdminPageControllerTest {
 
         assertEquals("redirect:/admin", view);
     }
+
+    @Test
+    void rendersFrontendOnlySandbox() {
+        var model = new ExtendedModelMap();
+
+        var view = controller.sandbox(admin, model);
+
+        assertEquals("ui/admin-sandbox", view);
+        assertEquals("admin", model.getAttribute("username"));
+    }
 }

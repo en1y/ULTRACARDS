@@ -80,4 +80,25 @@ class AdminTemplateRenderingTest {
             assertThat(stylesheet).contains("var(--color-success)");
         }
     }
+
+    @Test
+    void keepsTheUiSandboxFrontendOnly() throws IOException {
+        try (var templateStream = getClass().getResourceAsStream("/templates/ui/admin-sandbox.html");
+             var scriptStream = getClass().getResourceAsStream("/static/js/ui/sandbox.js")) {
+            assertThat(templateStream).isNotNull();
+            assertThat(scriptStream).isNotNull();
+            var template = new String(templateStream.readAllBytes());
+            var script = new String(scriptStream.readAllBytes());
+
+            assertThat(script).doesNotContain("fetch(");
+            assertThat(script).doesNotContain("/api/admin/sandbox");
+            assertThat(script).contains("window.Stomp =");
+            assertThat(template).contains("id=\"sandbox-hand-cards\"");
+            assertThat(template).contains("id=\"sandbox-card-picker\"");
+            assertThat(script).contains("function renderHandEditor()");
+            assertThat(script).contains("function setHandCard()");
+            assertThat(template.indexOf("@{/js/ui/sandbox.js}"))
+                    .isLessThan(template.indexOf("@{/js/ui/live-game.js}"));
+        }
+    }
 }
