@@ -35,6 +35,10 @@
             return gameAdapter.displayPoints?.(points) ?? points ?? 0;
         }
 
+        function isDeclarationPhase() {
+            return gameAdapter.isDeclarationPhase?.(state.game, currentUserId) === true;
+        }
+
         const gameId = gameEl.dataset.gameId;
         const currentUserId = gameEl.dataset.currentUserId ? String(gameEl.dataset.currentUserId) : null;
         const currentUsername = gameEl.dataset.username ? String(gameEl.dataset.username) : '';
@@ -504,7 +508,8 @@
             className: 'drag-ghost',
             isActive: () => {
                 const isTurn = state.game && state.game.playersTurn && isCurrentUser(state.game.playersTurn);
-                return !state.playing && !state.roundClearing && !state.previousRoundReplayActive && !!isTurn;
+                return !isDeclarationPhase() && !state.playing && !state.roundClearing
+                    && !state.previousRoundReplayActive && !!isTurn;
             },
             isCardActive: (cardEl) => isPlayableCard(cardFromEl(cardEl)),
             onStart(session, cardEl) {
@@ -530,6 +535,30 @@
         }
 
         window.addEventListener('resize', refreshLayoutMode);
+
+        // Optional per-game extension point (used by Treseta declarations): the
+        // adapter observes state changes and can send game messages over the
+        // shared WebSocket without owning the connection.
+        const adapterApi = {
+            container: gameEl,
+            currentUserId,
+            displayPoints,
+            send(destination, payload) {
+                if (state.wsConnected && state.wsClient) {
+                    state.wsClient.send(destination, {}, JSON.stringify(payload));
+                }
+            },
+            getGame: () => state.game,
+            getHand: () => state.hand,
+            refreshHand() {
+                state.handRenderSignature = '';
+                syncHand();
+            }
+        };
+
+        function notifyAdapter() {
+            gameAdapter.onStateChanged?.(adapterApi);
+        }
 
         if (initialGame != null) {
             applyGame(initialGame, 'UPDATED', null);
@@ -772,6 +801,7 @@
                 dealCardsIntoHand(newCards, state.finalTrumpDraw);
                 state.finalTrumpDraw = false;
             }
+            notifyAdapter();
         }
 
         /**
@@ -781,6 +811,7 @@
          */
         function applyGame(game, gameEvent, result, skipTableDelay = false) {
             state.gameUpdateVersion++;
+            if (gameEvent === 'STARTED') state.endState = null;
             clearPreviousRoundLabels();
             game.playersTurn = normalizePlayer(game.playersTurn);
             if (Number(game.turnDurationSeconds) > 0) {
@@ -861,6 +892,7 @@
                 updateTurnIndicator(game);
                 renderCurrentPlayer(game);
                 updateTurn(game.playersTurn);
+                notifyAdapter();
                 if (state.delayedTablePending) {
                     return;
                 }
@@ -937,6 +969,7 @@
             } else {
                 clearCenterResult();
             }
+            notifyAdapter();
         }
 
         function isHigherPriorityGameEvent(nextEvent, currentEvent) {
@@ -960,7 +993,13 @@
                 dom.deckStack?.classList.remove('has-trump');
                 return;
             }
-            const frontImg = dom.trump.querySelector('.card-front');
+            let frontImg = dom.trump.querySelector('.card-front');
+            if (!frontImg) {
+                frontImg = document.createElement('img');
+                frontImg.className = 'card-front';
+                frontImg.alt = t('game.card.alt');
+                dom.trump.replaceChildren(frontImg);
+            }
             const url = italianCardUrl(card.card);
             if (frontImg) window.UltracardsGameUi?.applyCardImage(frontImg, url);
             dom.trump.dataset.cardCode = card.card || '';
@@ -992,6 +1031,7 @@
         }
 
         function startLobbyReturnCountdown() {
+            if (gameEl.dataset.sandbox) return;   // the admin sandbox stays on its page after a result
             if (state.endRedirectTimer || state.endRedirectInterval) return;
             let secondsLeft = 6;
             updateLobbyReturnCountdown(secondsLeft);
@@ -1431,6 +1471,7 @@
             }).sort(compareHandCards);
             const renderSignature = [
                 isTurn ? 'turn' : 'wait',
+                isDeclarationPhase() ? 'declaring' : 'playing',
                 state.playing ? 'locked' : 'ready',
                 state.roundClearing ? 'clearing' : 'steady',
                 state.draggingEl?.dataset.cardKey || '',
@@ -1507,17 +1548,19 @@
             // which always grabs the raised/enlarged card. Per-card we only manage the
             // disabled look and the double-click-to-play shortcut.
             img.draggable = false;
-            const playable = isTurn && !state.playing && !state.roundClearing && isPlayableCard(card);
+            const declarationSelectable = isDeclarationPhase() && gameAdapter.canDeclareCard?.(card) === true;
+            const playable = !declarationSelectable && isTurn && !state.playing && !state.roundClearing && isPlayableCard(card);
             img.classList.toggle('is-playable', playable);
-            img.classList.toggle('is-illegal', isTurn && !state.playing && !playable);
-            img.classList.toggle('is-disabled', !playable);
+            img.classList.toggle('is-illegal', isTurn && !state.playing && !playable && !declarationSelectable);
+            img.classList.toggle('is-disabled', !playable && !declarationSelectable);
+            img.classList.toggle('is-declaration-selectable', declarationSelectable);
             img.ondblclick = !playable
                 ? null
                 : () => playCardFromHand(card, img);
         }
 
         function isPlayableCard(card) {
-            return gameAdapter.canPlayCard?.(card, state.game, state.hand) ?? true;
+            return !isDeclarationPhase() && (gameAdapter.canPlayCard?.(card, state.game, state.hand) ?? true);
         }
 
         function setHandSort(sort) {
@@ -2457,11 +2500,15 @@
 
         function clearOpponentDrawnCard(card) {
             if (!card) return;
+            const cardsEl = card.closest('.seat-cards');
             card.cardApi?.showBack();
             card.style.visibility = '';
             card.__ucOpponentRevealOverlay?.remove();
             delete card.__ucOpponentRevealOverlay;
             card.classList.remove('opponent-drawn-card');
+            if (cardsEl && !cardsEl.querySelector('.opponent-drawn-card')) {
+                cardsEl.classList.remove('has-opponent-drawn-card');
+            }
         }
 
         function showFirefoxOpponentDrawnCard(back, card, seatSide) {
@@ -2535,6 +2582,7 @@
                 const back = children[start + index];
                 if (!back?.cardApi) return;
                 back.classList.add('opponent-drawn-card');
+                cardsEl.classList.add('has-opponent-drawn-card');
                 window.setTimeout(() => {
                     if (cardsEl.dataset.opponentRevealSig !== sig || !back.isConnected) return;
                     if (useNativeCardAnimations) {

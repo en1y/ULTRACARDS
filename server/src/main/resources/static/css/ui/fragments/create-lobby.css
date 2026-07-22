@@ -123,6 +123,48 @@
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 16%, transparent);
 }
 
+.create-lobby-declarations-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.8rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    cursor: pointer;
+}
+
+.create-lobby-declarations-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem 0.65rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.create-lobby-declarations-control input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.create-lobby-declarations-control input:checked + .visibility-switch {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-2));
+}
+
+.create-lobby-declarations-control input:checked + .visibility-switch::after {
+    transform: translateX(1.6rem);
+}
+
+.create-lobby-declarations-row:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 16%, transparent);
+}
+
 .create-lobby-text-swap {
     animation: create-lobby-text-swap 180ms ease;
 }
@@ -160,7 +202,7 @@
 }
 
 .create-lobby-settings:not([hidden]) {
-    max-height: 12rem;
+    max-height: 15rem;
     opacity: 1;
     transform: translateY(0);
     visibility: visible;
@@ -200,6 +242,7 @@
     .create-lobby-body,
     .create-lobby-field,
     .create-lobby-settings,
+    .create-lobby-declarations-row,
     .create-lobby-status,
     .create-lobby-actions {
         width: 100%;
@@ -215,6 +258,12 @@
 }
 
 @media (max-width: 520px) {
+    .create-lobby-declarations-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+
     .create-lobby-actions {
         flex-direction: column-reverse;
     }

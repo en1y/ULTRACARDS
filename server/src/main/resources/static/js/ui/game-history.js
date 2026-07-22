@@ -28,7 +28,9 @@
         next: document.getElementById('replay-next'),
         range: document.getElementById('replay-step-range'),
         scores: document.getElementById('replay-score-list'),
-        teams: document.getElementById('replay-team-list')
+        teams: document.getElementById('replay-team-list'),
+        declarationsSection: document.getElementById('replay-declarations-section'),
+        declarationList: document.getElementById('replay-declaration-list')
     };
 
     const state = {game: null, teamState: null, steps: [], stepIndex: 0, seats: new Map(), trickZone: null, trickEls: new Map(), animating: false, rangeFrame: null};
@@ -104,6 +106,19 @@
     const initialPoints = () => {
         const map = new Map();
         (state.game?.playersOrder || []).forEach((player) => map.set(playerKey(player), 0));
+        // Treseta declarations are scored before the first trick, so seed them
+        // into the starting totals (teammates share the declared points).
+        const teams = state.game?.teams || [];
+        (state.game?.declarations || []).forEach((declaration) => {
+            const declarer = declaration.player;
+            if (!declarer) return;
+            const team = teams.find((members) => (members || [])
+                .some((member) => playerKey(member) === playerKey(declarer))) || [declarer];
+            team.forEach((member) => {
+                const key = playerKey(member);
+                map.set(key, (map.get(key) || 0) + (Number(declaration.points) || 0));
+            });
+        });
         return map;
     };
     const getStep = () => state.steps[state.stepIndex] || {roundIndex: 0, playCount: 0};
@@ -321,6 +336,35 @@
             ui.layoutZone(state.trickZone, cards);
         }
         if (fresh.length) requestAnimationFrame(() => fresh.forEach((el) => { el.style.transition = ''; }));
+    };
+
+    // Treseta declarations are made once, before the first trick, so they render
+    // once: face-up badges under the declaring player's seat (same rendering as
+    // the live game, via treseta.js) and a summary list in the info panel.
+    const renderDeclarations = () => {
+        const list = Array.isArray(state.game?.declarations) ? state.game.declarations : [];
+        if (dom.declarationsSection) dom.declarationsSection.hidden = !list.length;
+        if (!list.length) return;
+        const declarationsUi = window.UltracardsTresetaDeclarations;
+
+        if (dom.declarationList) {
+            dom.declarationList.innerHTML = list.map((declaration) => `
+                <div class="history-replay-score">
+                    <span>${escapeHtml(playerName(declaration.player))} — ${escapeHtml(declarationsUi ? declarationsUi.typeLabel(declaration.type) : declaration.type)}</span>
+                    <strong>+${displayPoints(declaration.points)}</strong></div>`).join('');
+        }
+
+        if (!declarationsUi) return;
+        const byPlayer = new Map();
+        list.forEach((declaration) => {
+            const key = playerKey(declaration.player);
+            if (!byPlayer.has(key)) byPlayer.set(key, {player: declaration.player, declarations: []});
+            byPlayer.get(key).declarations.push(declaration);
+        });
+        byPlayer.forEach(({player, declarations}) => {
+            const seat = state.seats.get(playerKey(player));
+            if (seat) declarationsUi.attachDeclaredBadge(seat, playerName(player), declarations);
+        });
     };
 
     const renderScores = () => {
@@ -552,6 +596,7 @@
         layout?.classList.toggle('is-three-player', playerCount() === 3);
         layout?.classList.toggle('is-four-player', playerCount() === 4);
         initSeats();
+        renderDeclarations();
         state.trickZone = ui?.registerHand(dom.trick, {type: 'center', spacingScale: 0.45, maxTilt: 4, yArc: 3});
         render();
     };

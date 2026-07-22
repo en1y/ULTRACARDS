@@ -36,6 +36,9 @@
             configEditor: document.getElementById('lobby-config-editor'),
             configSelect: document.getElementById('lobby-config-select'),
             configWarning: document.getElementById('lobby-config-warning'),
+            declarationsRow: document.getElementById('lobby-declarations-row'),
+            declarationsControl: document.getElementById('lobby-declarations-control'),
+            declarationsToggle: document.getElementById('lobby-declarations-toggle'),
             randomize: document.getElementById('lobby-randomize'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
@@ -268,6 +271,20 @@
 
             dom.configSelect?.addEventListener('change', async () => {
                 if (!state.currentUser || !state.lobby?.host || String(state.currentUser.id) !== String(state.lobby.host.id)) {
+                    return;
+                }
+
+                try {
+                    await updateLobbyConfiguration(dom.configSelect.value);
+                } catch (error) {
+                    renderConfigEditor(state.lobby, true);
+                    showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.config'));
+                }
+            });
+
+            dom.declarationsToggle?.addEventListener('change', async () => {
+                if (!state.currentUser || !state.lobby?.host || String(state.currentUser.id) !== String(state.lobby.host.id)) {
+                    renderConfigEditor(state.lobby, false);
                     return;
                 }
 
@@ -622,6 +639,9 @@
             if (!isHost || !settings || !Object.keys(settings).length) {
                 dom.configEditor.hidden = true;
                 dom.configSelect.innerHTML = '';
+                if (dom.declarationsRow) {
+                    dom.declarationsRow.hidden = true;
+                }
                 if (dom.configWarning) {
                     dom.configWarning.hidden = true;
                 }
@@ -644,6 +664,16 @@
             }
             if (dom.configWarning) {
                 dom.configWarning.hidden = !hasUnavailableModes;
+            }
+            if (dom.declarationsControl) {
+                const isTreseta = String(lobby.gameType || '').toLowerCase() === 'treseta';
+                if (dom.declarationsRow) {
+                    dom.declarationsRow.hidden = !isTreseta;
+                }
+                if (dom.declarationsToggle) {
+                    const enabled = !!lobby.gameConfig?.declarationsEnabled;
+                    dom.declarationsToggle.checked = enabled;
+                }
             }
             dom.configEditor.hidden = false;
         }
@@ -674,7 +704,10 @@
                 state.pendingPlayerAreaTransition = null;
             }
 
-            const updatedLobby = JSON.parse(buildLobbyCreatePayload(gameTypeKey, settingKey, state.lobby.name));
+            const configExtras = gameTypeKey === 'treseta'
+                ? {declarationsEnabled: dom.declarationsToggle?.checked === true}
+                : null;
+            const updatedLobby = JSON.parse(buildLobbyCreatePayload(gameTypeKey, settingKey, state.lobby.name, true, configExtras));
             updatedLobby.id = state.lobby.id;
             updatedLobby.name = state.lobby.name;
             updatedLobby.players = state.lobby.players;

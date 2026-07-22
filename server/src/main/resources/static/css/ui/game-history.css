@@ -312,7 +312,8 @@
 }
 
 .is-replay .player-seat {
-    position: static;
+    /* relative (not static): the declared-cards badge anchors under the seat */
+    position: relative;
     transform: none;
     left: auto;
     top: auto;
