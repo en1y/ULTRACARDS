@@ -111,10 +111,12 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.3 - Add Treseta declarations
+## v0.3.3 - Add Treseta declarations ✅
+
 - Add logic for implementing declarations in Treseta, including the declaration types, their values, and the rules for when they can be declared.
 - Update the game logic, server endpoints, and UI to support declarations, including scoring and display of declared values.
 - Update the game history and statistics to include declaration information for completed games.
+- Provide every Treseta mode with and without declarations, selectable with a toggle when creating or configuring a lobby.
 
 ---
 
