@@ -22,18 +22,19 @@ import java.util.function.Function;
 
 @Command(name = "ultracards-admin", mixinStandardHelpOptions = true, version = UltracardsAdminCli.VERSION,
         header = {"@|bold,red ULTRACARDS ADMIN|@", "Secure remote operations for ULTRACARDS servers."},
-        description = "Manage accounts, game availability, live lobbies, reports, statistics, notifications, and audit history.",
+        description = "Manage accounts, game availability, live lobbies, leaderboards, reports, statistics, notifications, and audit history.",
         footer = {"", "@|faint Start here:|@", "  ultracards-admin server add local https://cards.example.com",
                 "  ultracards-admin login --email admin@example.com", "", "@|faint Common tasks:|@",
                 "  ultracards-admin game disable BRISKULA --mode THREE_PLAYERS --reason maintenance",
+                "  ultracards-admin leaderboard --metric WIN_RATE --game Briskula",
                 "  ultracards-admin db edit stats --user ada --game BRISKULA --mode TWO_PLAYERS --wins 12 --reason correction",
                 "", "Use @|bold help <command>|@ or @|bold <command> --help|@ for details."},
         subcommands = {ServerCommands.class, Login.class, Logout.class, WhoAmI.class,
-                UserCommands.class, GameCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
+                UserCommands.class, GameCommands.class, LeaderboardCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
                 OverviewCommands.class,
                 NotifyCommands.class, AuditCommands.class, SessionCommands.class, Shell.class, Clear.class, Completion.class, HelpCommand.class})
 public class UltracardsAdminCli implements Callable<Integer> {
-    static final String VERSION = "0.3.3";
+    static final String VERSION = "0.3.4";
     @Spec CommandSpec spec;
     @Option(names = "--output", defaultValue = "TABLE", scope = ScopeType.INHERIT, paramLabel = "FORMAT",
             description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")

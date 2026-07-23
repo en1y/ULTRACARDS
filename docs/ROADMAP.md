@@ -120,7 +120,7 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.4 - Leaderboards
+## v0.3.4 - Leaderboards ✅
 
 - Add leaderboard services and endpoints backed by persisted game statistics and completed recorded games.
 - Provide overall, per-game, and per-mode rankings with pagination, allowlisted filters, deterministic tie-breaking, and the current user's position.
