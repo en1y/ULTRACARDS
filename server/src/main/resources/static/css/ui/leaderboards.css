@@ -1,0 +1,771 @@
+.leaderboard-main {
+    --leaderboard-canvas: var(--color-bg);
+    --leaderboard-panel: var(--color-bg);
+    --leaderboard-panel-strong: var(--color-surface);
+    --leaderboard-row: var(--color-bg);
+    --leaderboard-row-alt: var(--color-surface);
+    --leaderboard-line: var(--color-border);
+    --leaderboard-muted: var(--color-text-muted);
+    min-height: calc(100vh - 7rem);
+    padding-bottom: 3rem;
+    background: var(--leaderboard-canvas);
+}
+
+.leaderboard-hero {
+    padding-block: 2.2rem 0.7rem;
+}
+
+.leaderboard-hero > div {
+    max-width: 62rem;
+}
+
+.leaderboard-eyebrow,
+.leaderboard-hero h1 {
+    margin: 0;
+}
+
+.leaderboard-eyebrow {
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.leaderboard-hero h1 {
+    margin-top: 0.25rem;
+    font-size: clamp(1.45rem, 3.2vw, 2.25rem);
+    font-weight: 850;
+    line-height: 1.08;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.leaderboard-hero h1 span:last-child {
+    color: var(--leaderboard-muted);
+    font-weight: 650;
+}
+
+.leaderboard-intro {
+    max-width: 42rem;
+    margin-top: 0.55rem;
+    color: var(--leaderboard-muted);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.leaderboard-shell {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.leaderboard-controls {
+    padding: 0;
+    display: flex;
+    align-items: end;
+    gap: 0.65rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.leaderboard-metrics,
+.leaderboard-filters {
+    display: flex;
+    align-items: end;
+    gap: 0.65rem;
+}
+
+.leaderboard-filters {
+    margin-left: auto;
+}
+
+.leaderboard-metric {
+    min-height: 2.55rem;
+    padding: 0.58rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    text-align: left;
+    box-shadow: none;
+}
+
+.leaderboard-metric span {
+    display: block;
+    font-size: 0.86rem;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+/* Hint copy stays available to assistive tech while the compact buttons show only the label. */
+.leaderboard-metric small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.leaderboard-metric:hover,
+.leaderboard-metric:focus-visible {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 8%, var(--color-surface));
+    transform: translateY(-1px);
+}
+
+.leaderboard-metric.is-active {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
+    color: var(--color-accent);
+}
+
+.leaderboard-filters .field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.leaderboard-filters select {
+    height: 2.55rem;
+    min-width: 10rem;
+    padding-block: 0.45rem;
+    border-color: var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-size: 0.86rem;
+    font-weight: 750;
+    box-shadow: none;
+}
+
+#leaderboard-mode {
+    min-width: 15rem;
+}
+
+.leaderboard-filters select:disabled {
+    border-color: var(--leaderboard-line);
+    background-color: var(--leaderboard-panel-strong);
+    color: var(--leaderboard-muted);
+    cursor: not-allowed;
+    opacity: 0.65;
+    box-shadow: none;
+}
+
+.leaderboard-board {
+    overflow: hidden;
+    border-color: var(--leaderboard-line);
+    border-radius: var(--radius-lg);
+    background: var(--leaderboard-panel);
+    box-shadow: var(--shadow-card);
+}
+
+.leaderboard-overview-head {
+    min-height: 4.25rem;
+    padding: 0.95rem 1.05rem 0.55rem;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.leaderboard-overview-head h2,
+.leaderboard-overview-head p,
+.leaderboard-results-head h2,
+.leaderboard-results-head p {
+    margin: 0;
+}
+
+.leaderboard-overview-head h2,
+.leaderboard-results-head h2 {
+    font-size: 0.78rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+#leaderboard-chart-summary,
+#leaderboard-summary,
+.leaderboard-threshold {
+    margin-top: 0.2rem;
+    color: var(--leaderboard-muted);
+    font-size: 0.76rem;
+}
+
+.leaderboard-current-user {
+    min-width: 18rem;
+    padding: 0.55rem 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 55%, var(--leaderboard-line));
+    border-radius: 0.4rem;
+    background: color-mix(in oklab, var(--color-accent) 10%, var(--leaderboard-panel));
+}
+
+.leaderboard-current-user[hidden] {
+    display: none;
+}
+
+.leaderboard-current-user > div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.leaderboard-current-label {
+    color: var(--leaderboard-muted);
+    font-size: 0.65rem;
+    font-weight: 850;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.leaderboard-current-user strong {
+    color: var(--color-accent);
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.leaderboard-current-user p {
+    max-width: 12rem;
+    margin: 0;
+    color: var(--leaderboard-muted);
+    font-size: 0.7rem;
+    text-align: right;
+}
+
+.leaderboard-chart {
+    --leaderboard-chart-label-space: 1.4rem;
+    position: relative;
+    height: 10.5rem;
+    margin: 0 1.05rem 0.85rem;
+    padding: 0 0 0 2.75rem;
+}
+
+.leaderboard-chart[hidden] {
+    display: none;
+}
+
+.leaderboard-chart::before,
+.leaderboard-chart::after {
+    content: "";
+    position: absolute;
+    left: 2.75rem;
+    right: 0;
+    border-top: 1px solid var(--leaderboard-line);
+    pointer-events: none;
+}
+
+.leaderboard-chart::before {
+    top: 0;
+}
+
+.leaderboard-chart::after {
+    top: calc(50% - 0.7rem);
+}
+
+.leaderboard-chart-guide {
+    position: absolute;
+    left: 0;
+    color: var(--leaderboard-muted);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-chart-guide-top { top: -0.35rem; }
+.leaderboard-chart-guide-middle { top: calc(50% - 1.05rem); }
+.leaderboard-chart-guide-bottom { top: calc(100% - var(--leaderboard-chart-label-space) - 0.35rem); }
+
+.leaderboard-chart-bars {
+    height: calc(100% - var(--leaderboard-chart-label-space));
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(2.2rem, 1fr));
+    align-items: stretch;
+    gap: 0.65rem;
+    border-bottom: 1px solid var(--leaderboard-line);
+}
+
+.leaderboard-chart-item {
+    position: relative;
+    height: 100%;
+    min-width: 0;
+    padding: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    box-shadow: none;
+    cursor: pointer;
+    transition: none;
+}
+
+.leaderboard-chart-bar {
+    width: min(2.1rem, 75%);
+    height: max(0.45rem, calc(var(--bar-height) * 1%));
+    background: color-mix(in oklab, var(--color-accent) 68%, var(--color-surface-2));
+    transition: height 0.25s ease, filter 0.15s ease, transform 0.15s ease;
+}
+
+.leaderboard-chart-item:first-child .leaderboard-chart-bar { background: var(--color-accent); }
+
+.leaderboard-chart-item:hover,
+.leaderboard-chart-item:focus-visible {
+    border: 0;
+    background: transparent;
+    outline: none;
+}
+
+.leaderboard-chart-item:hover .leaderboard-chart-bar,
+.leaderboard-chart-item:focus-visible .leaderboard-chart-bar {
+    filter: brightness(1.15);
+    transform: scaleX(1.14);
+}
+
+.leaderboard-chart-item:focus-visible .leaderboard-chart-label {
+    color: var(--color-accent);
+    text-decoration: underline;
+}
+
+.leaderboard-chart-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: 0.35rem;
+    width: max-content;
+    max-width: 12rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-card);
+    font-size: 0.68rem;
+    line-height: 1.25;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.3rem);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.leaderboard-chart-item:hover::after,
+.leaderboard-chart-item:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.leaderboard-chart-label {
+    position: absolute;
+    top: calc(100% + 0.18rem);
+    left: 50%;
+    color: var(--leaderboard-muted);
+    font-size: 0.68rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    transform: translateX(-50%);
+}
+
+.leaderboard-results-head {
+    min-height: 4.2rem;
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid var(--leaderboard-line);
+    background: color-mix(in oklab, var(--leaderboard-panel-strong) 74%, var(--leaderboard-panel));
+}
+
+.leaderboard-threshold {
+    max-width: 34rem;
+    text-align: right;
+}
+
+.leaderboard-status {
+    min-height: 11rem;
+    padding: 2rem;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.85rem;
+    color: var(--leaderboard-muted);
+    text-align: center;
+}
+
+.leaderboard-status[hidden] {
+    display: none;
+}
+
+.leaderboard-status.is-error {
+    color: var(--color-danger);
+}
+
+.leaderboard-loader {
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 3px solid var(--leaderboard-line);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: leaderboard-spin 0.75s linear infinite;
+}
+
+.leaderboard-status.is-error .leaderboard-loader,
+.leaderboard-status.is-empty .leaderboard-loader {
+    display: none;
+}
+
+.leaderboard-table-shell[hidden] {
+    display: none;
+}
+
+.leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+    padding: 0.88rem 1rem;
+    text-align: right;
+}
+
+.leaderboard-table th {
+    color: color-mix(in oklab, var(--color-text) 76%, transparent);
+    background: var(--leaderboard-panel-strong);
+    font-size: 0.67rem;
+    font-weight: 750;
+    letter-spacing: 0.025em;
+}
+
+.leaderboard-table th:nth-child(-n + 2),
+.leaderboard-table td:nth-child(-n + 2) {
+    text-align: left;
+}
+
+.leaderboard-table tbody tr {
+    border-bottom: 1px solid color-mix(in oklab, var(--leaderboard-line) 62%, transparent);
+    background: var(--leaderboard-row);
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.leaderboard-table tbody tr:nth-child(even) {
+    background: var(--leaderboard-row-alt);
+}
+
+.leaderboard-table tbody tr:hover {
+    filter: brightness(1.08);
+}
+
+.leaderboard-table tbody tr:last-child {
+    border-bottom: 0;
+}
+
+.leaderboard-table tbody tr.is-rank-1 {
+    background: color-mix(in oklab, #b79a37 18%, var(--leaderboard-row));
+}
+
+.leaderboard-table tbody tr.is-rank-2 {
+    background: color-mix(in oklab, #8b9bac 15%, var(--leaderboard-row-alt));
+}
+
+.leaderboard-table tbody tr.is-rank-3 {
+    background: color-mix(in oklab, #a96839 17%, var(--leaderboard-row));
+}
+
+.leaderboard-table tbody tr.is-current-user {
+    box-shadow: inset 3px 0 var(--color-accent);
+}
+
+.leaderboard-rank {
+    width: 4.5rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+}
+
+.leaderboard-rank-badge {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    display: inline-grid;
+    place-items: center;
+    padding: 0.28rem;
+    border: 1px solid var(--leaderboard-line);
+    border-radius: 0.45rem;
+    background: color-mix(in oklab, var(--leaderboard-panel) 82%, transparent);
+}
+
+.is-rank-1 .leaderboard-rank-badge { color: #f1cf58; border-color: #c4a33a; }
+.is-rank-2 .leaderboard-rank-badge { color: #c1ccd5; border-color: #8394a3; }
+.is-rank-3 .leaderboard-rank-badge { color: #d58d57; border-color: #a76637; }
+
+.leaderboard-player {
+    min-width: 0;
+    font-weight: 800;
+}
+
+.leaderboard-player-button {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    box-shadow: none;
+}
+
+.leaderboard-player-button:hover,
+.leaderboard-player-button:focus-visible {
+    border: 0;
+    background: transparent;
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.18rem;
+    outline: none;
+}
+
+.leaderboard-you {
+    margin-left: 0.5rem;
+    padding: 0.12rem 0.4rem;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 65%, transparent);
+    border-radius: 0.25rem;
+    color: var(--color-accent);
+    font-size: 0.62rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.leaderboard-number {
+    font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-primary-value {
+    color: var(--color-accent);
+    font-size: 1.02rem;
+    font-weight: 900;
+}
+
+.leaderboard-pagination {
+    padding: 0.9rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border-top: 1px solid var(--leaderboard-line);
+}
+
+.leaderboard-pagination[hidden] {
+    display: none;
+}
+
+.leaderboard-pagination button {
+    min-width: 7.5rem;
+}
+
+.leaderboard-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.leaderboard-pagination span {
+    min-width: 5.5rem;
+    color: var(--leaderboard-muted);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    text-align: center;
+}
+
+@keyframes leaderboard-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+    .leaderboard-controls {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .leaderboard-filters {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 700px) {
+    .leaderboard-main {
+        padding-bottom: 1.5rem;
+    }
+
+    .leaderboard-hero {
+        padding-top: 1.4rem;
+    }
+
+    .leaderboard-hero h1 span:last-child {
+        display: none;
+    }
+
+    .leaderboard-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .leaderboard-metric {
+        min-width: 0;
+        padding-inline: 0.55rem;
+        text-align: center;
+    }
+
+    .leaderboard-metric span {
+        overflow: hidden;
+        font-size: 0.74rem;
+        text-overflow: ellipsis;
+    }
+
+    .leaderboard-filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .leaderboard-filters select,
+    #leaderboard-mode {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .leaderboard-overview-head,
+    .leaderboard-results-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .leaderboard-current-user {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .leaderboard-chart {
+        height: 8.75rem;
+        margin-inline: 0.75rem;
+        padding-left: 2.3rem;
+    }
+
+    .leaderboard-chart::before,
+    .leaderboard-chart::after {
+        left: 2.3rem;
+    }
+
+    .leaderboard-chart-bars {
+        grid-template-columns: repeat(auto-fit, minmax(1.15rem, 1fr));
+        gap: 0.22rem;
+    }
+
+    .leaderboard-threshold {
+        text-align: left;
+    }
+
+    .leaderboard-table,
+    .leaderboard-table tbody,
+    .leaderboard-table tr,
+    .leaderboard-table td {
+        display: block;
+    }
+
+    .leaderboard-table thead {
+        display: none;
+    }
+
+    .leaderboard-table-shell {
+        padding: 0.75rem;
+        background: var(--leaderboard-canvas);
+    }
+
+    .leaderboard-table tbody {
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .leaderboard-table tbody tr {
+        position: relative;
+        padding: 0.8rem 0.85rem 0.8rem 4rem;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.7rem;
+        border: 1px solid var(--leaderboard-line);
+        border-radius: 0.45rem;
+    }
+
+    .leaderboard-table td {
+        padding: 0;
+        border: 0;
+        text-align: left;
+    }
+
+    .leaderboard-table td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.08rem;
+        color: var(--leaderboard-muted);
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .leaderboard-table .leaderboard-rank {
+        position: absolute;
+        left: 0.85rem;
+        top: 50%;
+        width: auto;
+        transform: translateY(-50%);
+    }
+
+    .leaderboard-table .leaderboard-rank::before,
+    .leaderboard-table .leaderboard-player::before {
+        display: none;
+    }
+
+    .leaderboard-player {
+        grid-column: 1 / -1;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 460px) {
+    .leaderboard-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .leaderboard-current-user {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .leaderboard-current-user p {
+        max-width: none;
+        text-align: left;
+    }
+
+    .leaderboard-pagination {
+        gap: 0.5rem;
+    }
+
+    .leaderboard-pagination button {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .leaderboard-loader { animation-duration: 1.5s; }
+    .leaderboard-chart-bar,
+    .leaderboard-metric,
+    .leaderboard-table tbody tr { transition: none; }
+}

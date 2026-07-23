@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{leaderboards.pageTitle}">Leaderboards · ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/leaderboards.css(v='0.3.4-4')}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{ui/fragments/header :: header}"></div>
+
+<main class="leaderboard-main">
+    <section class="leaderboard-hero container">
+        <div>
+            <p class="leaderboard-eyebrow" th:text="#{leaderboards.eyebrow}">Hall of cards</p>
+            <h1><span th:text="#{leaderboards.title}">Leaderboards</span><span aria-hidden="true"> // ULTRACARDS</span></h1>
+            <p class="leaderboard-intro" th:text="#{leaderboards.intro}">See who plays the most and who turns games into wins.</p>
+        </div>
+    </section>
+
+    <section class="leaderboard-shell container" aria-labelledby="leaderboard-results-title">
+        <div class="leaderboard-controls card">
+            <div class="leaderboard-metrics" role="group" th:aria-label="#{leaderboards.metric.label}">
+                <button class="leaderboard-metric is-active" type="button" data-metric="GAMES_PLAYED" aria-pressed="true">
+                    <span th:text="#{leaderboards.metric.gamesPlayed}">Games played</span>
+                    <small th:text="#{leaderboards.metric.gamesPlayed.hint}">The most experienced players</small>
+                </button>
+                <button class="leaderboard-metric" type="button" data-metric="WIN_RATE" aria-pressed="false">
+                    <span th:text="#{leaderboards.metric.winRate}">Win rate</span>
+                    <small th:text="#{leaderboards.metric.winRate.hint}">Best percentage after 10 games</small>
+                </button>
+                <button class="leaderboard-metric" type="button" data-metric="WINS" aria-pressed="false">
+                    <span th:text="#{leaderboards.metric.wins}">Wins</span>
+                    <small th:text="#{leaderboards.metric.wins.hint}">The most victories</small>
+                </button>
+            </div>
+
+            <div class="leaderboard-filters">
+                <label class="field" for="leaderboard-game">
+                    <span th:text="#{leaderboards.game.label}">Game</span>
+                    <select id="leaderboard-game">
+                        <option value="" th:text="#{leaderboards.game.all}">All games</option>
+                        <option value="Briskula" th:text="#{game.briskula}">Briskula</option>
+                        <option value="Treseta" th:text="#{game.treseta}">Treseta</option>
+                        <option value="Poker" th:text="#{game.poker}">Poker</option>
+                        <option value="Durak" th:text="#{game.durak}">Durak</option>
+                    </select>
+                </label>
+                <label class="field" for="leaderboard-mode">
+                    <span th:text="#{leaderboards.mode.label}">Mode</span>
+                    <select id="leaderboard-mode" disabled>
+                        <option value="" th:text="#{leaderboards.mode.all}">All modes</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <section class="leaderboard-board card">
+            <div class="leaderboard-overview-head">
+                <div>
+                    <h2 id="leaderboard-distribution-title" th:text="#{leaderboards.distribution}">Rank distribution</h2>
+                    <p id="leaderboard-chart-summary" th:text="#{common.loading}">Loading</p>
+                </div>
+                <aside id="leaderboard-current-user" class="leaderboard-current-user" hidden>
+                    <div>
+                        <span class="leaderboard-current-label" th:text="#{leaderboards.yourPosition}">Your position</span>
+                        <strong id="leaderboard-current-position">#—</strong>
+                    </div>
+                    <p id="leaderboard-current-copy" th:text="#{leaderboards.yourPosition.copy}">Keep playing to climb the table.</p>
+                </aside>
+            </div>
+
+            <div id="leaderboard-chart" class="leaderboard-chart" role="img"
+                 th:aria-label="#{leaderboards.distribution.aria}" hidden>
+                <span id="leaderboard-chart-guide-top" class="leaderboard-chart-guide leaderboard-chart-guide-top">100%</span>
+                <span id="leaderboard-chart-guide-middle" class="leaderboard-chart-guide leaderboard-chart-guide-middle">50%</span>
+                <span id="leaderboard-chart-guide-bottom" class="leaderboard-chart-guide leaderboard-chart-guide-bottom">0%</span>
+                <div id="leaderboard-chart-bars" class="leaderboard-chart-bars"></div>
+            </div>
+
+            <div class="leaderboard-results-head">
+                <div>
+                    <h2 id="leaderboard-results-title" th:text="#{leaderboards.results}">Ranking</h2>
+                    <p id="leaderboard-summary" th:text="#{common.loading}">Loading</p>
+                </div>
+                <p id="leaderboard-threshold" class="leaderboard-threshold" hidden></p>
+            </div>
+
+            <div id="leaderboard-status" class="leaderboard-status" role="status" aria-live="polite">
+                <span class="leaderboard-loader" aria-hidden="true"></span>
+                <span th:text="#{leaderboards.loading}">Shuffling the rankings…</span>
+            </div>
+
+            <div id="leaderboard-table-shell" class="leaderboard-table-shell" hidden>
+                <table class="leaderboard-table">
+                    <thead>
+                    <tr>
+                        <th scope="col" th:text="#{leaderboards.column.rank}">Rank</th>
+                        <th scope="col" th:text="#{leaderboards.column.player}">Player</th>
+                        <th scope="col" th:text="#{leaderboards.column.games}">Games</th>
+                        <th scope="col" th:text="#{leaderboards.column.wins}">Wins</th>
+                        <th scope="col" th:text="#{leaderboards.column.winRate}">Win rate</th>
+                    </tr>
+                    </thead>
+                    <tbody id="leaderboard-rows"></tbody>
+                </table>
+            </div>
+
+            <nav id="leaderboard-pagination" class="leaderboard-pagination" th:aria-label="#{leaderboards.pagination}" hidden>
+                <button id="leaderboard-previous" class="btn" type="button" th:text="#{common.previous}">Previous</button>
+                <span id="leaderboard-page-label">1 / 1</span>
+                <button id="leaderboard-next" class="btn" type="button" th:text="#{common.next}">Next</button>
+            </nav>
+        </section>
+    </section>
+</main>
+
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script th:src="@{/js/ui/leaderboards.js(v='0.3.4-3')}"></script>
+</body>
+</html>
