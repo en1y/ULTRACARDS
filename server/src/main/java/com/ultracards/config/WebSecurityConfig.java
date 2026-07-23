@@ -56,8 +56,10 @@ public class WebSecurityConfig {
                         ).authenticated()
                         // Public app routes
                         .requestMatchers(
-                                "/active"
+                                "/active",
+                                "/leaderboards"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/leaderboards").permitAll()
                         // Public auth endpoints
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/email/send",

@@ -14,6 +14,7 @@ import com.ultracards.gateway.service.FriendService;
 import com.ultracards.gateway.service.GameService;
 import com.ultracards.gateway.service.GameWsService;
 import com.ultracards.gateway.service.LobbyService;
+import com.ultracards.gateway.service.LeaderboardService;
 import com.ultracards.gateway.service.LobbyWsService;
 import com.ultracards.gateway.service.NotificationService;
 import com.ultracards.gateway.service.NotificationWsService;
@@ -48,6 +49,7 @@ public class GatewayAppClient implements AutoCloseable {
     private final ServerService server;
     private final UiPageService uiPages;
     private final AdminService admin;
+    private final LeaderboardService leaderboards;
     private final List<StompGatewayService> sockets = new CopyOnWriteArrayList<>();
     private final AtomicBoolean closed = new AtomicBoolean();
 
@@ -77,6 +79,7 @@ public class GatewayAppClient implements AutoCloseable {
         this.server = new ServerService(restTemplate, serverUrl);
         this.uiPages = new UiPageService(restTemplate, serverUrl, tokenHolder);
         this.admin = new AdminService(restTemplate, serverUrl, tokenHolder);
+        this.leaderboards = new LeaderboardService(restTemplate, serverUrl, tokenHolder);
     }
 
     public GatewayAsync async() {
@@ -133,6 +136,10 @@ public class GatewayAppClient implements AutoCloseable {
 
     public AdminService admin() {
         return admin;
+    }
+
+    public LeaderboardService leaderboards() {
+        return leaderboards;
     }
 
     public CompletableFuture<GameWsService> gameSocket() {
