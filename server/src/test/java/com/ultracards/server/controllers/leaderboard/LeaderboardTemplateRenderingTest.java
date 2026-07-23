@@ -24,7 +24,7 @@ class LeaderboardTemplateRenderingTest {
             assertThat(template).contains("data-metric=\"WIN_RATE\"");
             assertThat(template).contains("id=\"leaderboard-mode\" disabled");
             assertThat(template).contains("id=\"leaderboard-chart-bars\"");
-            assertThat(template).doesNotContain("leaderboard-intro");
+            assertThat(template).contains("leaderboard-intro");
             assertThat(script).contains("credentials: 'same-origin'");
             assertThat(script).contains("replaceChildren(...data.items.map(renderRow))");
             assertThat(script).contains("function renderChart(data)");
