@@ -1,6 +1,8 @@
 package com.ultracards.cli;
 
 import com.ultracards.gateway.dto.admin.AdminNotificationRequestDTO;
+import com.ultracards.gateway.dto.games.GameTypeDTO;
+import com.ultracards.gateway.dto.leaderboard.LeaderboardMetricDTO;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -9,6 +11,28 @@ import picocli.CommandLine.Spec;
 
 import java.util.UUID;
 import java.util.List;
+
+@Command(name = "leaderboard", aliases = {"leaderboards", "rankings"},
+        description = "Show overall, per-game, or per-mode rankings by games, wins, or win rate.")
+class LeaderboardCommands extends CliCommand {
+    @Option(names = "--metric", defaultValue = "GAMES_PLAYED", paramLabel = "METRIC",
+            description = "Ranking metric: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
+    LeaderboardMetricDTO metric;
+    @Option(names = "--game", paramLabel = "GAME",
+            description = "Limit to a game: ${COMPLETION-CANDIDATES}.")
+    GameTypeDTO game;
+    @Option(names = "--mode", paramLabel = "MODE",
+            description = "Limit to one Briskula or Treseta mode; requires --game.")
+    String mode;
+    @Option(names = "--page", defaultValue = "0", description = "Zero-based page (default: ${DEFAULT-VALUE}).")
+    int page;
+    @Option(names = "--size", defaultValue = "25", description = "Rows per page, from 1 to 100 (default: ${DEFAULT-VALUE}).")
+    int size;
+
+    public Integer call() {
+        return root().withClient(client -> ok(client.leaderboards().get(metric, game, mode, page, size)));
+    }
+}
 
 @Command(name = "overview", aliases = {"dashboard", "summary"},
         description = "Show the server dashboard: version, health, users, sessions, games, lobbies, and database totals.")

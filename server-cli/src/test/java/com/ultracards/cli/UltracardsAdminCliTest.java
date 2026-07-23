@@ -171,6 +171,49 @@ class UltracardsAdminCliTest {
     }
 
     @Test
+    void leaderboardCommandDisplaysAReadableRankedPage() {
+        var store = new ConfigStore(directory);
+        store.add("local", "http://localhost:8080");
+        var template = new org.springframework.web.client.RestTemplate();
+        var server = MockRestServiceServer.bindTo(template).build();
+        server.expect(request -> {
+                    assertEquals("http://localhost:8080/api/leaderboards?metric=WIN_RATE&page=0&size=25&gameType=Briskula&mode=TWO_PLAYERS",
+                            request.getURI().toString());
+                    assertEquals(HttpMethod.GET, request.getMethod());
+                })
+                .andRespond(withSuccess("""
+                        {"items":[{"position":1,"userId":7,"username":"ada","gamesPlayed":42,
+                          "wins":30,"winRate":71.428,"currentUser":true}],"page":0,"size":25,
+                         "totalElements":1,"totalPages":1,"currentUserPosition":1,"minimumGames":10,
+                         "metric":"WIN_RATE","gameType":"Briskula","mode":"TWO_PLAYERS",
+                         "availableModes":["TWO_PLAYERS"]}
+                        """, MediaType.APPLICATION_JSON));
+        var root = new UltracardsAdminCli(store) {
+            @Override org.springframework.web.client.RestTemplate restTemplateWithImmediateTokenPersistence() {
+                return template;
+            }
+        };
+        var bytes = new ByteArrayOutputStream();
+        var original = System.out;
+        try {
+            System.setOut(new java.io.PrintStream(bytes));
+            assertEquals(0, root.commandLine().execute("leaderboard", "--metric", "WIN_RATE",
+                    "--game", "Briskula", "--mode", "TWO_PLAYERS", "--no-color"));
+        } finally {
+            System.setOut(original);
+        }
+        server.verify();
+
+        var table = bytes.toString(StandardCharsets.UTF_8);
+        assertTrue(table.contains("Rank"), table);
+        assertTrue(table.contains("ada (you)"), table);
+        assertTrue(table.contains("71.4%"), table);
+        assertTrue(table.contains("Page 1 of 1 · 1 ranked · WIN_RATE · Briskula / TWO_PLAYERS"), table);
+        assertTrue(table.contains("Minimum 10 games"), table);
+        assertTrue(table.contains("Your position: #1"), table);
+    }
+
+    @Test
     void invalidCommandsShowSuggestionsAndAConciseHelpHint() {
         var errors = new StringWriter();
         var command = new UltracardsAdminCli(new ConfigStore(directory)).commandLine();

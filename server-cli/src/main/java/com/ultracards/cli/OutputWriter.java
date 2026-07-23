@@ -9,6 +9,8 @@ import com.ultracards.gateway.dto.admin.AdminPageDTO;
 import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
+import com.ultracards.gateway.dto.leaderboard.LeaderboardMetricDTO;
+import com.ultracards.gateway.dto.leaderboard.LeaderboardPageDTO;
 import picocli.CommandLine.Help.Ansi;
 
 import java.beans.Introspector;
@@ -21,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 final class OutputWriter {
     enum Format { TABLE, JSON, CSV }
@@ -41,11 +44,13 @@ final class OutputWriter {
             var rows = rows(value, format == Format.TABLE, utc);
             if (format == Format.CSV) printCsv(rows);
             else {
-                if (explain || value instanceof AdminOverviewDTO || value instanceof AdminDashboardDTO || value instanceof AdminPageDTO<?>) explain(value, utc);
+                if (explain || value instanceof AdminOverviewDTO || value instanceof AdminDashboardDTO
+                        || value instanceof AdminPageDTO<?>) explain(value, utc);
                 printTable(rows, color);
                 if (value instanceof AdminPageDTO<?> page)
                     System.out.println(style(String.format("@|faint Page %d of %d · %,d total|@",
                             page.page() + 1, Math.max(1, page.totalPages()), page.totalElements()), color));
+                if (value instanceof LeaderboardPageDTO page) printLeaderboardFooter(page, color);
             }
         } catch (Exception ex) {
             throw new IllegalStateException("Cannot format output: " + ex.getMessage(), ex);
@@ -54,6 +59,7 @@ final class OutputWriter {
 
     private List<List<String>> rows(Object value, boolean humanReadable, boolean utc) throws Exception {
         if (value instanceof AdminDashboardDTO dashboard) return dashboardRows(dashboard);
+        if (value instanceof LeaderboardPageDTO leaderboard) return leaderboardRows(leaderboard);
         Object data = value instanceof AdminPageDTO<?> page ? page.items() : value;
         var values = data instanceof Collection<?> collection ? new ArrayList<>(collection) : List.of(data);
         if (values.isEmpty()) return List.of(List.of("Result"), List.of("No results"));
@@ -106,6 +112,34 @@ final class OutputWriter {
         if (database != null && database.recordsByArea() != null)
             for (var entry : database.recordsByArea().entrySet()) rows.add(List.of(entry.getKey(), String.valueOf(entry.getValue())));
         return rows;
+    }
+
+    private List<List<String>> leaderboardRows(LeaderboardPageDTO leaderboard) {
+        var rows = new ArrayList<List<String>>();
+        rows.add(List.of("Rank", "Player", "Games", "Wins", "Win rate"));
+        if (leaderboard.items().isEmpty()) {
+            rows.add(List.of("—", "No ranked players", "", "", ""));
+            return rows;
+        }
+        for (var entry : leaderboard.items()) rows.add(List.of(
+                "#" + entry.position(),
+                entry.username() + (entry.currentUser() ? " (you)" : ""),
+                String.format(Locale.ROOT, "%,d", entry.gamesPlayed()),
+                String.format(Locale.ROOT, "%,d", entry.wins()),
+                String.format(Locale.ROOT, "%.1f%%", entry.winRate())
+        ));
+        return rows;
+    }
+
+    private void printLeaderboardFooter(LeaderboardPageDTO page, boolean color) {
+        var scope = page.mode() != null ? page.gameType() + " / " + page.mode()
+                : page.gameType() == null ? "All games" : page.gameType().name();
+        System.out.println(style(String.format("@|faint Page %d of %d · %,d ranked · %s · %s|@",
+                page.page() + 1, Math.max(1, page.totalPages()), page.totalElements(), page.metric(), scope), color));
+        if (page.metric() == LeaderboardMetricDTO.WIN_RATE)
+            System.out.println(style("@|faint Minimum " + page.minimumGames() + " games|@", color));
+        if (page.currentUserPosition() != null)
+            System.out.println(style("@|bold Your position: #" + page.currentUserPosition() + "|@", color));
     }
 
     private long total(java.util.Map<String, Long> values) {
@@ -238,6 +272,14 @@ final class OutputWriter {
             System.out.println("What this shows, a server-side paginated administrative report.");
             System.out.println("Applied filters: page=" + page.page() + ", size=" + page.size() + ".");
             System.out.println("Definitions: total is the count before pagination. Timestamps: " + timeDefinition + ".\n");
+        } else if (value instanceof LeaderboardPageDTO page) {
+            System.out.println("What this shows, rankings from persisted completed-game statistics.");
+            System.out.println("Applied filters: metric=" + page.metric() + ", game="
+                    + (page.gameType() == null ? "all" : page.gameType()) + ", mode="
+                    + (page.mode() == null ? "all" : page.mode()) + ", page=" + page.page()
+                    + ", size=" + page.size() + ".");
+            System.out.println("Definitions: positions use deterministic tie-breaking; win rate requires at least "
+                    + page.minimumGames() + " completed games.\n");
         }
     }
 
