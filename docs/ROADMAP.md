@@ -130,7 +130,7 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.3.5 - Game guide pages
+## v0.3.5 - Game guide pages ✅
 
 - Add public guide pages in the `server` module that explain how Briskula and Treseta are played.
 - Cover setup, turn flow, card values, scoring, teams, supported modes, winning conditions, and short gameplay examples for each game.
