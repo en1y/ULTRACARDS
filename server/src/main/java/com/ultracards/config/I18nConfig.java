@@ -1,5 +1,6 @@
 package com.ultracards.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.LocaleResolver;
@@ -20,6 +21,11 @@ public class I18nConfig {
     public static final List<String> SUPPORTED_LANGUAGES = List.of("en", "hr", "uk", "de");
 
     private static final Map<String, Map<String, String>> MESSAGES_CACHE = new ConcurrentHashMap<>();
+    private final boolean reloadMessages;
+
+    public I18nConfig(@Value("${app.i18n.reload-messages:false}") boolean reloadMessages) {
+        this.reloadMessages = reloadMessages;
+    }
 
     /**
      * No default locale: without the cookie the resolver falls back to the
@@ -40,21 +46,29 @@ public class I18nConfig {
     }
 
     /** All UI messages for the locale, used to fill window.__I18N__ for the JS side. */
-    public static Map<String, String> messagesFor(Locale locale) {
+    public Map<String, String> messagesFor(Locale locale) {
         var language = supportedLanguage(locale);
+        if (reloadMessages) {
+            ResourceBundle.clearCache(I18nConfig.class.getClassLoader());
+            return loadMessages(language);
+        }
         var cached = MESSAGES_CACHE.get(language);
         if (cached == null) {
-            // No-fallback control: an unmatched language must land on the base
-            // (English) bundle, never on the JVM default locale's bundle.
-            var bundle = ResourceBundle.getBundle("i18n.messages", Locale.of(language),
-                    ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES));
-            var messages = new LinkedHashMap<String, String>();
-            for (var key : bundle.keySet()) {
-                messages.put(key, bundle.getString(key));
-            }
-            cached = Map.copyOf(messages);
+            cached = loadMessages(language);
             MESSAGES_CACHE.put(language, cached);
         }
         return cached;
+    }
+
+    private Map<String, String> loadMessages(String language) {
+        // No-fallback control: an unmatched language must land on the base
+        // (English) bundle, never on the JVM default locale's bundle.
+        var bundle = ResourceBundle.getBundle("i18n.messages", Locale.of(language),
+                ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES));
+        var messages = new LinkedHashMap<String, String>();
+        for (var key : bundle.keySet()) {
+            messages.put(key, bundle.getString(key));
+        }
+        return Map.copyOf(messages);
     }
 }

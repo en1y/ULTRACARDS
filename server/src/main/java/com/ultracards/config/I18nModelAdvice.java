@@ -16,10 +16,15 @@ import java.util.Map;
  */
 @ControllerAdvice
 public class I18nModelAdvice {
+    private final I18nConfig i18nConfig;
+
+    public I18nModelAdvice(I18nConfig i18nConfig) {
+        this.i18nConfig = i18nConfig;
+    }
 
     @ModelAttribute("i18n")
     public Map<String, String> i18n() {
-        return I18nConfig.messagesFor(LocaleContextHolder.getLocale());
+        return i18nConfig.messagesFor(LocaleContextHolder.getLocale());
     }
 
     @ModelAttribute("lang")

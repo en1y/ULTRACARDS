@@ -38,7 +38,11 @@ class I18nBundleTest {
 
     private void assertNoBlankValues(String file, Properties properties) {
         for (var key : properties.stringPropertyNames()) {
-            assertFalse(properties.getProperty(key).isBlank(), file + ": blank value for key " + key);
+            var value = properties.getProperty(key);
+            assertFalse(value.isBlank(), file + ": blank value for key " + key);
+            // Markup belongs in the template or the script that renders the string,
+            // never in a translated value — translators must not have to keep tags.
+            assertFalse(value.matches("(?s).*<[a-zA-Z/].*"), file + ": HTML markup in key " + key);
         }
     }
 
