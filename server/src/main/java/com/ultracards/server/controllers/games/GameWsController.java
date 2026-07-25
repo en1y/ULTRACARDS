@@ -47,9 +47,9 @@ public class GameWsController {
         gameService.declare(user, declaration, game);
     }
 
-    @MessageExceptionHandler(IllegalArgumentException.class)
+    @MessageExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     @SendToUser("/queue/game/errors")
-    public GameMoveError handleInvalidMove(IllegalArgumentException ex) {
+    public GameMoveError handleInvalidMove(RuntimeException ex) {
         return new GameMoveError(400, ex.getMessage());
     }
 

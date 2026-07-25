@@ -1800,6 +1800,12 @@
             if (!el || !dom.hand) return;
             const releaseRect = el.getBoundingClientRect();
             const key = cardKey(card);
+            if (!state.hand.some((entry) => cardKey(entry) === key)) {
+                el.remove();
+                state.handEls.delete(key);
+                syncHand();
+                return;
+            }
 
             const handCards = Array.from(dom.hand.children)
                 .filter((c) => c !== el && c.classList && c.classList.contains('hand-card'));

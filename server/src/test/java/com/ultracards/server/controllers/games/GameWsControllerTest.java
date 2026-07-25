@@ -18,4 +18,14 @@ class GameWsControllerTest {
         assertThat(error.status()).isEqualTo(400);
         assertThat(error.message()).isEqualTo("Follow suit");
     }
+
+    @Test
+    void returnsBadRequestPayloadWhenCardIsMissingFromHand() {
+        var controller = new GameWsController(new GameManager(), mock(GameService.class));
+
+        var error = controller.handleInvalidMove(new IllegalStateException("There is no such card in the hand"));
+
+        assertThat(error.status()).isEqualTo(400);
+        assertThat(error.message()).isEqualTo("There is no such card in the hand");
+    }
 }
