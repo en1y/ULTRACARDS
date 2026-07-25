@@ -31,7 +31,8 @@ const syncThemeUi = () => {
             return;
         }
 
-        const iconSrc = `/pics/${iconFolder}/${icon}.svg`;
+        const iconExtension = img.dataset.iconExtension || 'svg';
+        const iconSrc = `/pics/${iconFolder}/${icon}.${iconExtension}`;
         if (img.getAttribute('src') !== iconSrc) {
             img.setAttribute('src', iconSrc);
         }

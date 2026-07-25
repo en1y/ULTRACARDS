@@ -1,0 +1,185 @@
+/* Game guide pages: hub, rules reference, and the interactive fake-game coach. */
+
+.guide-hero { max-width: calc(var(--page-width) - 32px); margin: 16px auto 12px; padding: 18px 20px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--color-surface) 92%, transparent);
+    box-shadow: 0 14px 34px color-mix(in oklab, var(--color-shadow) 65%, transparent); }
+.guide-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .78rem;
+    color: var(--color-accent); font-weight: 700; margin: 0 0 4px; }
+.guide-hero h1 { margin: 0 0 6px; font-size: clamp(1.55rem, 3vw, 2.15rem); line-height: 1.08; }
+.guide-intro { color: var(--color-text-muted); max-width: 60ch; margin: 0; }
+.guide-back { display: inline-flex; align-items: center; margin-bottom: 12px; padding: 5px 9px;
+    border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-text-muted);
+    background: color-mix(in oklab, var(--color-bg) 70%, transparent); text-decoration: none;
+    font-size: .82rem; font-weight: 700; }
+.guide-back:hover { color: var(--color-text); }
+
+/* ---- Hub grid ---- */
+.guide-hub-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    max-width: var(--page-width); margin: 0 auto 48px; padding: 0 16px; }
+.guide-hub-tile { display: flex; flex-direction: column; gap: 8px; padding: 20px; text-decoration: none;
+    color: inherit; transition: transform .15s ease, box-shadow .15s ease; }
+.guide-hub-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-card); }
+.guide-hub-tile h2 { margin: 4px 0 0; }
+.guide-hub-tile p { color: var(--color-text-muted); margin: 0; flex: 1; }
+.guide-hub-badge { align-self: flex-start; font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
+    background: color-mix(in oklab, var(--color-accent) 18%, transparent); color: var(--color-accent); }
+.guide-hub-badge.is-soon { background: var(--color-surface); color: var(--color-text-muted); }
+.guide-hub-cta { font-weight: 700; color: var(--color-accent); }
+.guide-hub-tile.is-soon { opacity: .82; }
+
+.guide-soon-card { padding: 32px; text-align: center; display: flex; flex-direction: column;
+    align-items: center; gap: 12px; max-width: var(--page-width); margin: 0 auto; }
+.guide-soon-card p { color: var(--color-text-muted); margin: 0; }
+
+/* ---- Fake-game board + floating coach ---- */
+.guide-layout { position: relative; scroll-margin-top: var(--uc-header-h, 64px);
+    grid-template-columns: minmax(0, 1fr); }
+/* Page-level control, so it lives with the page's own copy rather than floating
+   over a corner of the table. */
+.guide-mode-field { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;
+    margin-top: 14px; font-size: .85rem; font-weight: 600; color: var(--color-text-muted); }
+/* theme.css stretches every select to 100%; this one is a short inline control. */
+.guide-mode-field select { width: auto; min-width: 12rem; padding: 7px 10px;
+    border-radius: var(--radius-sm); border: 1px solid var(--color-border);
+    background: var(--color-bg); color: var(--color-text); font-weight: 600; }
+.guide-scroll-cue { position: absolute; right: 1rem; bottom: .75rem; z-index: 20;
+    padding: 6px 10px; border: 1px solid var(--panel-border); border-radius: 999px;
+    background: color-mix(in oklab, var(--panel-bg) 90%, transparent);
+    color: var(--seat-text); box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+    font-size: .78rem; font-weight: 700; }
+.guide-scroll-cue:hover { border-color: var(--color-accent); }
+
+/* ---- Floating coach ----
+   Parked by guide-game.js: --coach-x/y drive the flight (transform only, so it
+   stays on the compositor), --tail-x/y slide the tail along the chosen edge. */
+/* Absolute inside .game-layout: the browser scrolls the coach with the board, so
+   nothing is recomputed on scroll and it never lags behind the table. */
+.guide-coach { position: absolute; top: 0; left: 0; z-index: 2010;
+    width: min(21rem, calc(100% - 1.5rem));
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem;
+    padding: .8rem .9rem; border: 1px solid var(--panel-border); border-radius: 16px;
+    background: var(--color-surface); color: var(--color-text);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .28);
+    opacity: 0; pointer-events: none;
+    transform: translate3d(var(--coach-x, 0px), var(--coach-y, 0px), 0) scale(.94); }
+/* No transition until after the first placement, so it never flies in from 0,0. */
+.guide-coach.can-fly { transition: transform .45s cubic-bezier(.33, .02, .2, 1),
+    opacity .28s ease; }
+.guide-coach.is-visible { opacity: 1; pointer-events: auto;
+    transform: translate3d(var(--coach-x, 0px), var(--coach-y, 0px), 0) scale(1); }
+
+/* Locks the page while the coach is talking — fixed and full-viewport, matching
+   the site's .modal-overlay layer, so it dims the header and the rules too. Light
+   enough that whatever the coach points at still reads through it. */
+.guide-coach-scrim { position: fixed; inset: 0; z-index: 2000;
+    background: color-mix(in oklab, var(--color-bg) 42%, transparent); }
+
+.guide-coach-puck { position: absolute; z-index: 1990; top: .75rem; left: .75rem;
+    display: grid; place-items: center; width: 3rem; height: 3rem; padding: .5rem;
+    border: 1px solid var(--panel-border); border-radius: 50%; cursor: pointer;
+    background: var(--color-surface); color: var(--color-text);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .3); }
+/* display:grid above would otherwise beat the UA rule for the hidden attribute. */
+.guide-coach-puck[hidden] { display: none; }
+.guide-coach-puck img { width: 100%; height: 100%; display: block; }
+.guide-coach-puck:hover, .guide-coach-puck.is-open { border-color: var(--color-accent); }
+/* Said something while it was out of the way — nudge, don't interrupt. */
+.guide-coach-puck.has-news { animation: guide-coach-glow 1.6s ease-in-out infinite; }
+
+.guide-coach-avatar { display: block; width: 2.6rem; color: var(--color-text);
+    animation: guide-coach-bob 2.8s ease-in-out infinite; }
+.guide-coach-avatar img { display: block; width: 100%; height: auto; }
+.guide-coach.is-speaking .guide-coach-avatar { animation: guide-coach-pop .45s ease-out; }
+@keyframes guide-coach-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes guide-coach-pop { 0% { transform: scale(1); } 45% { transform: scale(1.13) rotate(-5deg); }
+    100% { transform: scale(1); } }
+
+.guide-coach-say { display: flex; flex-direction: column; gap: .55rem; min-width: 0; }
+.guide-coach-text { line-height: 1.45; font-size: .92rem; max-height: 40vh; overflow-y: auto;
+    overscroll-behavior: contain; }
+.guide-coach-text p { margin: 0 0 8px; }
+.guide-coach-text p:last-child { margin-bottom: 0; }
+.guide-mode-explain { color: var(--color-text-muted); }
+.guide-demo-note { font-size: .8rem; color: var(--color-text-muted); font-style: italic; }
+.guide-coach-result { font-weight: 700; }
+.guide-hint { margin: 0; font-size: .78rem; color: var(--color-accent); font-weight: 600; }
+/* Flex items default to min-width:auto, so with three buttons and a long label
+   (hr "Prethodna", de "Ausblenden") the row used to push past the bubble's edge.
+   Basing on content + wrapping means it drops to a second line instead. */
+.guide-coach-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+.guide-coach-controls .btn { flex: 1 1 auto; min-width: 0; padding-inline: .6rem;
+    font-size: .92rem; }
+
+/* Tail: one triangle parked on whichever edge faces the target. */
+.guide-coach-tail { position: absolute; width: 0; height: 0; border: 9px solid transparent;
+    transition: left .45s cubic-bezier(.33, .02, .2, 1), top .45s cubic-bezier(.33, .02, .2, 1); }
+.guide-coach.tail-top .guide-coach-tail { bottom: 100%; left: var(--tail-x, 50%); margin-left: -9px;
+    border-top: 0; border-bottom-color: var(--color-surface); }
+.guide-coach.tail-bottom .guide-coach-tail { top: 100%; left: var(--tail-x, 50%); margin-left: -9px;
+    border-bottom: 0; border-top-color: var(--color-surface); }
+.guide-coach.tail-left .guide-coach-tail { right: 100%; top: var(--tail-y, 50%); margin-top: -9px;
+    border-left: 0; border-right-color: var(--color-surface); }
+.guide-coach.tail-right .guide-coach-tail { left: 100%; top: var(--tail-y, 50%); margin-top: -9px;
+    border-right: 0; border-left-color: var(--color-surface); }
+.guide-coach.tail-none .guide-coach-tail { display: none; }
+
+/* What the coach is pointing at. Outline + box-shadow only: a transform here
+   would fight the card flight animations. */
+.guide-coach-target { outline: 3px solid var(--color-accent); outline-offset: 3px;
+    border-radius: 8px; animation: guide-coach-glow 1.5s ease-in-out infinite; }
+@keyframes guide-coach-glow {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 55%, transparent); }
+    50% { box-shadow: 0 0 0 9px color-mix(in oklab, var(--color-accent) 0%, transparent); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .guide-coach.can-fly, .guide-coach-tail { transition: opacity .2s ease; }
+    .guide-coach-avatar, .guide-coach.is-speaking .guide-coach-avatar,
+    .guide-coach-target, .guide-coach-puck.has-news { animation: none; }
+}
+
+@media (max-width: 900px) {
+    .guide-hero { margin: 10px 10px 8px; padding: 14px 16px; }
+    .guide-back { margin-bottom: 9px; }
+    .guide-intro { font-size: .9rem; }
+    .guide-scroll-cue { top: auto; right: .75rem; bottom: -2.5rem; }
+    .guide-mode-field { margin-top: 10px; font-size: .78rem; }
+    .guide-mode-field select { font-size: .8rem; padding: 6px 8px; min-width: 0; flex: 1; }
+    .guide-coach { width: min(20rem, calc(100% - 1rem)); padding: .6rem .65rem; gap: .55rem; }
+    .guide-coach-puck { width: 2.5rem; height: 2.5rem; top: .5rem; left: .5rem; padding: .4rem; }
+    .guide-coach-avatar { width: 2.1rem; }
+    .guide-coach-text { font-size: .85rem; max-height: 32vh; }
+    .guide-coach-say { gap: .45rem; }
+
+    html[data-game-ui="fullscreen"] .guide-layout .table-surface,
+    html[data-game-ui="fullscreen"] .guide-layout .table-felt {
+        border-radius: 1.4rem;
+    }
+
+    html[data-game-ui="fullscreen"] .guide-layout .player-summary {
+        position: absolute;
+        top: auto;
+        bottom: calc(100svh - var(--header-height) - 5rem);
+    }
+}
+
+/* ---- Rules reference ---- */
+.guide-rules { margin: 36px auto 64px; max-width: var(--page-width); padding: 28px 16px 0;
+    border-top: 1px solid var(--color-border); }
+.guide-rules > h2 { margin: 0 0 18px; font-size: clamp(1.4rem, 3vw, 2rem); }
+.guide-rules-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.guide-rule { padding: 18px; transition: border-color .15s ease, transform .15s ease; }
+.guide-rule:hover { border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
+    transform: translateY(-2px); }
+.guide-rule h3 { margin: 0 0 8px; }
+.guide-rule p { color: var(--color-text-muted); margin: 0; line-height: 1.55; }
+.guide-values { list-style: none; padding: 0; margin: 0 0 10px; }
+.guide-values li { display: flex; justify-content: space-between; padding: 4px 0;
+    border-bottom: 1px solid var(--color-border); }
+.guide-values li span { color: var(--color-text-muted); }
+.guide-values li strong { color: var(--color-text); }
+.guide-modes { margin: 0; padding-left: 18px; color: var(--color-text-muted); line-height: 1.6; }
+.guide-cta { display: inline-block; margin-top: 20px; }
+.guide-footer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.guide-footer-actions .guide-cta { margin-top: 0; }

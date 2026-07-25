@@ -53,24 +53,10 @@
       }
     };
 
-    const handleWheel = (event) => {
-      if (!document.body.classList.contains('game-page')) {
-        return;
-      }
-      if (event.deltaY > 0) {
-        setHeaderHidden(true);
-        return;
-      }
-      if (event.deltaY < 0) {
-        setHeaderHidden(false);
-      }
-    };
-
     return {
       init() {
         refreshHeaderMetrics();
         window.addEventListener('scroll', handleScroll, { passive: true });
-        window.addEventListener('wheel', handleWheel, { passive: true });
         window.addEventListener('resize', refreshHeaderMetrics);
       }
     };
