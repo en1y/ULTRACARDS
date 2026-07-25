@@ -28,6 +28,8 @@
 .guide-hub-badge.is-soon { background: var(--color-surface); color: var(--color-text-muted); }
 .guide-hub-cta { font-weight: 700; color: var(--color-accent); }
 .guide-hub-tile.is-soon { opacity: .82; }
+/* Not a link — don't lift on hover and pretend it is. */
+.guide-hub-tile.is-soon:hover { transform: none; }
 
 .guide-soon-card { padding: 32px; text-align: center; display: flex; flex-direction: column;
     align-items: center; gap: 12px; max-width: var(--page-width); margin: 0 auto; }
@@ -70,13 +72,21 @@
 .guide-coach.is-visible { opacity: 1; pointer-events: auto;
     transform: translate3d(var(--coach-x, 0px), var(--coach-y, 0px), 0) scale(1); }
 
+/* The coach sits in the 2000s so it clears the board's own stacking (game.css
+   goes up to 1600), but the sticky header outranks all of it: scrolling slides
+   the board — and the coach with it — underneath, and it must disappear behind
+   the header rather than spill over it. Scoped to guide pages, which are the
+   only ones loading this sheet, so site modals keep their usual 2000 layer. */
+.uc-header { z-index: 2100; }
+
 /* Locks the page while the coach is talking — fixed and full-viewport, matching
    the site's .modal-overlay layer, so it dims the header and the rules too. Light
    enough that whatever the coach points at still reads through it. */
 .guide-coach-scrim { position: fixed; inset: 0; z-index: 2000;
     background: color-mix(in oklab, var(--color-bg) 42%, transparent); }
 
-.guide-coach-puck { position: absolute; z-index: 1990; top: .75rem; left: .75rem;
+.guide-coach-puck { position: absolute; z-index: 1990;
+    left: var(--puck-x, .75rem); top: var(--puck-y, .75rem);
     display: grid; place-items: center; width: 3rem; height: 3rem; padding: .5rem;
     border: 1px solid var(--panel-border); border-radius: 50%; cursor: pointer;
     background: var(--color-surface); color: var(--color-text);
@@ -140,14 +150,16 @@
 }
 
 @media (max-width: 900px) {
-    .guide-hero { margin: 10px 10px 8px; padding: 14px 16px; }
+    /* .container sets width:min(100%,...); with side margins that overflows the
+       viewport, so let the block size itself from the margins instead. */
+    .guide-hero { width: auto; margin: 10px 10px 8px; padding: 14px 16px; }
     .guide-back { margin-bottom: 9px; }
     .guide-intro { font-size: .9rem; }
     .guide-scroll-cue { top: auto; right: .75rem; bottom: -2.5rem; }
     .guide-mode-field { margin-top: 10px; font-size: .78rem; }
     .guide-mode-field select { font-size: .8rem; padding: 6px 8px; min-width: 0; flex: 1; }
     .guide-coach { width: min(20rem, calc(100% - 1rem)); padding: .6rem .65rem; gap: .55rem; }
-    .guide-coach-puck { width: 2.5rem; height: 2.5rem; top: .5rem; left: .5rem; padding: .4rem; }
+    .guide-coach-puck { width: 2.5rem; height: 2.5rem; padding: .4rem; }
     .guide-coach-avatar { width: 2.1rem; }
     .guide-coach-text { font-size: .85rem; max-height: 32vh; }
     .guide-coach-say { gap: .45rem; }

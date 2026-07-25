@@ -174,13 +174,24 @@
         const found = coachTarget ? document.querySelector(coachTarget) : null;
         const hit = found?.getBoundingClientRect();
         light(hit?.width ? found : null);   // the highlight stays on even when hidden
-        if (!showing) return;
 
         // Everything below is in board coordinates: the board is the coach's world.
         const board = boardEl.getBoundingClientRect();
+        const fit = (v, size, limit) => Math.min(Math.max(v, EDGE), Math.max(EDGE, limit - size - EDGE));
+
+        // Sit the mascot on the table's top-left corner. The board's own corner is
+        // dead space well away from the felt, where it just reads as hidden.
+        const felt = document.querySelector('.table-felt, .table-surface')?.getBoundingClientRect();
+        if (puckEl && !puckEl.hidden && felt?.width) {
+            const pw = puckEl.offsetWidth;
+            const ph = puckEl.offsetHeight;
+            puckEl.style.setProperty('--puck-x', fit(felt.left - board.left - pw / 2, pw, board.width) + 'px');
+            puckEl.style.setProperty('--puck-y', fit(felt.top - board.top - ph / 2, ph, board.height) + 'px');
+        }
+        if (!showing) return;
+
         const w = bubbleEl.offsetWidth;
         const h = bubbleEl.offsetHeight;
-        const fit = (v, size, limit) => Math.min(Math.max(v, EDGE), Math.max(EDGE, limit - size - EDGE));
         if (!hit?.width) {
             // Nothing to point at. A message with the table empty belongs in the
             // middle of it; the puck-opened bubble tucks under the mascot instead.

@@ -6,7 +6,7 @@
     <title th:text="#{guides.pageTitle}">How to play · ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-17')}">
+    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-20')}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
 <body>
@@ -34,19 +34,18 @@
             <span class="guide-hub-cta" th:text="#{guides.hub.play}">Open guide →</span>
         </a>
 
-        <a class="card guide-hub-tile is-soon" th:href="@{/guides/poker}">
+        <!-- Not links until the guides exist: the placeholder pages say nothing the tile doesn't. -->
+        <div class="card guide-hub-tile is-soon">
             <span class="guide-hub-badge is-soon" th:text="#{guides.hub.comingSoon}">Coming soon</span>
             <h2 th:text="#{game.poker}">Poker</h2>
             <p th:text="#{guides.hub.poker.copy}">The classic betting game. Guide on the way.</p>
-            <span class="guide-hub-cta" th:text="#{guides.hub.play}">Open guide →</span>
-        </a>
+        </div>
 
-        <a class="card guide-hub-tile is-soon" th:href="@{/guides/durak}">
+        <div class="card guide-hub-tile is-soon">
             <span class="guide-hub-badge is-soon" th:text="#{guides.hub.comingSoon}">Coming soon</span>
             <h2 th:text="#{game.durak}">Durak</h2>
             <p th:text="#{guides.hub.durak.copy}">The Russian attack-and-defend game. Guide on the way.</p>
-            <span class="guide-hub-cta" th:text="#{guides.hub.play}">Open guide →</span>
-        </a>
+        </div>
     </section>
 </main>
 

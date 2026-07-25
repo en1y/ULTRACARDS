@@ -8,7 +8,7 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/game.css}">
     <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-17')}">
+    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-20')}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
 <body class="game-page">
@@ -87,8 +87,8 @@
         </article>
     </div>
     <div class="guide-footer-actions">
-        <a class="btn btn-accent guide-cta" th:href="@{/guides/treseta}" th:text="#{guides.briskula.next}">Next: learn Treseta →</a>
         <a class="btn guide-cta" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>
+        <a class="btn btn-accent guide-cta" th:href="@{/guides/treseta}" th:text="#{guides.briskula.next}">Next: learn Treseta →</a>
     </div>
 </section>
 
@@ -104,7 +104,7 @@
 <script th:src="@{/js/ui/game.js}"></script>
 <script th:src="@{/js/ui/game-runtime.js}"></script>
 <script th:src="@{/js/ui/games/briskula.js}"></script>
-<script th:src="@{/js/ui/guides/guide-game.js(v='0.3.5-18')}"></script>
+<script th:src="@{/js/ui/guides/guide-game.js(v='0.3.5-19')}"></script>
 <script th:src="@{/js/ui/live-game.js}"></script>
 </body>
 </html>

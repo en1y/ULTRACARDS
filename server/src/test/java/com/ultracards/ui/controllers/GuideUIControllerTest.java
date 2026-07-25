@@ -69,6 +69,9 @@ class GuideUIControllerTest {
         assertTrue(script.contains("function setModal(on)"));
         assertTrue(script.contains("setModal(false)"));
         assertTrue(script.contains("puckOpen = !puckOpen"));
+        // The mascot rides the table's corner, not the board's empty corner.
+        assertTrue(script.contains("'.table-felt, .table-surface'"));
+        assertTrue(script.contains("--puck-x"));
         // Treseta has no trump, so an empty deck must not talk about one.
         assertTrue(script.contains("type === 'briskula' ? 'guides.play.trumpGone' : 'guides.play.deckEmpty'"));
         // No dimming before the demo starts, and no dead Previous button.
@@ -92,10 +95,12 @@ class GuideUIControllerTest {
         assertTrue(styles.contains("--coach-x"));
         // The scrim dims the whole page, not just the board box.
         assertTrue(styles.contains(".guide-coach-scrim { position: fixed; inset: 0;"));
-        assertTrue(styles.contains(".guide-coach-puck"));
+        assertTrue(styles.contains("left: var(--puck-x, .75rem); top: var(--puck-y, .75rem)"));
         // No transition before the first placement, or it flies in from 0,0.
         assertTrue(styles.contains(".guide-coach.can-fly"));
         assertTrue(styles.contains("position: absolute; top: 0; left: 0; z-index: 2010"));
+        // The sticky header outranks every coach layer, so nothing spills over it.
+        assertTrue(styles.contains(".uc-header { z-index: 2100; }"));
         assertTrue(styles.contains("prefers-reduced-motion"));
         assertFalse(styles.contains(".guide-arrow"));
         assertFalse(styles.contains(".guide-coach-bar"));
