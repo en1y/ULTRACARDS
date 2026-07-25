@@ -15,6 +15,11 @@ import java.util.Map;
 
 @Configuration
 public class ErrorViewConfig {
+    private final I18nConfig i18nConfig;
+
+    public ErrorViewConfig(I18nConfig i18nConfig) {
+        this.i18nConfig = i18nConfig;
+    }
 
     @Bean
     public ErrorViewResolver errorViewResolver() {
@@ -47,7 +52,7 @@ public class ErrorViewConfig {
         // Error views bypass @ControllerAdvice model attributes, so the i18n
         // attributes from I18nModelAdvice have to be re-added by hand here.
         var locale = LocaleContextHolder.getLocale();
-        model.put("i18n", I18nConfig.messagesFor(locale));
+        model.put("i18n", i18nConfig.messagesFor(locale));
         model.put("lang", I18nConfig.supportedLanguage(locale));
     }
 

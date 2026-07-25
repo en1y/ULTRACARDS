@@ -19,10 +19,13 @@
         }
         frame = requestAnimationFrame(() => {
             frame = null;
+            const compact = button.dataset.chatCompact === 'true';
             if (!document.body.classList.contains('mobile-chat-open')) {
-                panel.style.top = '';
-                panel.style.bottom = '';
-                panel.style.height = '';
+                if (!compact) {
+                    panel.style.top = '';
+                    panel.style.bottom = '';
+                    panel.style.height = '';
+                }
                 button.style.top = '';
                 return;
             }
@@ -32,9 +35,15 @@
             const gap = 10;
             const buttonSize = button.offsetHeight || 52;
             const buttonTop = viewTop + viewHeight - buttonSize - gap;
-            panel.style.top = `${viewTop + gap}px`;
+            const panelHeight = compact
+                ? Math.min(Math.floor(viewHeight * 0.42), 360)
+                : Math.max(buttonTop - (viewTop + gap) - gap, 200);
+            const panelTop = button.dataset.chatCenter === 'true'
+                ? viewTop + Math.max(gap, Math.floor((viewHeight - panelHeight) / 2))
+                : viewTop + gap;
+            panel.style.top = `${panelTop}px`;
             panel.style.bottom = 'auto';
-            panel.style.height = `${Math.max(buttonTop - (viewTop + gap) - gap, 200)}px`;
+            panel.style.height = `${panelHeight}px`;
             button.style.top = `${buttonTop}px`;   // inline top beats the CSS bottom anchor
         });
     };
@@ -55,6 +64,9 @@
         if (!document.body.classList.contains('mobile-chat-open')) {
             return;
         }
+        if (button.dataset.chatCompact === 'true') {
+            return;
+        }
         if (panel.contains(event.target) || button.contains(event.target)) {
             return;
         }
@@ -68,6 +80,11 @@
     window.addEventListener('resize', layout);
     document.addEventListener('focusin', layout);
     document.addEventListener('focusout', layout);
+
+    if (button.dataset.openOnMobile === 'true'
+            && window.matchMedia('(max-width: 900px)').matches) {
+        setOpen(true);
+    }
 
     // Tapping Send must NOT steal focus from the textarea: the blur would close
     // the keyboard and bounce the panel down and back up ("send jiggle").

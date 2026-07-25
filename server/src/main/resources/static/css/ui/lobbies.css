@@ -477,3 +477,12 @@
                 min-width: 0;
             }
         }
+
+.lobbies-guides-link {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: none;
+}
+.lobbies-guides-link:hover { text-decoration: underline; }

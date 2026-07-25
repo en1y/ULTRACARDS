@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{guides.briskula.pageTitle}">How to play Briskula · ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-20')}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body class="game-page">
+<div th:replace="~{ui/fragments/header :: header}"></div>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" hidden th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
+
+<section class="guide-hero container">
+    <a class="guide-back" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>
+    <p class="guide-eyebrow" th:text="#{guides.hub.interactive}">Interactive</p>
+    <h1 th:text="#{guides.briskula.title}">How to play Briskula</h1>
+    <p class="guide-intro" th:text="#{guides.briskula.intro}">Play the real table against bots — the coach walks you through every move.</p>
+
+    <label class="guide-mode-field">
+        <span th:text="#{guides.coach.mode}">Game mode</span>
+        <select id="guide-mode">
+            <option th:each="mode : ${guideModes}"
+                    th:value="${mode.name()}"
+                    th:attr="data-players=${mode.getNumberOfPlayers()},data-hand=${mode.getCardsInHandNum()},data-teams=${mode.areTeamsEnabled()}"></option>
+        </select>
+    </label>
+</section>
+
+<!-- The live-game renderer is fed by a browser-only guide simulator through the
+     same event contract as STOMP. No game or state is created on the server. -->
+<main class="container game-layout guide-layout">
+    <div id="game-container"
+         th:attr="data-game-id='ui-guide',data-guide='1',data-current-user-id=${currentUserId},data-username=${username},data-game-type='briskula'">
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('briskula-game-shell', #{game.dragToPlay}, 0, null, true, 'right', null, 'self', ${currentUserId}, 'player', true)}"></th:block>
+    </div>
+
+    <div th:replace="~{ui/fragments/guides/coach :: coach}"></div>
+    <a class="guide-scroll-cue" href="#guide-rules" th:text="#{guides.scrollForRules}">Scroll for the full rules ↓</a>
+</main>
+
+
+<section class="guide-rules container" id="guide-rules">
+    <h2 th:text="#{guides.rules.heading}">Rules at a glance</h2>
+    <div class="guide-rules-grid">
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.setup}">Setup</h3>
+            <p th:text="#{guides.briskula.rule.setup}">Briskula uses the 40-card Italian deck. One card is turned face up: its suit is the trump for the whole hand.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.turnFlow}">Turn flow</h3>
+            <p th:text="#{guides.briskula.rule.turnFlow}">Each round, players play one card in turn. You do not have to follow suit.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.strength}">Which card wins</h3>
+            <p th:text="#{guides.briskula.rule.strength}">A trump beats any non-trump. Otherwise the highest card of the led suit wins.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.values}">Card values</h3>
+            <ul class="guide-values">
+                <li><span th:text="#{guides.value.ace}">Ace</span><strong>11</strong></li>
+                <li><span th:text="#{guides.value.three}">Three</span><strong>10</strong></li>
+                <li><span th:text="#{guides.value.king}">13</span><strong>4</strong></li>
+                <li><span th:text="#{guides.value.knight}">12</span><strong>3</strong></li>
+                <li><span th:text="#{guides.value.jack}">11</span><strong>2</strong></li>
+                <li><span th:text="#{guides.value.briskulaZeros}">2, 4, 5, 6, 7</span><strong>0</strong></li>
+            </ul>
+            <p th:text="#{guides.briskula.rule.valuesNote}">120 points are in the deck in total.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.winning}">Winning</h3>
+            <p th:text="#{guides.briskula.rule.winning}">Whoever collects more than 60 of the 120 points wins the hand.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.modes}">Supported modes</h3>
+            <ul class="guide-modes">
+                <li th:text="#{guides.briskula.mode.2p3}">2 players, 3 cards in hand</li>
+                <li th:text="#{guides.briskula.mode.2p4}">2 players, 4 cards in hand</li>
+                <li th:text="#{guides.briskula.mode.3p}">3 players, no teams</li>
+                <li th:text="#{guides.briskula.mode.4pNo}">4 players, no teams</li>
+                <li th:text="#{guides.briskula.mode.4pTeams}">4 players, 2 teams</li>
+            </ul>
+        </article>
+    </div>
+    <div class="guide-footer-actions">
+        <a class="btn guide-cta" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>
+        <a class="btn btn-accent guide-cta" th:href="@{/guides/treseta}" th:text="#{guides.briskula.next}">Next: learn Treseta →</a>
+    </div>
+</section>
+
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script th:inline="javascript">
+    window.__INITIAL_GAME__ = null;
+    window.__INITIAL_HAND__ = null;
+    window.__INITIAL_GAME_CHAT__ = null;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
+<script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
+<script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
+<script th:src="@{/js/ui/games/briskula.js}"></script>
+<script th:src="@{/js/ui/guides/guide-game.js(v='0.3.5-19')}"></script>
+<script th:src="@{/js/ui/live-game.js}"></script>
+</body>
+</html>

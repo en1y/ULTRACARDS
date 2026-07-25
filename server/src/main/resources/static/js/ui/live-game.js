@@ -2174,7 +2174,7 @@
             };
             const selfAvatar = dom.playerSummaryAvatar;
             if (selfAvatar && getComputedStyle(selfAvatar).visibility !== 'hidden') {
-                const rect = selfAvatar.getBoundingClientRect();
+                const rect = seatRect(selfAvatar);
                 if (rect.width && rect.height) occupied.push(rect);
             }
             seats.forEach((seat) => {

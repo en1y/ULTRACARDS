@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{guides.treseta.pageTitle}">How to play Treseta · ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/game.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-20')}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body class="game-page">
+<div th:replace="~{ui/fragments/header :: header}"></div>
+<div id="connection-toast" class="connection-toast" role="status" aria-live="polite" hidden th:text="#{game.connectionLost}">Connection lost. Reconnecting...</div>
+
+<section class="guide-hero container">
+    <a class="guide-back" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>
+    <p class="guide-eyebrow" th:text="#{guides.hub.interactive}">Interactive</p>
+    <h1 th:text="#{guides.treseta.title}">How to play Treseta</h1>
+    <p class="guide-intro" th:text="#{guides.treseta.intro}">Play the real table against bots — the coach walks you through every move.</p>
+
+    <label class="guide-mode-field">
+        <span th:text="#{guides.coach.mode}">Game mode</span>
+        <select id="guide-mode">
+            <option th:each="mode : ${guideModes}"
+                    th:value="${mode.name()}"
+                    th:attr="data-players=${mode.getNumberOfPlayers()},data-hand=${mode.getCardsInHandNum()},data-teams=${mode.areTeamsEnabled()},data-declarations=${mode.areDeclarationsEnabled()}"></option>
+        </select>
+    </label>
+</section>
+
+<!-- The live-game renderer is fed by a browser-only guide simulator through the
+     same event contract as STOMP. No game or state is created on the server. -->
+<main class="container game-layout treseta-game-layout guide-layout">
+    <div id="game-container"
+         th:attr="data-game-id='ui-guide',data-guide='1',data-current-user-id=${currentUserId},data-username=${username},data-game-type='treseta'">
+        <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, 40, null, true, 'right', null, 'self', ${currentUserId}, 'player', true)}"></th:block>
+    </div>
+
+    <div th:replace="~{ui/fragments/guides/coach :: coach}"></div>
+    <a class="guide-scroll-cue" href="#guide-rules" th:text="#{guides.scrollForRules}">Scroll for the full rules ↓</a>
+</main>
+
+
+<section class="guide-rules container" id="guide-rules">
+    <h2 th:text="#{guides.rules.heading}">Rules at a glance</h2>
+    <div class="guide-rules-grid">
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.setup}">Setup</h3>
+            <p th:text="#{guides.treseta.rule.setup}">Treseta uses the same 40-card Italian deck. There is no trump suit and no card is turned up.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.turnFlow}">Turn flow</h3>
+            <p th:text="#{guides.treseta.rule.turnFlow}">Each round you must follow the led suit if you can. The highest card of the led suit wins.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.strength}">Card strength</h3>
+            <p th:text="#{guides.treseta.rule.strength}">Within a suit the order is 3, 2, Ace, then King, Knight, Jack, then 7 down to 4.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.values}">Card values</h3>
+            <ul class="guide-values">
+                <li><span th:text="#{guides.value.ace}">Ace</span><strong>1</strong></li>
+                <li><span th:text="#{guides.value.tresetaThirds}">2, 3, 13, 12, 11</span><strong>⅓</strong></li>
+                <li><span th:text="#{guides.value.tresetaZeros}">4, 5, 6, 7</span><strong>0</strong></li>
+                <li><span th:text="#{guides.value.lastTrick}">Last round</span><strong>+1</strong></li>
+            </ul>
+            <p th:text="#{guides.treseta.rule.valuesNote}">That is 11⅓ points to fight over each hand.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.declarations}">Declarations</h3>
+            <p th:text="#{guides.treseta.rule.declarations}">In declaration modes you score bonus points for holding sets of Aces, Twos, Threes, or a Napolitana.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.winning}">Winning</h3>
+            <p th:text="#{guides.treseta.rule.winning}">The player or team with more points wins the hand.</p>
+        </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.modes}">Supported modes</h3>
+            <ul class="guide-modes">
+                <li th:text="#{guides.treseta.mode.2p}">2 players, 10 cards each</li>
+                <li th:text="#{guides.treseta.mode.3p}">3 players, 13 cards each</li>
+                <li th:text="#{guides.treseta.mode.4pNo}">4 players, no teams</li>
+                <li th:text="#{guides.treseta.mode.4pTeams}">4 players, 2 teams</li>
+                <li th:text="#{guides.treseta.mode.declarations}">Every mode is available with or without declarations</li>
+            </ul>
+        </article>
+    </div>
+    <div class="guide-footer-actions">
+        <a class="btn guide-cta" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>
+        <a class="btn btn-accent guide-cta" th:href="@{/guides/briskula}" th:text="#{guides.treseta.next}">Learn Briskula →</a>
+    </div>
+</section>
+
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script th:inline="javascript">
+    window.__INITIAL_GAME__ = null;
+    window.__INITIAL_HAND__ = null;
+    window.__INITIAL_GAME_CHAT__ = null;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Flip.min.js"></script>
+<script th:src="@{/webjars/interactjs/1.10.27/dist/interact.min.js}"></script>
+<script th:src="@{/js/ui/game.js}"></script>
+<script th:src="@{/js/ui/game-runtime.js}"></script>
+<script th:src="@{/js/ui/games/treseta.js}"></script>
+<script th:src="@{/js/ui/guides/guide-game.js(v='0.3.5-19')}"></script>
+<script th:src="@{/js/ui/live-game.js}"></script>
+</body>
+</html>

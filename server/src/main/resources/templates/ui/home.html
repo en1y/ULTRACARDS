@@ -55,6 +55,17 @@
             </a>
         </div>
 
+        <div class="home-secondary-actions">
+            <a class="card home-action-tile home-action-link home-secondary-action" th:href="@{/guides}">
+                <span class="home-action-title" th:text="#{home.guides}">How to play</span>
+                <span class="home-action-copy" th:text="#{home.guides.copy}">Learn the rules.</span>
+            </a>
+            <a class="card home-action-tile home-action-link home-secondary-action" th:href="@{/leaderboards}">
+                <span class="home-action-title" th:text="#{header.leaderboards}">Leaderboards</span>
+                <span class="home-action-copy" th:text="#{home.leaderboards.copy}">See the top players.</span>
+            </a>
+        </div>
+
         <div class="home-public-toggle-row">
             <button id="home-public-toggle"
                     class="btn home-public-toggle"
@@ -136,6 +147,17 @@
                     Play an exciting game for 2–4 players. The team with the most points wins. Lots of cards, lots of planning! Win the last round for an extra point.
                 </p>
             </article>
+        </div>
+
+        <div class="home-secondary-actions">
+            <a class="card home-action-tile home-action-link home-secondary-action" th:href="@{/guides}">
+                <span class="home-action-title" th:text="#{home.guides}">How to play</span>
+                <span class="home-action-copy" th:text="#{home.guides.copy}">Learn the rules.</span>
+            </a>
+            <a class="card home-action-tile home-action-link home-secondary-action" th:href="@{/leaderboards}">
+                <span class="home-action-title" th:text="#{header.leaderboards}">Leaderboards</span>
+                <span class="home-action-copy" th:text="#{home.leaderboards.copy}">See the top players.</span>
+            </a>
         </div>
     </section>
 </main>

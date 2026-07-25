@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{guides.pageTitle}">How to play · ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/guides.css(v='0.3.5-20')}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{ui/fragments/header :: header}"></div>
+
+<main class="guide-main">
+    <section class="guide-hero container">
+        <p class="guide-eyebrow" th:text="#{guides.hub.eyebrow}">Learn to play</p>
+        <h1 th:text="#{guides.hub.title}">Game guides</h1>
+        <p class="guide-intro" th:text="#{guides.hub.intro}">Pick a game and learn the rules with a quick interactive walkthrough.</p>
+    </section>
+
+    <section class="guide-hub-grid container" th:aria-label="#{guides.hub.title}">
+        <a class="card guide-hub-tile" th:href="@{/guides/briskula}">
+            <span class="guide-hub-badge" th:text="#{guides.hub.interactive}">Interactive</span>
+            <h2 th:text="#{game.briskula}">Briskula</h2>
+            <p th:text="#{guides.hub.briskula.copy}">A card game with a trump suit. Win points and rounds to beat the opposition.</p>
+            <span class="guide-hub-cta" th:text="#{guides.hub.play}">Open guide →</span>
+        </a>
+
+        <a class="card guide-hub-tile" th:href="@{/guides/treseta}">
+            <span class="guide-hub-badge" th:text="#{guides.hub.interactive}">Interactive</span>
+            <h2 th:text="#{game.treseta}">Treseta</h2>
+            <p th:text="#{guides.hub.treseta.copy}">Follow suit, hold the strong threes and twos, and win the last round for a bonus.</p>
+            <span class="guide-hub-cta" th:text="#{guides.hub.play}">Open guide →</span>
+        </a>
+
+        <!-- Not links until the guides exist: the placeholder pages say nothing the tile doesn't. -->
+        <div class="card guide-hub-tile is-soon">
+            <span class="guide-hub-badge is-soon" th:text="#{guides.hub.comingSoon}">Coming soon</span>
+            <h2 th:text="#{game.poker}">Poker</h2>
+            <p th:text="#{guides.hub.poker.copy}">The classic betting game. Guide on the way.</p>
+        </div>
+
+        <div class="card guide-hub-tile is-soon">
+            <span class="guide-hub-badge is-soon" th:text="#{guides.hub.comingSoon}">Coming soon</span>
+            <h2 th:text="#{game.durak}">Durak</h2>
+            <p th:text="#{guides.hub.durak.copy}">The Russian attack-and-defend game. Guide on the way.</p>
+        </div>
+    </section>
+</main>
+
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+</body>
+</html>
