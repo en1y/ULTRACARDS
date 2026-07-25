@@ -57,10 +57,6 @@
             <img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.history}">History</span>
           </a>
-          <a class="menu-item" th:href="@{/leaderboards}" role="menuitem">
-            <img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true" />
-            <span th:text="#{header.leaderboards}">Leaderboards</span>
-          </a>
           <a class="menu-item" th:if="${isAdmin}" th:href="@{/admin}" role="menuitem">
             <img class="uc-icon" data-icon="security" th:src="@{/pics/light/security.svg}" alt="" aria-hidden="true" />
             <span th:text="#{header.menu.admin}">Admin</span>
