@@ -7,7 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.util.concurrent.TimeUnit;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,7 +28,6 @@ public class CardImageController {
     }
 
     @GetMapping(value = "/italian/{suit}/{value}", produces = MediaType.IMAGE_PNG_VALUE)
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<byte[]> italianCard(
             @PathVariable String suit,
             @PathVariable String value,
@@ -43,7 +41,6 @@ public class CardImageController {
     }
 
     @GetMapping(value = "/italian/back", produces = MediaType.IMAGE_PNG_VALUE)
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<byte[]> italianCardBack() {
         try {
             return ResponseEntity.ok().cacheControl(CARD_CACHE).body(cardImageService.italianCardBack());
@@ -53,7 +50,6 @@ public class CardImageController {
     }
 
     @GetMapping(value = "/poker/{suit}/{value}", produces = MediaType.IMAGE_PNG_VALUE)
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<byte[]> pokerCard(
             @PathVariable String suit,
             @PathVariable String value,
@@ -67,7 +63,6 @@ public class CardImageController {
     }
 
     @GetMapping(value = "/poker/back", produces = MediaType.IMAGE_PNG_VALUE)
-    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
     public ResponseEntity<byte[]> pokerCardBack() {
         try {
             return ResponseEntity.ok().cacheControl(CARD_CACHE).body(cardImageService.pokerCardBack());
