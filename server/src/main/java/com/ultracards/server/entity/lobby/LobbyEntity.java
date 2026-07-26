@@ -54,6 +54,8 @@ public class LobbyEntity {
             this.users = ((BriskulaLobbyGameConfig) gameConfig).getOrderedUsers();
         if (gameType.equals(GameTypeDTO.Treseta))
             this.users = ((TresetaLobbyGameConfig) gameConfig).getOrderedUsers();
+        if (gameType.equals(GameTypeDTO.Durak))
+            this.users = ((DurakLobbyGameConfig) gameConfig).getOrderedUsers();
     }
 
     public void setGameConfig(GameConfigDTO gameConfig) {

@@ -6,15 +6,20 @@ import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameHistoryDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
+import com.ultracards.server.entity.games.durak.DurakGameEntity;
+import com.ultracards.server.entity.games.durak.DurakPlayerEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaPlayerEntity;
 import com.ultracards.server.service.games.briskula.BriskulaGameHistoryService;
+import com.ultracards.server.service.games.durak.DurakGameHistoryService;
 import com.ultracards.server.service.games.treseta.TresetaGameHistoryService;
 import com.ultracards.server.service.games.GameManager;
 import jakarta.validation.constraints.NotBlank;
@@ -38,6 +43,7 @@ public class GameController {
     private final GameManager gameManager;
     private final BriskulaGameHistoryService briskulaGameHistoryService;
     private final TresetaGameHistoryService tresetaGameHistoryService;
+    private final DurakGameHistoryService durakGameHistoryService;
 
     @GetMapping("/lobby/{lobbyId}")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -50,6 +56,8 @@ public class GameController {
             return ResponseEntity.ok(((BriskulaGameEntity) game).createGameDTO());
         if (game.getGameType().equals(GameTypeDTO.Treseta))
             return ResponseEntity.ok(((TresetaGameEntity) game).createGameDTO());
+        if (game.getGameType().equals(GameTypeDTO.Durak))
+            return ResponseEntity.ok(((DurakGameEntity) game).createGameDTO());
         return ResponseEntity.ok().build();
     }
 
@@ -77,10 +85,12 @@ public class GameController {
             @RequestParam(defaultValue = "all") String gameType
     ) {
         var histories = new ArrayList<ShortGameHistoryDTO>();
-        if (!"treseta".equalsIgnoreCase(gameType))
+        if ("all".equalsIgnoreCase(gameType) || "briskula".equalsIgnoreCase(gameType))
             histories.addAll(briskulaGameHistoryService.getPastGames(user, result, timeSort));
-        if (!"briskula".equalsIgnoreCase(gameType))
+        if ("all".equalsIgnoreCase(gameType) || "treseta".equalsIgnoreCase(gameType))
             histories.addAll(tresetaGameHistoryService.getPastGames(user, result, timeSort));
+        if ("all".equalsIgnoreCase(gameType) || "durak".equalsIgnoreCase(gameType))
+            histories.addAll(durakGameHistoryService.getPastGames(user, result, timeSort));
         var comparator = Comparator.comparing(ShortGameHistoryDTO::getEndedAt,
                 Comparator.nullsLast(Comparator.naturalOrder()));
         if (!"oldest".equalsIgnoreCase(timeSort) && !"asc".equalsIgnoreCase(timeSort)) comparator = comparator.reversed();
@@ -97,6 +107,8 @@ public class GameController {
         if (history != null) return ResponseEntity.ok(history);
         var tresetaHistory = tresetaGameHistoryService.getGameHistory(UUID.fromString(gameId));
         if (tresetaHistory != null) return ResponseEntity.ok(tresetaHistory);
+        var durakHistory = durakGameHistoryService.getGameHistory(UUID.fromString(gameId));
+        if (durakHistory != null) return ResponseEntity.ok(durakHistory);
         return ResponseEntity.notFound().build();
     }
 
@@ -112,6 +124,28 @@ public class GameController {
     public ResponseEntity<TresetaGameHistoryDTO> getTresetaGameHistory(@PathVariable String gameId) {
         var history = tresetaGameHistoryService.getGameHistory(UUID.fromString(gameId));
         return history == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(history);
+    }
+
+    @GetMapping("/history/durak/{gameId}")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<DurakGameHistoryDTO> getDurakGameHistory(@PathVariable String gameId) {
+        var history = durakGameHistoryService.getGameHistory(UUID.fromString(gameId));
+        return history == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(history);
+    }
+
+    /** Returns the public state plus only the requesting participant's hand; 404 otherwise. */
+    @GetMapping("/{gameId}/snapshot/durak")
+    @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
+    public ResponseEntity<GameSnapshotDTO<DurakGameEntityDTO>> getDurakSnapshot(
+            @PathVariable UUID gameId, @AuthenticationPrincipal UserEntity user) {
+        var raw = gameManager.getGame(gameId);
+        if (!(raw instanceof DurakGameEntity game) || !game.getPlayers().contains(user))
+            return ResponseEntity.notFound().build();
+        for (var player : game.getGame().getPlayers())
+            if (((DurakPlayerEntity) player).getUser().equals(user))
+                return ResponseEntity.ok(new GameSnapshotDTO<>(game.createGameDTO(),
+                        player.getHand().getCards().stream().map(GameCardDTO::createCardDTO).toList()));
+        return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/{gameId}/snapshot/briskula")

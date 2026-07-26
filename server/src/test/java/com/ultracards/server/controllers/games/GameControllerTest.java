@@ -9,6 +9,7 @@ import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.briskula.BriskulaGameHistoryService;
+import com.ultracards.server.service.games.durak.DurakGameHistoryService;
 import com.ultracards.server.service.games.treseta.TresetaGameHistoryService;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,9 @@ class GameControllerTest {
     private final GameManager gameManager = new GameManager();
     private final BriskulaGameHistoryService briskulaHistory = mock(BriskulaGameHistoryService.class);
     private final TresetaGameHistoryService tresetaHistory = mock(TresetaGameHistoryService.class);
-    private final GameController controller = new GameController(gameManager, briskulaHistory, tresetaHistory);
+    private final DurakGameHistoryService durakHistory = mock(DurakGameHistoryService.class);
+    private final GameController controller = new GameController(gameManager, briskulaHistory, tresetaHistory,
+            durakHistory);
 
     @Test
     void returnsTypedTresetaSnapshotWithOnlyRequestingPlayersHand() {
@@ -82,6 +85,60 @@ class GameControllerTest {
         assertThat(page).singleElement().extracting(ShortGameHistoryDTO::getEndedAt)
                 .isEqualTo(Instant.EPOCH);
         verifyNoInteractions(briskulaHistory);
+    }
+
+    @Test
+    void returnsTypedDurakSnapshotWithOnlyRequestingPlayersHand() {
+        var owner = user(1L, "Owner");
+        var player = user(2L, "Player");
+        var users = List.of(owner, player);
+        var configDto = new com.ultracards.gateway.dto.games.games.durak.DurakGameConfigDTO(2, 36, false,
+                com.ultracards.gateway.dto.games.games.durak.DurakThrowInPolicyDTO.EVERYONE, false, null);
+        var config = new com.ultracards.server.entity.lobby.DurakLobbyGameConfig(configDto, users);
+        var game = new com.ultracards.server.entity.games.durak.DurakGameEntity(UUID.randomUUID(), "game", owner,
+                config, users);
+        game.getGame().start();
+        gameManager.createGame(game);
+
+        var response = controller.getDurakSnapshot(game.getId(), player);
+        var outsider = controller.getDurakSnapshot(game.getId(), user(3L, "Outsider"));
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getGame())
+                .isInstanceOf(com.ultracards.gateway.dto.games.games.durak.DurakGameEntityDTO.class);
+        assertThat(response.getBody().getHand()).hasSize(6);
+        assertThat(response.getBody().getGame().getStateRevision()).isZero();
+        assertThat(outsider.getStatusCode().value()).isEqualTo(404);
+    }
+
+    @Test
+    void aDurakSnapshotIsNotServedForATresetaGame() {
+        var owner = user(1L, "Owner");
+        var player = user(2L, "Player");
+        var users = List.of(owner, player);
+        var config = new TresetaLobbyGameConfig(new TresetaGameConfigDTO(2, 10, false, null), users);
+        var game = new TresetaGameEntity(UUID.randomUUID(), "game", owner, config, users);
+        game.getGame().start();
+        gameManager.createGame(game);
+
+        assertThat(controller.getDurakSnapshot(game.getId(), player).getStatusCode().value()).isEqualTo(404);
+        assertThat(controller.getDurakSnapshot(UUID.randomUUID(), player).getStatusCode().value()).isEqualTo(404);
+    }
+
+    @Test
+    void includesDurakInTheGenericHistoryAndFiltersToItOnRequest() {
+        var user = user(1L, "Player");
+        var durakGames = List.of(new ShortGameHistoryDTO(UUID.randomUUID(), UUID.randomUUID(), "durak",
+                GameTypeDTO.Durak, Instant.ofEpochSecond(5), Instant.ofEpochSecond(5),
+                null, List.of(), Map.of(), List.of()));
+        when(durakHistory.getPastGames(user, "both", "latest")).thenReturn(durakGames);
+        when(briskulaHistory.getPastGames(user, "both", "latest")).thenReturn(List.of());
+        when(tresetaHistory.getPastGames(user, "both", "latest")).thenReturn(List.of());
+
+        assertThat(controller.getPastGames(user, 0, "both", "latest", "all").getBody()).hasSize(1);
+        assertThat(controller.getPastGames(user, 0, "both", "latest", "durak").getBody()).hasSize(1);
+        assertThat(controller.getPastGames(user, 0, "both", "latest", "briskula").getBody()).isEmpty();
     }
 
     private UserEntity user(Long id, String name) {

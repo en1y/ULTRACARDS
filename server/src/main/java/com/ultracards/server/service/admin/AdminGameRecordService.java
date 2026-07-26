@@ -3,6 +3,7 @@ package com.ultracards.server.service.admin;
 import com.ultracards.gateway.dto.admin.AdminRecordedGameDTO;
 import com.ultracards.gateway.dto.admin.AdminRecordedGamePatchDTO;
 import com.ultracards.recorder.RecordedBriskulaGame;
+import com.ultracards.recorder.RecordedDurakGame;
 import com.ultracards.recorder.RecordedGame;
 import com.ultracards.recorder.RecordedTresetaGame;
 import com.ultracards.server.entity.UserEntity;
@@ -61,6 +62,12 @@ public class AdminGameRecordService {
 
     private AdminRecordedGameDTO toDto(RecordedGame game, String name) {
         var players = game.players().stream().map(player -> player.name() + " (#" + player.id() + ")").toList();
+        if (game instanceof RecordedDurakGame durak) {
+            // Durak has no points: everybody but the durak wins, and a draw has no winners.
+            return new AdminRecordedGameDTO(game.id(), type(game), mode(game), name, game.ownerUserId(),
+                    game.createdAt(), game.startedAt(), game.endedAt(), players, durakWinners(durak),
+                    game.rounds().size());
+        }
         var scores = new LinkedHashMap<Long, Integer>();
         var names = new HashMap<Long, String>();
         for (var player : game.players()) { scores.put(player.id(), 0); names.put(player.id(), player.name()); }
@@ -78,9 +85,18 @@ public class AdminGameRecordService {
                 game.startedAt(), game.endedAt(), players, winners, game.rounds().size());
     }
 
+    private List<String> durakWinners(RecordedDurakGame game) {
+        if (game.endedAt() == null || game.draw()) return List.of();
+        return game.players().stream()
+                .filter(player -> !player.id().equals(game.loserUserId()))
+                .map(player -> player.name() + " (#" + player.id() + ")")
+                .toList();
+    }
+
     private String mode(RecordedGame game) {
         if (game instanceof RecordedBriskulaGame briskula) return briskula.gameConfig();
         if (game instanceof RecordedTresetaGame treseta) return treseta.gameConfig();
+        if (game instanceof RecordedDurakGame durak) return durak.modeKey();
         return null;
     }
 
@@ -92,6 +108,7 @@ public class AdminGameRecordService {
     private String type(RecordedGame game) {
         if (game instanceof RecordedBriskulaGame) return "BRISKULA";
         if (game instanceof RecordedTresetaGame) return "TRESETA";
+        if (game instanceof RecordedDurakGame) return "DURAK";
         return "UNKNOWN";
     }
 

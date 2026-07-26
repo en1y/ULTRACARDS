@@ -7,8 +7,11 @@ import com.ultracards.gateway.dto.games.games.GameEventDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameResultDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameResultDTO;
 import com.ultracards.server.entity.games.GameEntity;
+import com.ultracards.games.durak.DurakErrorCode;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
+import com.ultracards.server.entity.games.durak.DurakGameEntity;
+import com.ultracards.server.entity.games.durak.DurakPlayerEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaPlayerEntity;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +74,40 @@ public class GameEventPublisher {
                     messagingTemplate.convertAndSendToUser(player.getUser().getId().toString(), "/queue/game/cards", cards);
                 }
         }
+        if (gameEntity.getGameType().equals(GameTypeDTO.Durak)) {
+            publishDurak((DurakGameEntity) gameEntity, gameEventDTO);
+        }
+    }
+
+    /**
+     * Publishes the public state first, then each player's authoritative hand and their tailored
+     * legal actions, so a newer public state is never followed by an older private hand.
+     */
+    private void publishDurak(DurakGameEntity game, GameEventTypeDTO eventType) {
+        var event = new GameEventDTO(game.createGameDTO(), eventType);
+        if (eventType.equals(GameEventTypeDTO.RESULTED)) {
+            event.setResult(game.createResultDTO());
+        }
+        messagingTemplate.convertAndSend("/topic/game/" + game.getId(), event);
+        if (eventType.equals(GameEventTypeDTO.RESULTED)) {
+            return; // no cards are published once the result is out
+        }
+        for (var raw : game.getGame().getPlayers()) {
+            var player = (DurakPlayerEntity) raw;
+            var userId = player.getUser().getId().toString();
+            var cards = player.getHand().getCards().stream().map(GameCardDTO::createCardDTO).toList();
+            messagingTemplate.convertAndSendToUser(userId, "/queue/game/cards", cards);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/game/durak-actions", game.legalActions(player));
+        }
+    }
+
+    /** Reports a rejected Durak action to the acting user only. */
+    public void publishDurakError(DurakGameEntity game, Long userId, DurakErrorCode code, String message) {
+        messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/game/errors",
+                new DurakActionError(code.name(), message, game.getStateRevision()));
+    }
+
+    public record DurakActionError(String code, String message, long currentRevision) {
     }
 
     public void publishOpponentDrawnCards(TresetaGameEntity game, Map<Long, List<com.ultracards.games.treseta.TresetaCard>> handsBeforePlay) {
