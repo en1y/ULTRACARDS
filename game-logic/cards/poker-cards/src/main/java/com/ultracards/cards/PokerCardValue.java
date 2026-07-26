@@ -19,7 +19,12 @@ public enum PokerCardValue implements CardValueInterface {
     JACK ("Jack", 11),
     QUEEN("Queen", 12),
     KING ("King", 13),
-    ACE ("Ace", 14);
+    ACE ("Ace", 14),
+    /**
+     * Only used by games that explicitly enable Jokers (currently Durak).
+     * Never produced by the 24/36/52 card deck factories.
+     */
+    JOKER ("Joker", 15);
 
     private static boolean useResourceBundle = false;
     private static ResourceBundle resourceBundle;
@@ -49,6 +54,9 @@ public enum PokerCardValue implements CardValueInterface {
 
     @Override
     public String getSymbol() {
+        if (this == JOKER) {
+            return "JK"; // "J" is already taken by JACK
+        }
         var number = getNumber();
         return number > 10 || number == 1 ? name.substring(0, 1) : String.valueOf(number);
     }
