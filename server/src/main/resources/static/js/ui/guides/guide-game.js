@@ -19,7 +19,7 @@
     const GAME_ID = 'ui-guide';
     const SELF_ID = String(gameEl.dataset.currentUserId || '1');
     const SELF_NAME = gameEl.dataset.username || 'You';
-    const BOT_NAMES = ['Bot Ana', 'Bot Ivo', 'Bot Mia'];
+    const BOT_NAMES = ['Bot Gojko', 'Bot Ivo', 'Bot Mia'];
 
     const T = (key, ...args) => (window.t ? window.t(key, ...args) : key);
     const modeSelect = document.getElementById('guide-mode');

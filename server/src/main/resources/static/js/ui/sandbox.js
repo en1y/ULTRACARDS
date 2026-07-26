@@ -10,7 +10,7 @@
     const SUIT_NAMES = {C: 'COPPE', D: 'DENARI', S: 'SPADE', B: 'BASTONI'};
     const SUIT_LABELS = {C: 'Cups', D: 'Coins', S: 'Swords', B: 'Clubs'};
     const VALUE_LABELS = {1: 'Ace', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 11: 'Jack', 12: 'Knight', 13: 'King'};
-    const BOT_NAMES = ['Bot Ana', 'Bot Ivo', 'Bot Mia'];
+    const BOT_NAMES = ['Bot Gojko', 'Bot Ivo', 'Bot Mia'];
     const GAME_ID = 'ui-sandbox';
     const SELF_ID = String(gameEl.dataset.currentUserId || '1');
     const SELF_NAME = gameEl.dataset.username || 'Admin';
