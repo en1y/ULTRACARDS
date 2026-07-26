@@ -138,3 +138,27 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 - Reuse the existing Thymeleaf fragments and multilingual support, with responsive layouts, accessible navigation, and links from relevant lobby and game pages.
 
 ---
+
+# v0.3.5 → v0.4.0 — Third Game (Durak)
+
+- Reuse the existing game abstractions and `poker-cards` module to implement complete Durak rules in the `game-logic` -> `games` -> `durak` module.
+- Add server-side Durak logic and the necessary endpoints while following the existing game service, lobby, and abstracted `GameController` patterns.
+- Add Durak persistence, game history, recording, and statistics through the existing game-specific service routing.
+- Create a responsive Durak UI in the `server` module using Thymeleaf, the existing shared fragments, and multilingual support for both mobile and desktop layouts.
+
+---
+
+## v0.4.1 - Add Elo or Glicko rating system for competitive play
+
+- Implement a rating system (Elo or Glicko) to track player skill levels based on game outcomes.
+- Update the game statistics and leaderboards to include player ratings.
+- Provide a way for players to view their rating history and progress over time.
+
+---
+
+## v0.4.2 - Add an in-game currency system
+
+- Introduce an in-game currency that players can earn through gameplay and achievements.
+- Implement every day log in rewards
+- Allow players to spend currency on cosmetic items, card backs, or other non-gameplay affecting features.
+- Implement a currency management system in the backend with endpoints for earning, spending, and tracking currency balances.
