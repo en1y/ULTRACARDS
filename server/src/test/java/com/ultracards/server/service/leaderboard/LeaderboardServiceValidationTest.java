@@ -23,6 +23,10 @@ class LeaderboardServiceValidationTest {
                 .hasMessageContaining("Unknown Briskula mode");
         assertThatThrownBy(() -> service.get("wins", null, "TWO_PLAYERS", 0, 25, null))
                 .hasMessageContaining("gameType is required");
+        assertThatThrownBy(() -> service.get("wins", "Durak", "p4-d36", 0, 25, null))
+                .hasMessageContaining("Unknown Durak mode");
+        assertThatThrownBy(() -> service.get("wins", "Durak", "P4_D24_NO_JOKERS_EVERYONE_PASS_EXTRA", 0, 25, null))
+                .hasMessageContaining("Unknown Durak mode");
     }
 
     @Test

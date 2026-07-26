@@ -34,6 +34,7 @@ class LeaderboardServicePersistenceTest {
     @Autowired private UserGamesStatsRepository overallStats;
     @Autowired private UserBriskulaStatsRepository briskulaStats;
     @Autowired private BriskulaGameRepository games;
+    @Autowired private com.ultracards.server.repositories.games.UserDurakStatsRepository durakStats;
 
     @Test
     void ranksTiesDeterministicallyAndReturnsTheCurrentUsersPosition() {
@@ -121,6 +122,50 @@ class LeaderboardServicePersistenceTest {
 
         assertThat(result.items()).extracting(entry -> entry.userId()).doesNotContain(user.getId());
         assertThat(result.currentUserPosition()).isNull();
+    }
+
+    @Test
+    void ranksDurakOverallAndPerMode() {
+        var winner = user("durak-win-" + UUID.randomUUID());
+        var durak = user("durak-lose-" + UUID.randomUUID());
+        var mode = "P3_D36_NO_JOKERS_EVERYONE_PASS";
+
+        // A three-player game creates two winners and one durak.
+        var winnerOverall = new UserGamesStats(winner);
+        winnerOverall.getGameStats().put(GameType.DURAK, new GameStats(12, 12));
+        overallStats.saveAndFlush(winnerOverall);
+        var durakOverall = new UserGamesStats(durak);
+        durakOverall.getGameStats().put(GameType.DURAK, new GameStats(12, 0));
+        overallStats.saveAndFlush(durakOverall);
+
+        var winnerModes = new com.ultracards.server.entity.games.gamestats.UserDurakStats(winner);
+        winnerModes.getConfigStats().put(mode, new GameStats(12, 12));
+        durakStats.saveAndFlush(winnerModes);
+        var durakModes = new com.ultracards.server.entity.games.gamestats.UserDurakStats(durak);
+        durakModes.getConfigStats().put(mode, new GameStats(12, 0));
+        durakModes.setTimesDurak(12);
+        durakStats.saveAndFlush(durakModes);
+
+        var overallRanking = service.get("WINS", "Durak", null, 0, 100, winner);
+        assertThat(overallRanking.items()).filteredOn(entry -> entry.userId().equals(winner.getId()))
+                .singleElement().satisfies(entry -> {
+                    assertThat(entry.wins()).isEqualTo(12);
+                    assertThat(entry.gamesPlayed()).isEqualTo(12);
+                });
+        assertThat(overallRanking.items()).filteredOn(entry -> entry.userId().equals(durak.getId()))
+                .singleElement().satisfies(entry -> assertThat(entry.wins()).isZero());
+
+        var modeRanking = service.get("WIN_RATE", "Durak", mode, 0, 100, winner);
+        assertThat(modeRanking.mode()).isEqualTo(mode);
+        assertThat(modeRanking.availableModes()).contains(mode);
+        assertThat(modeRanking.items()).filteredOn(entry -> entry.userId().equals(winner.getId()))
+                .singleElement().satisfies(entry -> assertThat(entry.winRate()).isEqualTo(100.0));
+        assertThat(modeRanking.items()).filteredOn(entry -> entry.userId().equals(durak.getId()))
+                .singleElement().satisfies(entry -> assertThat(entry.winRate()).isZero());
+
+        // The 54-card pack with and without Jokers rank as separate modes.
+        var withJokers = service.get("WINS", "Durak", "P3_D54_JOKERS_EVERYONE_PASS", 0, 100, winner);
+        assertThat(withJokers.items()).extracting(entry -> entry.userId()).doesNotContain(winner.getId());
     }
 
     private UserEntity user(String username) {

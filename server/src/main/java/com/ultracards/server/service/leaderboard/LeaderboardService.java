@@ -1,6 +1,7 @@
 package com.ultracards.server.service.leaderboard;
 
 import com.ultracards.games.briskula.BriskulaGameConfig;
+import com.ultracards.games.durak.DurakGameConfig;
 import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.leaderboard.LeaderboardEntryDTO;
@@ -103,6 +104,9 @@ public class LeaderboardService {
             if (gameType == GameTypeDTO.Briskula) return modeTotals(
                     "user_briskula_stats", "user_briskula_stats_entries",
                     "user_briskula_stats_id", "briskula_game_config");
+            if (gameType == GameTypeDTO.Durak) return modeTotals(
+                    "user_durak_stats", "user_durak_stats_entries",
+                    "user_durak_stats_id", "mode_key");
             return modeTotals("user_treseta_stats", "user_treseta_stats_entries",
                     "user_treseta_stats_id", "treseta_game_config");
         }
@@ -170,7 +174,9 @@ public class LeaderboardService {
         try {
             if (gameType == GameTypeDTO.Briskula) return BriskulaGameConfig.valueOf(mode).name();
             if (gameType == GameTypeDTO.Treseta) return TresetaGameConfig.valueOf(mode).name();
-        } catch (IllegalArgumentException ex) {
+            // Durak mode keys are only accepted in their canonical form.
+            if (gameType == GameTypeDTO.Durak) return DurakGameConfig.fromModeKey(mode).modeKey();
+        } catch (RuntimeException ex) {
             throw badRequest("Unknown " + gameType.name() + " mode: " + value);
         }
         throw badRequest("Modes are not supported for " + gameType.name());
@@ -182,6 +188,8 @@ public class LeaderboardService {
             for (var mode : BriskulaGameConfig.values()) modes.add(mode.name());
         if (gameType == GameTypeDTO.Treseta)
             for (var mode : TresetaGameConfig.values()) modes.add(mode.name());
+        if (gameType == GameTypeDTO.Durak)
+            for (var config : DurakGameConfig.validConfigs()) modes.add(config.modeKey());
         return List.copyOf(modes);
     }
 

@@ -5,6 +5,7 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.games.briskula.UserBriskulaStatsService;
+import com.ultracards.server.service.games.durak.UserDurakStatsService;
 import com.ultracards.server.service.games.treseta.UserTresetaStatsService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class UserService {
 
     private final UserBriskulaStatsService userBriskulaStatsService;
     private final UserTresetaStatsService userTresetaStatsService;
+    private final UserDurakStatsService userDurakStatsService;
     private final UserGamesStatsService userGamesStatsService;
     private final UserRepository userRepository;
 
@@ -35,6 +37,7 @@ public class UserService {
         userGamesStatsService.createEmptyStats(user);
         userBriskulaStatsService.createEmptyStats(user);
         userTresetaStatsService.createEmptyStats(user);
+        userDurakStatsService.createEmptyStats(user);
         return user;
     }
 

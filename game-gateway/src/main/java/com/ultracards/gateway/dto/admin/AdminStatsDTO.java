@@ -7,9 +7,11 @@ public record AdminStatsDTO(
         Map<String, AdminStatLineDTO> overall,
         Map<String, AdminStatLineDTO> briskulaModes,
         Map<String, AdminStatLineDTO> tresetaModes,
+        Map<String, AdminStatLineDTO> durakModes,
         int briskulaOpponentRows,
         int briskulaTeammateRows,
         int tresetaOpponentRows,
-        int tresetaTeammateRows
+        int tresetaTeammateRows,
+        int durakOpponentRows
 ) {
 }

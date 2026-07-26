@@ -1,8 +1,11 @@
 package com.ultracards.server.service.games;
 
 import com.ultracards.games.briskula.BriskulaGameConfig;
+import com.ultracards.games.durak.DurakGameConfig;
 import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.gateway.dto.auth.BriskulaMatchupStatsDTO;
+import com.ultracards.gateway.dto.auth.DurakMatchupStatsDTO;
+import com.ultracards.gateway.dto.auth.UserDurakStatsDTO;
 import com.ultracards.gateway.dto.auth.DetailedProfileStatsDTO;
 import com.ultracards.gateway.dto.auth.GameStatsDTO;
 import com.ultracards.gateway.dto.auth.TresetaMatchupStatsDTO;
@@ -14,6 +17,8 @@ import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.gamestats.BriskulaMatchupStats;
+import com.ultracards.server.entity.games.gamestats.DurakMatchupStats;
+import com.ultracards.server.entity.games.gamestats.UserDurakStats;
 import com.ultracards.server.entity.games.gamestats.GameStats;
 import com.ultracards.server.entity.games.gamestats.TresetaMatchupStats;
 import com.ultracards.server.entity.games.gamestats.UserBriskulaStats;
@@ -22,7 +27,9 @@ import com.ultracards.server.entity.games.gamestats.UserTresetaStats;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.repositories.games.UserGamesStatsRepository;
+import com.ultracards.server.entity.lobby.DurakLobbyGameConfig;
 import com.ultracards.server.service.games.briskula.UserBriskulaStatsService;
+import com.ultracards.server.service.games.durak.UserDurakStatsService;
 import com.ultracards.server.service.games.treseta.UserTresetaStatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +42,7 @@ import java.util.LinkedHashMap;
 public class UserGamesStatsService {
     private final UserBriskulaStatsService userBriskulaStatsService;
     private final UserTresetaStatsService userTresetaStatsService;
+    private final UserDurakStatsService userDurakStatsService;
     private final UserRepository userRepository;
     private final UserGamesStatsRepository userGamesStatsRepository;
 
@@ -59,7 +67,8 @@ public class UserGamesStatsService {
         return new DetailedProfileStatsDTO(
                 toUserGamesStatsDTO(getByUser(user)),
                 toUserBriskulaStatsDTO(userBriskulaStatsService.getByUser(user)),
-                toUserTresetaStatsDTO(userTresetaStatsService.getByUser(user))
+                toUserTresetaStatsDTO(userTresetaStatsService.getByUser(user)),
+                toUserDurakStatsDTO(userDurakStatsService.getByUser(user))
         );
     }
 
@@ -144,6 +153,45 @@ public class UserGamesStatsService {
                 winsWithTeammate,
                 stats.getDeclarationsMade(),
                 stats.getDeclarationPoints()
+        );
+    }
+
+    private UserDurakStatsDTO toUserDurakStatsDTO(UserDurakStats stats) {
+        if (stats == null) {
+            return null;
+        }
+
+        var configStats = new LinkedHashMap<String, GameStatsDTO>();
+        for (var entry : stats.getConfigStats().entrySet()) {
+            configStats.put(entry.getKey(), toGameStatsDTO(entry.getValue()));
+        }
+
+        var winsAgainstUser = new java.util.ArrayList<DurakMatchupStatsDTO>();
+        for (var matchup : stats.getWinsAgainstUser()) {
+            winsAgainstUser.add(toDurakMatchupStatsDTO(matchup));
+        }
+
+        return new UserDurakStatsDTO(
+                stats.getId(),
+                stats.getUser() != null ? stats.getUser().getId() : null,
+                configStats,
+                winsAgainstUser,
+                stats.getTimesDurak(),
+                stats.getDraws()
+        );
+    }
+
+    private DurakMatchupStatsDTO toDurakMatchupStatsDTO(DurakMatchupStats stats) {
+        var relatedUser = userRepository.findById(stats.getRelatedUserId()).orElse(null);
+        return new DurakMatchupStatsDTO(
+                GameTypeDTO.Durak,
+                DurakLobbyGameConfig.toDto(DurakGameConfig.fromModeKey(stats.getModeKey()), null),
+                stats.getModeKey(),
+                stats.getRelatedUserId(),
+                relatedUser != null ? relatedUser.getUsername() : null,
+                stats.getPlayed(),
+                stats.getWins(),
+                stats.getLastPlayedAt()
         );
     }
 
