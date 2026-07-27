@@ -4,6 +4,7 @@ import com.ultracards.games.durak.*;
 import com.ultracards.recorder.DurakGameRecorder;
 import com.ultracards.recorder.RecordedPlay;
 import com.ultracards.recorder.RecordedPlayer;
+import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.repositories.games.DurakGameRepository;
 import com.ultracards.server.repositories.games.TresetaGameRepository;
 import jakarta.persistence.EntityManager;
@@ -64,6 +65,10 @@ class DurakRecordingPersistenceTest {
                 game.isDraw(), finishOrder);
 
         repository.saveAndFlush(recording);
+        entityManager.createNativeQuery("""
+                SET CONSTRAINTS fk_recorded_durak_games_loser_player,
+                                fk_recorded_durak_finish_order_player IMMEDIATE
+                """).executeUpdate();
         entityManager.clear();
 
         var persisted = repository.findById(recording.id()).orElseThrow();
@@ -135,7 +140,8 @@ class DurakRecordingPersistenceTest {
                 com.ultracards.games.treseta.TresetaGameConfig.TWO_PLAYERS);
         var recorder = new com.ultracards.recorder.TresetaGameRecorder(UUID.randomUUID(), UUID.randomUUID(),
                 "regression", 1L, com.ultracards.games.treseta.TresetaGameConfig.TWO_PLAYERS.name(), false,
-                List.of(), player -> new RecordedPlayer((long) player.getName().length(), player.getName()));
+                List.of(), player -> new RecordedPlayer("one".equals(player.getName()) ? 1L : 2L,
+                        player.getName()));
         recorder.attach(game);
         game.start();
         for (var ignored : List.of(1, 2)) { // a full trick, so the round closes and gets recorded
@@ -157,6 +163,28 @@ class DurakRecordingPersistenceTest {
         assertThat(persisted.rounds().getFirst().plays()).isNotEmpty();
         assertThat(persisted.rounds().getFirst().plays().getFirst().actionType()).isEqualTo(RecordedPlay.PLAY);
         assertThat(persisted.rounds().getFirst().plays().getFirst().targetPlayOrder()).isNull();
+    }
+
+    @Test
+    void unfinishedDurakGameIsNotExposedAsHistory() {
+        var players = new ArrayList<DurakPlayer>();
+        for (int seat = 0; seat < CONFIG.numberOfPlayers(); seat++) {
+            players.add(new DurakPlayer("P" + seat, seat));
+        }
+        var game = new DurakGame(players, CONFIG, new Random(7));
+        var recorder = new DurakGameRecorder(UUID.randomUUID(), UUID.randomUUID(), "unfinished", 1L, CONFIG,
+                player -> new RecordedPlayer((long) (((DurakPlayer) player).getSeat() + 1), player.getName()));
+        recorder.attach(game);
+        game.start();
+
+        var recording = repository.saveAndFlush(recorder.recording());
+        entityManager.clear();
+        var user = new UserEntity();
+        user.setId(1L);
+
+        assertThat(historyService.getPastGames(user, "", "latest")).isEmpty();
+        assertThat(historyService.getPastGames(user, "", "oldest")).isEmpty();
+        assertThat(historyService.getGameHistory(recording.id())).isNull();
     }
 
     private void playOut(DurakGame game) {

@@ -17,7 +17,8 @@ public interface DurakGameRepository extends JpaRepository<RecordedDurakGame, UU
                    durak.loser_user_id, durak.draw
             FROM recorded_durak_games durak JOIN recorded_games game ON game.id = durak.id
             JOIN recorded_game_players player ON player.game_id = game.id
-            WHERE player.user_id = :userId ORDER BY game.ended_at DESC
+            WHERE player.user_id = :userId AND game.ended_at IS NOT NULL
+            ORDER BY game.ended_at DESC
             """, nativeQuery = true)
     List<RecordedDurakGame> findPastGamesByUserIdLatest(Long userId);
 
@@ -27,7 +28,8 @@ public interface DurakGameRepository extends JpaRepository<RecordedDurakGame, UU
                    durak.loser_user_id, durak.draw
             FROM recorded_durak_games durak JOIN recorded_games game ON game.id = durak.id
             JOIN recorded_game_players player ON player.game_id = game.id
-            WHERE player.user_id = :userId ORDER BY game.ended_at ASC
+            WHERE player.user_id = :userId AND game.ended_at IS NOT NULL
+            ORDER BY game.ended_at ASC
             """, nativeQuery = true)
     List<RecordedDurakGame> findPastGamesByUserIdOldest(Long userId);
 }

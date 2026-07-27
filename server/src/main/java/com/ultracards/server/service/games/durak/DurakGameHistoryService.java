@@ -77,7 +77,7 @@ public class DurakGameHistoryService {
     @Transactional(readOnly = true)
     public DurakGameHistoryDTO getGameHistory(UUID id) {
         var game = repository.findById(id).orElse(null);
-        if (game == null) return null;
+        if (game == null || game.endedAt() == null) return null;
         game.requireValidResult();
 
         var bouts = new ArrayList<DurakGameHistoryDTO.DurakBoutHistoryDTO>();
