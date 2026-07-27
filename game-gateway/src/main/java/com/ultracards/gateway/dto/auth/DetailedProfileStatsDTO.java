@@ -13,4 +13,5 @@ public class DetailedProfileStatsDTO {
     private UserGamesStatsDTO userGamesStats;
     private UserBriskulaStatsDTO userBriskulaStats;
     private UserTresetaStatsDTO userTresetaStats;
+    private UserDurakStatsDTO userDurakStats;
 }

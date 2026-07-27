@@ -17,14 +17,40 @@ public class RecordedPlay {
     private RecordedPlayer player;
     @Embedded
     private RecordedCard card;
+    /**
+     * The role of this card play. Trick games record {@code PLAY}; Durak records
+     * {@code ATTACK}, {@code DEFEND}, {@code THROW_IN} or {@code PASS}.
+     */
+    @Column(name = "action_type", nullable = false, length = 32)
+    private String actionType = PLAY;
+    /** For a Durak defense: the play order of the attack this card covers. */
+    @Column(name = "target_play_order")
+    private Integer targetPlayOrder;
+
+    public static final String PLAY = "PLAY";
 
     protected RecordedPlay() {
     }
 
     public RecordedPlay(int order, RecordedPlayer player, RecordedCard card) {
+        this(order, player, card, PLAY, null);
+    }
+
+    public RecordedPlay(int order, RecordedPlayer player, RecordedCard card,
+                        String actionType, Integer targetPlayOrder) {
         this.order = order;
         this.player = player;
         this.card = card;
+        this.actionType = actionType == null || actionType.isBlank() ? PLAY : actionType;
+        this.targetPlayOrder = targetPlayOrder;
+    }
+
+    public String actionType() {
+        return actionType;
+    }
+
+    public Integer targetPlayOrder() {
+        return targetPlayOrder;
     }
 
     public int order() {

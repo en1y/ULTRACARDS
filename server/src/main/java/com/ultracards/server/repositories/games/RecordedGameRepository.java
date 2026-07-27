@@ -24,25 +24,29 @@ public interface RecordedGameRepository extends JpaRepository<RecordedGame, UUID
             select g from RecordedGame g
             where (:gameType is null
                     or (:gameType = 'BRISKULA' and type(g) = RecordedBriskulaGame)
-                    or (:gameType = 'TRESETA' and type(g) = RecordedTresetaGame))
+                    or (:gameType = 'TRESETA' and type(g) = RecordedTresetaGame)
+                    or (:gameType = 'DURAK' and type(g) = RecordedDurakGame))
               and (:completed is null
                     or (:completed = true and g.endedAt is not null)
                     or (:completed = false and g.endedAt is null))
               and (:mode is null
                     or (type(g) = RecordedBriskulaGame and treat(g as RecordedBriskulaGame).gameConfig = :mode)
-                    or (type(g) = RecordedTresetaGame and treat(g as RecordedTresetaGame).gameConfig = :mode))
+                    or (type(g) = RecordedTresetaGame and treat(g as RecordedTresetaGame).gameConfig = :mode)
+                    or (type(g) = RecordedDurakGame and treat(g as RecordedDurakGame).modeKey = :mode))
               and (:name is null or lower(coalesce(g.name, '')) like :name)
             """, countQuery = """
             select count(g) from RecordedGame g
             where (:gameType is null
                     or (:gameType = 'BRISKULA' and type(g) = RecordedBriskulaGame)
-                    or (:gameType = 'TRESETA' and type(g) = RecordedTresetaGame))
+                    or (:gameType = 'TRESETA' and type(g) = RecordedTresetaGame)
+                    or (:gameType = 'DURAK' and type(g) = RecordedDurakGame))
               and (:completed is null
                     or (:completed = true and g.endedAt is not null)
                     or (:completed = false and g.endedAt is null))
               and (:mode is null
                     or (type(g) = RecordedBriskulaGame and treat(g as RecordedBriskulaGame).gameConfig = :mode)
-                    or (type(g) = RecordedTresetaGame and treat(g as RecordedTresetaGame).gameConfig = :mode))
+                    or (type(g) = RecordedTresetaGame and treat(g as RecordedTresetaGame).gameConfig = :mode)
+                    or (type(g) = RecordedDurakGame and treat(g as RecordedDurakGame).modeKey = :mode))
               and (:name is null or lower(coalesce(g.name, '')) like :name)
             """)
     Page<RecordedGame> findAdminReport(@Param("gameType") String gameType,

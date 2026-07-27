@@ -1,0 +1,24 @@
+package com.ultracards.games.durak;
+
+/**
+ * Stable, user-visible error codes for every Durak rule rejection.
+ * The server maps these straight onto the WebSocket error payload.
+ */
+public enum DurakErrorCode {
+    DURAK_NOT_ACTION_PLAYER,
+    DURAK_STALE_REVISION,
+    DURAK_INVALID_PLAYER_COUNT,
+    DURAK_INVALID_DECK_SIZE,
+    DURAK_JOKERS_UNAVAILABLE,
+    DURAK_JOKER_DISABLED,
+    DURAK_CARD_NOT_IN_HAND,
+    DURAK_INVALID_ACTION_FOR_PHASE,
+    DURAK_INVALID_DEFENSE_TARGET,
+    DURAK_CARD_CANNOT_BEAT,
+    DURAK_THROW_RANK_NOT_ON_TABLE,
+    DURAK_ATTACK_LIMIT_REACHED,
+    DURAK_PASS_DISABLED,
+    DURAK_PASS_RANK_MISMATCH,
+    DURAK_NEXT_DEFENDER_CAPACITY,
+    DURAK_GAME_FINISHED
+}

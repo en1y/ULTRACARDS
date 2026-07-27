@@ -5,8 +5,7 @@ import com.ultracards.cardtopng.CardToPngConverter;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -74,12 +73,8 @@ public class CardImageService {
     }
 
     private BufferedImage scaleForZoom(BufferedImage image) {
-        int width = image.getWidth() * ZOOM_SCALE;
-        int height = image.getHeight() * ZOOM_SCALE;
-        var scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        var transform = AffineTransform.getScaleInstance(ZOOM_SCALE, ZOOM_SCALE);
-        new AffineTransformOp(transform, AffineTransformOp.TYPE_BICUBIC).filter(image, scaled);
-        return scaled;
+        return scale(image, image.getWidth() * ZOOM_SCALE, image.getHeight() * ZOOM_SCALE,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
     }
 
     private BufferedImage scaleForUi(BufferedImage image) {
@@ -90,14 +85,26 @@ public class CardImageService {
         if (scale == 1) {
             return image;
         }
-        int width = Math.max(1, (int) Math.round(image.getWidth() * scale));
-        int height = Math.max(1, (int) Math.round(image.getHeight() * scale));
+        return scale(image,
+                Math.max(1, (int) Math.round(image.getWidth() * scale)),
+                Math.max(1, (int) Math.round(image.getHeight() * scale)),
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+    }
+
+    /**
+     * Scales through Graphics2D rather than AffineTransformOp: the poker card faces are 16-bit
+     * RGBA PNGs, which AffineTransformOp refuses to filter into an 8-bit ARGB destination.
+     */
+    private BufferedImage scale(BufferedImage image, int width, int height, Object interpolation) {
         var scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        var transform = AffineTransform.getScaleInstance(
-                (double) width / image.getWidth(),
-                (double) height / image.getHeight()
-        );
-        new AffineTransformOp(transform, AffineTransformOp.TYPE_BILINEAR).filter(image, scaled);
+        var graphics = scaled.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolation);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.drawImage(image, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
         return scaled;
     }
 

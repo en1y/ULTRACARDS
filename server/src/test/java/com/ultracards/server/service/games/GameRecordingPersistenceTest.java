@@ -36,7 +36,7 @@ class GameRecordingPersistenceTest {
                 TresetaGameConfig.TWO_PLAYERS);
         var recorder = new TresetaGameRecorder(UUID.randomUUID(), UUID.randomUUID(), "persistence test", 1L,
                 TresetaGameConfig.TWO_PLAYERS.name(), false, List.of(),
-                player -> new RecordedPlayer((long) player.getName().length(), player.getName()));
+                player -> new RecordedPlayer("one".equals(player.getName()) ? 1L : 2L, player.getName()));
 
         recorder.attach(game);
         game.start();

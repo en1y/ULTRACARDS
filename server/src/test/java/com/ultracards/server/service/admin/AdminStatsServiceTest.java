@@ -28,19 +28,22 @@ class AdminStatsServiceTest {
     private final UserGamesStatsRepository overall = mock(UserGamesStatsRepository.class);
     private final UserBriskulaStatsRepository briskula = mock(UserBriskulaStatsRepository.class);
     private final UserTresetaStatsRepository treseta = mock(UserTresetaStatsRepository.class);
+    private final com.ultracards.server.repositories.games.UserDurakStatsRepository durak =
+            mock(com.ultracards.server.repositories.games.UserDurakStatsRepository.class);
     private final RecordedGameRepository games = mock(RecordedGameRepository.class);
     private final AdminAuditService audit = mock(AdminAuditService.class);
     private AdminStatsService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminStatsService(users, overall, briskula, treseta, games, audit);
+        service = new AdminStatsService(users, overall, briskula, treseta, durak, games, audit);
         var user = new UserEntity("user@example.com", "user");
         user.setId(1L);
         when(users.findById(1L)).thenReturn(Optional.of(user));
         when(overall.findByUser(user)).thenReturn(Optional.empty());
         when(briskula.findByUser(user)).thenReturn(Optional.empty());
         when(treseta.findByUser(user)).thenReturn(Optional.empty());
+        when(durak.findByUser(user)).thenReturn(Optional.empty());
         when(games.findCompletedByUserId(1L)).thenReturn(List.of());
     }
 

@@ -5,7 +5,10 @@ import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.games.durak.DurakGameConfig;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameConfigDTO;
 import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
+import com.ultracards.server.entity.lobby.DurakLobbyGameConfig;
 import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.games.treseta.TresetaGameConfig;
@@ -88,6 +91,7 @@ public class LobbyService {
     public GameLobbyDTO createLobby(UserEntity owner, GameLobbyDTO gameLobbyDTO) {
         if (getLobbyByUser(owner) != null)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already in a lobby");
+        syncPlayerLimitsWithConfig(gameLobbyDTO);
         gameAvailabilityService.requireEnabled(gameLobbyDTO.getGameType(), gameLobbyDTO.getGameConfig());
 
         var levelNumbers = ultrakillLevelService.findLevelNumbers(gameLobbyDTO.getName(), 1);
@@ -172,6 +176,8 @@ public class LobbyService {
             return lobby.getUsers().size() == briskula.getGameConfig().getNumberOfPlayers();
         if (config instanceof TresetaLobbyGameConfig treseta)
             return lobby.getUsers().size() == treseta.getGameConfig().getNumberOfPlayers();
+        if (config instanceof DurakLobbyGameConfig durak)
+            return lobby.getUsers().size() == durak.getGameConfig().numberOfPlayers();
         return lobby.getUsers().size() >= lobby.getMinPlayers();
     }
 
@@ -213,10 +219,14 @@ public class LobbyService {
         if ((config instanceof BriskulaGameConfigDTO briskulaConfig
                 && briskulaConfig.getNumberOfPlayers() < lobby.getUsers().size())
                 || (config instanceof TresetaGameConfigDTO tresetaConfig
-                && tresetaConfig.getNumberOfPlayers() < lobby.getUsers().size()))
+                && tresetaConfig.getNumberOfPlayers() < lobby.getUsers().size())
+                || (config instanceof DurakGameConfigDTO durakConfig
+                && durakConfig.getNumberOfPlayers() != null
+                && durakConfig.getNumberOfPlayers() < lobby.getUsers().size()))
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Kick a player before reducing the game mode player count");
 
+        syncPlayerLimitsWithConfig(lobbyDTO);
         var previousUsers = new ArrayList<>(lobby.getUsers());
         lobby.setName(lobbyDTO.getName());
         lobby.setMinPlayers(lobbyDTO.getMinPlayers());
@@ -229,11 +239,21 @@ public class LobbyService {
                 lobby.setGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
             else if (config instanceof TresetaGameConfigDTO tresetaConfig)
                 lobby.setGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
+            else if (config instanceof DurakGameConfigDTO durakConfig)
+                lobby.setGameConfig(DurakLobbyGameConfig.fromDto(durakConfig, lobby.getUsers(), lobby.getOwner()));
             else lobby.setGameConfig(config);
         }
         removeStaleLobbyCacheEntries(lobby, previousUsers);
         eventPublisher.publish(lobby, UPDATED);
         return lobby.createLobbyDTO(true);
+    }
+
+    private void syncPlayerLimitsWithConfig(GameLobbyDTO dto) {
+        if (dto.getGameConfig() instanceof DurakGameConfigDTO durak) {
+            var players = DurakLobbyGameConfig.toConfig(durak).numberOfPlayers();
+            dto.setMinPlayers(players);
+            dto.setMaxPlayers(players);
+        }
     }
 
     private void applyMode(GameLobbyDTO dto, String mode) {
@@ -254,8 +274,18 @@ public class LobbyService {
                         config.areTeamsEnabled(), config.areDeclarationsEnabled(), null));
                 return;
             }
+            if (dto.getGameType() == GameTypeDTO.Durak) {
+                var config = DurakGameConfig.fromModeKey(mode.trim().toUpperCase());
+                dto.setMinPlayers(config.numberOfPlayers());
+                dto.setMaxPlayers(config.numberOfPlayers());
+                dto.setGameConfig(DurakLobbyGameConfig.toDto(config, null));
+                return;
+            }
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This game type has no configurable modes");
-        } catch (IllegalArgumentException ex) {
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            // Durak rejects a non-canonical mode key with its own exception type, not IllegalArgumentException.
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown lobby mode: " + mode);
         }
     }
@@ -398,7 +428,19 @@ public class LobbyService {
                         output.add(lobby.createLobbyDTO(false));
                 yield output;
             }
-            case "durak", "poker" -> new ArrayList<>();
+            case "durak" -> {
+                var lobbies = lobbyManager.getLobbies(GameTypeDTO.Durak);
+                var output = new ArrayList<GameLobbyDTO>();
+                var configs = DurakGameConfig.validConfigs();
+                if (gameSettingId == null || gameSettingId < 0 || gameSettingId >= configs.size()) yield null;
+                var config = configs.get(gameSettingId);
+                for (var lobby : lobbies)
+                    if (lobby.getLobbyState().equals(LobbyState.PUBLIC)
+                            && ((DurakLobbyGameConfig) lobby.getLobbyGameConfig()).getGameConfig().equals(config))
+                        output.add(lobby.createLobbyDTO(false));
+                yield output;
+            }
+            case "poker" -> new ArrayList<>();
             default -> null;
         };
     }
@@ -422,6 +464,8 @@ public class LobbyService {
             lobby.setLobbyGameConfig(BriskulaLobbyGameConfig.fromDto(briskulaConfig, lobby.getUsers(), lobby.getOwner()));
         } else if (config instanceof TresetaGameConfigDTO tresetaConfig) {
             lobby.setLobbyGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
+        } else if (config instanceof DurakGameConfigDTO durakConfig) {
+            lobby.setLobbyGameConfig(DurakLobbyGameConfig.fromDto(durakConfig, lobby.getUsers(), lobby.getOwner()));
         }
     }
 

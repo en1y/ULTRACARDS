@@ -40,8 +40,15 @@ public class GameRecorder implements GameRecordingHook {
 
     @Override
     public void cardPlayed(PlayingFieldInterface<?, ?, ?, ?, ?, ?> field, AbstractPlayer<?, ?, ?, ?, ?> player, AbstractCard<?, ?, ?> card) {
+        cardPlayed(field, player, card, RecordedPlay.PLAY, null);
+    }
+
+    @Override
+    public void cardPlayed(PlayingFieldInterface<?, ?, ?, ?, ?, ?> field, AbstractPlayer<?, ?, ?, ?, ?> player,
+                           AbstractCard<?, ?, ?> card, String actionType, Integer targetPlayOrder) {
         if (currentRound == null) roundStarted(field);
-        currentRound.plays.add(new RecordedPlay(currentRound.plays.size(), player(player), card(card)));
+        currentRound.plays.add(new RecordedPlay(currentRound.plays.size(), player(player), card(card),
+                actionType, targetPlayOrder));
     }
 
     @Override
@@ -73,7 +80,8 @@ public class GameRecorder implements GameRecordingHook {
     }
 
     private RecordedPlayer player(AbstractPlayer<?, ?, ?, ?, ?> player) {
-        return playerMapper.apply(player);
+        // A Durak bout is resolved, not won, so a null round winner is valid.
+        return player == null ? null : playerMapper.apply(player);
     }
 
     private RecordedCard card(AbstractCard<?, ?, ?> card) {

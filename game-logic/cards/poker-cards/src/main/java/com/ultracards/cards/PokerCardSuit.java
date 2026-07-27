@@ -10,7 +10,33 @@ public enum PokerCardSuit implements CardSuitInterface {
     HEARTS ("Hearts"),
     DIAMONDS ("Diamonds"),
     CLUBS ("Clubs"),
-    SPADES ("Spades");
+    SPADES ("Spades"),
+    /**
+     * Pseudo-suits for the two Jokers. Only used by games that explicitly enable Jokers
+     * (currently Durak). Code iterating real suits must use {@link #suits()}.
+     */
+    RED_JOKER ("Red Joker"),
+    BLACK_JOKER ("Black Joker");
+
+    private static final PokerCardSuit[] SUITS = {HEARTS, DIAMONDS, CLUBS, SPADES};
+
+    /** The four real suits, excluding the Joker pseudo-suits. */
+    public static PokerCardSuit[] suits() {
+        return SUITS.clone();
+    }
+
+    public boolean isJokerSuit() {
+        return this == RED_JOKER || this == BLACK_JOKER;
+    }
+
+    /** Hearts and diamonds are red; the red Joker counts as red. */
+    public boolean isRed() {
+        return this == HEARTS || this == DIAMONDS || this == RED_JOKER;
+    }
+
+    public boolean isBlack() {
+        return this == CLUBS || this == SPADES || this == BLACK_JOKER;
+    }
 
     private static boolean useResourceBundle = false;
     private static ResourceBundle resourceBundle;

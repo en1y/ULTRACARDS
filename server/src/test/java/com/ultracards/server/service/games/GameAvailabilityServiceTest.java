@@ -31,6 +31,38 @@ class GameAvailabilityServiceTest {
         assertThat(availability).anyMatch(value -> value.game().equals("BRISKULA") && value.mode() == null && value.enabled());
         assertThat(availability).anyMatch(value -> value.game().equals("TRESETA")
                 && "FOUR_PLAYERS_WITH_TEAMS".equals(value.mode()) && value.enabled());
+        assertThat(availability).anyMatch(value -> value.game().equals("DURAK")
+                && "P4_D54_JOKERS_EVERYONE_PASS".equals(value.mode()) && value.enabled());
+        assertThat(availability).noneMatch(value -> value.game().equals("DURAK")
+                && "P5_D24_NO_JOKERS_EVERYONE_PASS".equals(value.mode()));
+    }
+
+    @Test
+    void disablingADurakModeBlocksExactlyThatConfiguration() {
+        when(repository.findByGameTypeAndMode(GameType.DURAK, "P2_D36_NO_JOKERS_EVERYONE_PASS"))
+                .thenReturn(Optional.empty());
+
+        var changed = service.setEnabled("durak", "p2_d36_no_jokers_everyone_pass", false);
+        assertThat(changed.enabled()).isFalse();
+        when(repository.findAll()).thenReturn(List.of(
+                new GameAvailability(GameType.DURAK, "P2_D36_NO_JOKERS_EVERYONE_PASS", false)));
+
+        var blocked = new com.ultracards.gateway.dto.games.games.durak.DurakGameConfigDTO(2, 36, false,
+                com.ultracards.gateway.dto.games.games.durak.DurakThrowInPolicyDTO.EVERYONE, true, null);
+        assertThatThrownBy(() -> service.requireEnabled(GameTypeDTO.Durak, blocked))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("DURAK / P2_D36_NO_JOKERS_EVERYONE_PASS");
+
+        var allowed = new com.ultracards.gateway.dto.games.games.durak.DurakGameConfigDTO(2, 36, false,
+                com.ultracards.gateway.dto.games.games.durak.DurakThrowInPolicyDTO.EVERYONE, false, null);
+        service.requireEnabled(GameTypeDTO.Durak, allowed);
+    }
+
+    @Test
+    void anUnknownDurakModeIsRejectedInsteadOfSilentlyIgnored() {
+        assertThatThrownBy(() -> service.setEnabled("durak", "P9_D99_NO_JOKERS_EVERYONE_PASS", false))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Unknown DURAK mode");
     }
 
     @Test

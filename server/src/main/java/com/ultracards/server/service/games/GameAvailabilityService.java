@@ -1,11 +1,13 @@
 package com.ultracards.server.service.games;
 
 import com.ultracards.games.briskula.BriskulaGameConfig;
+import com.ultracards.games.durak.DurakGameConfig;
 import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.gateway.dto.admin.AdminGameAvailabilityDTO;
 import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.server.entity.games.GameAvailability;
 import com.ultracards.server.enums.games.GameType;
@@ -98,6 +100,7 @@ public class GameAvailabilityService {
         return switch (game) {
             case BRISKULA -> java.util.Arrays.stream(BriskulaGameConfig.values()).map(Enum::name).toList();
             case TRESETA -> java.util.Arrays.stream(TresetaGameConfig.values()).map(Enum::name).toList();
+            case DURAK -> DurakGameConfig.validConfigs().stream().map(DurakGameConfig::modeKey).toList();
             default -> List.of();
         };
     }
@@ -114,6 +117,14 @@ public class GameAvailabilityService {
                 if (mode.getNumberOfPlayers() == treseta.getNumberOfPlayers()
                         && mode.getCardsInHandNum() == treseta.getCardsInHandNum()
                         && mode.areTeamsEnabled() == treseta.getTeamsEnabled()) return mode.name();
+        }
+        if (config instanceof DurakGameConfigDTO durak) {
+            // The record constructor is the canonical validator; an invalid combination is not a mode.
+            try {
+                return com.ultracards.server.entity.lobby.DurakLobbyGameConfig.toConfig(durak).modeKey();
+            } catch (RuntimeException ignored) {
+                return null;
+            }
         }
         return null;
     }
