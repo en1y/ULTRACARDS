@@ -1,5 +1,6 @@
 package com.ultracards.server.service.games.durak;
 
+import com.ultracards.games.durak.DurakActionResult;
 import com.ultracards.games.durak.DurakErrorCode;
 import com.ultracards.games.durak.DurakRuleException;
 import com.ultracards.gateway.dto.games.games.durak.DurakActionRequestDTO;
@@ -81,12 +82,14 @@ public class DurakGameService {
      */
     public void action(UserEntity user, DurakActionRequestDTO request, DurakGameEntity game) {
         synchronized (game) {
+            DurakActionResult result;
             try {
-                game.apply(user, request);
+                result = game.apply(user, request);
             } catch (DurakRuleException ex) {
                 eventPublisher.publishDurakError(game, user.getId(), ex.getCode(), ex.getMessage());
                 return;
             }
+            if (result.resolvedBout() != null) eventPublisher.publishDurakBoutClosed(game);
             if (!game.isActive()) {
                 finish(game);
                 return;
@@ -114,14 +117,17 @@ public class DurakGameService {
             if (!game.isActive() || game.getStateRevision() != expectedRevision) return;
             var actor = game.getActionPlayer();
             if (actor == null) return;
+            DurakActionResult result;
             try {
-                game.getGame().apply(actor, game.getGame().timeoutAction());
+                // Closes the whole throw window when one is open: every attacker shares one clock.
+                result = game.getGame().applyTimeout();
                 game.setStateRevision(game.getStateRevision() + 1);
                 game.setTurnNumber(game.getTurnNumber() + 1);
             } catch (RuntimeException ex) {
                 log.warn("Durak timeout action failed for game {}: {}", gameId, ex.getMessage());
                 return;
             }
+            if (result.resolvedBout() != null) eventPublisher.publishDurakBoutClosed(game);
             if (!game.isActive()) {
                 finish(game);
                 return;

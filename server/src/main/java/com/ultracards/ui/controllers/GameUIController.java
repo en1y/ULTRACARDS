@@ -6,11 +6,11 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.PlayerEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.entity.games.durak.DurakGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.templates.game.model.AbstractPlayer;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
-import com.ultracards.server.service.lobby.LobbyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,7 +27,6 @@ import java.util.List;
 public class GameUIController {
 
     private final GameService gameService;
-    private final LobbyService lobbyService;
     private final ChatService chatService;
 
     @GetMapping
@@ -36,12 +35,10 @@ public class GameUIController {
             @AuthenticationPrincipal UserEntity user,
             Model model
     ) {
-        var currentLobby = lobbyService.getLobbyByUser(user);
+        // Being a player in a running game is the whole ticket: the game knows its own
+        // lobby, so a hiccup in lobby bookkeeping can never lock anyone out of it.
         var currentGame = gameService.getGameByUser(user).orElse(null);
         if (currentGame == null) {
-            return "redirect:/lobbies";
-        }
-        if (currentLobby == null || !currentGame.getLobbyId().equals(currentLobby.getId())) {
             return "redirect:/lobbies";
         }
         var gameDto = toGameDto(currentGame);
@@ -56,7 +53,7 @@ public class GameUIController {
         model.addAttribute("game", gameDto);
         model.addAttribute("hand", toHandDto(currentGame, user));
         model.addAttribute("discardedCard", currentGame.getDiscardedCard());
-        model.addAttribute("chat", chatService.getChat(currentLobby.getId()).toDto());
+        model.addAttribute("chat", chatService.getChat(currentGame.getLobbyId()).toDto());
         return gameView;
     }
 
@@ -66,6 +63,9 @@ public class GameUIController {
         }
         if (game instanceof TresetaGameEntity tresetaGame) {
             return tresetaGame.createGameDTO();
+        }
+        if (game instanceof DurakGameEntity durakGame) {
+            return durakGame.createGameDTO();
         }
         return null;
     }
@@ -86,6 +86,9 @@ public class GameUIController {
         }
         if (game instanceof TresetaGameEntity) {
             return "ui/games/treseta";
+        }
+        if (game instanceof DurakGameEntity) {
+            return "ui/games/durak";
         }
         return null;
     }
