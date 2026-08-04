@@ -3,6 +3,7 @@ package com.ultracards.gateway.app;
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameEntityDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import com.ultracards.gateway.service.AuthenticationService;
 import com.ultracards.gateway.service.AdminService;
@@ -168,6 +169,12 @@ public class GatewayAppClient implements AutoCloseable {
         return gameSocket().thenApply(socket -> GatewayGameSession.treseta(
                 gameId, socket, async, () -> releaseSocket(socket)))
                 .thenCompose(session -> seedSession(session, () -> game.getTresetaSnapshot(gameId)));
+    }
+
+    public CompletableFuture<GatewayGameSession<DurakGameEntityDTO>> durakGame(UUID gameId) {
+        return gameSocket().thenApply(socket -> GatewayGameSession.durak(
+                gameId, socket, async, () -> releaseSocket(socket)))
+                .thenCompose(session -> seedSession(session, () -> game.getDurakSnapshot(gameId)));
     }
 
     private <T extends GameEntityDTO> CompletableFuture<GatewayGameSession<T>> seedSession(
