@@ -32,14 +32,13 @@ class GuideUIControllerTest {
     }
 
     @Test
-    void pokerAndDurakRemainPublicPlaceholderPages() {
+    void pokerRemainsUnavailableWhileDurakHasARealGuide() {
         var pokerModel = new ConcurrentModel();
         assertEquals("ui/guides/coming-soon", controller.poker(null, pokerModel));
         assertEquals("Poker", pokerModel.getAttribute("gameName"));
 
         var durakModel = new ConcurrentModel();
-        assertEquals("ui/guides/coming-soon", controller.durak(null, durakModel));
-        assertEquals("Durak", durakModel.getAttribute("gameName"));
+        assertEquals("ui/guides/durak", controller.durak(null, durakModel));
     }
 
     @Test
@@ -89,7 +88,8 @@ class GuideUIControllerTest {
 
         var styles = resource("/static/css/ui/guides.css");
         assertTrue(styles.contains(".guide-layout .table-surface"));
-        assertTrue(styles.contains(".guide-layout .player-summary"));
+        // Durak keeps the phone board's own tab placement; the trick games get the override.
+        assertTrue(styles.contains(".guide-layout:not(.durak-game-layout) .player-summary"));
         assertTrue(styles.contains("position: absolute"));
         assertTrue(styles.contains(".guide-coach.tail-top"));
         assertTrue(styles.contains("--coach-x"));
@@ -128,6 +128,11 @@ class GuideUIControllerTest {
         assertFalse(treseta.contains("guide-coach-bar"));
         assertFalse(treseta.contains("mobile-chat-toggle"));
         assertFalse(treseta.contains("mobileChatDock.js"));
+
+        var durak = resource("/templates/ui/guides/durak.html");
+        assertTrue(durak.contains("guides.durak.rule.defense"));
+        assertTrue(durak.contains("guides.durak.mode.players"));
+        assertTrue(durak.contains("th:href=\"@{/lobbies}\""));
 
         var coach = resource("/templates/ui/fragments/guides/coach.html");
         assertTrue(coach.contains("id=\"guide-coach-bubble\""));

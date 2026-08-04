@@ -60,6 +60,16 @@ class GuidePageRenderingTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"guide-footer-actions\"")));
 
         mockMvc.perform(get("/guides/poker")).andExpect(status().isOk());
-        mockMvc.perform(get("/guides/durak")).andExpect(status().isOk());
+        mockMvc.perform(get("/guides/durak"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"guide-rules\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/lobbies\"")));
+
+        mockMvc.perform(get("/images/card-suits/italian/DENARI.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"));
+        mockMvc.perform(get("/images/card-suits/poker/HEARTS.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"));
     }
 }

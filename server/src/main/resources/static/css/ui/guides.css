@@ -69,6 +69,7 @@
 /* No transition until after the first placement, so it never flies in from 0,0. */
 .guide-coach.can-fly { transition: transform .45s cubic-bezier(.33, .02, .2, 1),
     opacity .28s ease; }
+.guide-coach.is-away.is-visible { opacity: 0; pointer-events: none; }
 .guide-coach.is-visible { opacity: 1; pointer-events: auto;
     transform: translate3d(var(--coach-x, 0px), var(--coach-y, 0px), 0) scale(1); }
 
@@ -137,8 +138,10 @@
 
 /* What the coach is pointing at. Outline + box-shadow only: a transform here
    would fight the card flight animations. */
+/* No radius of our own: an outline follows the element's own corners, so cards stay
+   card-shaped and buttons stay pill-shaped instead of picking up a foreign box. */
 .guide-coach-target { outline: 3px solid var(--color-accent); outline-offset: 3px;
-    border-radius: 8px; animation: guide-coach-glow 1.5s ease-in-out infinite; }
+    animation: guide-coach-glow 1.5s ease-in-out infinite; }
 @keyframes guide-coach-glow {
     0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 55%, transparent); }
     50% { box-shadow: 0 0 0 9px color-mix(in oklab, var(--color-accent) 0%, transparent); } }
@@ -159,6 +162,12 @@
     .guide-mode-field { margin-top: 10px; font-size: .78rem; }
     .guide-mode-field select { font-size: .8rem; padding: 6px 8px; min-width: 0; flex: 1; }
     .guide-coach { width: min(20rem, calc(100% - 1rem)); padding: .6rem .65rem; gap: .55rem; }
+    /* While it is your move there is no room on a phone for a full bubble on top of
+       the table you are supposed to play on: keep the sentence, drop the rest. */
+    .guide-coach.is-waiting { padding: .5rem .6rem; }
+    .guide-coach.is-waiting .guide-coach-avatar { display: none; }
+    .guide-coach.is-waiting .guide-coach-text { font-size: .8rem; max-height: 4.6em; }
+    .guide-coach.is-waiting .guide-coach-controls .btn { padding: .3rem .6rem; font-size: .75rem; }
     .guide-coach-puck { width: 2.5rem; height: 2.5rem; padding: .4rem; }
     .guide-coach-avatar { width: 2.1rem; }
     .guide-coach-text { font-size: .85rem; max-height: 32vh; }
@@ -169,10 +178,24 @@
         border-radius: 1.4rem;
     }
 
-    html[data-game-ui="fullscreen"] .guide-layout .player-summary {
+    /* Durak keeps its own tab-under-the-hand layout; this is for the trick games. */
+    html[data-game-ui="fullscreen"] .guide-layout:not(.durak-game-layout) .player-summary {
         position: absolute;
         top: auto;
         bottom: calc(100svh - var(--header-height) - 5rem);
+    }
+
+    /* The guide board is the phone's board, but it lives inside a page that scrolls:
+       anything the game pins to the viewport has to pin to the board instead. */
+    html[data-game-ui="fullscreen"] .guide-layout.durak-game-layout .durak-actions {
+        position: absolute;
+        bottom: calc(1.35rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Fixed to the viewport, so scrolling never drags it out of view and Gecko has
+       no per-scroll work to do. */
+    .guide-layout.durak-game-layout .guide-coach {
+        position: fixed;
     }
 }
 
@@ -195,3 +218,10 @@
 .guide-cta { display: inline-block; margin-top: 20px; }
 .guide-footer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 .guide-footer-actions .guide-cta { margin-top: 0; }
+
+/* The Durak guide runs the real Durak board, which sizes itself from the space it
+   is given. Inside the guide page it shares the viewport with the hero and the
+   coach, so cap it rather than letting it push the lesson off screen. */
+.guide-layout.durak-game-layout { height: min(78svh, 720px);
+    --hand-card-width: clamp(56px, 9.5vh, 92px); }
+.guide-layout.durak-game-layout .hand-zone { margin-top: -5vh; }

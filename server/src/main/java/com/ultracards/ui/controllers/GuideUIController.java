@@ -9,9 +9,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * Public game guides. The Briskula and Treseta guides run a small client-side
- * interactive walkthrough; poker and durak are placeholders until those games
- * ship. All routes fall under the public {@code anyRequest().permitAll()} rule.
+ * Public game guides. Briskula, Treseta and Durak each run a client-side
+ * walkthrough against the real board; Poker remains unavailable until that game
+ * ships. All routes fall under the public permit-all rule.
  */
 @Controller
 public class GuideUIController {
@@ -57,8 +57,8 @@ public class GuideUIController {
     @GetMapping("/guides/durak")
     public String durak(@AuthenticationPrincipal UserEntity user, Model model) {
         addUser(user, model);
-        model.addAttribute("gameName", "Durak");
-        return "ui/guides/coming-soon";
+        addFakePlayer(user, model);
+        return "ui/guides/durak";
     }
 
     private void addUser(UserEntity user, Model model) {

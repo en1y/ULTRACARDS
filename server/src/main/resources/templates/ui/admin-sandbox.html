@@ -9,7 +9,9 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/game.css}">
     <link rel="stylesheet" th:href="@{/css/ui/games/briskula.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/games/durak.css}">
     <link rel="stylesheet" th:href="@{/css/ui/sandbox.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
 <body class="game-page">
@@ -22,6 +24,10 @@
     <div id="game-container"
          th:attr="data-game-id='ui-sandbox',data-sandbox='1',data-current-user-id=${currentUserId},data-username=${username},data-game-type='treseta'">
         <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('treseta-game-shell', #{game.dragToPlay}, 40, null, true, 'right', null, 'self', ${currentUserId}, 'player', true)}"></th:block>
+        <div id="durak-actions" class="durak-actions" role="group" th:aria-label="#{durak.actions.aria}" hidden>
+            <button id="durak-action" class="btn durak-action-button" type="button" disabled th:text="#{durak.action.done}">Done</button>
+        </div>
+        <div id="durak-hint" class="durak-error" role="alert" aria-live="assertive"></div>
     </div>
 
     <aside class="chat-sidebar sandbox-bar">
@@ -35,17 +41,25 @@
             <label class="sandbox-field">
                 <span>Game</span>
                 <select id="sandbox-game-type">
-                    <option value="treseta">Treseta</option>
-                    <option value="briskula">Briskula</option>
+                    <option value="treseta" th:text="#{game.treseta}">Treseta</option>
+                    <option value="briskula" th:text="#{game.briskula}">Briskula</option>
+                    <option value="durak" th:text="#{game.durak}">Durak</option>
                 </select>
             </label>
-            <label class="sandbox-field">
+            <label class="sandbox-field" id="sandbox-mode-field">
                 <span>Mode</span>
                 <select id="sandbox-mode"></select>
             </label>
+            <!-- Durak has too many rule combinations for a mode list, so it gets the
+                 same controls a lobby does. Filled by durak-sandbox.js. -->
+            <div class="sandbox-field sandbox-durak-options" id="sandbox-durak-options" hidden></div>
             <label class="sandbox-field">
                 <span>Edit player</span>
                 <select id="sandbox-player"></select>
+            </label>
+            <label class="sandbox-field">
+                <span>Cards left in deck</span>
+                <input id="sandbox-deck-size" type="number" min="0" step="1" inputmode="numeric">
             </label>
             <div class="sandbox-hand-editor">
                 <div class="sandbox-hand-heading">
@@ -79,7 +93,7 @@
                 </select>
             </label>
 
-            <p class="sandbox-group-label">Play</p>
+            <p id="sandbox-play-label" class="sandbox-group-label">Play</p>
             <div class="sandbox-row">
                 <button id="sandbox-auto-play" class="btn" type="button" title="Play a legal card for the current player">Play turn</button>
                 <button id="sandbox-play-trick" class="btn" type="button" title="Auto-play until the trick is collected">Finish trick</button>
@@ -89,8 +103,8 @@
                 <button id="sandbox-rig" class="btn" type="button" title="Give the selected player a declaration-ready hand">Rig hand</button>
             </div>
 
-            <p class="sandbox-group-label">Tweak</p>
-            <div class="sandbox-row">
+            <p id="sandbox-points-label" class="sandbox-group-label">Tweak</p>
+            <div id="sandbox-points-actions" class="sandbox-row">
                 <button id="sandbox-points-add" class="btn" type="button">+ points</button>
                 <button id="sandbox-points-remove" class="btn" type="button">− points</button>
             </div>
@@ -119,6 +133,8 @@
 <script th:src="@{/js/ui/games/briskula.js}"></script>
 <script th:src="@{/js/ui/games/treseta.js}"></script>
 <script th:src="@{/js/ui/sandbox.js}"></script>
+<script th:src="@{/js/ui/durak-sandbox.js}"></script>
+<script th:src="@{/js/ui/games/durak.js}"></script>
 <script th:src="@{/js/ui/live-game.js}"></script>
 </body>
 </html>

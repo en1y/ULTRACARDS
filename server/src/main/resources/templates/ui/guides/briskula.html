@@ -39,7 +39,7 @@
         <th:block th:replace="~{ui/fragments/game/live-game :: liveGame('briskula-game-shell', #{game.dragToPlay}, 0, null, true, 'right', null, 'self', ${currentUserId}, 'player', true)}"></th:block>
     </div>
 
-    <div th:replace="~{ui/fragments/guides/coach :: coach}"></div>
+    <div th:replace="~{ui/fragments/guides/coach :: coach(#{guides.coach.playHint})}"></div>
     <a class="guide-scroll-cue" href="#guide-rules" th:text="#{guides.scrollForRules}">Scroll for the full rules ↓</a>
 </main>
 
