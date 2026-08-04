@@ -139,7 +139,7 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-# v0.3.5 → v0.4.0 — Third Game (Durak)
+# v0.3.5 → v0.4.0 — Third Game (Durak) ✅
 
 - Reuse the existing game abstractions and `poker-cards` module to implement complete Durak rules in the `game-logic` -> `games` -> `durak` module.
 - Add server-side Durak logic and the necessary endpoints while following the existing game service, lobby, and abstracted `GameController` patterns.
