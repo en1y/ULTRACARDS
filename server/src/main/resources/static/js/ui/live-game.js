@@ -65,7 +65,9 @@
             return gameAdapter?.layout ? gameAdapter.layout(layout, isFullscreenMobile()) : layout;
         }
 
+        const TURN_WARNING_MS = 7000;   // when the board starts nudging the player
         const dom = {
+            layout: document.querySelector('.game-layout'),
             ring: document.getElementById('player-ring'),
             trick: document.getElementById('trick-area'),
             tableSurface: document.querySelector('.table-surface') || document.querySelector('.table-felt'),
@@ -497,9 +499,11 @@
         window.UltracardsGameUi?.enableHandHoverRaise(state.hands.self, {
             isActive: () => {
                 const isTurn = state.game?.playersTurn && isCurrentUser(state.game.playersTurn);
-                return !state.playing && !state.roundClearing && !state.previousRoundReplayActive && !state.draggingEl && !!isTurn;
+                return !state.playing && !state.roundClearing && !state.previousRoundReplayActive
+                    && !state.draggingEl && !state.dealingKeys.size && !!isTurn;
             },
-            isCardActive: (cardEl) => isPlayableCard(cardFromEl(cardEl))
+            isCardActive: (cardEl) => !state.dealingKeys.has(cardEl.dataset.cardKey)
+                && isPlayableCard(cardFromEl(cardEl))
         });
         // One container-level drag that always picks the RAISED (enlarged) card — never
         // a card behind it, never a copy.
@@ -509,9 +513,10 @@
             isActive: () => {
                 const isTurn = state.game && state.game.playersTurn && isCurrentUser(state.game.playersTurn);
                 return !isDeclarationPhase() && !state.playing && !state.roundClearing
-                    && !state.previousRoundReplayActive && !!isTurn;
+                    && !state.previousRoundReplayActive && !state.dealingKeys.size && !!isTurn;
             },
-            isCardActive: (cardEl) => isPlayableCard(cardFromEl(cardEl)),
+            isCardActive: (cardEl) => !state.dealingKeys.has(cardEl.dataset.cardKey)
+                && isPlayableCard(cardFromEl(cardEl)),
             onStart(session, cardEl) {
                 const card = cardFromEl(cardEl);
                 state.draggingEl = cardEl;
@@ -523,6 +528,14 @@
             onEnd(session, event) {
                 const card = state.dragSession?.card || cardFromEl(session.el);
                 finishCardDrag(card, session, event);
+            },
+            onCancel() {
+                state.dragSession = null;
+                state.draggingEl = null;
+                setTableDropReady(false);
+                window.UltracardsGameUi?.clearReservedSlot(state.hands.table);
+                state.handRenderSignature = null;
+                syncHand();
             }
         });
         if (dom.tableSurface) setupDropZone(dom.tableSurface);
@@ -738,7 +751,7 @@
             const prevKeys = new Set(state.hand.map(cardKey));
             const serverKeys = new Set(list.map(cardKey));
             const newCards = [];
-            const returnedCards = [];
+            let rejectedPlay = false;
             const returningKeys = new Set();
             const turnMovedAway = !!state.game?.playersTurn && !isCurrentUser(state.game.playersTurn);
             state.pending.forEach((key) => {
@@ -755,13 +768,13 @@
                     state.pendingAt.delete(key);
                     returningKeys.add(key);
                     const handoff = state.justPlayed?.key === key ? state.justPlayed : null;
-                    const fromRect = handoff?.el?.isConnected ? handoff.el.getBoundingClientRect() : null;
+                    window.UltracardsGameUi?.cancelAnimations(handoff?.el);
                     handoff?.el?.remove();
                     if (state.justPlayed === handoff) state.justPlayed = null;
-                    returnedCards.push({key, fromRect});
+                    rejectedPlay = true;
                 }
             });
-            if (returnedCards.length) {
+            if (rejectedPlay) {
                 state.playing = false;
                 state.dragSession = null;
                 state.draggingEl = null;
@@ -787,16 +800,6 @@
             });
             state.hand = preserveHandOrder(list.filter((card) => !state.pending.has(cardKey(card))));
             syncHand();
-            returnedCards.forEach(({key, fromRect}) => {
-                const el = state.handEls.get(key);
-                if (!el || !fromRect?.width) return;
-                window.UltracardsGameUi?.flyIntoSlot(el, fromRect, {
-                    faceDown: false,
-                    spin: 0,
-                    fromScale: 1.04,
-                    duration: 220
-                });
-            });
             if (newCards.length) {
                 dealCardsIntoHand(newCards, state.finalTrumpDraw);
                 state.finalTrumpDraw = false;
@@ -985,7 +988,9 @@
         function renderTrump(card, deckLeft) {
             if (!dom.trump) return;
             const slot = dom.trump.parentElement;
-            if (!card || ((deckLeft != null && deckLeft <= 0) && !state.deckExhausting)) {
+            const storedCode = dom.trump.dataset.cardCode;
+            const resolvedCard = card || (storedCode ? {cardType: 'ITALIAN', card: storedCode} : null);
+            if (!resolvedCard) {
                 if (slot) slot.style.display = 'none';
                 dom.trump.style.display = 'none';
                 dom.trump.dataset.cardCode = '';
@@ -993,21 +998,13 @@
                 dom.deckStack?.classList.remove('has-trump');
                 return;
             }
-            let frontImg = dom.trump.querySelector('.card-front');
-            if (!frontImg) {
-                frontImg = document.createElement('img');
-                frontImg.className = 'card-front';
-                frontImg.alt = t('game.card.alt');
-                dom.trump.replaceChildren(frontImg);
-            }
-            const url = italianCardUrl(card.card);
-            if (frontImg) window.UltracardsGameUi?.applyCardImage(frontImg, url);
-            dom.trump.dataset.cardCode = card.card || '';
-            dom.trump.dataset.cardFace = 'true';
+            const suitOnly = deckLeft != null && deckLeft <= 0 && !state.deckExhausting;
+            if (suitOnly) window.UltracardsGameUi?.revealSuit(dom.trump, resolvedCard);
+            else window.UltracardsGameUi?.revealCardFace(dom.trump, resolvedCard);
             if (slot) slot.style.display = '';
             dom.trump.style.display = '';
             dom.deckStack?.classList.add('has-trump');
-            setupTrumpZoom(dom.trump);
+            if (!suitOnly) setupTrumpZoom(dom.trump);
         }
 
         function renderCenterResult(title, winnersText, metaText) {
@@ -1548,8 +1545,10 @@
             // which always grabs the raised/enlarged card. Per-card we only manage the
             // disabled look and the double-click-to-play shortcut.
             img.draggable = false;
-            const declarationSelectable = isDeclarationPhase() && gameAdapter.canDeclareCard?.(card) === true;
-            const playable = !declarationSelectable && isTurn && !state.playing && !state.roundClearing && isPlayableCard(card);
+            const declarationSelectable = !state.dealingKeys.has(cardKey(card))
+                && isDeclarationPhase() && gameAdapter.canDeclareCard?.(card) === true;
+            const playable = !declarationSelectable && isTurn && !state.playing && !state.roundClearing
+                && !state.dealingKeys.has(cardKey(card)) && isPlayableCard(card);
             img.classList.toggle('is-playable', playable);
             img.classList.toggle('is-illegal', isTurn && !state.playing && !playable && !declarationSelectable);
             img.classList.toggle('is-disabled', !playable && !declarationSelectable);
@@ -1692,6 +1691,7 @@
                 // No live connection: discard the flown real card so it doesn't linger,
                 // then re-create the card cleanly in the hand.
                 if (state.justPlayed && state.justPlayed.key === cardKey(card)) {
+                    window.UltracardsGameUi?.cancelAnimations(state.justPlayed.el);
                     state.justPlayed.el?.remove();
                     state.justPlayed = null;
                 }
@@ -2327,7 +2327,12 @@
             // The card was auto-played out from under an in-progress drag: discard the
             // real dragged element (it is gone from the hand) and reset drag state.
             const dragEl = state.draggingEl || session.handDrag?.el || session.originEl;
-            if (dragEl) dragEl.remove();
+            if (session.handDrag) {
+                window.UltracardsGameUi?.cancelDragCard(session.handDrag, {remove: true});
+            } else if (dragEl) {
+                window.UltracardsGameUi?.cancelAnimations(dragEl);
+                dragEl.remove();
+            }
             state.handEls.delete(key);
             state.draggingEl = null;
             setTableDropReady(false);
@@ -2446,7 +2451,7 @@
             }
             const remaining = Math.max(0, endsAt - Date.now());
             const progress = Math.max(0, Math.min(1, remaining / Math.max(state.turnDurationMs, 1)));
-            const isWarning = remaining <= 5000;
+            const isWarning = remaining <= TURN_WARNING_MS;
             avatar.style.setProperty('--turn-progress', progress.toFixed(4));
             seat.classList.toggle('is-turn-warning', isWarning && remaining > 0);
             if (remaining <= 0) seat.classList.add('is-turn-warning');
@@ -2457,9 +2462,14 @@
                 dom.playerSummary?.classList.toggle('is-turn-warning', isWarning && remaining > 0);
                 if (remaining <= 0) dom.playerSummary?.classList.add('is-turn-warning');
             }
+            // The board itself nudges the player whose clock is the one running out.
+            dom.layout?.classList.toggle('is-turn-running-out',
+                isWarning && remaining > 0 && !!state.turnIndicatorSelf);
 
             if (remaining > 0) {
                 state.turnIndicatorTimer = window.setTimeout(runTurnIndicatorFrame, 100);
+            } else {
+                dom.layout?.classList.remove('is-turn-running-out');
             }
         }
 
@@ -2468,6 +2478,7 @@
                 clearTimeout(state.turnIndicatorTimer);
                 state.turnIndicatorTimer = null;
             }
+            dom.layout?.classList.remove('is-turn-running-out');
         }
 
         function italianCardUrl(code) {
@@ -2753,6 +2764,8 @@
                 featuredRect: dom.trump?.getBoundingClientRect(),
                 onFinish(el, card, isLast) {
                     state.dealingKeys.delete(cardKey(card));
+                    state.handRenderSignature = null;
+                    syncHand();
                     if (useTrumpForLastDraw && isLast) {
                         state.deckExhausting = false;
                         renderDeckTower(0);

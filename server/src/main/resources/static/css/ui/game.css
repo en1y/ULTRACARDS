@@ -621,9 +621,22 @@
         }
 
         .deck-stack.is-empty {
-            opacity: 0;
             transform: translate(38%, -50%) scale(0.84);
             pointer-events: none;
+        }
+
+        /* An empty stack shrinks out of the way, but the suit marker left behind is the
+           only record of what trump is: it keeps its full size. */
+        .deck-stack.is-empty.has-trump {
+            transform: translate(38%, -50%);
+        }
+
+        .deck-stack.is-empty:not(.has-trump) {
+            opacity: 0;
+        }
+
+        .deck-stack.is-empty.has-trump .deck-count-bubble {
+            display: none;
         }
 
         .deck-cluster {
@@ -757,6 +770,34 @@
             width: var(--trump-card-hover-width);
         }
 
+        /* Once the stock is gone this is the only reminder of what trump is, so it is
+           read at a glance: the same size as the circle in the middle of the felt. */
+        .trump-card-slot.is-suit-only {
+            width: var(--drop-zone-size, 132px);
+            height: var(--drop-zone-size, 132px);
+            aspect-ratio: auto;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .trump-card-slot.is-suit-only .trump-card,
+        .trump-card-slot.is-suit-only:hover .trump-card {
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            aspect-ratio: 1;
+            transform: translate(-50%, -50%);
+            border-radius: 0;
+            box-shadow: none;
+            filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.3));
+            cursor: default;
+            transition: none;
+        }
+
+        .trump-card-slot.is-suit-only .trump-card .card-front {
+            object-fit: contain;
+        }
+
         .deck-stack.trump-side-left .trump-card-slot {
             left: auto;
         }
@@ -769,8 +810,8 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 132px;
-            height: 132px;
+            width: var(--drop-zone-size, 132px);
+            height: var(--drop-zone-size, 132px);
             transform: translate(-50%, -50%) scale(1);
             border-radius: 50%;
             border: 1px dashed rgba(255, 255, 255, 0.2);
@@ -1299,6 +1340,31 @@
             animation: turn-warning-pulse 820ms ease-in-out infinite;
         }
 
+        /* Last seconds of YOUR turn: the felt gives a short repeating nudge so a player
+           who looked away notices before the move is auto-played. Only the table moves —
+           the animation layer holds dragged cards and a transformed ancestor would
+           reposition every fixed child under it. */
+        .game-layout.is-turn-running-out .table-wrap,
+        .game-layout.is-turn-running-out .player-summary-card {
+            animation: turn-running-out-shake 1s ease-in-out infinite;
+        }
+
+        @keyframes turn-running-out-shake {
+            0%, 60%, 100% { transform: translate3d(0, 0, 0); }
+            66% { transform: translate3d(-5px, 0, 0); }
+            72% { transform: translate3d(5px, 0, 0); }
+            78% { transform: translate3d(-3px, 0, 0); }
+            84% { transform: translate3d(3px, 0, 0); }
+            90% { transform: translate3d(-1px, 0, 0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .game-layout.is-turn-running-out .table-wrap,
+            .game-layout.is-turn-running-out .player-summary-card {
+                animation: none;
+            }
+        }
+
         .trump-zoom {
             position: fixed;
             inset: 0;
@@ -1558,10 +1624,16 @@
                 transform: translate(14%, -50%) scale(0.82);
             }
 
+            .deck-stack.is-empty.has-trump {
+                transform: translate(14%, -50%);
+            }
+
             .drop-zone {
-                width: clamp(86px, 28vw, 116px);
-                height: clamp(86px, 28vw, 116px);
                 font-size: 0.8rem;
+            }
+
+            .table-surface {
+                --drop-zone-size: clamp(86px, 28vw, 116px);
             }
 
             .drop-zone.is-result {
@@ -2249,6 +2321,13 @@
 
             html[data-game-ui="fullscreen"] .deck-stack.is-empty {
                 transform: translate(30%, -50%) scale(0.9);
+            }
+
+            /* The stack normally hangs off the screen edge; once it is only the trump
+               marker it comes back on, at full size and fully visible. */
+            html[data-game-ui="fullscreen"] .deck-stack.is-empty.has-trump {
+                right: 0.35rem;
+                transform: translate(0, -50%);
             }
 
             html[data-game-ui="fullscreen"] .discarded-card-display {

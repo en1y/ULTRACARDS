@@ -9,6 +9,7 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <script th:src="@{/js/theme.js}" defer></script>
         <link rel="stylesheet" th:href="@{/css/ui/lobby.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
 </head>
 <body>
 <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -60,13 +61,17 @@
                 <div class="lobby-meta-row">
                     <div>
                         <div class="lobby-meta-label" th:text="#{lobby.gameMode}">Game mode</div>
+                        <!-- Teams are a trick-game idea; asking a Durak config for them
+                             threw mid-render and truncated the page. -->
                         <div id="lobby-config" class="lobby-meta-value"
-                             th:text="${lobby.gameConfig != null
-                                ? #messages.msg('lobby.config.base', lobby.gameConfig.numberOfPlayers, lobby.gameConfig.cardsInHandNum) + (lobby.gameConfig.numberOfPlayers == 4 ? (lobby.gameConfig.teamsEnabled ? #messages.msg('lobby.config.teamsEnabled') : #messages.msg('lobby.config.noTeams')) : '')
-                                : #messages.msg('lobby.config.standard')}">Loading…</div>
+                             th:text="${lobby.gameConfig == null
+                                ? #messages.msg('lobby.config.standard')
+                                : (lobby.gameType.name() == 'Durak'
+                                    ? #messages.msg('lobby.config.base', lobby.gameConfig.numberOfPlayers, lobby.gameConfig.cardsInHandNum)
+                                    : #messages.msg('lobby.config.base', lobby.gameConfig.numberOfPlayers, lobby.gameConfig.cardsInHandNum) + (lobby.gameConfig.numberOfPlayers == 4 ? (lobby.gameConfig.teamsEnabled ? #messages.msg('lobby.config.teamsEnabled') : #messages.msg('lobby.config.noTeams')) : ''))}">Loading…</div>
                         <div id="lobby-config-editor" class="lobby-config-editor field" hidden>
                             <label for="lobby-config-select" th:text="#{lobby.changeConfig}">Change configuration</label>
-                            <select id="lobby-config-select" aria-describedby="lobby-config-warning"></select>
+                            <div id="lobby-config-select" aria-describedby="lobby-config-warning"></div>
                             <small id="lobby-config-warning" class="help" aria-live="polite" hidden
                                    th:text="#{lobby.configKickWarning}">Modes for fewer players are disabled. Kick a player first.</small>
                         </div>
@@ -80,6 +85,7 @@
                         <span th:text="#{gameConfig.withDeclarations}">with declarations</span>
                     </label>
                 </div>
+                <div id="lobby-durak-options" class="lobby-meta-row lobby-durak-options" hidden></div>
                 <div class="lobby-meta-row lobby-visibility-row">
                     <div>
                         <div class="lobby-meta-label" th:text="#{lobby.visibility}">Visibility</div>

@@ -479,10 +479,44 @@
         }
 
 .lobbies-guides-link {
-    display: inline-block;
-    margin-top: 0.5rem;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    margin-top: 0.75rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 42%, var(--color-border));
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-accent) 9%, transparent);
     color: var(--color-accent);
+    font-size: 0.9rem;
+    font-weight: 700;
     text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
-.lobbies-guides-link:hover { text-decoration: underline; }
+
+.lobbies-guides-link::after {
+    content: "\2192";
+    transition: transform 150ms ease;
+}
+
+.lobbies-guides-link:hover {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 15%, transparent);
+    transform: translateY(-1px);
+}
+
+.lobbies-guides-link:hover::after { transform: translateX(2px); }
+.lobbies-guides-link:active { transform: translateY(0); }
+.lobbies-guides-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+
+/* Durak's rule rows stack one per line and share the panel's own surface. */
+#game-settings .durak-options {
+    --durak-option-bg: var(--color-bg);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+}
+
+#game-settings .durak-option {
+    padding: 0.5rem 0.6rem;
+}

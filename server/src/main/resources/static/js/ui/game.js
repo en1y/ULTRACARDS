@@ -47,6 +47,7 @@
         '13': 'KING'
     };
     const POKER_SUIT_MAP = {H: 'HEARTS', D: 'DIAMONDS', C: 'CLUBS', S: 'SPADES'};
+    const POKER_JOKER_MAP = {JR: 'RED_JOKER', JB: 'BLACK_JOKER'};
     const POKER_VALUE_MAP = {
         '2': 'TWO',
         '3': 'THREE',
@@ -97,6 +98,9 @@
 
     function pokerCardUrl(code) {
         if (!code) return '';
+        // The two Jokers are pseudo-suits, not a suit letter plus a rank.
+        const joker = POKER_JOKER_MAP[String(code).toUpperCase()];
+        if (joker) return `/api/cards/poker/${joker}/JOKER`;
         const suitLetter = String(code).charAt(0).toUpperCase();
         const valueNum = String(code).slice(1);
         const suit = POKER_SUIT_MAP[suitLetter];
@@ -109,6 +113,13 @@
             ? '/api/cards/poker/back'
             : '/api/cards/italian/back';
         return `${url}?v=${CARD_ASSET_VERSION}`;
+    }
+
+    function suitUrl(cardType, code) {
+        const type = normalizeCardType(cardType);
+        const suitLetter = String(code || '').charAt(0).toUpperCase();
+        const suit = type === 'POKER' ? POKER_SUIT_MAP[suitLetter] : ITALIAN_SUIT_MAP[suitLetter];
+        return suit ? `/images/card-suits/${type.toLowerCase()}/${suit}.png?v=${CARD_ASSET_VERSION}` : '';
     }
 
     function cardKey(card) {
@@ -277,20 +288,46 @@
         el.style.transition = previous;
     }
 
+    // A card may receive a newer authoritative state while an older visual motion is
+    // still running (WebSocket update during a drag/deal/clear). Always settle the old
+    // motion before starting the new one so stale tweens cannot remove, hide or move a
+    // card after the latest render has already put it in its correct place.
+    function cancelAnimations(target) {
+        if (!target) return;
+        target.__ucAnimationToken = (target.__ucAnimationToken || 0) + 1;
+        const cleanup = target.__ucMotionCleanup;
+        delete target.__ucMotionCleanup;
+        cleanup?.(true);
+        gsap?.killTweensOf(target);
+        if (typeof target.getAnimations === 'function') {
+            target.getAnimations().forEach((animation) => animation.cancel());
+        }
+    }
+
+    function beginAnimation(target) {
+        cancelAnimations(target);
+        return target.__ucAnimationToken;
+    }
+
+    function isCurrentAnimation(target, token) {
+        return target?.__ucAnimationToken === token;
+    }
+
     function playAnimation(target, parameters) {
         if (!target) return Promise.resolve();
+        const token = beginAnimation(target);
         if (prefersReducedMotion()) {
-            applyFinalAnimationState(target, parameters);
+            if (isCurrentAnimation(target, token)) applyFinalAnimationState(target, parameters);
             return Promise.resolve();
         }
         if (useNativeCardAnimations && typeof target.animate === 'function') {
-            return playWebAnimationFallback(target, parameters);
+            return playWebAnimationFallback(target, parameters, token);
         }
-        if (gsap) return playGsapAnimation(target, parameters);
-        return playWebAnimationFallback(target, parameters);
+        if (gsap) return playGsapAnimation(target, parameters, token);
+        return playWebAnimationFallback(target, parameters, token);
     }
 
-    function playGsapAnimation(target, parameters) {
+    function playGsapAnimation(target, parameters, token) {
         const durationSec = (Number(parameters?.duration) || MOTION.standardMs) / 1000;
         const delaySec = (Number(parameters?.delay) || 0) / 1000;
         const ease = mapEase(parameters?.ease || MOTION.ease);
@@ -309,7 +346,13 @@
         // Three-keyframe arc: use timeline
         if (transforms && transforms.length === 3) {
             return new Promise((resolve) => {
-                const tl = gsap.timeline({delay: delaySec, onComplete: resolve});
+                let settled = false;
+                const done = () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve();
+                };
+                const tl = gsap.timeline({delay: delaySec, onComplete: done, onInterrupt: done});
                 tl.to(target, {
                     transform: transforms[1],
                     opacity: opacities?.[1],
@@ -326,7 +369,15 @@
         }
 
         return new Promise((resolve) => {
-            gsap.to(target, {...toVars, onComplete: resolve});
+            let settled = false;
+            const done = () => {
+                if (settled) return;
+                settled = true;
+                resolve();
+            };
+            gsap.to(target, {...toVars, onComplete: done, onInterrupt: done});
+        }).then(() => {
+            if (isCurrentAnimation(target, token)) applyFinalAnimationState(target, parameters);
         });
     }
 
@@ -343,7 +394,8 @@
         }
     }
 
-    function playWebAnimationFallback(target, parameters) {
+    function playWebAnimationFallback(target, parameters, token) {
+        const animationToken = token ?? beginAnimation(target);
         const from = {};
         const to = {};
         if (Array.isArray(parameters?.transform)) {
@@ -355,7 +407,7 @@
             to.opacity = parameters.opacity[parameters.opacity.length - 1];
         }
         if (!Object.keys(from).length) {
-            applyFinalAnimationState(target, parameters);
+            if (isCurrentAnimation(target, animationToken)) applyFinalAnimationState(target, parameters);
             return Promise.resolve();
         }
         const animation = target.animate([from, to], {
@@ -365,7 +417,7 @@
             fill: 'both'
         });
         return animation.finished.catch(() => undefined).then(() => {
-            applyFinalAnimationState(target, parameters);
+            if (isCurrentAnimation(target, animationToken)) applyFinalAnimationState(target, parameters);
             animation.cancel();
         });
     }
@@ -484,7 +536,7 @@
         // origin (50% ~88%), so the top corners sweep ~2·0.88·h·sin(tilt) horizontally.
         const tiltRad = Math.abs(maxTilt) * Math.PI / 180;
         const visualWidth = baseWidth * Math.cos(tiltRad) + 1.76 * baseHeight * Math.sin(tiltRad);
-        const available = Math.max(rect.width - visualWidth, baseWidth);
+        const available = Math.max(rect.width - visualWidth, resolved.options.fitWithinZone ? 0 : baseWidth);
         // Optional fixed slot count reserves the full footprint. Fan zones still center
         // partial hands, so 1-2 cards do not sit in the left side of a 3-card fan.
         const fixedSlots = Number(resolved.options.slotTotal) || 0;
@@ -500,7 +552,7 @@
         if (zoneType !== 'mini' && zoneType !== 'fan') {
             const minWidth = Math.ceil(baseWidth + (slots > 1 ? spacing * (slots - 1) : 0) + 28);
             const minHeight = Math.ceil(baseHeight + yArc + Math.abs(baseOffsetY) + 28);
-            element.style.minWidth = `${minWidth}px`;
+            element.style.minWidth = resolved.options.fitWithinZone ? '0' : `${minWidth}px`;
             element.style.minHeight = `${minHeight}px`;
         }
 
@@ -630,7 +682,11 @@
         const existingCards = Array.from(cardsEl.children).filter((el) => !el.classList.contains('game-hand-placeholder'));
         if (existingCards.length === count) return;
         const first = new Map(existingCards.map((el) => [el, el.getBoundingClientRect()]));
-        while (existingCards.length > count) existingCards.pop()?.remove();
+        while (existingCards.length > count) {
+            const removed = existingCards.pop();
+            cancelAnimations(removed);
+            removed?.remove();
+        }
         while (existingCards.length < count) {
             const card = renderCardImage({
                 cardType: options?.cardType,
@@ -730,18 +786,21 @@
                 return;
             }
             const fromScale = from.width / Math.max(el.offsetWidth || slot.width, 1);
-            flyIntoSlot(el, from, {
+            const duration = options?.duration ?? MOTION.dealMs;
+            const delay = index * (options?.stagger ?? 80);
+            const flight = flyIntoSlot(el, from, {
                 faceDown: true,
                 spin: -10 + index * 4,
                 fromScale,
-                duration: options?.duration ?? MOTION.dealMs,
-                delay: index * (options?.stagger ?? 80),
-                ease: options?.ease || 'power3.out',
-                onLand: () => finish(el, card, index)
+                duration,
+                delay,
+                ease: options?.ease || 'power3.out'
             });
-            // ponytail: the timeout is the small, explicit recovery path for an
-            // interrupted tween; a full animation lifecycle abstraction adds no value.
-            setTimeout(() => finish(el, card, index), (options?.duration ?? MOTION.dealMs) + index * (options?.stagger ?? 80) + 350);
+            const safety = setTimeout(() => finish(el, card, index), duration + delay + 350);
+            Promise.resolve(flight).finally(() => {
+                clearTimeout(safety);
+                finish(el, card, index);
+            });
         });
     }
 
@@ -959,7 +1018,7 @@
     // participating in the hand fan; on cancel it is returned to its slot.
     function startDragCard(options) {
         const sourceEl = options?.sourceEl;
-        if (!sourceEl) return null;
+        if (!sourceEl || activeDragSession) return null;
         const pointer = options?.pointer || {x: 0, y: 0};
         const rect = sourceEl.getBoundingClientRect();
         const width = sourceEl.offsetWidth || rect.width;
@@ -1031,7 +1090,10 @@
         const bounds = session.bounds || resolveDragBounds();
         const moveX = clamp(session.lastPoint.x - session.pointerOffsetX, bounds.left, bounds.right - width);
         const moveY = clamp(session.lastPoint.y - session.pointerOffsetY, bounds.top, bounds.bottom - height);
-        session.el.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) rotate(var(--drag-rot, 0deg)) scale(1.04)`;
+        const velocityX = moveX - (session.appliedX ?? moveX);
+        session.appliedX = moveX;
+        session.dragTilt = (session.dragTilt ?? 0) * 0.55 + clamp(velocityX * 0.8, -7, 7) * 0.45;
+        session.el.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) rotate(${session.dragTilt.toFixed(2)}deg) scale(1.04)`;
     }
 
     function endDragSession(session) {
@@ -1047,11 +1109,14 @@
         endDragSession(session);
         const el = session?.el;
         if (!el) return;
+        cancelAnimations(el);
         el.classList.remove('drag-ghost');
         el.style.transform = '';
         el.style.opacity = '';
         el.style.width = '';
         el.style.height = '';
+        delete session.dragTilt;
+        delete session.appliedX;
         const parent = session.originParent;
         if (parent) {
             const next = session.originNextSibling;
@@ -1059,6 +1124,19 @@
             else parent.appendChild(el);
         }
         if (session.originZone) layoutZone(session.originZone);
+    }
+
+    function cancelDragCard(session, options) {
+        if (!session) return;
+        session.cancelled = true;
+        endDragSession(session);
+        const el = session.el;
+        cancelAnimations(el);
+        if (options?.remove) {
+            el?.remove();
+            return;
+        }
+        restoreDraggedElement(session);
     }
 
     function finishDragCard(session, options) {
@@ -1070,24 +1148,27 @@
             options?.onDone?.();
             return Promise.resolve();
         }
+        if (!options?.accepted && options?.instantReject) {
+            restoreDraggedElement(session);
+            options?.onDone?.();
+            return Promise.resolve();
+        }
         const targetRect = options?.targetRect || session.originRect;
-        const currentRect = el.getBoundingClientRect();
         const duration = options?.duration ?? (options?.accepted ? 180 : 240);
-        const fromX = currentRect.left;
-        const fromY = currentRect.top;
-        const toX = targetRect.left + (targetRect.width - currentRect.width) / 2;
-        const toY = targetRect.top + (targetRect.height - currentRect.height) / 2;
-        return playAnimation(el, {
-            transform: [
-                `translate3d(${fromX}px, ${fromY}px, 0) rotate(${options?.toRot || '0deg'}) scale(1.04)`,
-                `translate3d(${toX}px, ${toY}px, 0) rotate(${options?.toRot || '0deg'}) scale(${options?.accepted ? 0.96 : 1})`
-            ],
-            opacity: options?.accepted ? [1, 0] : [1, 1],
+        return flyOverlayTo(el, targetRect, {
             duration,
+            fromRot: `${session.dragTilt || 0}deg`,
+            toRot: options?.toRot || '0deg',
+            toScale: options?.accepted ? 0.98 : 1,
+            fade: options?.accepted && !options?.preserveAccepted,
             ease: options?.accepted ? 'out(3)' : 'out(4)'
         }).then(() => {
+            if (session.cancelled) {
+                options?.onDone?.();
+                return;
+            }
             if (options?.accepted) {
-                el.remove();
+                if (!options?.preserveAccepted) el.remove();
             } else {
                 restoreDraggedElement(session);
             }
@@ -1105,6 +1186,7 @@
     function flyIntoSlot(el, fromRect, options) {
         if (!el || !fromRect) return Promise.resolve();
         const gsap = window.gsap;
+        const token = beginAnimation(el);
         const faceDown = options?.faceDown === true;
         const flightClass = faceDown ? 'is-dealing' : 'is-flying';
         el.classList.add(flightClass);
@@ -1112,14 +1194,19 @@
         const dx = (fromRect.left + fromRect.width / 2) - (slot.left + slot.width / 2);
         const dy = (fromRect.top + fromRect.height / 2) - (slot.top + slot.height / 2);
         const DEAL = ['--deal-x', '--deal-y', '--deal-rot', '--deal-scale'];
-        const cleanup = () => {
+        let settled = false;
+        const cleanup = (cancelled) => {
+            if (settled) return;
+            settled = true;
+            if (el.__ucMotionCleanup === cleanup) delete el.__ucMotionCleanup;
             commitWithoutTransition(el, () => {
                 el.classList.remove(flightClass);
                 DEAL.forEach((p) => el.style.removeProperty(p));
                 el.style.transform = '';
             });
-            options?.onLand?.(el);
+            if (!cancelled && isCurrentAnimation(el, token)) options?.onLand?.(el);
         };
+        el.__ucMotionCleanup = cleanup;
         // The native transform path composes an extra scale with Firefox's computed
         // fan transform, causing newly drawn cards to zoom. Keep it only as the
         // no-GSAP fallback; the normal game pages load GSAP before this script.
@@ -1131,27 +1218,40 @@
             // Park the card at its start position while its images decode, so the
             // flight's first painted frame is never a blank card at the slot.
             el.style.transform = startTransform;
-            return decodeCardImages(el).then(() => playWebAnimationFallback(el, {
-                transform: [startTransform, endTransform],
-                duration: options?.duration ?? 300,
-                delay: options?.delay ?? 0,
-                ease: options?.ease || 'power3.out'
-            })).then(cleanup, cleanup);
+            return decodeCardImages(el).then(() => {
+                if (!isCurrentAnimation(el, token)) return;
+                return playWebAnimationFallback(el, {
+                    transform: [startTransform, endTransform],
+                    duration: options?.duration ?? 300,
+                    delay: options?.delay ?? 0,
+                    ease: options?.ease || 'power3.out'
+                }, token);
+            }).then(() => cleanup(false), () => cleanup(true));
         }
-        if (!gsap) { cleanup(); return Promise.resolve(); }
+        if (!gsap) { cleanup(false); return Promise.resolve(); }
         gsap.set(el, {
             '--deal-x': `${dx}px`, '--deal-y': `${dy}px`,
             '--deal-rot': `${options?.spin ?? 8}deg`, '--deal-scale': options?.fromScale ?? 1.04
         });
-        return decodeCardImages(el).then(() => new Promise((resolve) => {
-            gsap.to(el, {
-                '--deal-x': '0px', '--deal-y': '0px', '--deal-rot': '0deg', '--deal-scale': 1,
-                duration: (options?.duration ?? 300) / 1000,
-                delay: (options?.delay ?? 0) / 1000,
-                ease: options?.ease || 'power3.out',
-                onComplete() { cleanup(); resolve(); }
+        return decodeCardImages(el).then(() => {
+            if (!isCurrentAnimation(el, token)) return;
+            return new Promise((resolve) => {
+                let animationSettled = false;
+                const done = () => {
+                    if (animationSettled) return;
+                    animationSettled = true;
+                    resolve();
+                };
+                gsap.to(el, {
+                    '--deal-x': '0px', '--deal-y': '0px', '--deal-rot': '0deg', '--deal-scale': 1,
+                    duration: (options?.duration ?? 300) / 1000,
+                    delay: (options?.delay ?? 0) / 1000,
+                    ease: options?.ease || 'power3.out',
+                    onComplete: done,
+                    onInterrupt: done
+                });
             });
-        }));
+        }).then(() => cleanup(false), () => cleanup(true));
     }
 
     // Fly an OVERLAY-layer element (a re-parented real card or a clone) to a target
@@ -1461,6 +1561,18 @@
                 }
             });
         element.__ucHandDrag = interactable;
+        const cancelActiveDrag = () => {
+            const session = element.__ucActiveDrag;
+            if (!session) return;
+            element.__ucActiveDrag = null;
+            cancelDragCard(session);
+            options?.onCancel?.(session);
+        };
+        window.addEventListener('blur', cancelActiveDrag);
+        window.addEventListener('pagehide', cancelActiveDrag);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') cancelActiveDrag();
+        });
         return interactable;
     }
 
@@ -1478,6 +1590,8 @@
 
     function revealCardFace(cardEl, cardData) {
         if (!cardEl || !cardData) return;
+        cardEl.classList.remove('is-suit-only');
+        cardEl.parentElement?.classList.remove('is-suit-only');
         cardEl.dataset.cardFace = 'true';
         cardEl.dataset.cardCode = cardData.card || '';
         cardEl.dataset.cardKey = cardKey(cardData);
@@ -1490,6 +1604,23 @@
         }
     }
 
+    function revealSuit(cardEl, cardData) {
+        if (!cardEl || !cardData) return;
+        let front = cardEl.querySelector('.card-front');
+        if (!front) {
+            front = createCardSide('card-front', t('game.trumpSuit.alt'), suitUrl(cardData.cardType, cardData.card));
+            cardEl.replaceChildren(front);
+        } else {
+            front.alt = t('game.trumpSuit.alt');
+            applyCardImage(front, suitUrl(cardData.cardType, cardData.card));
+        }
+        cardEl.classList.add('is-suit-only');
+        cardEl.parentElement?.classList.add('is-suit-only');
+        cardEl.dataset.cardFace = 'true';
+        cardEl.dataset.cardCode = cardData.card || '';
+        cardEl.dataset.cardKey = cardKey(cardData);
+    }
+
     function flipCardReveal(cardEl, cardData) {
         if (!cardEl) return Promise.resolve();
         const inner = cardEl.querySelector('.card-inner');
@@ -1497,8 +1628,8 @@
             revealCardFace(cardEl, cardData);
             return Promise.resolve();
         }
-        const useNativeFlip = useNativeCardAnimations && typeof inner.animate === 'function';
-        if (prefersReducedMotion() || (!gsap && !useNativeFlip)) {
+        const canAnimate = gsap || typeof inner.animate === 'function';
+        if (prefersReducedMotion() || !canAnimate) {
             revealCardFace(cardEl, cardData);
             // showBack() may have left an inline rotateY(0) on .card-inner; without
             // a flip tween to overwrite it, it would keep the back on top forever.
@@ -1512,44 +1643,36 @@
             front.dataset.preloadedCardKey = frontKey;
             applyCardImage(front, cardUrl(cardData));
         }
-        if (useNativeFlip) {
-            return playWebAnimationFallback(inner, {
-                transform: ['rotateY(0deg)', 'rotateY(90deg)'],
-                duration: dur * 1000
-            }).then(() => {
-                revealCardFace(cardEl, cardData);
-                return front?.decode ? front.decode().catch(() => undefined) : undefined;
-            }).then(() => playWebAnimationFallback(inner, {
+        const first = playAnimation(inner, {
+            transform: ['rotateY(0deg)', 'rotateY(90deg)'],
+            duration: dur * 1000,
+            ease: 'in(2)'
+        });
+        const firstToken = inner.__ucAnimationToken;
+        let finalToken = firstToken;
+        return first.then(() => {
+            if (!isCurrentAnimation(inner, firstToken)) return false;
+            revealCardFace(cardEl, cardData);
+            return Promise.resolve(front?.decode ? front.decode().catch(() => undefined) : undefined)
+                .then(() => true);
+        }).then((continueFlip) => {
+            if (!continueFlip || !isCurrentAnimation(inner, firstToken)) return;
+            // Continue to 180° so .card-front (itself rotateY(180deg)) faces the viewer.
+            const second = playAnimation(inner, {
                 transform: ['rotateY(90deg)', 'rotateY(180deg)'],
-                duration: dur * 1000
-            })).then(() => {
-                inner.style.transform = '';
+                duration: dur * 1000,
+                ease: 'out(2)'
             });
-        }
-        gsap.set(inner, {rotateY: 0});
-        return new Promise((resolve) => {
-            gsap.to(inner, {
-                rotateY: 90,
-                duration: dur,
-                ease: 'power2.in',
-                onComplete() {
-                    revealCardFace(cardEl, cardData);
-                    const decoded = front?.decode ? front.decode().catch(() => undefined) : Promise.resolve();
-                    Promise.resolve(decoded).then(() => {
-                        // Continue rotation to 180° so .card-front (CSS rotateY(180deg))
-                        // composites to 360°=0° → facing viewer; .card-back composites to 180° → hidden.
-                        gsap.fromTo(inner,
-                            {rotateY: 90},
-                            {rotateY: 180, duration: dur, ease: 'power2.out', onComplete: resolve}
-                        );
-                    });
-                }
-            });
+            finalToken = inner.__ucAnimationToken;
+            return second;
+        }).then(() => {
+            if (isCurrentAnimation(inner, finalToken)) inner.style.transform = '';
         });
     }
 
     function animateTrickCollect(trickCards, winnerSeatEl) {
         if (!trickCards || !trickCards.length) return Promise.resolve();
+        trickCards.forEach((card) => cancelAnimations(card));
         const reducedMotion = prefersReducedMotion();
         const pickupDuration = reducedMotion ? 0.01 : 0.12;
         const collectDuration = reducedMotion ? 0.05 : 0.34;
@@ -1586,7 +1709,13 @@
             const dx = viewportLeft - fromRect.right;
             const dy = (i % 2 ? -1 : 1) * (10 + i * 2);
             return new Promise((resolve) => {
-                const timeline = gsap.timeline({delay: i * stagger, onComplete: resolve});
+                let settled = false;
+                const done = () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve();
+                };
+                const timeline = gsap.timeline({delay: i * stagger, onComplete: done, onInterrupt: done});
                 timeline.to(card, {
                     x: dx * 0.08,
                     y: dy * 0.08,
@@ -1640,6 +1769,8 @@
         animateCardBetweenZones,
         zoneSlotRect,
         animateTrickCollect,
+        cancelAnimations,
+        cancelDragCard,
         dealCardsIntoHand,
         createDealFlipCard,
         clearReservedSlot,
@@ -1666,7 +1797,9 @@
         renderDeckTower,
         reserveSlot,
         revealCardFace,
+        revealSuit,
         startDragCard,
+        suitUrl,
         updateDragCard,
         syncBackCards
     };

@@ -461,6 +461,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
+    min-width: 0;
 }
 
 .profile-filter-field span {
@@ -474,6 +475,7 @@
 .profile-filter-field select,
 .profile-filter-field input {
     width: 100%;
+    min-width: 0;
     min-height: 2.75rem;
     border: 1px solid color-mix(in oklab, var(--color-accent) 16%, var(--color-border));
     border-radius: 12px;
@@ -483,6 +485,25 @@
     font-weight: 700;
     padding: 0.65rem 0.8rem;
     outline: none;
+}
+
+.profile-durak-filter {
+    display: grid;
+    gap: 0.45rem;
+    margin-bottom: 1.35rem;
+}
+
+.profile-durak-filter > span {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.profile-durak-filter .durak-options {
+    --durak-option-bg: var(--color-bg);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .profile-filter-field select:focus,
@@ -1054,6 +1075,12 @@
     }
 }
 
+@media (max-width: 900px) {
+    .profile-stats-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 640px) {
     .profile-page {
         padding-top: 1rem;
@@ -1132,6 +1159,10 @@
 
     .profile-stats-controls {
         grid-template-columns: 1fr;
+    }
+
+    .profile-durak-filter .durak-options {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .profile-session-card {

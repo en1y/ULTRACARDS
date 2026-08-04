@@ -6,7 +6,8 @@
     <title th:text="#{leaderboards.pageTitle}">Leaderboards · ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/leaderboards.css(v='0.3.4-4')}">
+    <link rel="stylesheet" th:href="@{/css/ui/leaderboards.css(v='0.4.3')}">
+    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
 <body>
@@ -49,12 +50,19 @@
                         <option value="Durak" th:text="#{game.durak}">Durak</option>
                     </select>
                 </label>
-                <label class="field" for="leaderboard-mode">
+                <label class="field" id="leaderboard-mode-field" for="leaderboard-mode">
                     <span th:text="#{leaderboards.mode.label}">Mode</span>
                     <select id="leaderboard-mode" disabled>
                         <option value="" th:text="#{leaderboards.mode.all}">All modes</option>
                     </select>
                 </label>
+            </div>
+
+            <!-- Durak has too many rule combinations for a mode list: it gets the same
+                 rows as a lobby, each with an "Any". Filled by leaderboards.js. -->
+            <div class="leaderboard-durak-filter" id="leaderboard-durak-filter" hidden>
+                <span th:text="#{durak.filter.heading}">Durak rules</span>
+                <div id="leaderboard-durak-rows"></div>
             </div>
         </div>
 

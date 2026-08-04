@@ -234,6 +234,17 @@
             min-width: min(100%, 320px);
         }
 
+        .lobby-durak-options {
+            display: block;
+            padding: 0.9rem;
+        }
+
+        .lobby-durak-options[hidden] {
+            display: none;
+        }
+
+        /* Widget styling lives in durak-options.css. */
+
         .lobby-teams-section[hidden],
         .lobby-config-editor[hidden] {
             display: none;
@@ -804,6 +815,10 @@
             }
 
             .lobby-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .lobby-durak-options .durak-options {
                 grid-template-columns: 1fr;
             }
 

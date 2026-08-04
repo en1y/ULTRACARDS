@@ -16,11 +16,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
         "spring.main.web-application-type=none",
@@ -166,6 +168,33 @@ class LeaderboardServicePersistenceTest {
         // The 54-card pack with and without Jokers rank as separate modes.
         var withJokers = service.get("WINS", "Durak", "P3_D54_JOKERS_EVERYONE_PASS", 0, 100, winner);
         assertThat(withJokers.items()).extracting(entry -> entry.userId()).doesNotContain(winner.getId());
+    }
+
+    /** A rule filter covers several modes at once, and the board is their sum. */
+    @Test
+    void sumsDurakModeSets() {
+        var player = user("durak-set-" + UUID.randomUUID());
+        var modes = new com.ultracards.server.entity.games.gamestats.UserDurakStats(player);
+        modes.getConfigStats().put("P3_D36_NO_JOKERS_EVERYONE_PASS", new GameStats(4, 3));
+        modes.getConfigStats().put("P3_D54_NO_JOKERS_EVERYONE_PASS", new GameStats(6, 1));
+        modes.getConfigStats().put("P4_D36_NO_JOKERS_EVERYONE_PASS", new GameStats(9, 9));
+        durakStats.saveAndFlush(modes);
+
+        var threePlayer = service.get("GAMES_PLAYED", "Durak", null,
+                List.of("P3_D36_NO_JOKERS_EVERYONE_PASS", "P3_D54_NO_JOKERS_EVERYONE_PASS"), 0, 100, player);
+        assertThat(threePlayer.items()).filteredOn(entry -> entry.userId().equals(player.getId()))
+                .singleElement().satisfies(entry -> {
+                    assertThat(entry.gamesPlayed()).isEqualTo(10);
+                    assertThat(entry.wins()).isEqualTo(4);
+                });
+
+        var commaSeparated = service.get("GAMES_PLAYED", "Durak", null,
+                List.of("P3_D36_NO_JOKERS_EVERYONE_PASS,P4_D36_NO_JOKERS_EVERYONE_PASS"), 0, 100, player);
+        assertThat(commaSeparated.items()).filteredOn(entry -> entry.userId().equals(player.getId()))
+                .singleElement().satisfies(entry -> assertThat(entry.gamesPlayed()).isEqualTo(13));
+
+        assertThatThrownBy(() -> service.get("WINS", "Durak", null, List.of("NOPE"), 0, 25, player))
+                .isInstanceOf(ResponseStatusException.class);
     }
 
     private UserEntity user(String username) {

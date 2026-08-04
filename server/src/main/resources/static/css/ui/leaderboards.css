@@ -63,6 +63,7 @@
     padding: 0;
     display: flex;
     align-items: end;
+    flex-wrap: wrap;
     gap: 0.65rem;
     border: 0;
     background: transparent;
@@ -119,6 +120,44 @@
     border-color: var(--color-accent);
     background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
     color: var(--color-accent);
+}
+
+/* Durak is filtered by its rules rather than by a mode name, so its rows get a
+   line of their own under the game picker instead of sitting in the control row. */
+.leaderboard-durak-filter {
+    flex-basis: 100%;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.leaderboard-filters .field[hidden],
+.leaderboard-durak-filter[hidden] {
+    display: none;
+}
+
+.leaderboard-durak-filter > span {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#leaderboard-durak-rows.durak-options {
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 0.5rem;
+}
+
+#leaderboard-durak-rows .durak-option {
+    padding: 0.5rem 0.6rem;
+}
+
+#leaderboard-durak-rows .durak-choice-button {
+    padding: 0.25rem 0.45rem;
+    font-size: 0.72rem;
 }
 
 .leaderboard-filters .field > span {

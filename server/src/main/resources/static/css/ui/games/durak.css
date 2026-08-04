@@ -1,0 +1,932 @@
+/* Durak-specific board pieces. Everything else (felt, seats, hand fan, deck,
+   turn indicator) comes from game.css.
+
+   Everything that lives ON the felt is sized in `cqmin` against the felt itself.
+   The shared `--table-size` is only an upper bound: the surface is usually much
+   smaller than it because its height is capped by the row it sits in, so sizes
+   derived from `--table-size` overflowed the table by half its width. */
+
+.durak-table-area {
+    position: relative;
+    display: grid;
+    min-height: 0;
+    min-width: 0;
+}
+
+.durak-game-layout {
+    /* The felt gets the room the trick games spend on a seat gutter; the hand is
+       allowed to ride over its bottom edge instead of pushing it up. */
+    --table-size: min(58vw, 90vh, 840px);
+    --hand-card-width: clamp(84px, 15.5vh, 168px);
+    --trick-card-width: var(--hand-card-width);
+}
+
+.durak-game-layout .table-surface {
+    container-type: size;
+    container-name: durak-felt;
+    /* The felt takes whatever height the hand row leaves; any residual change (an
+       emptied hand, a rotated phone) eases instead of snapping. */
+    transition: height 320ms ease, width 320ms ease;
+}
+
+/* Durak seats hug the felt instead of floating above it, so the wrapper does not
+   need the tall reserve the trick games keep for their seat row. */
+.durak-game-layout .table-wrap {
+    padding: clamp(0.5rem, 1.8vmin, 1.4rem) clamp(1rem, 3vw, 2.5rem) 0;
+}
+
+/* A negative margin, not a transform: it shrinks the row the hand occupies, which
+   is what hands the extra height to the felt above it. */
+.durak-game-layout .hand-zone {
+    margin-top: -11vh;
+    transform: none;
+}
+
+/* ---------------------------------- table ---------------------------------- */
+
+/* The pair grid is centred on the felt and never grows past it: the JS sets the
+   column/row count for the current bout and every dimension follows from it.
+   The felt children are addressed through `.table-surface` so these rules also
+   win over the shared fullscreen-mobile block, which sizes them in viewport
+   units that know nothing about how big this felt actually is. */
+.durak-game-layout .table-surface .table-center {
+    inset: 0;
+    top: 0;
+    left: 0;
+    transform: none;
+    display: grid;
+    place-items: center;
+    /* Nudges the pair grid below the seat arc without letting it reach the rim. */
+    padding-top: 6cqmin;
+}
+
+/* A FIXED board: three pairs per row, one constant card size, one constant box.
+   Cards must never resize because a bout grew — the box is sized for the two rows a
+   full bout needs, and rows simply centre themselves inside it, so the fourth card
+   pushes the first row up instead of shrinking everything. */
+.durak-game-layout .table-surface .trick-area {
+    --durak-slot-w: 12.5cqmin;
+    --durak-col-gap: 1.6cqmin;
+    --durak-row-gap: 4cqmin;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    column-gap: var(--durak-col-gap);
+    row-gap: var(--durak-row-gap);
+    width: calc(3 * var(--durak-slot-w) + 2 * var(--durak-col-gap) + var(--durak-slot-w) * 0.22);
+    /* Two rows always fit without moving anything; a rare third grows the box rather
+       than shrinking the cards inside it. */
+    height: auto;
+    min-height: 40cqmin;
+    min-width: 0;
+    transform: none;
+    pointer-events: auto;
+}
+
+.durak-game-layout .table-surface .trick-area.is-empty {
+    pointer-events: none;
+}
+
+/* ---------------------------------- replay ---------------------------------- */
+
+/* The replay keeps its own arena (seats in flow regions, no hand row); it borrows
+   only the parts of the table that should read the same as the live game. */
+.trick-area.durak-replay-table {
+    --durak-slot-w: clamp(56px, 9vmin, 104px);
+    --durak-col-gap: clamp(4px, 1vmin, 10px);
+    --durak-row-gap: clamp(10px, 2.4vmin, 22px);
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    column-gap: var(--durak-col-gap);
+    row-gap: var(--durak-row-gap);
+    width: calc(3 * var(--durak-slot-w) + 2 * var(--durak-col-gap) + var(--durak-slot-w) * 0.22);
+    height: auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Poker cards are shorter than the Italian art the replay is built around. */
+.game-layout.is-durak .trump-card-slot,
+.game-layout.is-durak .trump-card.card-wrap {
+    aspect-ratio: 68 / 95;
+}
+
+.game-layout.is-durak .trump-card .card-front,
+.game-layout.is-durak .deck-tower .card-back {
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+/* Nothing is ever dropped in a replay, and the dashed target ring under the pairs
+   just reads as a stray outline on the felt. */
+.game-layout.is-durak .drop-zone {
+    display: none;
+}
+
+/* Who is defending this bout is the single most useful thing on a Durak replay. */
+.game-layout.is-durak .player-seat[data-role="defender"] .seat-avatar {
+    box-shadow: 0 0 0 3px var(--turn-frame-danger);
+}
+
+.game-layout.is-durak .player-seat[data-role="defender"] .seat-team-badge {
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    background: color-mix(in oklab, var(--turn-frame-danger) 38%, #180708);
+    border: 1px solid color-mix(in oklab, var(--turn-frame-danger) 75%, transparent);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* The dashed target ring only helps while the felt is bare. The result disc is the
+   same element, and blanking its fill left the game-over text unreadable. */
+.durak-game-layout .drop-zone.is-covered:not(.is-result) {
+    border-color: transparent;
+    background: transparent;
+}
+
+.durak-game-layout .drop-zone.is-result {
+    z-index: 9;
+}
+
+.drop-zone-verdict {
+    margin-top: 0.35rem;
+    font-size: 1.24rem;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+}
+
+.drop-zone-verdict[data-outcome="won"] {
+    color: #b9ffcd;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+
+.drop-zone-verdict[data-outcome="lost"] {
+    color: #ffc9c2;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+
+/* An emptied hand must not shrink its row: the felt above it takes whatever height
+   is left over, so playing the winning card used to resize the whole table. A fixed
+   height beats the inline min-height the hand layout writes, in both states. */
+.durak-game-layout .hand-cards {
+    height: calc(var(--hand-card-width) * 1.75);
+}
+
+.durak-slot {
+    position: relative;
+    width: var(--durak-slot-w);
+    aspect-ratio: 68 / 95;
+    border-radius: 8px;
+    transition: transform 160ms ease, filter 160ms ease;
+}
+
+.durak-slot .card-wrap {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    /* One transform for both the resting pair offset and the flight a card runs
+       when it lands here, so an incoming card can be animated without losing the
+       "defense lies across the attack" offset it has to end on. */
+    transform:
+        translate3d(var(--deal-x, 0px), var(--deal-y, 0px), 0)
+        rotate(var(--deal-rot, 0deg))
+        scale(var(--deal-scale, 1))
+        translate(var(--card-offset-x, 0%), var(--card-offset-y, 0%))
+        rotate(var(--card-rot, 0deg));
+}
+
+.durak-slot img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
+    display: block;
+}
+
+/* The attack card is always the one underneath: a card that came out of the hand
+   fan carries that fan's z-index, which used to put an attack on top of its own
+   defense. Both table roles get an explicit layer instead. */
+.durak-attack-card {
+    z-index: 1;
+}
+
+/* The defending card lies across the attack card, as it does on a real table. */
+.durak-defense-card {
+    --card-offset-x: 16%;
+    --card-offset-y: 14%;
+    --card-rot: 9deg;
+    z-index: 2;
+}
+
+/* No frame around a recalled bout: the seat that shows the bout's defender, the
+   attacker labels on the pairs and the status pill already say what is on screen. */
+
+/* Who opened the pair. Only recalled bouts carry it: during play the seats
+   already show whose turn it is, and a name on every card is noise. */
+.durak-slot-attacker {
+    position: absolute;
+    left: 50%;
+    top: -1.5em;
+    z-index: 3;
+    max-width: 150%;
+    overflow: hidden;
+    padding: 0.1em 0.45em;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: rgba(12, 18, 16, 0.82);
+    color: var(--cream);
+    font-size: clamp(0.52rem, 2cqmin, 0.72rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Poker cards are shorter than the Italian Briskula/Treseta art. Reusing the
+   Italian trump aspect ratio leaves a visible empty strip behind the Durak card. */
+.durak-game-layout .trump-card-slot,
+.durak-game-layout .trump-card.card-wrap {
+    aspect-ratio: 68 / 95;
+}
+
+.durak-game-layout .trump-card .card-front,
+.durak-game-layout .deck-tower .card-back {
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.durak-slot.is-target {
+    cursor: pointer;
+}
+
+.durak-slot.is-target:hover,
+.durak-slot.is-hovered {
+    transform: translateY(-6px);
+    filter: drop-shadow(0 0 10px rgba(240, 180, 77, 0.5));
+}
+
+/* ------------------------------- rotate card ------------------------------- */
+
+/* Passing the attack on is offered as one more card in the row: same size, same
+   place, covered the same way an attack is covered. It remains while another card
+   can fit in the next defender's hand, and lights up when this player can pass. */
+.durak-rotate-slot {
+    display: grid;
+    place-items: center;
+    border: 2px dashed color-mix(in oklab, var(--cream) 32%, transparent);
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--felt-dark) 55%, rgba(255, 255, 255, 0.04));
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.04);
+    opacity: 0.5;
+    cursor: default;
+    transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.durak-rotate-slot .uc-icon {
+    width: 46%;
+    height: 46%;
+    opacity: 0.85;
+}
+
+.durak-rotate-slot.is-ready {
+    opacity: 1;
+    border-color: color-mix(in oklab, var(--gold) 72%, transparent);
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--gold) 10%, transparent),
+        0 8px 18px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+    animation: durak-rotate-ready 1.9s ease-in-out infinite;
+}
+
+.durak-rotate-slot.is-ready.is-hovered,
+.durak-rotate-slot.is-ready:hover {
+    border-color: var(--gold);
+    background: color-mix(in oklab, var(--gold) 16%, var(--felt-dark));
+    filter: drop-shadow(0 0 10px rgba(240, 180, 77, 0.55));
+    animation: none;
+}
+
+/* ---------------------------------- seats ---------------------------------- */
+
+.durak-game-layout .table-surface .player-ring .player-seat:not(.is-self) {
+    width: 23cqmin;
+    min-height: 24cqmin;
+}
+
+.durak-game-layout.is-dense-player-ring .table-surface .player-ring .player-seat:not(.is-self) {
+    width: 17cqmin;
+}
+
+.durak-game-layout .player-seat[data-role="defender"] .seat-avatar {
+    box-shadow: 0 0 0 3px var(--turn-frame-danger),
+        0 0 18px color-mix(in oklab, var(--turn-frame-danger) 55%, transparent);
+}
+
+.durak-game-layout .player-seat[data-role="defender"] .seat-name {
+    color: #ffd9d3;
+}
+
+/* The defender's label is the loudest thing on a seat — it is the one role that
+   changes what every other player can do. */
+.durak-game-layout .table-surface .player-ring .player-seat[data-role="defender"] .seat-team-badge {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--turn-frame-danger) 78%, transparent);
+    background: color-mix(in oklab, var(--turn-frame-danger) 42%, #180708);
+    color: #fff;
+    font-size: clamp(0.44rem, 2.3cqmin, 0.6rem);
+    letter-spacing: 0.03em;
+    text-shadow: none;
+}
+
+.durak-game-layout .player-seat[data-role="attacker"] .seat-avatar {
+    box-shadow: 0 0 0 2px var(--gold);
+}
+
+.durak-game-layout .player-seat[data-role="finished"] {
+    opacity: 0.5;
+}
+
+.durak-game-layout .table-surface .player-ring .seat-name {
+    margin-top: 0.25rem;
+    font-size: clamp(0.55rem, 3.2cqmin, 0.78rem);
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.durak-game-layout .table-surface .player-ring .seat-team-badge {
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: clamp(0.48rem, 2.7cqmin, 0.68rem);
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Hidden hands are centered absolutely, so even a large post-take hand stays
+   inside its seat instead of spilling over neighbors or the deck. */
+.durak-game-layout .table-surface .player-ring .player-seat:not(.is-self) .seat-cards {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 11cqmin;
+    margin: 0.35rem 0 0;
+    transform: none;
+}
+
+.durak-game-layout .player-seat:not(.is-self) .seat-card {
+    position: absolute;
+    width: clamp(18px, 7cqmin, 34px);
+    left: calc(50% + var(--seat-fan-x, 0px));
+    top: 0;
+    margin: 0;
+    transform: translateX(-50%)
+        translateY(calc(var(--seat-fan-distance, 0) * -1.5px))
+        rotate(calc(var(--seat-fan-index, 0) * -3deg));
+    transform-origin: 50% 12%;
+}
+
+.durak-game-layout .seat-avatar {
+    --ring-offset: 6px;
+    --ring-width: 3px;
+}
+
+/* ------------------------------ state bubbles ------------------------------ */
+
+/* "Done" and "Taking" are decisions with no card to show for them, so they arrive
+   as a notification: a plain black-on-white (white-on-black in dark mode) message
+   with a tail pointing at whoever made it. It hangs BELOW a seat — above the felt
+   it would slide under the page header on a phone — and above the player's own tab,
+   which already sits at the bottom of the screen. */
+.durak-state-bubble {
+    --bubble-bg: #10141a;
+    --bubble-fg: #ffffff;
+    position: relative;
+    z-index: 14;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0.5rem auto 0;
+    padding: 0.28rem 0.7rem;
+    border-radius: 10px;
+    background: var(--bubble-bg);
+    color: var(--bubble-fg);
+    font-size: clamp(0.6rem, 2.7cqmin, 0.8rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-shadow: none;
+    white-space: nowrap;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+    animation: durak-bubble-in 200ms ease-out both;
+}
+
+[data-theme="light"] .durak-state-bubble {
+    --bubble-bg: #ffffff;
+    --bubble-fg: #10141a;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+}
+
+/* The tail: points up at the seat it belongs to. */
+.durak-state-bubble::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    width: 0;
+    height: 0;
+    transform: translateX(-50%);
+    border: 0.42rem solid transparent;
+    border-bottom-color: var(--bubble-bg);
+}
+
+/* Pinned under the seat's name, over the top of that player's card fan: it must not
+   take part in the seat's layout, or announcing "Done" shoves the avatar upwards. */
+.player-seat > .durak-state-bubble {
+    position: absolute;
+    left: 50%;
+    top: var(--bubble-top, 100%);
+    margin: 0;
+    transform: translateX(-50%);
+}
+
+/* The player's own tab is already at the bottom of the screen, so its bubble sits
+   above it and the tail flips to point down. */
+.player-summary > .durak-state-bubble {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.55rem);
+    margin: 0;
+    transform: translateX(-50%);
+    font-size: 0.72rem;
+}
+
+.player-summary > .durak-state-bubble::after {
+    bottom: auto;
+    top: 100%;
+    border-bottom-color: transparent;
+    border-top-color: var(--bubble-bg);
+}
+
+@keyframes durak-bubble-in {
+    from { opacity: 0; translate: 0 -6px; scale: 0.92; }
+    to { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+/* ------------------------------- trump marker ------------------------------- */
+
+/* Once the stock is gone the trump card is replaced by its suit. That marker is the
+   only reminder of what trump is, so it gets real size rather than a small pip. */
+.durak-game-layout .table-surface .trump-card-slot.is-suit-only {
+    width: 26cqmin;
+}
+
+.durak-game-layout .table-surface .trump-card-slot.is-suit-only .trump-card,
+.durak-game-layout .table-surface .trump-card-slot.is-suit-only:hover .trump-card {
+    width: 100%;
+}
+
+/* ----------------------------------- deck ---------------------------------- */
+
+/* Parked on the right edge, below the seat arc and beside the pair grid. Sized off
+   the felt, like everything else on it: the trump lies rotated under the tower and
+   reaches further left than the stack's own box, so it needs the room. */
+.durak-game-layout .table-surface {
+    --deck-cluster-width: 20cqmin;
+    --deck-cluster-height: 30cqmin;
+    --deck-tower-width: 14cqmin;
+    --deck-tower-height: 20cqmin;
+    --deck-card-width: 13cqmin;
+    --trump-card-width: 10cqmin;
+    --trump-card-hover-width: 12cqmin;
+}
+
+/* The stock sits on the felt's centre line, level with the middle of the table, so
+   the trump — and the bare suit marker once the stock runs out — never drifts low. */
+.durak-game-layout .table-surface .deck-stack {
+    right: 1%;
+    top: 50%;
+    transform: translate(0, -50%);
+}
+
+.durak-game-layout .table-surface .deck-cluster {
+    height: auto;
+    justify-content: center;
+}
+
+/* ------------------------------- status pill ------------------------------- */
+
+/* Always on, naming whoever the table is waiting for. It sits in the band between
+   the pair grid and the hand fan, which now rides over the felt's bottom edge. */
+.durak-game-layout .table-surface .table-turn-overlay {
+    left: 8%;
+    right: 8%;
+    bottom: 19%;
+}
+
+/* The pill is now the only place a player learns they are the one defending. */
+.durak-status-name {
+    padding: 0 0.2em;
+    font-weight: 900;
+}
+
+.durak-status-name[data-role="defender"] {
+    color: #ff9f95;
+    text-shadow: 0 0 12px color-mix(in oklab, var(--turn-frame-danger) 55%, transparent);
+}
+
+.durak-status-name[data-role="attacker"] {
+    color: var(--gold);
+}
+
+.durak-status-name.is-self {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+.durak-game-layout .table-turn-message {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: clamp(0.72rem, 3cqmin, 0.95rem);
+}
+
+.durak-game-layout .table-surface .deck-stack.is-empty {
+    transform: translate(0, -50%) scale(0.9);
+}
+
+/* -------------------------------- action bar -------------------------------- */
+
+/* The single action rail is welded to the bottom of the player's own tab: which
+   action it is follows the role, so it never moves or changes count. */
+.durak-game-layout .player-summary {
+    gap: 0;
+}
+
+.durak-game-layout .player-summary-card {
+    grid-template-columns: 2.3rem minmax(7rem, auto) 2.3rem;
+    grid-template-areas:
+        "back identity forward"
+        "back sort     forward";
+    border-radius: 16px 16px 0 0;
+}
+
+/* Avatar over name, both on the tab's centre line. Side by side, a short name sat
+   visibly off-centre because the avatar ate the space to its left. */
+.durak-game-layout .player-summary .player-summary-identity {
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    padding: 0.35rem 0.55rem 0.15rem;
+}
+
+.durak-game-layout .player-summary-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.durak-actions {
+    display: grid;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.3rem;
+    border: 1px solid color-mix(in oklab, var(--panel-border) 82%, transparent);
+    border-top: 0;
+    border-radius: 0 0 16px 16px;
+    background: color-mix(in oklab, var(--color-bg) 72%, rgba(12, 18, 15, 0.24));
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(10px);
+}
+
+.durak-actions[hidden] {
+    display: none;
+}
+
+.durak-action-button {
+    font-weight: 700;
+    min-height: 2.2rem;
+    padding: 0.35rem 0.85rem;
+    transition: transform 120ms ease, opacity 150ms ease, filter 150ms ease,
+        color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.durak-action-button:not(:disabled) {
+    color: #fff;
+    background: color-mix(in oklab, var(--color-accent) 84%, #130406);
+    border-color: color-mix(in oklab, var(--color-accent) 76%, white 24%);
+    box-shadow: 0 6px 16px color-mix(in oklab, var(--color-accent) 24%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.durak-action-button[data-mode="take"]:not(:disabled) {
+    border-color: color-mix(in oklab, var(--turn-frame-danger) 60%, transparent);
+}
+
+.durak-action-button:not(:disabled):hover {
+    transform: translateY(-1px);
+    filter: brightness(1.12);
+}
+
+.durak-action-button:not(:disabled):active {
+    transform: translateY(1px) scale(0.98);
+}
+
+.durak-action-button:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    filter: saturate(0.35);
+    box-shadow: none;
+}
+
+.durak-error {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.94);
+    max-width: min(78%, 28rem);
+    color: #fff;
+    font-size: clamp(0.82rem, 1.6vmin, 1rem);
+    font-weight: 800;
+    text-align: center;
+    background: color-mix(in oklab, var(--turn-frame-danger) 78%, #180708);
+    border: 1px solid color-mix(in oklab, #fff 24%, transparent);
+    border-radius: var(--radius-md, 10px);
+    padding: 0.55rem 0.85rem;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+    opacity: 0;
+    visibility: hidden;
+    z-index: 20;
+    pointer-events: none;
+    transition: opacity 150ms ease, transform 150ms ease, visibility 0s linear 150ms;
+}
+
+.durak-error.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+    transition-delay: 0s;
+}
+
+/* ---------------------------------- hand ----------------------------------- */
+
+/* Selected-for-target state, the tap-then-tap counterpart of dragging. */
+.durak-game-layout .hand-card.is-selected {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+    filter: drop-shadow(0 0 12px rgba(240, 180, 77, 0.55));
+}
+
+.durak-game-layout .hand-card.is-disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+    filter: grayscale(0.18) saturate(0.6);
+}
+
+.durak-game-layout .hand-card.is-rejected {
+    animation: durak-card-reject 280ms ease-out;
+}
+
+@keyframes durak-card-reject {
+    0%, 100% { translate: 0 0; }
+    25% { translate: -7px 0; }
+    55% { translate: 6px 0; }
+    78% { translate: -3px 0; }
+}
+
+@keyframes durak-rotate-ready {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2); }
+}
+
+@media (max-width: 900px) {
+    .durak-game-layout {
+        /* Height-aware: a short phone viewport has to fit seats, two rows of pairs
+           and the fan, so the hand gives ground before the table does. */
+        --hand-card-width: clamp(58px, min(23vw, 13.5vh), 124px);
+        --trick-card-width: var(--hand-card-width);
+    }
+
+    .durak-game-layout .hand-cards {
+        height: calc(var(--hand-card-width) * 1.58);
+    }
+
+    /* The phone board is already full-bleed, so the hand keeps its own row. */
+    .durak-game-layout .hand-zone {
+        margin-top: 0;
+        transform: none;
+    }
+
+    /* The phone felt is narrow: the suit marker still grows, but only as far as the
+       pair grid's right edge. */
+    html[data-game-ui="fullscreen"] .durak-game-layout .table-surface .trump-card-slot.is-suit-only {
+        width: 20cqmin;
+    }
+
+    /* cqmin follows the phone's WIDTH here, and the felt is far taller than it is
+       wide, so the table cards need a bigger share of it than on a square felt. */
+    .durak-game-layout .table-surface .trick-area {
+        --durak-slot-w: min(16cqmin, 9vh);
+        --durak-col-gap: 2cqmin;
+        --durak-row-gap: 2.5cqmin;
+        /* Sized for two rows so the board does not jump when the fourth card lands. */
+        min-height: calc(var(--durak-slot-w) * 2.794 + var(--durak-row-gap));
+    }
+
+    /* Seats hug the top edge on a phone; every row they give back is a row the
+       pairs and the fan can use. */
+    html[data-game-ui="fullscreen"] .durak-game-layout .player-ring .player-seat:not(.is-self) {
+        min-height: 0;
+    }
+
+    .durak-game-layout .table-wrap {
+        padding: 0.35rem 0.5rem 0;
+    }
+
+    /* Fullscreen mobile absolutely positions .table-wrap against .game-shell; the
+       wrapper has to become a transparent pass-through or the felt collapses. */
+    html[data-game-ui="fullscreen"] .durak-table-area {
+        position: absolute;
+        inset: 0;
+        display: block;
+    }
+
+    .durak-action-button {
+        min-height: 1.85rem;
+        padding: 0.25rem 0.55rem;
+        font-size: 0.72rem;
+    }
+
+    /* The tab stays welded under the hand instead of floating in the top lane, so
+       it is where the thumb already is. Back in flow, it sits below the fan. */
+    html[data-game-ui="fullscreen"] .durak-game-layout .player-summary {
+        position: static;
+        top: auto;
+        left: auto;
+        transform: none;
+    }
+
+    html[data-game-ui="fullscreen"] .durak-game-layout .hand-row {
+        padding-bottom: calc(0.2rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    html[data-game-ui="fullscreen"] .durak-game-layout .player-summary-card {
+        grid-template-columns: 1.6rem auto 1.6rem;
+        border-radius: 14px;
+    }
+
+    html[data-game-ui="fullscreen"] .durak-game-layout .player-summary .player-summary-identity {
+        gap: 0.1rem;
+        padding: 0.25rem 0.5rem 0.05rem;
+    }
+
+    html[data-game-ui="fullscreen"] .durak-game-layout .hand-sort-controls {
+        padding: 0 0.3rem 0.22rem;
+    }
+
+    /* On a phone the one action button leaves the tab entirely and becomes a thumb
+       target in the free bottom-right corner (the chat button owns the left one).
+       Every row it gives back goes to the cards. */
+    html[data-game-ui="fullscreen"] .durak-game-layout .durak-actions {
+        position: fixed;
+        right: max(0.65rem, env(safe-area-inset-right, 0px));
+        bottom: calc(1.35rem + env(safe-area-inset-bottom, 0px));
+        z-index: 12;
+        width: auto;
+        min-width: 5.4rem;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: none;
+        box-shadow: none;
+        backdrop-filter: none;
+    }
+
+    html[data-game-ui="fullscreen"] .durak-game-layout .durak-action-button {
+        min-height: 2.9rem;
+        padding: 0.35rem 1.15rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    /* The felt is the whole screen here, so the deck must stay fully on it. */
+    html[data-game-ui="fullscreen"] .durak-game-layout .table-surface .deck-stack {
+        right: max(0.35rem, env(safe-area-inset-right, 0px));
+        top: 50%;
+        transform: translate(0, -50%);
+    }
+
+    /* The phone felt is the whole screen. The seats own the top, the hand fan owns
+       the bottom, and the pair grid centres in what is left; the status pill hangs
+       just under the seats so it never lands on either. */
+    html[data-game-ui="fullscreen"] .durak-game-layout .table-turn-overlay {
+        left: 4%;
+        right: 4%;
+        /* Above the pair grid even when a second row pushes it up. */
+        top: 16%;
+        bottom: auto;
+        height: auto;
+        align-items: flex-start;
+    }
+
+    /* The hand belongs to the table, so it stays anchored to the board (the shared
+       fullscreen rule already pins it to the bottom of .game-shell). The live board
+       fills the screen and does not scroll, so it never drifts away either. The
+       guide page is deliberately excluded: its rules section lives below the board. */
+    html[data-game-ui="fullscreen"] body.durak-page {
+        height: 100svh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    html[data-game-ui="fullscreen"] .durak-game-layout .table-surface .table-center {
+        padding-top: 22cqmin;
+        /* Reserve the strip the hand fan and the tab cover, so the pairs centre above. */
+        padding-bottom: calc(var(--hand-card-width) * 1.58 + 5rem);
+    }
+}
+
+@media (min-width: 901px) {
+    .durak-game-layout .player-summary {
+        transform: translateY(-0.5rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .durak-slot,
+    .durak-slot.is-target:hover,
+    .durak-slot.is-hovered {
+        transition: none;
+        transform: none;
+    }
+
+    .durak-rotate-slot.is-ready,
+    .durak-game-layout .hand-card.is-rejected {
+        animation: none;
+    }
+}
+
+/* --------------------------- Firefox on a phone ---------------------------
+   Gecko's mobile paint path charges for every blur, filter and masked gradient
+   in a damaged tile, and Durak's felt is busier than the trick games': cards fly
+   over the pairs constantly, several countdown rings can run at once, and a
+   rotate target pulses under all of it. Same board, cheaper pixels — nothing
+   here changes what any other browser draws. */
+@supports (-moz-appearance: none) {
+    @media (max-width: 900px) {
+        /* Big soft shadows sit directly under the flight path of every played card. */
+        .durak-slot .card-wrap,
+        .durak-state-bubble,
+        .durak-game-layout .table-turn-message {
+            box-shadow: none;
+        }
+
+        /* drop-shadow() and brightness() repaint the whole element every frame they
+           are animated, and the rotate target's pulse never stops while it is up. */
+        .durak-game-layout .trump-card-slot.is-suit-only .trump-card,
+        .durak-game-layout .hand-card.is-selected,
+        .durak-rotate-slot.is-ready {
+            filter: none;
+        }
+
+        .durak-rotate-slot.is-ready {
+            animation: none;
+            border-color: var(--gold);
+        }
+
+        /* The countdown ring is a conic gradient behind a composite mask — the most
+           expensive thing on the felt to repaint, once per tick per player on the
+           clock. A flat ring in the same colour reads the same at arm's length. */
+        .durak-game-layout .seat-avatar::before {
+            background: none;
+            -webkit-mask: none;
+            mask: none;
+            border: var(--ring-width, 4px) solid var(--turn-frame-color);
+            padding: 0;
+        }
+
+        /* Nudging the whole felt means recompositing everything on it ten times a
+           second; the tab alone carries the same warning. */
+        .durak-game-layout.is-turn-running-out .table-wrap {
+            animation: none;
+        }
+    }
+}
