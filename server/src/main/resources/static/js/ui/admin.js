@@ -12,12 +12,26 @@
         dbFilters: {}
     };
     if (page === "database") for (const [key, value] of params) if (key !== "table") state.dbFilters[key] = value;
+    const durakModes = [];
+    for (let players = 2; players <= 6; players++) {
+        for (const deck of [24, 36, 54]) {
+            if (deck === 24 && players > 4) continue;
+            for (const jokers of deck === 54 ? ["NO_JOKERS", "JOKERS"] : ["NO_JOKERS"])
+                for (const throwers of ["NEIGHBORS", "EVERYONE"])
+                    for (const passing of ["NO_PASS", "PASS"])
+                        durakModes.push(`P${players}_D${deck}_${jokers}_${throwers}_${passing}`);
+        }
+    }
     const modes = {
         briskula: ["TWO_PLAYERS", "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH", "THREE_PLAYERS", "FOUR_PLAYERS_NO_TEAMS", "FOUR_PLAYERS_WITH_TEAMS"],
+        durak: durakModes,
         treseta: ["TWO_PLAYERS", "THREE_PLAYERS", "FOUR_PLAYERS_WITH_TEAMS", "FOUR_PLAYERS_NO_TEAMS"]
     };
     const status = document.querySelector("#admin-status");
     const tr = (key, fallback, ...args) => typeof window.t === "function" && (window.__I18N__ || {})[key] ? window.t(key, ...args) : fallback;
+    const modeLabel = (gameType, mode) => mode && typeof getGameConfigDisplayName === "function"
+        ? getGameConfigDisplayName(gameType || (modes.durak.includes(mode) ? "durak" : ""), mode)
+        : mode || "";
     const setStatus = (message, error = false) => { status.textContent = message; status.classList.toggle("is-error", error); };
     const request = async (path, options = {}) => {
         const response = await fetch(`${api}${path}`, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
@@ -167,12 +181,17 @@
     });
     const confirmAction = (title, description, danger = false) => askAction({ title, description, confirmLabel: danger ? tr("admin.common.confirmChange", "Confirm change") : tr("admin.common.continue", "Continue"), danger });
     const reasonField = () => ({ name: "reason", label: tr("admin.common.reason", "Reason"), required: true, maxLength: 250 });
+    const modeOption = (gameType, value) => {
+        const option = element("option", modeLabel(gameType, value));
+        option.value = value;
+        return option;
+    };
     const populateModes = () => {
         const form = document.querySelector("#admin-stats-edit");
         if (!form) return;
         const mode = form.elements.mode;
         const selected = mode.value;
-        mode.replaceChildren(...modes[form.elements.gameType.value].map(value => element("option", value)));
+        mode.replaceChildren(...modes[form.elements.gameType.value].map(value => modeOption(form.elements.gameType.value, value)));
         if (modes[form.elements.gameType.value].includes(selected)) mode.value = selected;
     };
 
@@ -398,7 +417,7 @@
     };
     const gameChips = game => [
         chip(game.gameType),
-        ...(game.mode ? [chip(game.mode)] : []),
+        ...(game.mode ? [chip(modeLabel(game.gameType, game.mode))] : []),
         game.endedAt ? chip(tr("admin.games.completed", "Completed"), "is-good") : chip(tr("admin.common.incomplete", "Incomplete"), "is-warn")
     ];
     const gameMeta = game => {
@@ -413,7 +432,7 @@
         const values = formValues(document.querySelector('[data-filters="games"]'));
         const sort = values.sort === "createdAtOldest" ? "createdAt" : values.sort;
         const direction = values.sort === "createdAtOldest" ? "asc" : values.sort === "name" ? "asc" : "desc";
-        const data = await request(`/reports/games${query({ page: currentPage, size: 20, ...values, sort, direction })}`); clear("games");
+        const data = await request(`/reports/games${query({ ...values, sort, direction, page: currentPage, size: 20 })}`); clear("games");
         if (!data.items.length) return empty("games", tr("admin.games.empty", "No recorded games match these filters."));
         data.items.forEach(game => row("games", game.name || tr("admin.games.fallbackName", `${game.gameType} game`, game.gameType), gameMeta(game), [button(tr("admin.games.rename", "Rename"), "rename-game", game.id), button(tr("admin.common.delete", "Delete"), "delete-game", game.id, true)], gameChips(game))); renderPaged("games", data);
     };
@@ -433,7 +452,7 @@
         renderPaged("sessions", data);
     };
     const toggleGame = async (game, mode, wanted) => {
-        const enabled = wanted === "enable"; const rule = `${game}${mode ? ` ${mode}` : ""}`;
+        const enabled = wanted === "enable"; const rule = `${game}${mode ? ` · ${modeLabel(game, mode)}` : ""}`;
         const values = await askAction({ title: enabled ? tr("admin.availability.enableTitle", "Enable game") : tr("admin.availability.disableTitle", "Disable game"), description: enabled ? tr("admin.availability.enableCopy", `Enable ${rule} for players?`, rule) : tr("admin.availability.disableCopy", `Disable ${rule} for players?`, rule), confirmLabel: enabled ? tr("admin.availability.enable", "Enable") : tr("admin.availability.disable", "Disable"), danger: !enabled, fields: [reasonField()] });
         if (!values) return false;
         await request(`/games/${encodeURIComponent(game)}`, { method: "PATCH", body: JSON.stringify({ mode: mode || null, enabled, reason: values.reason }) });
@@ -458,7 +477,7 @@
             const disabledOption = element("option", tr("admin.common.disabled", "Disabled")); disabledOption.value = "disable";
             select.append(enabledOption, disabledOption);
             select.value = item.enabled ? "enable" : "disable";
-            select.setAttribute("aria-label", `${item.game}${item.mode ? ` ${item.mode}` : ""}`);
+            select.setAttribute("aria-label", `${item.game}${item.mode ? ` ${modeLabel(item.game, item.mode)}` : ""}`);
             select.addEventListener("change", async () => {
                 try {
                     if (!await toggleGame(item.game, item.mode || "", select.value)) select.value = item.enabled ? "enable" : "disable";
@@ -473,7 +492,7 @@
             const list = element("details", null, "admin-availability-group");
             const summary = element("summary"); summary.append(element("strong", game), chip(group.game.enabled ? tr("admin.common.enabled", "Enabled") : tr("admin.common.disabled", "Disabled"), group.game.enabled ? "is-good" : "is-bad"), element("span", tr("admin.availability.modes", `${group.modes.length} modes`, group.modes.length)));
             const modes = element("div", null, "admin-availability-modes");
-            modes.append(availabilityRow(group.game, tr("admin.availability.entireGame", "Entire game")), ...group.modes.sort((left, right) => left.mode.localeCompare(right.mode)).map(item => availabilityRow(item, item.mode)));
+            modes.append(availabilityRow(group.game, tr("admin.availability.entireGame", "Entire game")), ...group.modes.sort((left, right) => left.mode.localeCompare(right.mode)).map(item => availabilityRow(item, modeLabel(item.game, item.mode))));
             list.append(summary, modes); results("availability").append(list);
         });
     };
@@ -553,14 +572,14 @@
             label: tr("admin.db.table.games", "Recorded games"), area: "Recorded games",
             filters: [
                 { name: "query", label: tr("admin.users.search", "Search"), type: "search", placeholder: tr("admin.games.namePlaceholder", "Game name") },
-                { name: "gameType", label: tr("admin.games.game", "Game"), options: [allOption, { value: "BRISKULA", label: "Briskula" }, { value: "TRESETA", label: "Treseta" }] },
-                { name: "mode", label: tr("admin.games.mode", "Mode"), options: [allOption, ...[...new Set([...modes.briskula, ...modes.treseta])].map(value => ({ value, label: value }))] },
+                { name: "gameType", label: tr("admin.games.game", "Game"), options: [allOption, { value: "BRISKULA", label: "Briskula" }, { value: "DURAK", label: "Durak" }, { value: "TRESETA", label: "Treseta" }] },
+                { name: "mode", label: tr("admin.games.mode", "Mode"), options: [allOption, ...[...new Set([...modes.briskula, ...modes.durak, ...modes.treseta])].map(value => ({ value, label: modeLabel("", value) }))] },
                 { name: "completed", label: tr("admin.games.state", "State"), options: [allOption, { value: "true", label: tr("admin.games.completed", "Completed") }, { value: "false", label: tr("admin.games.incomplete", "Incomplete") }] }
             ],
             load: async currentPage => {
-                const data = await request(`/reports/games${query({ page: currentPage, size: 20, ...state.dbFilters })}`);
+                const data = await request(`/reports/games${query({ ...state.dbFilters, page: currentPage, size: 20 })}`);
                 return { data, toolbar: bulkBar(tr("admin.bulk.games", "Delete selected games"), "delete-selected-games", "db-games"), table: table([selectAllBox("db-games"), "ID", tr("admin.common.type", "Type"), tr("admin.common.mode", "Mode"), tr("admin.common.name", "Name"), tr("admin.games.owner", "Owner"), tr("admin.games.playersLabel", "Players"), tr("admin.games.winners", "Winners"), tr("admin.games.ended", "Ended", "").trim() || "Ended", tr("admin.common.actions", "Actions")], data.items.map(game => [
-                    selectBox("db-games", game.id), shortId(game.id), game.gameType, game.mode || "—", game.name || "—",
+                    selectBox("db-games", game.id), shortId(game.id), game.gameType, modeLabel(game.gameType, game.mode) || "—", game.name || "—",
                     game.ownerUserId != null ? userLink(game.ownerUserId, `#${game.ownerUserId}`) : "—",
                     game.players?.length ? playerLinks(game.players) : "—",
                     game.winners?.length ? playerLinks(game.winners) : "—",
@@ -610,7 +629,7 @@
             load: async () => {
                 const data = await request("/games");
                 return { data: null, table: table([tr("admin.games.game", "Game"), tr("admin.common.mode", "Mode"), tr("admin.common.state", "State"), tr("admin.common.actions", "Actions")], data.map(item => [
-                    item.game, item.mode || tr("admin.availability.entireGame", "All modes"), chip(item.enabled ? tr("admin.common.enabled", "Enabled") : tr("admin.common.disabled", "Disabled"), item.enabled ? "is-good" : "is-bad"),
+                    item.game, modeLabel(item.game, item.mode) || tr("admin.availability.entireGame", "All modes"), chip(item.enabled ? tr("admin.common.enabled", "Enabled") : tr("admin.common.disabled", "Disabled"), item.enabled ? "is-good" : "is-bad"),
                     [button(item.enabled ? tr("admin.availability.disable", "Disable") : tr("admin.availability.enable", "Enable"), "toggle-game", `${item.game}|${item.mode || ""}|${item.enabled ? "disable" : "enable"}`, !item.enabled), button(tr("admin.availability.reset", "Reset"), "reset-availability", `${item.game}|${item.mode || ""}`)]
                 ]), true) };
             }
@@ -674,6 +693,7 @@
         const areaLabels = {
             "Game-stat profiles": tr("admin.db.area.profiles", "Game-stat profiles"),
             "Briskula stat rows": tr("admin.db.area.briskulaRows", "Briskula stat rows"),
+            "Durak stat rows": tr("admin.db.area.durakRows", "Durak stat rows"),
             "Treseta stat rows": tr("admin.db.area.tresetaRows", "Treseta stat rows")
         };
         Object.entries(counts).forEach(([area, count]) => {
@@ -689,17 +709,17 @@
         clear("stats");
         const diff = document.querySelector("#admin-stats-diff"); if (diff) { diff.hidden = true; diff.replaceChildren(); }
         const context = document.querySelector("#admin-stats-context");
-        if (context) { context.replaceChildren(); content(context, [userLink(stats.userId, `${tr("admin.common.user", "User")} #${stats.userId}`), ` · ${stats.briskulaOpponentRows + stats.briskulaTeammateRows} Briskula · ${stats.tresetaOpponentRows + stats.tresetaTeammateRows} Treseta`]); }
+        if (context) { context.replaceChildren(); content(context, [userLink(stats.userId, `${tr("admin.common.user", "User")} #${stats.userId}`), ` · ${stats.briskulaOpponentRows + stats.briskulaTeammateRows} Briskula · ${stats.durakOpponentRows} Durak · ${stats.tresetaOpponentRows + stats.tresetaTeammateRows} Treseta`]); }
         const addGroup = (label, entries) => Object.entries(entries || {}).forEach(([mode, line]) => row("stats", `${label} · ${mode}`, `${line.played} ${tr("admin.user.played", "played").toLowerCase()} · ${line.wins} ${tr("admin.user.wins", "wins").toLowerCase()} · ${tr("admin.user.lastPlayed", "Last played")} ${formatTime(line.lastPlayedAt)}`));
         addGroup("Overall", stats.overall);
         Object.entries(modes).forEach(([gameType, gameModes]) => {
-            const entries = gameType === "briskula" ? stats.briskulaModes || {} : stats.tresetaModes || {};
+            const entries = stats[`${gameType}Modes`] || {};
             gameModes.forEach(mode => {
                 const line = entries[mode];
                 const values = line || { played: 0, wins: 0, lastPlayedAt: null };
                 const label = line ? tr("admin.common.edit", "Edit") : "Add";
                 const target = encodeURIComponent(JSON.stringify({ gameType, mode, played: values.played, wins: values.wins, lastPlayedAt: values.lastPlayedAt }));
-                row("stats", `${gameType[0].toUpperCase()}${gameType.slice(1)} · ${mode}`, line ? `${values.played} · ${values.wins} · ${formatTime(values.lastPlayedAt)}` : "—", [button(label, "edit-stat-row", target, !line)]);
+                row("stats", `${gameType[0].toUpperCase()}${gameType.slice(1)} · ${modeLabel(gameType, mode)}`, line ? `${values.played} · ${values.wins} · ${formatTime(values.lastPlayedAt)}` : "—", [button(label, "edit-stat-row", target, !line)]);
             });
         });
     };
@@ -707,13 +727,13 @@
         const diff = document.querySelector("#admin-stats-diff"); if (!diff) return;
         diff.replaceChildren(element("strong", "Preview result"));
         const changed = [];
-        ["BRISKULA", "TRESETA"].forEach(game => {
-            const key = game === "BRISKULA" ? "briskulaModes" : "tresetaModes";
+        ["BRISKULA", "DURAK", "TRESETA"].forEach(game => {
+            const key = `${game.toLowerCase()}Modes`;
             const modesAfter = after[key] || {}; const modesBefore = before?.[key] || {};
             Object.keys({ ...modesBefore, ...modesAfter }).forEach(mode => {
                 const from = modesBefore[mode] || { played: 0, wins: 0 };
                 const to = modesAfter[mode] || { played: 0, wins: 0 };
-                if (from.played !== to.played || from.wins !== to.wins || from.lastPlayedAt !== to.lastPlayedAt) changed.push(`${game} · ${mode}: ${from.played} / ${from.wins} → ${to.played} / ${to.wins}`);
+                if (from.played !== to.played || from.wins !== to.wins || from.lastPlayedAt !== to.lastPlayedAt) changed.push(`${game} · ${modeLabel(game, mode)}: ${from.played} / ${from.wins} → ${to.played} / ${to.wins}`);
             });
         });
         (changed.length ? changed : ["No values changed."]).forEach(line => diff.append(element("p", line, "admin-meta")));
@@ -769,13 +789,15 @@
         form.querySelector('[data-action="save-user"], [data-action="save-lobby"]')?.click();
     });
     const gamesFilter = document.querySelector('[data-filters="games"]');
-    gamesFilter?.elements.gameType.addEventListener("change", () => {
-        const available = { BRISKULA: modes.briskula, TRESETA: modes.treseta }[gamesFilter.elements.gameType.value] || [...new Set([...modes.briskula, ...modes.treseta])];
+    const syncGamesModeFilter = () => {
+        if (!gamesFilter) return;
+        const available = { BRISKULA: modes.briskula, DURAK: modes.durak, TRESETA: modes.treseta }[gamesFilter.elements.gameType.value] || [...new Set([...modes.briskula, ...modes.durak, ...modes.treseta])];
         const select = gamesFilter.elements.mode; const selected = select.value;
         const all = element("option", tr("admin.common.all", "All")); all.value = "";
-        select.replaceChildren(all, ...available.map(value => element("option", value)));
+        select.replaceChildren(all, ...available.map(value => modeOption(gamesFilter.elements.gameType.value, value)));
         if (available.includes(selected)) select.value = selected;
-    });
+    };
+    gamesFilter?.elements.gameType.addEventListener("change", syncGamesModeFilter);
     document.addEventListener("click", async event => {
         const control = event.target.closest("button[data-action]"); if (!control || control.dataset.action === "refresh") return;
         try {
@@ -962,6 +984,7 @@
     document.querySelectorAll("form.admin-filters[data-filters]").forEach(form => {
         for (const [key, value] of params) { const field = form.elements[key]; if (field && !(field instanceof RadioNodeList) && field.tagName !== "FIELDSET") field.value = value; }
     });
+    syncGamesModeFilter();
     if (page === "notifications" && params.get("userId")) {
         notifyForm.elements.mode.value = "user";
         notifyForm.elements.userRef.value = `#${params.get("userId")}`;

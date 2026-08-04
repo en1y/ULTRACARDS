@@ -171,6 +171,38 @@ class UltracardsAdminCliTest {
     }
 
     @Test
+    void versionAndDurakAdminArgumentsMatchTheReleaseContract() {
+        var output = new StringWriter();
+        var command = new UltracardsAdminCli(new ConfigStore(directory)).commandLine();
+        command.setOut(new PrintWriter(output));
+
+        assertEquals(0, command.execute("--version"));
+        assertTrue(output.toString().contains("0.4.0"), output.toString());
+
+        var mode = "P6_D54_JOKERS_EVERYONE_PASS";
+        var availability = command.parseArgs("game", "disable", "DURAK",
+                "--mode", mode, "--reason", "maintenance");
+        assertEquals(mode, availability.subcommand().subcommand().matchedOptionValue("--mode", ""));
+
+        var edit = command.parseArgs("db", "edit", "stats", "--user", "7", "--game", "DURAK",
+                "--mode", mode, "--wins", "12", "--reason", "correction", "--dry-run");
+        assertEquals(mode, edit.subcommand().subcommand().subcommand().matchedOptionValue("--mode", ""));
+        assertEquals(DbCommands.StatsGame.DURAK,
+                edit.subcommand().subcommand().subcommand().matchedOptionValue("--game", null));
+
+        var rebuild = command.parseArgs("db", "stats", "rebuild", "--user", "7",
+                "--game", "DURAK", "--reason", "rebuild", "--dry-run");
+        assertEquals(DbCommands.StatsGame.DURAK,
+                rebuild.subcommand().subcommand().subcommand().matchedOptionValue("--game", null));
+
+        var candidates = new ArrayList<String>();
+        new GameCommands.ModeCandidates().forEach(candidates::add);
+        assertTrue(candidates.contains("TWO_PLAYERS"));
+        assertTrue(candidates.contains("P2_D24_NO_JOKERS_NEIGHBORS_NO_PASS"));
+        assertTrue(candidates.contains("P6_D54_JOKERS_EVERYONE_PASS"));
+    }
+
+    @Test
     void leaderboardCommandDisplaysAReadableRankedPage() {
         var store = new ConfigStore(directory);
         store.add("local", "http://localhost:8080");
