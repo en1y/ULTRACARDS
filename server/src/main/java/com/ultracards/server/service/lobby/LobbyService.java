@@ -58,7 +58,6 @@ public class LobbyService {
     private final FriendService friendService;
 
     private final TaskScheduler taskScheduler;
-    private final HashMap<Long, LobbyEntity> lobbyCache = new HashMap<>();
     private final LobbyEventPublisher eventPublisher;
 
     @Value("${app.lobby.timer.duration-seconds}")
@@ -101,7 +100,6 @@ public class LobbyService {
 
         var lobby = lobbyManager.createLobby(gameLobbyDTO, owner);
         syncLobbyConfig(lobby);
-        lobbyCache.put(owner.getId(), lobby);
         chatService.createChat(lobby.getId());
         openLobby(lobby);
         eventPublisher.publish(lobby, CREATED);
@@ -126,8 +124,14 @@ public class LobbyService {
     }
 
     private JoinLobbyResult getJoinLobbyResult(UserEntity user, LobbyEntity lobby) {
-        if (lobby == null || lobby.isStarted()) {
+        if (lobby == null) {
             return JoinLobbyResult.NOT_FOUND;
+        }
+
+        // Already started: nobody new gets in, but a player who is in it is simply
+        // still in it — telling them "not found" strands them out of their own game.
+        if (lobby.isStarted()) {
+            return lobby.containsUser(user) ? JoinLobbyResult.JOINED : JoinLobbyResult.NOT_FOUND;
         }
 
         if (lobby.isFull() && !lobby.containsUser(user)) {
@@ -136,7 +140,6 @@ public class LobbyService {
 
         if (lobby.addUser(user)) {
             syncLobbyConfig(lobby);
-            lobbyCache.put(user.getId(), lobby);
             eventPublisher.publish(lobby, UPDATED);
             return JoinLobbyResult.JOINED;
         }
@@ -144,18 +147,13 @@ public class LobbyService {
         return JoinLobbyResult.FULL;
     }
 
+    /** A started lobby is a running game; walking out of it is what {@code /api/game} is for. */
     public Boolean leaveLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
-        var success = false;
-        if (lobby != null) {
-            success = lobby.removeUser(user);
-            lobbyCache.remove(user.getId());
-            if (success) {
-                syncLobbyConfig(lobby);
-                eventPublisher.publish(lobby, UPDATED);
-            }
-        }
-        return lobby != null && success;
+        if (lobby == null || lobby.isStarted() || !lobby.removeUser(user)) return false;
+        syncLobbyConfig(lobby);
+        eventPublisher.publish(lobby, UPDATED);
+        return true;
     }
 
     public Boolean startLobby(UserEntity user) {
@@ -227,7 +225,6 @@ public class LobbyService {
                     "Kick a player before reducing the game mode player count");
 
         syncPlayerLimitsWithConfig(lobbyDTO);
-        var previousUsers = new ArrayList<>(lobby.getUsers());
         lobby.setName(lobbyDTO.getName());
         lobby.setMinPlayers(lobbyDTO.getMinPlayers());
         lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
@@ -243,7 +240,6 @@ public class LobbyService {
                 lobby.setGameConfig(DurakLobbyGameConfig.fromDto(durakConfig, lobby.getUsers(), lobby.getOwner()));
             else lobby.setGameConfig(config);
         }
-        removeStaleLobbyCacheEntries(lobby, previousUsers);
         eventPublisher.publish(lobby, UPDATED);
         return lobby.createLobbyDTO(true);
     }
@@ -297,7 +293,6 @@ public class LobbyService {
             var removed = lobby.removeUser(player);
             if (removed) {
                 syncLobbyConfig(lobby);
-                lobbyCache.remove(playerToKickId);
                 eventPublisher.publishKicked(player, lobby.getId());
                 eventPublisher.publish(lobby, UPDATED);
                 return lobby.createLobbyDTO(true);
@@ -315,7 +310,6 @@ public class LobbyService {
         if (player == null || !lobby.removeUser(player))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player is not in this lobby");
         syncLobbyConfig(lobby);
-        lobbyCache.remove(playerToKickId);
         eventPublisher.publishKicked(player, lobby.getId());
         eventPublisher.publish(lobby, UPDATED);
         return lobby.createLobbyDTO(true);
@@ -327,9 +321,6 @@ public class LobbyService {
 
     public Boolean deleteLobby(LobbyEntity lobby) {
         if (lobby != null) {
-            for (var players: lobby.getUsers()) {
-                lobbyCache.remove(players.getId());
-            }
             chatService.deleteChat(lobby.getId());
             lobby.setLobbyState(LobbyState.CLOSED);
             var res = lobbyManager.deleteLobby(lobby);
@@ -445,13 +436,19 @@ public class LobbyService {
         };
     }
 
+    /**
+     * Membership lives on the lobbies themselves, so it is read from them. A separate
+     * user-to-lobby index only ever drifted out of sync, and a player whose entry went
+     * missing lost access to their own running game.
+     */
     public LobbyEntity getLobbyByUser(UserEntity user) {
-        var lobby = lobbyCache.get(user.getId());
-        if (lobby != null && !lobby.containsUser(user)) {
-            lobbyCache.remove(user.getId());
-            return null;
+        var lobbies = lobbyManager.getLobbies();
+        synchronized (lobbies) {
+            for (var lobby : lobbies) {
+                if (lobby.containsUser(user)) return lobby;
+            }
         }
-        return lobby;
+        return null;
     }
 
     private void syncLobbyConfig(LobbyEntity lobby) {
@@ -466,14 +463,6 @@ public class LobbyService {
             lobby.setLobbyGameConfig(TresetaLobbyGameConfig.fromDto(tresetaConfig, lobby.getUsers(), lobby.getOwner()));
         } else if (config instanceof DurakGameConfigDTO durakConfig) {
             lobby.setLobbyGameConfig(DurakLobbyGameConfig.fromDto(durakConfig, lobby.getUsers(), lobby.getOwner()));
-        }
-    }
-
-    private void removeStaleLobbyCacheEntries(LobbyEntity lobby, List<UserEntity> previousUsers) {
-        for (var previousUser : previousUsers) {
-            if (!lobby.containsUser(previousUser)) {
-                lobbyCache.remove(previousUser.getId());
-            }
         }
     }
 

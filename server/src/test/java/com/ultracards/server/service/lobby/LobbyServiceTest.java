@@ -19,15 +19,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,6 +50,7 @@ class LobbyServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(lobbyManager.getLobbies()).thenReturn(List.of());
         lobbyService = new LobbyService(
                 lobbyManager,
                 userService,
@@ -135,7 +135,8 @@ class LobbyServiceTest {
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
 
-        verifyNoInteractions(lobbyManager, ultrakillLevelService, chatService, eventPublisher, taskScheduler);
+        verifyNoInteractions(ultrakillLevelService, chatService, eventPublisher, taskScheduler);
+        verify(lobbyManager, never()).createLobby(any(GameLobbyDTO.class), any());
     }
 
     @Test
@@ -150,7 +151,8 @@ class LobbyServiceTest {
 
         assertThatThrownBy(() -> lobbyService.createLobby(user, request)).isSameAs(disabled);
 
-        verifyNoInteractions(lobbyManager, chatService, eventPublisher, taskScheduler);
+        verifyNoInteractions(chatService, eventPublisher, taskScheduler);
+        verify(lobbyManager, never()).createLobby(any(GameLobbyDTO.class), any());
     }
 
     @Test
@@ -282,9 +284,10 @@ class LobbyServiceTest {
         verifyNoInteractions(gameService);
     }
 
+    /** Membership is read straight off the live lobbies, so that is what the test stubs. */
     private void cacheLobby(UserEntity user, LobbyEntity lobby) {
-        var lobbyCache = (HashMap<Long, LobbyEntity>) ReflectionTestUtils.getField(lobbyService, "lobbyCache");
-        lobbyCache.put(user.getId(), lobby);
+        when(lobby.containsUser(user)).thenReturn(true);
+        when(lobbyManager.getLobbies()).thenReturn(List.of(lobby));
     }
 
     private LobbyEntity lobby(UserEntity user, UUID lobbyId) {

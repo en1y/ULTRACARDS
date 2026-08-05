@@ -101,6 +101,18 @@ public class GameEventPublisher {
         }
     }
 
+    /**
+     * Pushes the just-ended bout out on its own, ahead of the state that replaces it.
+     * Without it the deciding card is never on any state a client receives, so it hangs
+     * mid-flight and the round ends with no pause at all.
+     */
+    public void publishDurakBoutClosed(DurakGameEntity game) {
+        var closing = game.createClosingGameDTO();
+        if (closing == null) return;
+        messagingTemplate.convertAndSend("/topic/game/" + game.getId(),
+                new GameEventDTO(closing, GameEventTypeDTO.UPDATED));
+    }
+
     /** Reports a rejected Durak action to the acting user only. */
     public void publishDurakError(DurakGameEntity game, Long userId, DurakErrorCode code, String message) {
         messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/game/errors",

@@ -39,6 +39,7 @@
             declarationsRow: document.getElementById('lobby-declarations-row'),
             declarationsControl: document.getElementById('lobby-declarations-control'),
             declarationsToggle: document.getElementById('lobby-declarations-toggle'),
+            durakRow: document.getElementById('lobby-durak-options'),
             randomize: document.getElementById('lobby-randomize'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
@@ -275,7 +276,7 @@
                 }
 
                 try {
-                    await updateLobbyConfiguration(dom.configSelect.value);
+                    await updateLobbyConfiguration(getConfigValue());
                 } catch (error) {
                     renderConfigEditor(state.lobby, true);
                     showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.config'));
@@ -289,7 +290,7 @@
                 }
 
                 try {
-                    await updateLobbyConfiguration(dom.configSelect.value);
+                    await updateLobbyConfiguration(getConfigValue());
                 } catch (error) {
                     renderConfigEditor(state.lobby, true);
                     showToast(t('lobbyPage.toast.updateFailed.title'), t('lobbyPage.toast.updateFailed.config'));
@@ -631,11 +632,15 @@
         }
 
         function renderConfigEditor(lobby, isHost) {
+            const gameTypeKey = String(lobby.gameType || '').toLowerCase();
+            const settings = getGameTypeSettings(gameTypeKey);
+            // The Durak rules are part of the table, not a host-only control panel:
+            // everyone sees them, only the host can change them.
+            renderDurakOptions(lobby, gameTypeKey === 'durak', isHost);
             if (!dom.configEditor || !dom.configSelect) {
                 return;
             }
 
-            const settings = getGameTypeSettings(String(lobby.gameType || '').toLowerCase());
             if (!isHost || !settings || !Object.keys(settings).length) {
                 dom.configEditor.hidden = true;
                 dom.configSelect.innerHTML = '';
@@ -652,21 +657,30 @@
             const playerCount = resolveOrderedLobbyPlayers(lobby).length;
             let hasUnavailableModes = false;
             dom.configSelect.innerHTML = '';
-            for (const [key, value] of Object.entries(settings)) {
-                const option = document.createElement('option');
-                const requestedPlayers = Number(JSON.parse(value.req(lobby.name)).gameConfig?.numberOfPlayers);
-                option.value = key;
-                option.textContent = value.ui_text;
-                option.selected = key === selectedKey;
-                option.disabled = Number.isFinite(requestedPlayers) && requestedPlayers < playerCount;
-                hasUnavailableModes ||= option.disabled;
-                dom.configSelect.appendChild(option);
+            const isKeyUnavailable = (key) => {
+                const requestedPlayers = Number(JSON.parse(settings[key].req(lobby.name)).gameConfig?.numberOfPlayers);
+                return Number.isFinite(requestedPlayers) && requestedPlayers < playerCount;
+            };
+            if (gameTypeKey === 'durak') {
+                const field = buildDurakPlayerCountChoice('lobby-config-select-control', settings, selectedKey, isKeyUnavailable);
+                hasUnavailableModes = Object.keys(settings).some(isKeyUnavailable);
+                dom.configSelect.appendChild(field);
+            } else {
+                const options = Object.entries(settings).map(([key, value]) => [key, value.ui_text]);
+                const group = buildChoiceGroup('lobby-config-select-control', options, selectedKey);
+                group.querySelectorAll('.durak-choice-button').forEach((button) => {
+                    const disabled = isKeyUnavailable(button.dataset.value);
+                    button.disabled = disabled;
+                    button.classList.toggle('is-unavailable', disabled);
+                    hasUnavailableModes ||= disabled;
+                });
+                dom.configSelect.appendChild(group);
             }
             if (dom.configWarning) {
                 dom.configWarning.hidden = !hasUnavailableModes;
             }
             if (dom.declarationsControl) {
-                const isTreseta = String(lobby.gameType || '').toLowerCase() === 'treseta';
+                const isTreseta = gameTypeKey === 'treseta';
                 if (dom.declarationsRow) {
                     dom.declarationsRow.hidden = !isTreseta;
                 }
@@ -676,6 +690,41 @@
                 }
             }
             dom.configEditor.hidden = false;
+        }
+
+        // The Durak rule toggles are rebuilt from the lobby whenever it changes, so a
+        // co-host's update is reflected instead of overwritten by stale local state.
+        function renderDurakOptions(lobby, isDurak, isHost) {
+            if (!dom.durakRow) {
+                return;
+            }
+            dom.durakRow.hidden = !isDurak;
+            if (!isDurak) {
+                dom.durakRow.replaceChildren();
+                return;
+            }
+            const signature = `${durakModeKey(lobby.gameConfig)}|${isHost ? 'host' : 'guest'}`;
+            if (dom.durakRow.dataset.signature === signature && dom.durakRow.childElementCount) {
+                return;
+            }
+            dom.durakRow.dataset.signature = signature;
+            dom.durakRow.replaceChildren(...buildDurakSettingsNodes('lobby-', lobby.gameConfig, !isHost));
+            if (isHost && !dom.durakRow.dataset.bound) {
+                // One listener on the container: the choice groups emit a bubbling
+                // `change`, exactly like the switches inside them. Bound once, because
+                // the row is rebuilt on every lobby update.
+                dom.durakRow.dataset.bound = '1';
+                dom.durakRow.addEventListener('change', () => {
+                    syncDurakSettingsAvailability('lobby-', Number(getConfigValue().slice(1)) || 2);
+                    updateLobbyConfiguration(resolveGameSettingKey(state.lobby) || getConfigValue())
+                        .catch((error) => console.error(error));
+                });
+            }
+            syncDurakSettingsAvailability('lobby-', Number(lobby.gameConfig?.numberOfPlayers) || 2);
+        }
+
+        function getConfigValue() {
+            return dom.configSelect?.querySelector('.durak-choice')?.value ?? '';
         }
 
         function resolveGameSettingKey(lobby) {
@@ -706,7 +755,7 @@
 
             const configExtras = gameTypeKey === 'treseta'
                 ? {declarationsEnabled: dom.declarationsToggle?.checked === true}
-                : null;
+                : gameTypeKey === 'durak' ? readDurakSettings('lobby-') : null;
             const updatedLobby = JSON.parse(buildLobbyCreatePayload(gameTypeKey, settingKey, state.lobby.name, true, configExtras));
             updatedLobby.id = state.lobby.id;
             updatedLobby.name = state.lobby.name;
@@ -2068,6 +2117,11 @@
         }
 
         async function disconnectForReconnectTimeout() {
+            // Once the game is running this page is just a stale tab; leaving on its
+            // behalf would drop the player out of a game they are still playing.
+            if (state.lobby?.isStarted || state.redirectingToGame) {
+                return;
+            }
             state.disconnectingForReconnectTimeout = true;
             updateStatus(t('lobbyPage.connGone'));
 

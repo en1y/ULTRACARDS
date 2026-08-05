@@ -41,11 +41,12 @@
             <p th:text="#{guides.hub.poker.copy}">The classic betting game. Guide on the way.</p>
         </div>
 
-        <div class="card guide-hub-tile is-soon">
-            <span class="guide-hub-badge is-soon" th:text="#{guides.hub.comingSoon}">Coming soon</span>
+        <a class="card guide-hub-tile" th:href="@{/guides/durak}">
+            <span class="guide-hub-badge" th:text="#{guides.hub.interactive}">Interactive</span>
             <h2 th:text="#{game.durak}">Durak</h2>
-            <p th:text="#{guides.hub.durak.copy}">The Russian attack-and-defend game. Guide on the way.</p>
-        </div>
+            <p th:text="#{guides.hub.durak.copy}">Attack, defend, pass, and be the first player to empty your hand.</p>
+            <span class="guide-hub-cta" th:text="#{guides.hub.play}">Open guide →</span>
+        </a>
     </section>
 </main>
 

@@ -15,7 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "app.database.startup-check.enabled=false",
-        "app.mail.startup-check.enabled=false"
+        "app.mail.startup-check.enabled=false",
+        "app.version=test-version"
 })
 class GuidePageRenderingTest {
     @Autowired
@@ -60,6 +61,22 @@ class GuidePageRenderingTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"guide-footer-actions\"")));
 
         mockMvc.perform(get("/guides/poker")).andExpect(status().isOk());
-        mockMvc.perform(get("/guides/durak")).andExpect(status().isOk());
+        mockMvc.perform(get("/guides/durak"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"guide-rules\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/ui/guides.css?v=test-version")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/ui/guides/guide-durak.js?v=test-version")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/lobbies\"")));
+
+        mockMvc.perform(get("/leaderboards"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/ui/leaderboards.css?v=test-version")));
+
+        mockMvc.perform(get("/images/card-suits/italian/DENARI.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"));
+        mockMvc.perform(get("/images/card-suits/poker/HEARTS.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"));
     }
 }

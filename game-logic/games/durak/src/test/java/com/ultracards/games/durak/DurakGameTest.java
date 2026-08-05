@@ -235,6 +235,136 @@ class DurakGameTest {
         assertEquals(2, game.getPlayingField().getAttackSlots().size());
     }
 
+    /** Two rank-8 cards in P2's hand, so it can toss twice into the same open bout. */
+    private static DurakGame throwInGame() {
+        return game(new DurakGameConfig(3, 36, false, DurakThrowInPolicy.EVERYONE, false), List.of(
+                "S6",
+                "S7 H6 H7 H8 H9 H10",
+                "D6 D7 D9 D10 C10 H11",
+                "C6 C7 C8 S8 C9 C11"));
+    }
+
+    @Test
+    void anAttackerMayThrowSeveralCardsInWhileTheDefenderIsStillDeciding() {
+        var game = throwInGame();
+        act(game, DurakAction.attack(card("H8")));               // P0 opens, P1 must answer
+        var field = game.getPlayingField();
+        var thrower = player(game, 2);
+
+        // ATTACK is the client's only attacking verb, and it needs no turn.
+        game.apply(thrower, DurakAction.attack(card("C8")));
+        game.apply(thrower, DurakAction.attack(card("S8")));
+
+        assertEquals(3, field.getAttackSlots().size());
+        assertEquals(DurakPhase.WAITING_FOR_DEFENSE, field.getPhase());
+        assertEquals(player(game, 1), field.getActionPlayer());
+        assertEquals(4, thrower.handSize());
+    }
+
+    @Test
+    void theDefenderMayNotThrowIntoItsOwnBout() {
+        var game = throwInGame();
+        act(game, DurakAction.attack(card("H8")));
+        var defender = player(game, 1);
+        var error = assertThrows(DurakRuleException.class,
+                () -> game.apply(defender, DurakAction.attack(card("D9"))));
+        assertEquals(DurakErrorCode.DURAK_INVALID_ACTION_FOR_PHASE, error.getCode());
+    }
+
+    @Test
+    void aThrowInStillNeedsARankThatIsOnTheTable() {
+        var game = throwInGame();
+        act(game, DurakAction.attack(card("H8")));
+        var thrower = player(game, 2);
+        var error = assertThrows(DurakRuleException.class,
+                () -> game.apply(thrower, DurakAction.attack(card("C11"))));
+        assertEquals(DurakErrorCode.DURAK_THROW_RANK_NOT_ON_TABLE, error.getCode());
+    }
+
+    @Test
+    void everyEligibleThrowerMustDeclareDoneBeforeTheBoutResolves() {
+        var game = threePlayerGame(DurakThrowInPolicy.EVERYONE, false);
+        act(game, DurakAction.attack(card("H8")));                       // P0 opens
+        act(game, DurakAction.defend(card("H11"), slotOf(game, "H8")));  // P1 covers
+        var field = game.getPlayingField();
+        assertEquals(List.of(player(game, 0), player(game, 2)), field.getEligibleThrowers());
+
+        var first = field.getActionPlayer();
+        assertNull(act(game, DurakAction.done()).resolvedBout());        // one DONE is not enough
+        assertEquals(1, game.getPlayingField().getBoutNumber());
+        var second = game.getPlayingField().getActionPlayer();
+        assertNotEquals(first, second);
+
+        assertEquals(DurakBoutOutcome.DEFENDED, act(game, DurakAction.done()).resolvedBout());
+        assertEquals(2, game.getPlayingField().getBoutNumber());
+    }
+
+    @Test
+    void anyEligibleThrowerMayCloseTheirOwnPartOfTheSharedWindow() {
+        var game = threePlayerGame(DurakThrowInPolicy.EVERYONE, false);
+        act(game, DurakAction.attack(card("H8")));
+        act(game, DurakAction.defend(card("H11"), slotOf(game, "H8")));
+        var field = game.getPlayingField();
+        var onTurn = field.getActionPlayer();
+        var offTurn = field.getEligibleThrowers().stream().filter(p -> p != onTurn).findFirst().orElseThrow();
+
+        // Out of turn, and still accepted: the window belongs to every attacker at once.
+        game.apply(offTurn, DurakAction.done());
+        assertTrue(game.getPlayingField().getDoneThrowers().contains(offTurn));
+        assertEquals(1, game.getPlayingField().getBoutNumber());
+
+        game.apply(onTurn, DurakAction.done());
+        assertEquals(2, game.getPlayingField().getBoutNumber());
+    }
+
+    @Test
+    void aThrowInReopensTheWindowForAnAttackerWhoAlreadyPassed() {
+        var game = threePlayerGame(DurakThrowInPolicy.EVERYONE, false);
+        act(game, DurakAction.attack(card("H8")));                       // P0 opens
+        act(game, DurakAction.defend(card("H11"), slotOf(game, "H8")));  // P1 covers
+        var field = game.getPlayingField();
+        var quitter = field.getEligibleThrowers().getFirst();
+        var thrower = player(game, 2);
+
+        game.apply(quitter, DurakAction.done());
+        assertTrue(game.getPlayingField().getDoneThrowers().contains(quitter));
+
+        // Somebody else adds a card: the bout is open again, so nobody is "done".
+        game.apply(thrower, DurakAction.throwIn(card("C8")));
+        assertTrue(game.getPlayingField().getDoneThrowers().isEmpty());
+        assertEquals(DurakPhase.WAITING_FOR_DEFENSE, game.getPlayingField().getPhase());
+    }
+
+    @Test
+    void aTimeoutClosesTheWholeThrowWindowInsteadOfOneSeat() {
+        var game = threePlayerGame(DurakThrowInPolicy.EVERYONE, false);
+        act(game, DurakAction.attack(card("H8")));
+        act(game, DurakAction.take());                                   // P1 takes, window opens
+        assertEquals(DurakPhase.THROW_AFTER_TAKE, game.getPlayingField().getPhase());
+        assertEquals(2, game.getPlayingField().getEligibleThrowers().size());
+
+        var result = game.applyTimeout();
+        assertEquals(DurakBoutOutcome.TAKEN, result.resolvedBout());
+        assertEquals(2, game.getPlayingField().getBoutNumber());
+    }
+
+    @Test
+    void theAttackCanNoLongerBePassedOnOnceACardHasBeenBeaten() {
+        var game = threePlayerGame(DurakThrowInPolicy.EVERYONE, true);
+        act(game, DurakAction.attack(card("H8")));                       // P0 opens with an 8
+        var defender = player(game, 1);
+        assertTrue(game.canPass(defender, card("D8")));                  // still all uncovered
+
+        act(game, DurakAction.defend(card("H11"), slotOf(game, "H8")));  // P1 beats it
+        game.apply(player(game, 2), DurakAction.throwIn(card("C8")));    // P2 throws another 8
+        assertEquals(DurakPhase.WAITING_FOR_DEFENSE, game.getPlayingField().getPhase());
+
+        assertFalse(game.canPass(defender, card("D8")));
+        var error = assertThrows(DurakRuleException.class,
+                () -> game.apply(defender, DurakAction.pass(card("D8"))));
+        assertEquals(DurakErrorCode.DURAK_PASS_ALREADY_DEFENDED, error.getCode());
+    }
+
     @Test
     void throwInRotationContinuesAfterTheLastThrower() {
         var game = game(new DurakGameConfig(

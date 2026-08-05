@@ -39,3 +39,5 @@ build/
 ### Graphify ###
 graphify-out/
 .codex/
+/design-qa.md
+/.claude/launch.json

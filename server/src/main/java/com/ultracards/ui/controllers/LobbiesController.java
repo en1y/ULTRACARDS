@@ -3,6 +3,7 @@ package com.ultracards.ui.controllers;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
 import com.ultracards.server.service.chat.ChatService;
+import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.lobby.LobbyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,7 @@ public class LobbiesController {
 
     private final ChatService chatService;
     private final LobbyService lobbyService;
+    private final GameService gameService;
 
     @GetMapping
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -36,7 +38,9 @@ public class LobbiesController {
             return "ui/lobbies";
         }
 
-        if (lobby.isStarted()) {
+        // Only bounce to the game if there really is one; otherwise the two pages
+        // redirect at each other forever.
+        if (lobby.isStarted() && gameService.getGameByUser(user).isPresent()) {
             return "redirect:/game";
         }
 

@@ -95,8 +95,15 @@
       return `<span class="history-score ${winner ? 'is-winner' : ''}"${interactive}>${playerName(player)} <strong>${displayPoints(game, points)}</strong></span>`;
     }).join('');
 
+  // Durak scores every player zero (there is no score), so the card shows who ended
+  // up as the durak instead of a row of zeroes.
+  const isDurakGame = (game) => String(game?.gameType || '').toLowerCase() === 'durak';
+  const durakPlayer = (game) => (game.playersOrder || [])
+    .find((player) => !(game.winners || []).some((winner) => playerId(winner) === playerId(player))) || null;
+
   const renderGame = (game) => {
     const won = currentUserWon(game);
+    if (isDurakGame(game)) return renderDurakGame(game, won);
     const winnerLabel = Array.isArray(game.winners) && game.winners.length === 1 ? t('history.winner') : t('history.winners');
     return `
       <article class="card history-card" data-game-id="${escapeHtml(game.id)}">
@@ -117,6 +124,36 @@
         </div>
         <div class="history-card-footer">
           <p>${winnerLabel}: ${playerList(game.winners, game) || t('history.noWinner')}</p>
+          <a class="btn history-details-button" href="/history/${encodeURIComponent(game.id)}" data-history-details="${escapeHtml(game.id)}">
+            <img class="uc-icon" data-icon="history" src="/pics/light/history.svg" alt="" aria-hidden="true">
+            <span>${t('history.replay')}</span>
+          </a>
+        </div>
+      </article>
+    `;
+  };
+
+  const renderDurakGame = (game, won) => {
+    const loser = durakPlayer(game);
+    return `
+      <article class="card history-card" data-game-id="${escapeHtml(game.id)}">
+        <div class="history-card-head">
+          <div class="history-card-title">
+            <span class="chip">${escapeHtml(getGameTypeDisplayName(game.gameType) || t('history.unknown'))}</span>
+            <h3>${escapeHtml(game.name || getGameTypeDisplayName(game.gameType) || t('history.unknown'))}</h3>
+            <div class="history-meta">
+              <span>${formatDate(game.endedAt || game.createdAt)}</span>
+              <span>${escapeHtml(settingsText(game, game.gameConfig))}</span>
+            </div>
+          </div>
+          <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
+        </div>
+        <div class="history-card-row">
+          <strong>${t('lobby.players.chip')}</strong>
+          <div class="history-score-list">${playerList(game.playersOrder, game)}</div>
+        </div>
+        <div class="history-card-footer">
+          <p>${t('durak.result.short')}: ${loser ? playerList([loser]) : t('durak.result.draw')}</p>
           <a class="btn history-details-button" href="/history/${encodeURIComponent(game.id)}" data-history-details="${escapeHtml(game.id)}">
             <img class="uc-icon" data-icon="history" src="/pics/light/history.svg" alt="" aria-hidden="true">
             <span>${t('history.replay')}</span>

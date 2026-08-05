@@ -1,3 +1,12 @@
 .briskula-game-shell {
     --game-card-family: italian;
 }
+
+.briskula-game-shell .table-surface .deck-stack {
+    top: 50%;
+}
+
+.briskula-game-shell .table-surface .deck-cluster {
+    height: auto;
+    justify-content: center;
+}

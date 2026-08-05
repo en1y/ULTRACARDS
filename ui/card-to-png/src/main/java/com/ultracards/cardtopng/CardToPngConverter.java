@@ -45,4 +45,19 @@ public class CardToPngConverter {
                 CardToPngConverter.class.getResourceAsStream(
                         "/images/poker-cards/back/purple.png")));
     }
+
+    public static BufferedImage getItalianSuit(ItalianCardSuit suit) throws IOException {
+        return ImageIO.read(Objects.requireNonNull(
+                CardToPngConverter.class.getResourceAsStream(
+                        "/images/italian-cards/suit/" + suit.name() + ".png")));
+    }
+
+    public static BufferedImage getPokerSuit(PokerCardSuit suit) throws IOException {
+        if (suit.isJokerSuit()) {
+            throw new IllegalArgumentException("Jokers do not have a trump suit image");
+        }
+        return ImageIO.read(Objects.requireNonNull(
+                CardToPngConverter.class.getResourceAsStream(
+                        "/images/poker-cards/suit/" + suit.name() + ".png")));
+    }
 }

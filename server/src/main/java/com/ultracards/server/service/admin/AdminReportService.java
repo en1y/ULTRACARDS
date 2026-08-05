@@ -1,6 +1,7 @@
 package com.ultracards.server.service.admin;
 
 import com.ultracards.gateway.dto.admin.*;
+import com.ultracards.games.durak.DurakGameConfig;
 import com.ultracards.server.entity.auth.UserSession;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.enums.UserStatus;
@@ -9,9 +10,11 @@ import com.ultracards.server.repositories.admin.AdminAuditEventRepository;
 import com.ultracards.server.repositories.auth.SessionRepository;
 import com.ultracards.server.repositories.auth.TokenRepository;
 import com.ultracards.server.repositories.games.BriskulaGameRepository;
+import com.ultracards.server.repositories.games.DurakGameRepository;
 import com.ultracards.server.repositories.games.RecordedGameRepository;
 import com.ultracards.server.repositories.games.TresetaGameRepository;
 import com.ultracards.server.repositories.games.UserBriskulaStatsRepository;
+import com.ultracards.server.repositories.games.UserDurakStatsRepository;
 import com.ultracards.server.repositories.games.UserGamesStatsRepository;
 import com.ultracards.server.repositories.games.UserTresetaStatsRepository;
 import com.ultracards.server.repositories.notifications.NotificationRepository;
@@ -41,9 +44,11 @@ public class AdminReportService {
     private final AdminAuditEventRepository adminAuditEventRepository;
     private final RecordedGameRepository recordedGameRepository;
     private final BriskulaGameRepository briskulaGameRepository;
+    private final DurakGameRepository durakGameRepository;
     private final TresetaGameRepository tresetaGameRepository;
     private final UserGamesStatsRepository userGamesStatsRepository;
     private final UserBriskulaStatsRepository userBriskulaStatsRepository;
+    private final UserDurakStatsRepository userDurakStatsRepository;
     private final UserTresetaStatsRepository userTresetaStatsRepository;
     private final LobbyManager lobbyManager;
     private final GameManager gameManager;
@@ -65,9 +70,11 @@ public class AdminReportService {
             roles.put(role.name(), users.stream().filter(user -> user.hasRole(role)).count());
         var completed = new LinkedHashMap<String, Long>();
         completed.put("BRISKULA", briskulaGameRepository.countByEndedAtIsNotNull());
+        completed.put("DURAK", durakGameRepository.countByEndedAtIsNotNull());
         completed.put("TRESETA", tresetaGameRepository.countByEndedAtIsNotNull());
         var incomplete = new LinkedHashMap<String, Long>();
         incomplete.put("BRISKULA", briskulaGameRepository.countByEndedAtIsNull());
+        incomplete.put("DURAK", durakGameRepository.countByEndedAtIsNull());
         incomplete.put("TRESETA", tresetaGameRepository.countByEndedAtIsNull());
         return new AdminOverviewDTO(users.size(), status, roles, sessionRepository.countValid(now),
                 sessionRepository.countOnlineUsers(now.minusSeconds(onlineTimeoutSeconds)),
@@ -114,6 +121,7 @@ public class AdminReportService {
         records.put("Admin audit events", adminAuditEventRepository.count());
         records.put("Game-stat profiles", userGamesStatsRepository.count());
         records.put("Briskula stat rows", userBriskulaStatsRepository.count());
+        records.put("Durak stat rows", userDurakStatsRepository.count());
         records.put("Treseta stat rows", userTresetaStatsRepository.count());
         return new AdminDatabaseOverviewDTO(true, flywayVersion(), records, Instant.now());
     }
@@ -138,9 +146,8 @@ public class AdminReportService {
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminRecordedGameDTO> games(int page, int size, String gameTypeValue, Boolean completed,
                                                     String modeValue, String nameValue, String sortValue, String directionValue) {
-        var gameType = optionalChoice(gameTypeValue, "game type", "BRISKULA", "TRESETA");
-        var mode = optionalChoice(modeValue, "game mode", "TWO_PLAYERS", "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH",
-                "THREE_PLAYERS", "FOUR_PLAYERS_NO_TEAMS", "FOUR_PLAYERS_WITH_TEAMS");
+        var gameType = optionalChoice(gameTypeValue, "game type", "BRISKULA", "DURAK", "TRESETA");
+        var mode = gameMode(modeValue);
         var result = recordedGameRepository.findAdminReport(gameType, completed, mode, containsPattern(nameValue),
                 page(page, size, sort(sortValue, "createdAt", "createdAt", "endedAt", "name", "id"), directionValue));
         return new AdminPageDTO<>(result.getContent().stream().map(adminGameRecordService::toDto).toList(),
@@ -225,6 +232,19 @@ public class AdminReportService {
         if (value == null || value.isBlank()) return null;
         for (var candidate : allowed) if (candidate.equalsIgnoreCase(value)) return candidate;
         throw badRequest("Unknown " + label + ": " + value);
+    }
+
+    private String gameMode(String value) {
+        if (value == null || value.isBlank()) return null;
+        var mode = value.trim().toUpperCase();
+        for (var candidate : new String[]{"TWO_PLAYERS", "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH",
+                "THREE_PLAYERS", "FOUR_PLAYERS_NO_TEAMS", "FOUR_PLAYERS_WITH_TEAMS"})
+            if (candidate.equals(mode)) return candidate;
+        try {
+            return DurakGameConfig.fromModeKey(mode).modeKey();
+        } catch (RuntimeException ex) {
+            throw badRequest("Unknown game mode: " + value);
+        }
     }
 
     private <E extends Enum<E>> E enumValue(Class<E> type, String value, String label) {

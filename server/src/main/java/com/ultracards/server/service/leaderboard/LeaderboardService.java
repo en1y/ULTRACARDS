@@ -27,9 +27,16 @@ public class LeaderboardService {
 
     private final NamedParameterJdbcTemplate jdbc;
 
+    /** One exact mode, or none at all. */
     @Transactional(readOnly = true)
     public LeaderboardPageDTO get(String metricValue, String gameTypeValue, String modeValue,
                                   int page, int size, UserEntity currentUser) {
+        return get(metricValue, gameTypeValue, modeValue, List.of(), page, size, currentUser);
+    }
+
+    @Transactional(readOnly = true)
+    public LeaderboardPageDTO get(String metricValue, String gameTypeValue, String modeValue,
+                                  List<String> modeValues, int page, int size, UserEntity currentUser) {
         if (page < 0) throw badRequest("page must be at least 0");
         if (size < 1 || size > MAX_PAGE_SIZE)
             throw badRequest("size must be between 1 and " + MAX_PAGE_SIZE);
@@ -37,6 +44,7 @@ public class LeaderboardService {
         var metric = parseMetric(metricValue);
         var gameType = parseGameType(gameTypeValue);
         var mode = parseMode(gameType, modeValue);
+        var modes = parseModes(gameType, modeValues);
         var availableModes = availableModes(gameType);
         var minimumGames = metric == LeaderboardMetricDTO.WIN_RATE ? WIN_RATE_MINIMUM_GAMES : 1;
         var currentUserId = currentUser == null ? null : currentUser.getId();
@@ -46,7 +54,7 @@ public class LeaderboardService {
                 .addValue("offset", (long) page * size)
                 .addValue("size", size);
 
-        var ranked = rankedSql(metric, gameType, mode, params);
+        var ranked = rankedSql(metric, gameType, mode, modes, params);
         var metadata = jdbc.queryForMap("""
                 %s
                 SELECT COUNT(*) AS total_elements,
@@ -78,9 +86,9 @@ public class LeaderboardService {
                 minimumGames, metric, gameType, mode, availableModes);
     }
 
-    private String rankedSql(LeaderboardMetricDTO metric, GameTypeDTO gameType, String mode,
+    private String rankedSql(LeaderboardMetricDTO metric, GameTypeDTO gameType, String mode, List<String> modes,
                              MapSqlParameterSource params) {
-        var source = totalsSql(gameType, mode, params);
+        var source = totalsSql(gameType, mode, modes, params);
         return """
                 WITH totals AS (
                     %s
@@ -98,7 +106,20 @@ public class LeaderboardService {
                 """.formatted(source, orderBy(metric));
     }
 
-    private String totalsSql(GameTypeDTO gameType, String mode, MapSqlParameterSource params) {
+    private String totalsSql(GameTypeDTO gameType, String mode, List<String> modes, MapSqlParameterSource params) {
+        // A set of modes is one board summed across them, so a player who plays the same
+        // rules with two different packs is ranked on the total, not on either half.
+        if (modes != null && !modes.isEmpty()) {
+            params.addValue("modes", modes);
+            if (gameType == GameTypeDTO.Briskula) return modeSetTotals(
+                    "user_briskula_stats", "user_briskula_stats_entries",
+                    "user_briskula_stats_id", "briskula_game_config");
+            if (gameType == GameTypeDTO.Durak) return modeSetTotals(
+                    "user_durak_stats", "user_durak_stats_entries",
+                    "user_durak_stats_id", "mode_key");
+            return modeSetTotals("user_treseta_stats", "user_treseta_stats_entries",
+                    "user_treseta_stats_id", "treseta_game_config");
+        }
         if (mode != null) {
             params.addValue("mode", mode);
             if (gameType == GameTypeDTO.Briskula) return modeTotals(
@@ -144,6 +165,19 @@ public class LeaderboardService {
                 """.formatted(statsTable, entriesTable, foreignKey, modeColumn);
     }
 
+    private String modeSetTotals(String statsTable, String entriesTable, String foreignKey, String modeColumn) {
+        return """
+                SELECT u.id AS user_id, u.username,
+                       SUM(e.played)::BIGINT AS games_played,
+                       SUM(e.wins)::BIGINT AS wins
+                FROM %s s
+                JOIN users u ON u.id = s.user_id
+                JOIN %s e ON e.%s = s.id
+                WHERE u.enabled = TRUE AND u.status = 'ACTIVE' AND e.%s IN (:modes)
+                GROUP BY u.id, u.username
+                """.formatted(statsTable, entriesTable, foreignKey, modeColumn);
+    }
+
     private String orderBy(LeaderboardMetricDTO metric) {
         return switch (metric) {
             case GAMES_PLAYED -> "games_played DESC, wins DESC, LOWER(username), user_id";
@@ -180,6 +214,18 @@ public class LeaderboardService {
             throw badRequest("Unknown " + gameType.name() + " mode: " + value);
         }
         throw badRequest("Modes are not supported for " + gameType.name());
+    }
+
+    /** Every mode in the set has to be a real one; an empty or absent set means "no filter". */
+    private List<String> parseModes(GameTypeDTO gameType, List<String> values) {
+        if (values == null || values.isEmpty()) return List.of();
+        var parsed = new java.util.LinkedHashSet<String>();
+        for (var value : values) {
+            for (var part : value.split(",")) {
+                if (!part.isBlank()) parsed.add(parseMode(gameType, part));
+            }
+        }
+        return List.copyOf(parsed);
     }
 
     private List<String> availableModes(GameTypeDTO gameType) {

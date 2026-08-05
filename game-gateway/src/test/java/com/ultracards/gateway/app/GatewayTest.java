@@ -8,6 +8,10 @@ import com.ultracards.gateway.dto.games.games.GameEventDTO;
 import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.gateway.dto.games.games.GameResultDTO;
 import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakActionRequestDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakActionTypeDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakLegalActionsDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import com.ultracards.gateway.service.ClientTokenHolder;
@@ -131,6 +135,31 @@ class GatewayTest {
     }
 
     @Test
+    void durakSessionExposesTypedStateLegalActionsAndCommands() {
+        var uiTasks = new ArrayDeque<Runnable>();
+        var async = new GatewayAsync(Runnable::run, uiTasks::add);
+        var socket = new FakeGameSocket();
+        var session = GatewayGameSession.durak(UUID.randomUUID(), socket, async, socket::close);
+        var game = new DurakGameEntityDTO();
+        var event = new GameEventDTO<>(game, GameEventDTO.GameEventTypeDTO.UPDATED);
+        var legal = new DurakLegalActionsDTO(7L, List.of(DurakActionTypeDTO.TAKE),
+                List.of(), List.of(), List.of());
+
+        socket.durakGameHandler.accept(event);
+        socket.durakLegalActionsHandler.accept(legal);
+        while (!uiTasks.isEmpty()) uiTasks.remove().run();
+
+        assertSame(game, session.game().get());
+        assertSame(legal, session.durakLegalActions().get());
+
+        var action = new DurakActionRequestDTO(DurakActionTypeDTO.TAKE, null, null, 7L);
+        session.durakAction(action);
+        assertSame(action, socket.durakAction);
+
+        session.close();
+    }
+
+    @Test
     void sessionSeedFillsInitialStateButNeverOverwritesSocketUpdates() {
         var uiTasks = new ArrayDeque<Runnable>();
         var async = new GatewayAsync(Runnable::run, uiTasks::add);
@@ -208,9 +237,12 @@ class GatewayTest {
 
     private static final class FakeGameSocket extends GameWsService {
         private Consumer<GameEventDTO<TresetaGameEntityDTO>> gameHandler;
+        private Consumer<GameEventDTO<DurakGameEntityDTO>> durakGameHandler;
+        private Consumer<DurakLegalActionsDTO> durakLegalActionsHandler;
         private Consumer<List<GameCardDTO>> opponentDrawnCardsHandler;
         private Runnable connected;
         private GameCardDTO playedCard;
+        private DurakActionRequestDTO durakAction;
         private boolean closed;
         private int connectCalls;
         private int closeCalls;
@@ -237,6 +269,19 @@ class GatewayTest {
         }
 
         @Override
+        public StompSession.Subscription subscribeToDurakGame(
+                UUID gameId, Consumer<GameEventDTO<DurakGameEntityDTO>> handler) {
+            durakGameHandler = handler;
+            return null;
+        }
+
+        @Override
+        public StompSession.Subscription subscribeToDurakLegalActions(Consumer<DurakLegalActionsDTO> handler) {
+            durakLegalActionsHandler = handler;
+            return null;
+        }
+
+        @Override
         public StompSession.Subscription subscribeToCards(Consumer<List<GameCardDTO>> handler) {
             return null;
         }
@@ -255,6 +300,11 @@ class GatewayTest {
         @Override
         public void playCard(GameCardDTO card) {
             playedCard = card;
+        }
+
+        @Override
+        public void durakAction(DurakActionRequestDTO request) {
+            durakAction = request;
         }
 
         @Override

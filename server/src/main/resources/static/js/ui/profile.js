@@ -10,6 +10,7 @@ let cachedBlockedFriends = [];
 let detailedStatsFilters = {
     gameType: '',
     gameConfig: '',
+    durak: {},
     sort: 'recent',
     user: ''
 };
@@ -838,6 +839,29 @@ function renderGameStatsCard(gameType, stats, extraClass = '', label = gameDispl
     `;
 }
 
+// Durak's two game-specific totals — how often the user was the durak, and how many
+// games ended with nobody losing. Neither fits the generic played/won/lost card.
+function renderDurakSummaryCard(gameType, stats) {
+    if (String(gameType || '').toLowerCase() !== 'durak') {
+        return '';
+    }
+    return `
+        <article class="profile-game-card">
+            <span>${t('durak.stats.title')}</span>
+            <div class="profile-game-card-counts">
+                <div class="profile-stat-line">
+                    <strong>${Number(stats?.timesDurak) || 0}</strong>
+                    <small>${t('durak.stats.timesDurak')}</small>
+                </div>
+                <div class="profile-stat-line">
+                    <strong>${Number(stats?.draws) || 0}</strong>
+                    <small>${t('durak.stats.draws')}</small>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
 function matchupLabel(matchup) {
     if (matchup.relatedUsername) {
         return matchup.relatedUsername;
@@ -952,6 +976,7 @@ function selectGameMode(modes) {
 }
 
 function renderMatchupControls(gameEntries, modes) {
+    const isDurak = String(detailedStatsFilters.gameType).toLowerCase() === 'durak';
     const gameOptions = gameEntries.map(([gameType]) => `
         <option value="${escapeHtml(gameType)}" ${gameType === detailedStatsFilters.gameType ? 'selected' : ''}>
             ${escapeHtml(gameDisplayName(gameType))}
@@ -973,12 +998,12 @@ function renderMatchupControls(gameEntries, modes) {
                     ${gameOptions}
                 </select>
             </label>
-            <label class="profile-filter-field" for="stats-mode-filter">
+            ${isDurak ? '' : `<label class="profile-filter-field" for="stats-mode-filter">
                 <span>${t('profilePage.mode')}</span>
                 <select id="stats-mode-filter" ${modes.length ? '' : 'disabled'}>
                     ${modeOptions}
                 </select>
-            </label>
+            </label>`}
             <label class="profile-filter-field" for="stats-sort">
                 <span>${t('profilePage.sort')}</span>
                 <select id="stats-sort">
@@ -996,6 +1021,12 @@ function renderMatchupControls(gameEntries, modes) {
                 <input id="stats-user-filter" type="search" placeholder="${t('profilePage.userFilter.placeholder')}" value="${escapeHtml(detailedStatsFilters.user)}">
             </label>
         </div>
+        ${isDurak ? `
+            <div class="profile-durak-filter">
+                <span>${t('profilePage.mode')}</span>
+                <div id="stats-durak-filter"></div>
+            </div>
+        ` : ''}
     `;
 }
 
@@ -1004,15 +1035,22 @@ function bindMatchupControls(container) {
     const modeSelect = container.querySelector('#stats-mode-filter');
     const sortSelect = container.querySelector('#stats-sort');
     const userInput = container.querySelector('#stats-user-filter');
+    const durakFilter = container.querySelector('#stats-durak-filter');
 
     gameSelect?.addEventListener('change', () => {
         detailedStatsFilters.gameType = gameSelect.value;
         detailedStatsFilters.gameConfig = '';
+        detailedStatsFilters.durak = {};
         renderDetailedStats(cachedDetailedStats);
     });
 
     modeSelect?.addEventListener('change', () => {
         detailedStatsFilters.gameConfig = modeSelect.value;
+        renderDetailedStats(cachedDetailedStats);
+    });
+
+    durakFilter?.addEventListener('change', () => {
+        detailedStatsFilters.durak = readDurakFilter('profile-');
         renderDetailedStats(cachedDetailedStats);
     });
 
@@ -1033,7 +1071,9 @@ function bindMatchupControls(container) {
 function filterMatchupsByControls(matchups, gameType) {
     const userFilter = detailedStatsFilters.user.trim().toLowerCase();
     return (Array.isArray(matchups) ? matchups : [])
-        .filter((matchup) => !detailedStatsFilters.gameConfig || gameConfigKey(matchup.gameConfig, gameType) === detailedStatsFilters.gameConfig)
+        .filter((matchup) => String(gameType).toLowerCase() === 'durak'
+            ? durakConfigMatchesFilter(matchup.gameConfig, detailedStatsFilters.durak)
+            : !detailedStatsFilters.gameConfig || gameConfigKey(matchup.gameConfig, gameType) === detailedStatsFilters.gameConfig)
         .filter((matchup) => !userFilter || matchupLabel(matchup).toLowerCase().includes(userFilter));
 }
 
@@ -1053,7 +1093,8 @@ function renderDetailedStats(data) {
     const selectedGameStats = gameStats[selectedGameType] || {};
     const detailedStatsByGameType = {
         briskula: cachedDetailedStats?.userBriskulaStats || {},
-        treseta: cachedDetailedStats?.userTresetaStats || {}
+        treseta: cachedDetailedStats?.userTresetaStats || {},
+        durak: cachedDetailedStats?.userDurakStats || {}
     };
     const selectedDetailedStats = detailedStatsByGameType[String(selectedGameType).toLowerCase()] || {};
     const configStats = selectedDetailedStats.configStats || {};
@@ -1061,11 +1102,15 @@ function renderDetailedStats(data) {
     selectGameMode(modes);
 
     const configEntries = Object.entries(configStats)
-        .filter(([gameConfig]) => !detailedStatsFilters.gameConfig || gameConfig === detailedStatsFilters.gameConfig)
+        .filter(([gameConfig]) => String(selectedGameType).toLowerCase() === 'durak'
+            ? durakConfigMatchesFilter(gameConfig, detailedStatsFilters.durak)
+            : !detailedStatsFilters.gameConfig || gameConfig === detailedStatsFilters.gameConfig)
         .sort((a, b) => compareStatsEntries(a, b, 'recent'));
-    const selectedModeName = detailedStatsFilters.gameConfig
-        ? gameConfigDisplayName(detailedStatsFilters.gameConfig, selectedGameType)
-        : t('profilePage.allModes');
+    const selectedModeName = String(selectedGameType).toLowerCase() === 'durak'
+        ? describeDurakFilter(detailedStatsFilters.durak)
+        : detailedStatsFilters.gameConfig
+            ? gameConfigDisplayName(detailedStatsFilters.gameConfig, selectedGameType)
+            : t('profilePage.allModes');
     const winsAgainstUser = filterMatchupsByControls(selectedDetailedStats.winsAgainstUser, selectedGameType);
     const winsWithTeammate = filterMatchupsByControls(selectedDetailedStats.winsWithTeammate, selectedGameType);
     const teammateTable = winsWithTeammate.length
@@ -1087,6 +1132,7 @@ function renderDetailedStats(data) {
                         <p>${t('profilePage.noAccountStats')}</p>
                     </article>
                 `}
+                ${renderDurakSummaryCard(selectedGameType, selectedDetailedStats)}
             </div>
         </article>
         <article class="profile-stats-section">
@@ -1112,6 +1158,10 @@ function renderDetailedStats(data) {
         ${renderMatchupTable(t('profilePage.againstUsers', selectedModeName), winsAgainstUser, t('profilePage.noOpponentStats'))}
         ${teammateTable}
     `;
+
+    if (String(selectedGameType).toLowerCase() === 'durak') {
+        renderDurakFilter(document.getElementById('stats-durak-filter'), 'profile-', detailedStatsFilters.durak);
+    }
 
     bindMatchupControls(container);
 }

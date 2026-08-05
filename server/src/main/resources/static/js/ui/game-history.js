@@ -2,6 +2,7 @@
     const ui = window.UltracardsGameUi;
     const layout = document.querySelector('.game-layout');
     const gameId = window.__HISTORY_GAME_ID__ || layout?.dataset.gameId;
+    const viewerId = layout?.dataset.currentUserId ? String(layout.dataset.currentUserId) : '';
     const dom = {
         title: document.getElementById('replay-title'),
         meta: document.getElementById('replay-meta'),
@@ -81,15 +82,25 @@
         if (Number.isNaN(date.getTime())) return t('history.unknownTime');
         return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {dateStyle: 'medium', timeStyle: 'short', hour12: false}).format(date);
     };
+    const isDurak = () => String(state.game?.gameType || '').toLowerCase() === 'durak';
+    // Durak is the only replayed game on the poker pack.
+    const cardType = () => (isDurak() ? 'POKER' : 'ITALIAN');
+    // Durak has no score at all: the loser is the durak, everyone else wins.
+    const hasPoints = () => !isDurak();
     const settingsText = (config = {}) => {
+        if (isDurak()) {
+            return typeof getGameConfigDisplayName === 'function'
+                ? getGameConfigDisplayName('Durak', config)
+                : t('history.playersCount', config.numberOfPlayers || '?');
+        }
         const players = config.numberOfPlayers || '?';
         const cards = config.cardsInHandNum || '?';
         const mode = config.teamsEnabled ? t('history.teams') : t('history.solo');
         return `${t('history.playersCount', players)} - ${t('history.cardsCount', cards)} - ${mode}`;
     };
-    // Card identity, matching what game.js renderCardImage writes to data-card-key
-    // (it forces ITALIAN). Keep both sides identical so snapshots line up.
-    const ckey = (card) => `ITALIAN:${card?.card || ''}`;
+    // Card identity, matching what game.js renderCardImage writes to data-card-key.
+    // Keep both sides identical so snapshots line up.
+    const ckey = (card) => `${cardType()}:${card?.card || ''}`;
 
     const normalizePlayerMap = (mapValue = {}) => Object.entries(mapValue || {})
         .map(([key, value]) => ({player: parsePlayer(key), value}));
@@ -161,7 +172,15 @@
         });
         return map;
     };
-    const totalCardCount = () => Number(state.game?.gameConfig?.numberOfPlayers) === 3 ? 39 : 40;
+    const totalCardCount = () => {
+        if (isDurak()) {
+            const config = state.game?.gameConfig || {};
+            const deckSize = Number(config.deckSize) || 36;
+            // The 54-card pack is 52 suited cards plus two Jokers; without Jokers only 52 play.
+            return deckSize === 54 && !config.jokersEnabled ? 52 : deckSize;
+        }
+        return Number(state.game?.gameConfig?.numberOfPlayers) === 3 ? 39 : 40;
+    };
     const completedCardsBefore = (roundIndex) => (state.game?.rounds || [])
         .slice(0, Math.max(roundIndex || 0, 0))
         .reduce((total, round) => total + ((round.plays || []).length), 0);
@@ -174,7 +193,24 @@
         });
         return completedCardsBefore(step.roundIndex) + handsCount + step.playCount;
     };
-    const currentDeckLeft = () => Math.max(totalCardCount() - visibleCardsCount(), 0);
+    /**
+     * Durak cards leave play only when a bout is defended; a taken bout returns to the
+     * defender's hand and so is already counted in the next bout's starting hands.
+     */
+    const durakCardsOutOfPlay = (roundIndex) => (state.game?.rounds || [])
+        .slice(0, Math.max(roundIndex || 0, 0))
+        .reduce((total, round) => total + (round.outcome === 'DEFENDED' ? (round.plays || []).length : 0), 0);
+    const durakDeckLeft = () => {
+        const step = getStep();
+        let inHands = 0;
+        handsMap(getRound()?.playerHands || {}).forEach((cards) => {
+            inHands += Array.isArray(cards) ? cards.length : 0;
+        });
+        return Math.max(totalCardCount() - inHands - durakCardsOutOfPlay(step.roundIndex), 0);
+    };
+    const currentDeckLeft = () => (isDurak()
+        ? durakDeckLeft()
+        : Math.max(totalCardCount() - visibleCardsCount(), 0));
     const currentPoints = () => {
         const step = getStep();
         const round = state.game?.rounds?.[step.roundIndex];
@@ -184,22 +220,34 @@
         return initialPoints();
     };
 
-    const players = () => state.game?.playersOrder || [];
+    /**
+     * Seat order starts at the viewer, so the person watching sits at the bottom of
+     * their own replay exactly as they did in the game. Falls back to the recorded
+     * order for anyone who was not at that table.
+     */
+    const players = () => {
+        const order = state.game?.playersOrder || [];
+        if (!viewerId || order.length < 2) return order;
+        const index = order.findIndex((player) => String(player?.id) === viewerId);
+        return index > 0 ? [...order.slice(index), ...order.slice(0, index)] : order;
+    };
     const playerCount = () => players().length || 2;
 
     // ---- rendering, via the shared game.js pipeline ----
     const renderDeck = (deckLeft) => {
-        ui?.renderDeckTower(dom.deckTower, dom.deckStack, deckLeft, {cardType: 'ITALIAN', featuredCard: true, alt: t('game.deck.alt')});
+        ui?.renderDeckTower(dom.deckTower, dom.deckStack, deckLeft, {cardType: cardType(), featuredCard: true, alt: t('game.deck.alt')});
         if (dom.deckLeft) dom.deckLeft.textContent = String(deckLeft);
     };
     const renderTrump = (deckLeft) => {
         const code = state.game?.trumpCard?.card;
-        const show = !!code && deckLeft > 0;
+        const show = !!code;
+        const suitOnly = show && deckLeft <= 0;
         if (!dom.trump) return;
         if (dom.trump.parentElement) dom.trump.parentElement.style.display = show ? '' : 'none';
         dom.trump.style.display = show ? '' : 'none';
         dom.deckStack?.classList.toggle('has-trump', show);
-        if (show) ui?.revealCardFace(dom.trump, {cardType: 'ITALIAN', card: code});
+        if (suitOnly) ui?.revealSuit(dom.trump, {cardType: cardType(), card: code});
+        else if (show) ui?.revealCardFace(dom.trump, {cardType: cardType(), card: code});
     };
 
     // Which flow region each player sits in (no absolute positioning). One per region
@@ -246,7 +294,7 @@
         const r = cardEl.getBoundingClientRect();
         const img = document.createElement('img');
         img.className = 'replay-card-preview';
-        img.src = ui.cardUrl({cardType: 'ITALIAN', card: code});
+        img.src = ui.cardUrl({cardType: cardType(), card: code});
         const up = r.top > window.innerHeight / 2;
         img.style.left = `${r.left + r.width / 2}px`;
         img.style.top = `${up ? r.top - 4 : r.bottom + 4}px`;
@@ -275,7 +323,7 @@
             const key = ckey(card);
             let el = existing.get(key);
             if (!el) {
-                el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: card.card}, className: 'seat-card', alt: t('gameHistory.playerCard.alt', playerName(player))});
+                el = ui.renderCardImage({card: {cardType: cardType(), card: card.card}, className: 'seat-card', alt: t('gameHistory.playerCard.alt', playerName(player))});
                 el.addEventListener('mouseenter', () => { el._prev = showPreview(el, el.dataset.cardCode); });
                 el.addEventListener('mouseleave', () => {
                     if (el._previewPinned) return;
@@ -323,7 +371,7 @@
             const key = ckey(play.card);
             let el = state.trickEls.get(key);
             if (!el) {
-                el = ui.renderCardImage({card: {cardType: 'ITALIAN', card: play.card?.card}, className: 'trick-card', alt: t('gameHistory.playerPlayed.alt', playerName(play.player))});
+                el = ui.renderCardImage({card: {cardType: cardType(), card: play.card?.card}, className: 'trick-card', alt: t('gameHistory.playerPlayed.alt', playerName(play.player))});
                 el.style.transition = 'none';   // land in place, no centre→slot tween
                 state.trickEls.set(key, el);
                 dom.trick.appendChild(el);
@@ -371,6 +419,16 @@
 
     const renderScores = () => {
         if (!dom.scores) return;
+        if (isDurak()) {
+            // The only Durak "score" is who ended up as the durak.
+            const outcome = state.game?.draw
+                ? t('durak.result.draw')
+                : state.game?.loser
+                    ? t('durak.result.loser', playerName(state.game.loser))
+                    : t('history.noWinner');
+            dom.scores.innerHTML = `<div class="history-replay-score"><span>${escapeHtml(outcome)}</span></div>`;
+            return;
+        }
         const scores = currentPoints();
         dom.scores.innerHTML = players().map((player) => {
             const teamNumber = getTeamNumber(player);
@@ -393,8 +451,9 @@
         const round = getRound();
         const plays = round?.plays || [];
         const roundNumber = Number(round?.roundNumber ?? step.roundIndex) + 1;
-        if (dom.stepTitle) dom.stepTitle.textContent = t('gameHistory.roundN', roundNumber);
-        if (dom.stateLabel) dom.stateLabel.textContent = step.playCount === 0 ? t('gameHistory.roundN', roundNumber) : `${step.playCount}/${plays.length}`;
+        const label = isDurak() ? t('durak.boutN', roundNumber) : t('gameHistory.roundN', roundNumber);
+        if (dom.stepTitle) dom.stepTitle.textContent = label;
+        if (dom.stateLabel) dom.stateLabel.textContent = step.playCount === 0 ? label : `${step.playCount}/${plays.length}`;
     };
     const renderControls = () => {
         const max = Math.max(state.steps.length - 1, 0);
@@ -405,6 +464,39 @@
         }
         if (dom.prev) dom.prev.disabled = state.animating || state.stepIndex <= 0;
         if (dom.next) dom.next.disabled = state.animating || state.stepIndex >= max;
+    };
+
+    /**
+     * Watching a Durak replay without knowing who is defending is unreadable, and the
+     * defender changes from bout to bout (and again on every pass). Label them, and
+     * show the wordless decisions — "Taking" once the defender gives up on this bout,
+     * "Done" on the attackers once every card is out — the same way the live table does.
+     */
+    const renderDurakRole = (seat, player, round, step) => {
+        const badge = seat.querySelector('.seat-team-badge');
+        if (!isDurak() || !badge) return;
+        const defending = samePlayer(player, round?.finalDefender);
+        badge.textContent = defending ? t('durak.role.defender') : '';
+        badge.hidden = !defending;
+        seat.dataset.role = defending ? 'defender' : '';
+
+        const plays = round?.plays || [];
+        const allPlayed = step.playCount >= plays.length && plays.length > 0;
+        const attacked = plays.some((play) => samePlayer(player, play.player) && play.actionType !== 'DEFEND');
+        let bubble = seat.querySelector(':scope > .durak-state-bubble');
+        const kind = allPlayed && defending && round?.outcome === 'TAKEN' ? 'take'
+            : allPlayed && !defending && attacked ? 'done' : null;
+        if (!kind) {
+            bubble?.remove();
+            return;
+        }
+        if (!bubble) {
+            bubble = document.createElement('div');
+            bubble.className = 'durak-state-bubble';
+            seat.appendChild(bubble);
+        }
+        bubble.dataset.kind = kind;
+        bubble.textContent = t(kind === 'take' ? 'durak.state.taking' : 'durak.action.done');
     };
 
     const render = () => {
@@ -422,13 +514,26 @@
             const seat = state.seats.get(playerKey(player));
             if (!seat) return;
             seat.classList.toggle('is-turn', !!currentPlay && samePlayer(player, currentPlay.player));
+            renderDurakRole(seat, player, round, step);
             renderSeatHand(seat, player, visibleHands.get(playerKey(player)) || []);
             const pts = seat.querySelector('.seat-points');
-            if (pts) pts.innerHTML = `<span class="seat-points-bubble">${displayPoints(scores.get(playerKey(player)))}</span>`;
+            // Durak has no score, so the seat bubble shows the card count instead.
+            if (pts) {
+                const value = hasPoints()
+                    ? displayPoints(scores.get(playerKey(player)))
+                    : (visibleHands.get(playerKey(player)) || []).length;
+                pts.innerHTML = `<span class="seat-points-bubble">${value}</span>`;
+            }
         });
         const self = players()[0];
-        if (self && dom.selfPoints) dom.selfPoints.textContent = displayPoints(scores.get(playerKey(self)));
-        renderTrick((round?.plays || []).slice(0, step.playCount));
+        if (self && dom.selfPoints) {
+            dom.selfPoints.textContent = hasPoints()
+                ? displayPoints(scores.get(playerKey(self)))
+                : String((visibleHands.get(playerKey(self)) || []).length);
+        }
+        const visiblePlays = (round?.plays || []).slice(0, step.playCount);
+        if (isDurak()) renderDurakTable(visiblePlays);
+        else renderTrick(visiblePlays);
         renderScores();
         renderTeams();
         renderStepText();
@@ -575,11 +680,87 @@
         renderControls();
     };
 
+    /**
+     * Durak history arrives as bouts of attack/defend/throw/pass plays rather than
+     * tricks. Reshaping it into the replay's round/play model once here keeps the whole
+     * stepping, hand and animation pipeline shared instead of forked per game.
+     */
+    const normalizeDurakReplay = (game) => {
+        if (!game || !Array.isArray(game.bouts)) return game;
+        game.gameType = 'durak';
+        game.trumpCard = game.trumpIndicator || null;
+        game.rounds = game.bouts.map((bout, index) => ({
+            roundNumber: Number(bout.boutNumber ?? index + 1) - 1,
+            playerHands: bout.startingHands || {},
+            outcome: bout.outcome,
+            initialAttacker: bout.initialAttacker,
+            finalDefender: bout.finalDefender,
+            plays: (bout.plays || []).map((play) => ({
+                playNumber: play.playNumber,
+                player: play.player,
+                card: play.card,
+                actionType: play.actionType,
+                targetPlayNumber: play.targetPlayNumber
+            })),
+            pointsAfterRound: {}
+        }));
+        return game;
+    };
+
+    /**
+     * Durak's table is attack/defense pairs, not one flat trick: a DEFEND play lies
+     * across the attack it covers, matched through targetPlayNumber.
+     */
+    const renderDurakTable = (plays) => {
+        if (!dom.trick) return;
+        const list = plays || [];
+        const byPlayNumber = new Map(list.map((play) => [play.playNumber, play]));
+        const covers = new Map();
+        list.forEach((play) => {
+            if (play.actionType === 'DEFEND' && byPlayNumber.has(play.targetPlayNumber)) {
+                covers.set(play.targetPlayNumber, play);
+            }
+        });
+        const attacks = list.filter((play) => play.actionType !== 'DEFEND');
+        const signature = attacks
+            .map((play) => `${play.card?.card}>${covers.get(play.playNumber)?.card?.card || ''}`)
+            .join('|');
+        if (dom.trick.dataset.durakSignature === signature) return;
+        dom.trick.dataset.durakSignature = signature;
+
+        state.trickEls.clear();
+        dom.trick.replaceChildren();
+        dom.trick.classList.add('durak-replay-table');
+        attacks.forEach((play) => {
+            const slot = document.createElement('div');
+            slot.className = 'durak-slot';
+            const attack = ui.renderCardImage({
+                card: {cardType: 'POKER', card: play.card?.card},
+                className: 'durak-attack-card',
+                alt: t('gameHistory.playerPlayed.alt', playerName(play.player))
+            });
+            slot.appendChild(attack);
+            state.trickEls.set(ckey(play.card), attack);
+            const defense = covers.get(play.playNumber);
+            if (defense) {
+                slot.classList.add('is-covered');
+                const el = ui.renderCardImage({
+                    card: {cardType: 'POKER', card: defense.card?.card},
+                    className: 'durak-defense-card',
+                    alt: t('gameHistory.playerPlayed.alt', playerName(defense.player))
+                });
+                slot.appendChild(el);
+                state.trickEls.set(ckey(defense.card), el);
+            }
+            dom.trick.appendChild(slot);
+        });
+    };
+
     const loadReplay = async () => {
         if (!gameId) throw new Error('Missing game id');
         const response = await fetch(`/api/games/history/${encodeURIComponent(gameId)}`, {credentials: 'include'});
         if (!response.ok) throw new Error('Could not load replay');
-        const game = await response.json();
+        const game = normalizeDurakReplay(await response.json());
         // Replay DTOs predate gameType. Briskula carries trumpCard (even when null),
         // while Treseta has no such field, so recover the adapter without changing API.
         game.gameType ??= game.trumpCard === undefined ? 'treseta' : 'briskula';
@@ -587,6 +768,11 @@
         state.teamState = resolveTeams(game);
         state.steps = buildSteps(game);
         state.stepIndex = 0;
+        // Marks the replay as a Durak board. Deliberately NOT `durak-game-layout`: that
+        // is the live table's own layout (felt sizing, hand row, seat ring) and it
+        // fights the replay's flow-based arena. This only pulls in the pieces that
+        // should look the same — card proportions, pair slots, role labels, bubbles.
+        layout?.classList.toggle('is-durak', isDurak());
 
         if (dom.title) dom.title.textContent = game.name || getGameTypeDisplayName(game.gameType) || t('history.unknown');
         if (dom.meta) {

@@ -142,6 +142,33 @@ class DurakGameEntityTest {
         assertThat(legal.getAllowedActionTypes()).contains(DurakActionTypeDTO.TAKE);
     }
 
+    /** Throwing in needs no turn, so the attacker's cards must stay listed while the defender thinks. */
+    @Test
+    void anAttackerKeepsItsThrowableCardsWhileTheDefenderIsDeciding() {
+        var game = game(2, 36, false, false);
+        var attacker = game.getActionPlayer();
+        game.apply(attacker.getUser(),
+                request(DurakActionTypeDTO.ATTACK, attacker.getHand().getCards().getFirst().code(), null, 0L));
+
+        var legal = game.legalActions(attacker);
+        var throwable = attacker.getHand().getCards().stream()
+                .filter(game.getGame()::canThrowIn)
+                .map(card -> card.code())
+                .toList();
+
+        assertThat(game.getActionPlayer()).isNotSameAs(attacker);
+        assertThat(legal.getThrowableCardCodes()).containsExactlyElementsOf(throwable);
+        assertThat(legal.getAllowedActionTypes())
+                .doesNotContain(DurakActionTypeDTO.TAKE, DurakActionTypeDTO.DONE, DurakActionTypeDTO.DEFEND);
+        if (!throwable.isEmpty()) {
+            assertThat(legal.getAllowedActionTypes()).contains(DurakActionTypeDTO.THROW_IN);
+            game.apply(attacker.getUser(),
+                    request(DurakActionTypeDTO.ATTACK, throwable.getFirst(), null, 1L));
+            assertThat(game.getGame().getPlayingField().getAttackSlots()).hasSize(2);
+            assertThat(game.getActionPlayer()).isNotSameAs(attacker);
+        }
+    }
+
     @Test
     void lobbyConfigRejectsInvalidCombinationsWithFourHundred() {
         var users = List.of(user(1L, "a"), user(2L, "b"), user(3L, "c"), user(4L, "d"), user(5L, "e"));

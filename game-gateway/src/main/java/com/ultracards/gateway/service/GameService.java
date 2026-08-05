@@ -5,6 +5,8 @@ import com.ultracards.gateway.dto.games.games.ShortGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameHistoryDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +66,17 @@ public class GameService {
         return response.getBody();
     }
 
+    public DurakGameHistoryDTO getDurakGameHistory(UUID gameId) {
+        var response = restTemplate.exchange(
+                serverUrl + "api/games/history/durak/" + gameId,
+                HttpMethod.GET,
+                new HttpEntity<>(tokenManager.authHeaders(tokenHolder)),
+                DurakGameHistoryDTO.class
+        );
+        tokenManager.updateToken(tokenHolder, response);
+        return response.getBody();
+    }
+
     public GameEntityDTO getGameByLobby(UUID lobbyId) {
         return getGameByLobby(lobbyId, GameEntityDTO.class);
     }
@@ -76,6 +89,10 @@ public class GameService {
         return getGameByLobby(lobbyId, TresetaGameEntityDTO.class);
     }
 
+    public DurakGameEntityDTO getDurakGameByLobby(UUID lobbyId) {
+        return getGameByLobby(lobbyId, DurakGameEntityDTO.class);
+    }
+
     public GameSnapshotDTO<BriskulaGameEntityDTO> getBriskulaSnapshot(UUID gameId) {
         return getSnapshot(gameId, "briskula",
                 new ParameterizedTypeReference<GameSnapshotDTO<BriskulaGameEntityDTO>>() {});
@@ -84,6 +101,11 @@ public class GameService {
     public GameSnapshotDTO<TresetaGameEntityDTO> getTresetaSnapshot(UUID gameId) {
         return getSnapshot(gameId, "treseta",
                 new ParameterizedTypeReference<GameSnapshotDTO<TresetaGameEntityDTO>>() {});
+    }
+
+    public GameSnapshotDTO<DurakGameEntityDTO> getDurakSnapshot(UUID gameId) {
+        return getSnapshot(gameId, "durak",
+                new ParameterizedTypeReference<GameSnapshotDTO<DurakGameEntityDTO>>() {});
     }
 
     private <T extends GameEntityDTO> GameSnapshotDTO<T> getSnapshot(

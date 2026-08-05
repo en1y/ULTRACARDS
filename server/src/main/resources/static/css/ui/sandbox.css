@@ -29,6 +29,22 @@
     font: inherit;
 }
 
+/* One rule per line, on the same surface as the selects above them. */
+.sandbox-durak-options {
+    --durak-option-bg: var(--color-surface-2, #222);
+    gap: 0.55rem;
+}
+
+.sandbox-durak-options .durak-options {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.55rem;
+}
+
+/* Stacked rows are taller than a two-column grid, so they give back the padding. */
+.sandbox-durak-options .durak-option {
+    padding: 0.5rem 0.6rem;
+}
+
 .sandbox-check {
     display: flex;
     align-items: center;

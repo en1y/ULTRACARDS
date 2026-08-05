@@ -102,9 +102,28 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
     /* ******************** public state ******************** */
 
     public DurakGameEntityDTO createGameDTO() {
+        var game = getGame();
+        return createGameDTO(game.getPlayingField(), player -> player.handSize(),
+                game.getCardsLeftInDeck(), game.getFinishOrder());
+    }
+
+    /**
+     * The bout as it stood the moment it ended, table still laid out and nobody refilled.
+     * Sent just before the state that clears it, so players see the move that ended the
+     * bout instead of the table blinking straight into the next one.
+     */
+    public DurakGameEntityDTO createClosingGameDTO() {
+        var resolved = getGame().getLastResolvedBout();
+        if (resolved == null) return null;
+        return createGameDTO(resolved.field(), player -> resolved.handSizes().getOrDefault(player, player.handSize()),
+                resolved.cardsLeftInDeck(), resolved.finishOrder());
+    }
+
+    private DurakGameEntityDTO createGameDTO(DurakPlayingField field,
+                                             java.util.function.ToIntFunction<DurakPlayerEntity> handSize,
+                                             int cardsLeftInDeck, List<DurakPlayer> finishOrder) {
         var dto = new DurakGameEntityDTO();
         var game = getGame();
-        var field = game.getPlayingField();
 
         var order = new ArrayList<GamePlayerDTO>();
         var cardCounts = new HashMap<GamePlayerDTO, Integer>();
@@ -112,7 +131,7 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
             var player = (DurakPlayerEntity) raw;
             var playerDto = player.getGamePlayerDTO();
             order.add(playerDto);
-            cardCounts.put(playerDto, player.handSize()); // counts only: never another player's cards
+            cardCounts.put(playerDto, handSize.applyAsInt(player)); // counts only: never another player's cards
         }
 
         dto.setId(getId());
@@ -120,7 +139,7 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
         dto.setName(getName());
         dto.setPlayersOrder(order);
         dto.setPlayersCardsMap(cardCounts);
-        dto.setCardsLeftInDeck(game.getCardsLeftInDeck());
+        dto.setCardsLeftInDeck(cardsLeftInDeck);
         dto.setGameConfig(getGameConfig().toDto());
         dto.setPlayedCards(field == null ? List.of()
                 : field.allTableCards().stream().map(GameCardDTO::createCardDTO).toList());
@@ -133,8 +152,8 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
         dto.setJokersEnabled(persistedGameConfig.jokersEnabled());
         dto.setThrowInPolicy(DurakLobbyGameConfig.toDto(persistedGameConfig.throwInPolicy()));
         dto.setDiscardedCardsNum(game.getDiscardPile().size());
-        dto.setFinishOrder(toDtos(game.getFinishOrder()));
-        dto.setFinishedPlayers(toDtos(game.getFinishOrder()));
+        dto.setFinishOrder(toDtos(finishOrder));
+        dto.setFinishedPlayers(toDtos(finishOrder));
         dto.setTurnEndTime(getTurnEndTime());
         dto.setTurnDurationSeconds(getTurnDurationSeconds());
 
@@ -172,6 +191,21 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
         var game = getGame();
         var field = game.getPlayingField();
 
+        // Throwing in is turn-independent, so an attacker who is not the action player
+        // still needs their throwable cards listed or the client would grey out a legal move.
+        if (game.isGameActive() && field != null && field.getActionPlayer() != player
+                && game.mayThrowInNow(player, field)) {
+            for (var card : player.getHand().getCards()) {
+                if (game.canThrowIn(card)) throwable.add(card.code());
+            }
+            if (!throwable.isEmpty()) types.add(DurakActionTypeDTO.THROW_IN);
+            // The throw window is shared, so an attacker who is not "on turn" can still
+            // close their own part of it.
+            if (field.getPhase() == DurakPhase.WAITING_FOR_THROW_IN
+                    || field.getPhase() == DurakPhase.THROW_AFTER_TAKE) {
+                types.add(DurakActionTypeDTO.DONE);
+            }
+        }
         if (game.isGameActive() && field != null && field.getActionPlayer() == player) {
             switch (field.getPhase()) {
                 // Any card in hand opens a bout, so no per-card list is needed.

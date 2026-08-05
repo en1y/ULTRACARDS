@@ -182,8 +182,13 @@ class DurakRecordingPersistenceTest {
         var user = new UserEntity();
         user.setId(1L);
 
-        assertThat(historyService.getPastGames(user, "", "latest")).isEmpty();
-        assertThat(historyService.getPastGames(user, "", "oldest")).isEmpty();
+        // Scoped to THIS recording: user 1 is a real account on the shared development
+        // database, so asserting their whole history is empty fails the moment anybody
+        // actually finishes a game.
+        assertThat(historyService.getPastGames(user, "", "latest"))
+                .noneMatch(entry -> recording.id().equals(entry.getId()));
+        assertThat(historyService.getPastGames(user, "", "oldest"))
+                .noneMatch(entry -> recording.id().equals(entry.getId()));
         assertThat(historyService.getGameHistory(recording.id())).isNull();
     }
 

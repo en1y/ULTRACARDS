@@ -1,8 +1,12 @@
 (() => {
     const PAGE_SIZE = 25;
-    const state = { metric: 'GAMES_PLAYED', gameType: '', mode: '', page: 0, request: null };
+    const state = { metric: 'GAMES_PLAYED', gameType: '', mode: '', durak: null, page: 0, request: null };
     const gameSelect = document.getElementById('leaderboard-game');
     const modeSelect = document.getElementById('leaderboard-mode');
+    const modeField = document.getElementById('leaderboard-mode-field');
+    const durakFilter = document.getElementById('leaderboard-durak-filter');
+    const durakRows = document.getElementById('leaderboard-durak-rows');
+    const isDurak = () => state.gameType === 'Durak';
     const status = document.getElementById('leaderboard-status');
     const chart = document.getElementById('leaderboard-chart');
     const chartBars = document.getElementById('leaderboard-chart-bars');
@@ -38,6 +42,13 @@
         if (['GAMES_PLAYED', 'WIN_RATE', 'WINS'].includes(metric)) state.metric = metric;
         state.gameType = params.get('gameType') || '';
         state.mode = params.get('mode') || '';
+        state.durak = {
+            players: params.get('durakPlayers') || '',
+            deck: params.get('durakDeck') || '',
+            throwin: params.get('durakThrowIn') || '',
+            jokers: params.get('durakJokers') || '',
+            passing: params.get('durakPassing') || ''
+        };
         state.page = Math.max(0, Number.parseInt(params.get('page') || '0', 10) || 0);
         gameSelect.value = [...gameSelect.options].some(option => option.value === state.gameType)
             ? state.gameType : '';
@@ -52,7 +63,14 @@
         const params = new URLSearchParams();
         if (state.metric !== 'GAMES_PLAYED') params.set('metric', state.metric);
         if (state.gameType) params.set('gameType', state.gameType);
-        if (state.mode) params.set('mode', state.mode);
+        if (state.mode && !isDurak()) params.set('mode', state.mode);
+        if (isDurak()) {
+            if (state.durak?.players) params.set('durakPlayers', state.durak.players);
+            if (state.durak?.deck) params.set('durakDeck', state.durak.deck);
+            if (state.durak?.throwin) params.set('durakThrowIn', state.durak.throwin);
+            if (state.durak?.jokers) params.set('durakJokers', state.durak.jokers);
+            if (state.durak?.passing) params.set('durakPassing', state.durak.passing);
+        }
         if (state.page) params.set('page', String(state.page));
         const query = params.toString();
         history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}`);
@@ -81,6 +99,10 @@
     }
 
     function modeLabel(mode) {
+        // Durak modes are canonical mode keys (P4_D36_NO_JOKERS_NEIGHBORS_PASS), not enum names.
+        if (state.gameType === 'Durak') {
+            return getGameConfigDisplayName('durak', mode);
+        }
         const declarations = mode.endsWith('_WITH_DECLARATIONS');
         const base = declarations ? mode.slice(0, -'_WITH_DECLARATIONS'.length) : mode;
         const keys = {
@@ -94,7 +116,22 @@
         return declarations ? `${label} · ${t('gameConfig.withDeclarations')}` : label;
     }
 
+    /** The concrete mode keys the current Durak rule filter covers. */
+    function durakModes() {
+        return durakAllModeKeys().filter((mode) => durakConfigMatchesFilter(mode, state.durak));
+    }
+
+    function syncDurakControls() {
+        const durak = isDurak();
+        if (modeField) modeField.hidden = durak;
+        if (durakFilter) durakFilter.hidden = !durak;
+        if (durak && durakRows && !durakRows.querySelector('.durak-choice')) {
+            renderDurakFilter(durakRows, 'leaderboard-', state.durak);
+        }
+    }
+
     function updateModes(availableModes) {
+        syncDurakControls();
         const oldMode = state.mode;
         modeSelect.replaceChildren();
         const all = document.createElement('option');
@@ -242,7 +279,8 @@
         tableShell.hidden = data.items.length === 0;
         renderChart(data);
 
-        const scope = state.mode ? `${gameName()} · ${modeLabel(state.mode)}` : gameName();
+        const scope = isDurak() ? `${gameName()} · ${describeDurakFilter(state.durak)}`
+            : state.mode ? `${gameName()} · ${modeLabel(state.mode)}` : gameName();
         summary.textContent = t('leaderboards.summary', data.totalElements.toLocaleString(), scope);
         threshold.hidden = data.metric !== 'WIN_RATE';
         threshold.textContent = data.metric === 'WIN_RATE'
@@ -269,7 +307,18 @@
         currentUser.hidden = true;
         const params = new URLSearchParams({ metric: state.metric, page: state.page, size: PAGE_SIZE });
         if (state.gameType) params.set('gameType', state.gameType);
-        if (state.mode) params.set('mode', state.mode);
+        if (isDurak() && !durakFilterIsEmpty(state.durak)) {
+            const modes = durakModes();
+            // A filter no rule set satisfies (Jokers on a 24-card pack) has no board.
+            if (!modes.length) {
+                rows.replaceChildren();
+                showStatus(t('leaderboards.empty'), 'empty');
+                return;
+            }
+            params.set('modes', modes.join(','));
+        } else if (state.mode) {
+            params.set('mode', state.mode);
+        }
         try {
             const response = await fetch(`/api/leaderboards?${params}`, {
                 credentials: 'same-origin',
@@ -300,6 +349,14 @@
         state.mode = '';
         state.page = 0;
         modeSelect.disabled = true;
+        syncDurakControls();
+        writeUrl();
+        load();
+    });
+
+    durakRows?.addEventListener('change', () => {
+        state.durak = readDurakFilter('leaderboard-');
+        state.page = 0;
         writeUrl();
         load();
     });

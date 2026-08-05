@@ -4,6 +4,7 @@
 (() => {
     const gameEl = document.getElementById('game-container');
     if (!gameEl?.dataset.sandbox) return;
+    if (new URLSearchParams(window.location.search).get('type') === 'durak') return;
 
     const SUITS = ['C', 'D', 'S', 'B'];
     const VALUES = [1, 2, 3, 4, 5, 6, 7, 11, 12, 13];
@@ -131,6 +132,7 @@
         updateDeclarationControls();
         updatePlayerOptions();
         renderDiscarded();
+        syncDeckSizeInput();
         publishState('STARTED');
         showStatus('New local ' + config.label + ' deal. No backend game was created.');
     }
@@ -596,6 +598,43 @@
         document.getElementById(id)?.addEventListener(event, handler);
     }
 
+    /**
+     * Drives the stock straight from the panel: the endgame (empty deck, revealed
+     * trump suit, players going out) is otherwise only reachable by playing a whole
+     * match. Cards are taken off the top / returned from the unused pack.
+     */
+    const deckSizeInput = document.getElementById('sandbox-deck-size');
+    const codeOf = (value) => String(value?.card || value || '');
+
+    function syncDeckSizeInput() {
+        if (!deckSizeInput || !state) return;
+        deckSizeInput.value = String(state.deck.length);
+        deckSizeInput.max = String(freshDeck().length);
+    }
+
+    function setDeckSize(value) {
+        if (!state) return;
+        const target = Math.max(0, Math.min(Number(value) || 0, freshDeck().length));
+        const inPlay = new Set([
+            ...state.players.flatMap((player) => player.hand.map(codeOf)),
+            ...state.deck.map(codeOf),
+            ...state.played.map((entry) => codeOf(entry.card)),
+            codeOf(state.discarded)
+        ].filter(Boolean));
+        while (state.deck.length > target) {
+            const removed = state.deck.shift();
+            inPlay.delete(codeOf(removed));
+        }
+        // Refill from cards nobody is holding, keeping the trump at the bottom.
+        const spare = freshDeck().filter((entry) => !inPlay.has(codeOf(entry)));
+        while (state.deck.length < target && spare.length) {
+            state.deck.unshift(spare.pop());
+        }
+        syncDeckSizeInput();
+        publishState();
+        showStatus('Deck set to ' + state.deck.length + ' cards.');
+    }
+
     populateControls();
     populateCardPicker();
     reset();
@@ -620,6 +659,7 @@
         selectedHandCardCode = null;
         renderHandEditor();
     });
+    on('sandbox-deck-size', 'change', () => setDeckSize(deckSizeInput?.value));
     on('sandbox-set-card', 'click', setHandCard);
     on('sandbox-remove-card', 'click', removeSelectedCard);
     on('sandbox-bot-declare', 'click', declareSelected);

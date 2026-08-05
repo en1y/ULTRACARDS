@@ -78,11 +78,31 @@ const gameSettingsAnimationDurationMs = 420;
             return nodes;
         }
 
-        function applyGameTypeSettings(gameType, settingsElement) {
+        /**
+         * Durak's rules multiply out to 72 combinations, far too many for a mode list,
+         * so its filter is the same segmented rows a lobby uses with an "Any" on each.
+         * Leaving every row on Any is how you ask for all Durak lobbies.
+         */
+        function buildDurakFilterNodes(title, idPrefix, filter) {
+            const heading = document.createElement('h3');
+            heading.className = 'lobbies-settings-title';
+            heading.textContent = t('createLobby.settingsTitle', title);
+            const rows = document.createElement('div');
+            renderDurakFilter(rows, idPrefix, filter);
+            return [heading, rows];
+        }
+
+        function applyGameTypeSettings(gameType, settingsElement, durakFilter) {
             window.clearTimeout(settingsElement.hideTimeoutId);
 
             if (gameType === 'all') {
                 setGameSettingsContent(settingsElement, []);
+                return;
+            }
+
+            if (gameType === 'durak' && settingsElement.id === 'game-settings') {
+                setGameSettingsContent(settingsElement,
+                    buildDurakFilterNodes(getGameTypeDisplayName(gameType), 'lobbies-', durakFilter));
                 return;
             }
 
@@ -104,8 +124,8 @@ const gameSettingsAnimationDurationMs = 420;
             setGameSettingsContent(settingsElement, buildProperties(title, selectedGame, selectId));
         }
 
-        function handleGameTypeChange(select) {
-            applyGameTypeSettings(select.value, document.getElementById('game-settings'));
+        function handleGameTypeChange(select, durakFilter) {
+            applyGameTypeSettings(select.value, document.getElementById('game-settings'), durakFilter);
         }
 
 (() => {
@@ -131,6 +151,7 @@ const gameSettingsAnimationDurationMs = 420;
             const lobbyFilterStorageKey = 'uc-lobbies-filter';
             const filterState = {
                 gameType: 'all',
+                durak: null,
                 settingKey: '',
                 settingId: null
             };
@@ -161,6 +182,10 @@ const gameSettingsAnimationDurationMs = 420;
                 }
 
                 const gameName = getGameTypeDisplayName(filterState.gameType);
+                if (filterState.gameType === 'durak') {
+                    activeFilterSummary.textContent = `${gameName} · ${describeDurakFilter(filterState.durak)}`;
+                    return;
+                }
                 const setting = filterState.settingKey
                     ? getGameTypeSetting(filterState.gameType, filterState.settingKey)
                     : null;
@@ -344,6 +369,10 @@ const gameSettingsAnimationDurationMs = 420;
                     };
                 }
 
+                if (gameType === 'durak') {
+                    return {gameType, settingKey: '', settingId: null, durak: readDurakFilter('lobbies-')};
+                }
+
                 const settings = getGameTypeSettings(gameType) || {};
                 const selectedSettingKey = document.getElementById('properties')?.value || Object.keys(settings)[0] || '';
                 const selectedSettingId = getGameTypeSettingId(gameType, selectedSettingKey);
@@ -351,12 +380,14 @@ const gameSettingsAnimationDurationMs = 420;
                 return {
                     gameType,
                     settingKey: selectedSettingKey,
-                    settingId: selectedSettingId ?? 0
+                    settingId: selectedSettingId
                 };
             }
 
             function buildLobbyFetchUrl(nextFilter) {
-                if (nextFilter.gameType === 'all') {
+                // Durak modes have no numeric settingId (72 server configs behind five
+                // player counts), so fetch everything and narrow with lobbyMatchesFilter.
+                if (nextFilter.gameType === 'all' || nextFilter.settingId == null) {
                     return '/api/lobby/get-lobbies';
                 }
 
@@ -367,7 +398,8 @@ const gameSettingsAnimationDurationMs = 420;
                 try {
                     window.localStorage.setItem(lobbyFilterStorageKey, JSON.stringify({
                         gameType: nextFilter.gameType,
-                        settingKey: nextFilter.settingKey
+                        settingKey: nextFilter.settingKey,
+                        durak: nextFilter.durak || null
                     }));
                 } catch (error) {
                     console.error('Unable to persist lobby filter', error);
@@ -391,16 +423,18 @@ const gameSettingsAnimationDurationMs = 420;
                     }
 
                     const gameType = String(parsedFilter.gameType || '').toLowerCase();
+                    if (gameType === 'durak') {
+                        return {gameType, settingKey: '', settingId: null, durak: parsedFilter.durak || null};
+                    }
                     const settingKey = String(parsedFilter.settingKey || '');
-                    const settingId = getGameTypeSettingId(gameType, settingKey);
-                    if (!gameType || !settingKey || settingId == null) {
+                    if (!gameType || !settingKey || !getGameTypeSetting(gameType, settingKey)) {
                         return null;
                     }
 
                     return {
                         gameType,
                         settingKey,
-                        settingId
+                        settingId: getGameTypeSettingId(gameType, settingKey)
                     };
                 } catch (error) {
                     console.error('Unable to read saved lobby filter', error);
@@ -414,9 +448,9 @@ const gameSettingsAnimationDurationMs = 420;
                 }
 
                 gameTypeSelect.value = nextFilter.gameType;
-                handleGameTypeChange(gameTypeSelect);
+                handleGameTypeChange(gameTypeSelect, nextFilter.durak);
 
-                if (nextFilter.gameType === 'all') {
+                if (nextFilter.gameType === 'all' || nextFilter.gameType === 'durak') {
                     return;
                 }
 
@@ -433,6 +467,14 @@ const gameSettingsAnimationDurationMs = 420;
 
                 if (String(lobby.gameType || '').toLowerCase() !== filterState.gameType) {
                     return false;
+                }
+
+                if (filterState.gameType === 'durak') {
+                    return durakConfigMatchesFilter(lobby.gameConfig, filterState.durak);
+                }
+
+                if (filterState.settingId == null) {
+                    return resolveLobbyGameSettingKey(lobby) === filterState.settingKey;
                 }
 
                 const lobbySettingId = resolveLobbyGameSettingId(lobby);
@@ -452,6 +494,7 @@ const gameSettingsAnimationDurationMs = 420;
                 filterState.gameType = nextFilter.gameType;
                 filterState.settingKey = nextFilter.settingKey;
                 filterState.settingId = nextFilter.settingId;
+                filterState.durak = nextFilter.durak || null;
                 persistFilter(nextFilter);
                 syncFilterSummary();
             }
@@ -477,7 +520,9 @@ const gameSettingsAnimationDurationMs = 420;
                     }
 
                     applyFilterState(nextFilter);
-                    replaceLobbies(Array.isArray(lobbies) ? lobbies : []);
+                    // Server-side filtering already narrowed the numeric-settingId games;
+                    // this second pass is what narrows Durak's mode-less fetch.
+                    replaceLobbies((Array.isArray(lobbies) ? lobbies : []).filter(lobbyMatchesFilter));
                 } finally {
                     if (requestId === latestFilterRequestId) {
                         applyFiltersButton?.removeAttribute('disabled');
@@ -506,7 +551,8 @@ const gameSettingsAnimationDurationMs = 420;
                     await refreshLobbies({
                         gameType: 'all',
                         settingKey: '',
-                        settingId: null
+                        settingId: null,
+                        durak: null
                     });
                     setFilterPanelOpen(false);
                 } catch (error) {

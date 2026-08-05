@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/leaderboards")
 @RequiredArgsConstructor
@@ -21,10 +23,13 @@ public class LeaderboardController {
             @RequestParam(defaultValue = "GAMES_PLAYED") String metric,
             @RequestParam(required = false) String gameType,
             @RequestParam(required = false) String mode,
+            // Durak's rules multiply out to dozens of modes, so a board can be asked for
+            // several at once ("4 players, any pack") instead of exactly one.
+            @RequestParam(required = false) List<String> modes,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
             @AuthenticationPrincipal UserEntity currentUser
     ) {
-        return leaderboardService.get(metric, gameType, mode, page, size, currentUser);
+        return leaderboardService.get(metric, gameType, mode, modes, page, size, currentUser);
     }
 }

@@ -4,7 +4,7 @@
     const closeButtons = overlay?.querySelectorAll('[data-close-create]') || [];
     const form = document.getElementById('create-lobby-form');
     const lobbyNameInput = document.getElementById('create-lobby-name');
-    const gameTypeSelect = document.getElementById('create-game-type');
+    const gameTypeStaticSelect = document.getElementById('create-game-type');
     const publicInput = document.getElementById('create-lobby-public');
     const visibilityText = document.getElementById('create-lobby-visibility-text');
     const visibilityLabel = document.getElementById('create-lobby-public-toggle-label');
@@ -12,9 +12,19 @@
     const submitButton = document.getElementById('create-lobby-submit');
     const statusText = document.getElementById('create-lobby-status');
 
-    if (!overlay || !form || !gameTypeSelect || !settingsElement || !submitButton || !statusText) {
+    if (!overlay || !form || !gameTypeStaticSelect || !settingsElement || !submitButton || !statusText) {
         return;
     }
+
+    // Buttons instead of a dropdown, same "all" default as the <select> it replaces.
+    const gameTypeSelect = buildChoiceGroup(
+        'create-game-type',
+        Array.from(gameTypeStaticSelect.options)
+            .filter((option) => option.value !== 'all')
+            .map((option) => [option.value, option.textContent]),
+        'all'
+    );
+    gameTypeStaticSelect.replaceWith(gameTypeSelect);
 
     function setStatus(message, type = '') {
         statusText.textContent = message;
@@ -63,29 +73,27 @@
         }
     }
 
-    function buildSettingsSelect(title, settings) {
+    function buildSettingsSelect(title, settings, gameType) {
         const titleElement = document.createElement('h3');
         titleElement.className = 'create-lobby-settings-title';
         titleElement.textContent = t('createLobby.settingsTitle', title);
+
+        if (gameType === 'durak') {
+            return [titleElement, buildDurakPlayerCountChoice('create-properties', settings, Object.keys(settings)[0])];
+        }
 
         const field = document.createElement('div');
         field.className = 'field';
 
         const label = document.createElement('label');
-        label.setAttribute('for', 'create-properties');
+        label.id = 'create-properties-label';
         label.textContent = t('createLobby.gameConfiguration');
 
-        const select = document.createElement('select');
-        select.id = 'create-properties';
+        const options = Object.entries(settings).map(([key, setting]) => [key, setting.ui_text]);
+        const group = buildChoiceGroup('create-properties', options, Object.keys(settings)[0]);
+        group.setAttribute('aria-labelledby', label.id);
 
-        Object.entries(settings).forEach(([key, setting]) => {
-            const option = document.createElement('option');
-            option.textContent = setting.ui_text;
-            option.value = key;
-            select.appendChild(option);
-        });
-
-        field.append(label, select);
+        field.append(label, group);
         return [titleElement, field];
     }
 
@@ -164,13 +172,38 @@
             return;
         }
 
-        const nodes = buildSettingsSelect(title, selectedGame);
+        const nodes = buildSettingsSelect(title, selectedGame, gameType);
         if (gameType === 'treseta') {
             nodes.push(buildDeclarationsToggle());
         }
+        if (gameType === 'durak') {
+            nodes.push(...buildDurakSettingsNodes('create-', null));
+        }
         setSettingsContent(nodes);
-        document.getElementById('create-properties')?.addEventListener('change', syncCreateState);
+        const propertiesSelect = document.getElementById('create-properties');
+        propertiesSelect?.addEventListener('change', syncCreateState);
+        if (gameType === 'durak') {
+            const syncDurak = () => syncDurakSettingsAvailability('create-', selectedDurakPlayers());
+            propertiesSelect?.addEventListener('change', syncDurak);
+            document.getElementById('create-durak-deck')?.addEventListener('change', syncDurak);
+            syncDurak();
+        }
         syncCreateState();
+    }
+
+    // Durak setting keys are p2..p6, so the player count is the key's digit.
+    function selectedDurakPlayers() {
+        return Number(String(document.getElementById('create-properties')?.value || '').slice(1)) || 2;
+    }
+
+    function gameConfigExtrasFor(gameType) {
+        if (gameType === 'treseta') {
+            return {declarationsEnabled: document.getElementById('create-treseta-declarations')?.checked === true};
+        }
+        if (gameType === 'durak') {
+            return readDurakSettings('create-');
+        }
+        return null;
     }
 
     function resetCreateMenu() {
@@ -178,6 +211,7 @@
         if (publicInput) {
             publicInput.checked = true;
         }
+        gameTypeSelect.value = 'all';
         setSettingsContent([]);
         submitButton.textContent = t('createLobby.submit');
         syncVisibilityText();
@@ -227,19 +261,12 @@
                 },
                 credentials: 'include',
                 body: buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value, publicInput?.checked !== false,
-                    gameType === 'treseta'
-                        ? {declarationsEnabled: document.getElementById('create-treseta-declarations')?.checked === true}
-                        : null)
+                    gameConfigExtrasFor(gameType))
             });
 
             if (!response.ok) {
                 const message = (await response.text()).trim();
                 throw new Error(message || t('createLobby.failed'));
-            }
-
-            const createdLobby = await response.json();
-            if (createdLobby?.id) {
-                localStorage.setItem('lobbyId', createdLobby.id);
             }
 
             window.location.href = '/lobbies';

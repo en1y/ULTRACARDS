@@ -7,7 +7,9 @@ import com.ultracards.templates.game.model.AbstractGame;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
@@ -29,6 +31,8 @@ public class DurakGame extends AbstractGame
     private final List<DurakCard> discardPile = new ArrayList<>();
     private final List<DurakPlayer> activePlayers = new ArrayList<>();
     private final List<DurakPlayer> finishOrder = new ArrayList<>();
+
+    private ResolvedBout lastResolvedBout;
 
     private PokerCardSuit trumpSuit;
     private DurakCard trumpIndicator;
@@ -112,6 +116,14 @@ public class DurakGame extends AbstractGame
      * Validates and applies one action. Every rejection throws {@link DurakRuleException} without
      * mutating any state.
      */
+    /** A snapshot of a bout at the moment it resolved, before any card moved off the table. */
+    public record ResolvedBout(DurakPlayingField field, Map<DurakPlayer, Integer> handSizes,
+                               int cardsLeftInDeck, List<DurakPlayer> finishOrder) {}
+
+    public ResolvedBout getLastResolvedBout() {
+        return lastResolvedBout;
+    }
+
     public DurakActionResult apply(DurakPlayer actor, DurakAction action) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(action, "action");
@@ -119,13 +131,24 @@ public class DurakGame extends AbstractGame
             throw new DurakRuleException(DurakErrorCode.DURAK_GAME_FINISHED, "The game is already finished.");
         }
         var field = getPlayingField();
-        if (actor != field.getActionPlayer()) {
-            throw new DurakRuleException(DurakErrorCode.DURAK_NOT_ACTION_PLAYER,
-                    "It is not %s's turn to act.", actor.getName());
-        }
         if (action.card() != null && action.card().isJoker() && !config.jokersEnabled()) {
             throw new DurakRuleException(DurakErrorCode.DURAK_JOKER_DISABLED,
                     "Jokers are disabled in this game.");
+        }
+        // Throwing a card in is not a turn: an attacker may toss a matching card onto an
+        // open bout whenever they like, including while the defender is still thinking,
+        // and may toss several. ATTACK and THROW_IN are the same move to a client.
+        if (isThrow(action) && mayThrowInNow(actor, field)) {
+            return applyThrowIn(actor, action, field);
+        }
+        // The throw window runs for everyone at once rather than seat by seat, so any
+        // eligible attacker may declare themselves done whenever they like.
+        if (action.type() == DurakActionType.DONE && isThrowWindow(field) && mayThrowInNow(actor, field)) {
+            return applyDone(actor, field);
+        }
+        if (actor != field.getActionPlayer()) {
+            throw new DurakRuleException(DurakErrorCode.DURAK_NOT_ACTION_PLAYER,
+                    "It is not %s's turn to act.", actor.getName());
         }
         return switch (field.getPhase()) {
             case WAITING_FOR_ATTACK -> applyOpeningAttack(actor, action, field);
@@ -184,6 +207,12 @@ public class DurakGame extends AbstractGame
         if (!config.passingEnabled()) {
             throw new DurakRuleException(DurakErrorCode.DURAK_PASS_DISABLED, "Passing is disabled in this game.");
         }
+        // Beating even one card commits you to defending the whole bout: the attack can
+        // only be handed on while the table is still entirely uncovered.
+        if (field.getAttackSlots().stream().anyMatch(DurakAttackSlot::covered)) {
+            throw new DurakRuleException(DurakErrorCode.DURAK_PASS_ALREADY_DEFENDED,
+                    "The attack cannot be passed on after a card has been beaten.");
+        }
         var card = action.card();
         if (field.uncoveredSlots().stream().noneMatch(s -> s.attackCard().rank() == card.rank())) {
             throw new DurakRuleException(DurakErrorCode.DURAK_PASS_RANK_MISMATCH,
@@ -223,15 +252,58 @@ public class DurakGame extends AbstractGame
         return new DurakActionResult(DurakActionType.TAKE, outcome, !active);
     }
 
+    private static boolean isThrow(DurakAction action) {
+        return action.type() == DurakActionType.THROW_IN || action.type() == DurakActionType.ATTACK;
+    }
+
+    /** True when {@code actor} may add a card to the open bout right now, turn or not. */
+    public boolean mayThrowInNow(DurakPlayer actor, DurakPlayingField field) {
+        return active
+                && field != null
+                && field.getPhase() != DurakPhase.WAITING_FOR_ATTACK
+                && field.getPhase() != DurakPhase.FINISHED
+                && actor != field.getDefender()
+                && field.getEligibleThrowers().contains(actor)
+                && !field.getDoneThrowers().contains(actor);
+    }
+
+    public boolean mayThrowInNow(DurakPlayer actor) {
+        return mayThrowInNow(actor, getPlayingField());
+    }
+
+    private static boolean isThrowWindow(DurakPlayingField field) {
+        return field.getPhase() == DurakPhase.WAITING_FOR_THROW_IN
+                || field.getPhase() == DurakPhase.THROW_AFTER_TAKE;
+    }
+
+    private DurakActionResult applyDone(DurakPlayer actor, DurakPlayingField field) {
+        field.markDone(actor);
+        field.advanceThrowCursor();
+        var outcome = continueThrowWindow(field);
+        return new DurakActionResult(DurakActionType.DONE, outcome, !active);
+    }
+
+    /**
+     * A turn timeout closes the whole throw window instead of stepping one seat on, so every
+     * attacker is racing the same clock rather than being handed the clock in turn.
+     */
+    public DurakActionResult applyTimeout() {
+        var field = getPlayingField();
+        if (!active || field == null) {
+            throw new DurakRuleException(DurakErrorCode.DURAK_GAME_FINISHED, "The game is already finished.");
+        }
+        if (!isThrowWindow(field)) {
+            return apply(field.getActionPlayer(), timeoutAction());
+        }
+        for (var thrower : field.getEligibleThrowers()) field.markDone(thrower);
+        var outcome = continueThrowWindow(field);
+        return new DurakActionResult(DurakActionType.DONE, outcome, !active);
+    }
+
     private DurakActionResult applyThrowPhase(DurakPlayer actor, DurakAction action, DurakPlayingField field) {
         return switch (action.type()) {
-            case THROW_IN -> applyThrowIn(actor, action, field);
-            case DONE -> {
-                field.markDone(actor);
-                field.advanceThrowCursor();
-                var outcome = continueThrowWindow(field);
-                yield new DurakActionResult(DurakActionType.DONE, outcome, !active);
-            }
+            case THROW_IN, ATTACK -> applyThrowIn(actor, action, field);
+            case DONE -> applyDone(actor, field);
             default -> throw invalidForPhase(action, field);
         };
     }
@@ -293,6 +365,11 @@ public class DurakGame extends AbstractGame
         if (field.getOutcome() != null) {
             return field.getOutcome(); // resolution is idempotent
         }
+        // The bout as it looked the instant it ended — table still full, nobody refilled.
+        // Clients need that picture: the move that ended the bout is otherwise never seen.
+        var handSizes = new LinkedHashMap<DurakPlayer, Integer>();
+        for (var player : getPlayers()) handSizes.put(player, player.handSize());
+        lastResolvedBout = new ResolvedBout(field, handSizes, getCardsLeftInDeck(), List.copyOf(finishOrder));
         var tableCards = field.allTableCards();
         DurakBoutOutcome outcome;
         DurakPlayer nextLead;
@@ -385,6 +462,7 @@ public class DurakGame extends AbstractGame
         if (field == null || !active || !config.passingEnabled()) return false;
         if (field.getPhase() != DurakPhase.WAITING_FOR_DEFENSE || defender != field.getDefender()) return false;
         if (card.isJoker() && !config.jokersEnabled()) return false;
+        if (field.getAttackSlots().stream().anyMatch(DurakAttackSlot::covered)) return false;
         if (field.uncoveredSlots().stream().noneMatch(s -> s.attackCard().rank() == card.rank())) return false;
         var next = nextActiveAfter(defender);
         return next != defender

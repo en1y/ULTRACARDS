@@ -88,7 +88,10 @@ class DbCommands implements Runnable {
     static class EditStats extends CliCommand {
         @Option(names = "--user", required = true, paramLabel = "USER") String user;
         @Option(names = "--game", required = true) StatsGame game;
-        @Option(names = "--mode", required = true) Mode mode;
+        @Option(names = "--mode", required = true, paramLabel = "MODE",
+                description = "Canonical mode key, including Durak keys such as P2_D36_NO_JOKERS_EVERYONE_PASS.",
+                completionCandidates = GameCommands.ModeCandidates.class)
+        String mode;
         @Option(names = "--played", description = "Replace the played count; omit to preserve it.") Integer played;
         @Option(names = "--wins", description = "Replace the win count; omit to preserve it.") Integer wins;
         @Option(names = "--last-played-at") Instant lastPlayedAt;
@@ -101,20 +104,12 @@ class DbCommands implements Runnable {
                 var patch = new AdminStatsPatchDTO(played, wins, lastPlayedAt, reason, dryRun);
                 if (!dryRun && !root().confirmChange("statistics for user " + userId + " / " + game + " / " + mode,
                         client.admin().stats(userId), patch)) return 5;
-                return ok(client.admin().patchStats(userId, game.name(), mode.name(), patch));
+                return ok(client.admin().patchStats(userId, game.name(), mode, patch));
             });
         }
     }
 
-    enum StatsGame { BRISKULA, TRESETA }
-
-    enum Mode {
-        TWO_PLAYERS,
-        TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH,
-        THREE_PLAYERS,
-        FOUR_PLAYERS_NO_TEAMS,
-        FOUR_PLAYERS_WITH_TEAMS
-    }
+    enum StatsGame { BRISKULA, TRESETA, DURAK }
 
     @Command(name = "stats", description = "Rebuild statistics from completed recordings.", subcommands = RebuildStats.class)
     static class Stats implements Runnable {

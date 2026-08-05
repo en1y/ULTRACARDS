@@ -5,6 +5,9 @@ import com.ultracards.gateway.dto.games.games.GameEntityDTO;
 import com.ultracards.gateway.dto.games.games.GameEventDTO;
 import com.ultracards.gateway.dto.games.games.GameSnapshotDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakActionRequestDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakGameEntityDTO;
+import com.ultracards.gateway.dto.games.games.durak.DurakLegalActionsDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameEntityDTO;
 import com.ultracards.gateway.service.GameWsService;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -24,6 +27,7 @@ public final class GatewayGameSession<T extends GameEntityDTO> implements AutoCl
     private final GatewayState<List<GameCardDTO>> hand = new GatewayState<>(List.of());
     private final GatewayState<List<GameCardDTO>> teammateHand = new GatewayState<>(List.of());
     private final GatewayState<List<GameCardDTO>> opponentDrawnCards = new GatewayState<>(List.of());
+    private final GatewayState<DurakLegalActionsDTO> durakLegalActions = new GatewayState<>();
 
     private GatewayGameSession(UUID gameId, GameWsService socket, GatewayAsync async, Runnable closeSocket,
                                BiFunction<UUID, Consumer<GameEventDTO<T>>, StompSession.Subscription> subscribe) {
@@ -62,14 +66,27 @@ public final class GatewayGameSession<T extends GameEntityDTO> implements AutoCl
         return session;
     }
 
+    static GatewayGameSession<DurakGameEntityDTO> durak(
+            UUID gameId, GameWsService socket, GatewayAsync async, Runnable closeSocket
+    ) {
+        var session = new GatewayGameSession<>(gameId, socket, async, closeSocket, socket::subscribeToDurakGame);
+        session.subscribeToDurakLegalActions();
+        return session;
+    }
+
     public GatewayState<GameEventDTO<T>> event() { return event; }
     public GatewayState<T> game() { return game; }
     public GatewayState<List<GameCardDTO>> hand() { return hand; }
     public GatewayState<List<GameCardDTO>> teammateHand() { return teammateHand; }
     public GatewayState<List<GameCardDTO>> opponentDrawnCards() { return opponentDrawnCards; }
+    public GatewayState<DurakLegalActionsDTO> durakLegalActions() { return durakLegalActions; }
 
     public void playCard(GameCardDTO card) {
         socket.playCard(card);
+    }
+
+    public void durakAction(DurakActionRequestDTO request) {
+        socket.durakAction(request);
     }
 
     void seed(GameSnapshotDTO<T> snapshot) {
@@ -92,6 +109,11 @@ public final class GatewayGameSession<T extends GameEntityDTO> implements AutoCl
             drawn.addAll(cards);
             opponentDrawnCards.set(List.copyOf(drawn));
         })));
+    }
+
+    private void subscribeToDurakLegalActions() {
+        subscribe(socket.subscribeToDurakLegalActions(actions ->
+                async.runOnUi(() -> durakLegalActions.set(actions))));
     }
 
     private void subscribe(StompSession.Subscription subscription) {

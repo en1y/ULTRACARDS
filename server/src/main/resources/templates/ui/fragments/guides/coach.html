@@ -1,4 +1,4 @@
-<th:block th:fragment="coach" xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="coach(playHint)" xmlns:th="http://www.thymeleaf.org">
     <!-- Floating coach. Positioned absolutely inside .game-layout by guide-game.js,
          so the browser scrolls it with the board for free. It takes over the table
          (behind a scrim) while it has something to say, and gets out of the way
@@ -20,7 +20,7 @@
         </span>
         <div class="guide-coach-say">
             <div class="guide-coach-text" id="guide-coach">Loading…</div>
-            <p class="guide-hint" id="guide-hint" hidden th:text="#{guides.coach.playHint}">Double-click or drag the highlighted card to play it.</p>
+            <p class="guide-hint" id="guide-hint" hidden th:text="${playHint}">Double-click or drag the highlighted card to play it.</p>
             <div class="guide-coach-controls">
                 <!-- Previous is rendered only when it can actually do something, so
                      the row never carries a dead button. -->
