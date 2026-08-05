@@ -31,7 +31,7 @@
         ease: 'out(3)',
         snapEase: 'out(4)'
     };
-    const CARD_ASSET_VERSION = '2';
+    const CARD_ASSET_VERSION = '3';
     const VIEWPORT_DRAG_PADDING = 14;
     const ITALIAN_SUIT_MAP = {C: 'COPPE', D: 'DENARI', S: 'SPADE', B: 'BASTONI'};
     const ITALIAN_VALUE_MAP = {
