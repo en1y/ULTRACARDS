@@ -18,6 +18,7 @@ SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
 # General properties: application.properties
 APP_TITLE=${APP_TITLE:-ULTRACARDS Server}
 APP_VERSION=${APP_VERSION:-0.3.4}
+APP_SITE_URL=${APP_SITE_URL:-https://ultracards.en1y.qzz.io}
 SERVER_PORT=${SERVER_PORT:-8080}
 SPRING_PROFILES_DEFAULT=${SPRING_PROFILES_DEFAULT:-dev}
 SPRING_CONFIG_IMPORT=${SPRING_CONFIG_IMPORT:-optional:classpath:ultrakill-levels.properties}
@@ -112,6 +113,7 @@ exec java ${JAVA_OPTS:-} -jar "$JAR_PATH" \
     "--server.port=$SERVER_PORT" \
     "--app.title=$APP_TITLE" \
     "--app.version=$APP_VERSION" \
+    "--app.site-url=$APP_SITE_URL" \
     "--spring.jpa.database=$JPA_DATABASE" \
     "--spring.sql.init.platform=$SQL_INIT_PLATFORM" \
     "--spring.datasource.url=$DB_URL" \

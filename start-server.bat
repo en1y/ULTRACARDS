@@ -19,6 +19,7 @@ if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=prod"
 rem General properties: application.properties
 if "%APP_TITLE%"=="" set "APP_TITLE=ULTRACARDS Server"
 if "%APP_VERSION%"=="" set "APP_VERSION=0.3.4"
+if "%APP_SITE_URL%"=="" set "APP_SITE_URL=https://ultracards.en1y.qzz.io"
 if "%SERVER_PORT%"=="" set "SERVER_PORT=8080"
 if "%SPRING_PROFILES_DEFAULT%"=="" set "SPRING_PROFILES_DEFAULT=dev"
 if "%SPRING_CONFIG_IMPORT%"=="" set "SPRING_CONFIG_IMPORT=optional:classpath:ultrakill-levels.properties"
@@ -111,6 +112,7 @@ java %JAVA_OPTS% -jar "%JAR_PATH%" ^
     "--server.port=%SERVER_PORT%" ^
     "--app.title=%APP_TITLE%" ^
     "--app.version=%APP_VERSION%" ^
+    "--app.site-url=%APP_SITE_URL%" ^
     "--spring.jpa.database=%JPA_DATABASE%" ^
     "--spring.sql.init.platform=%SQL_INIT_PLATFORM%" ^
     "--spring.datasource.url=%DB_URL%" ^

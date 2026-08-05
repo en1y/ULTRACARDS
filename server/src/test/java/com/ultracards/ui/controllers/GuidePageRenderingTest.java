@@ -41,6 +41,7 @@ class GuidePageRenderingTest {
                 .andExpect(content().string(containsString("rel=\"canonical\" href=\"https://ultracards.test\"")))
                 .andExpect(content().string(containsString("name=\"description\"")))
                 .andExpect(content().string(containsString("\"@type\": \"WebSite\"")))
+                .andExpect(content().string(containsString("\"url\": \"https://ultracards.test\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"home-secondary-actions\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/guides\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/leaderboards\"")));
