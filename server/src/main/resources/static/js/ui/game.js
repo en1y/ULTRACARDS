@@ -1,9 +1,17 @@
 (() => {
-    // Reclaim space from the old localStorage card-image cache (now browser-cached).
+    // Reclaim retired cache entries and state belonging to previous live games.
     try {
+        const gameEl = document.getElementById('game-container');
+        const currentGameId = gameEl && !gameEl.dataset.guide && !gameEl.dataset.sandbox
+            ? gameEl.dataset.gameId
+            : null;
+        const perGamePrefixes = ['treseta-declare-skip:', 'uc-prev-round-', 'uc-prev-durak-bout-'];
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
-            if (k && k.startsWith('uc-card-img:')) localStorage.removeItem(k);
+            const staleGameKey = currentGameId && perGamePrefixes.some((prefix) =>
+                k?.startsWith(prefix) && k !== prefix + currentGameId
+            );
+            if (k?.startsWith('uc-card-img:') || staleGameKey) localStorage.removeItem(k);
         }
     } catch (_) {}
 })();

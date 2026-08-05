@@ -118,6 +118,9 @@
         },
         load() {
             try { return JSON.parse(localStorage.getItem(this.key)); } catch (_) { return null; }
+        },
+        remove() {
+            try { localStorage.removeItem(this.key); } catch (_) {}
         }
     };
 
@@ -1505,7 +1508,10 @@
         state.game = game;
         state.legal = null;
         state.handSignature = '';
-        if (game.phase === 'FINISHED') state.finished = true;
+        if (game.phase === 'FINISHED') {
+            state.finished = true;
+            PreviousBoutStore.remove();
+        }
         if (oldTableCards.length) {
             state.clearing = true;
             dom.slots?.classList.add('is-clearing');

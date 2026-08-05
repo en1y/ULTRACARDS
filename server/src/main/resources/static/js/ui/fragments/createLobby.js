@@ -269,11 +269,6 @@
                 throw new Error(message || t('createLobby.failed'));
             }
 
-            const createdLobby = await response.json();
-            if (createdLobby?.id) {
-                localStorage.setItem('lobbyId', createdLobby.id);
-            }
-
             window.location.href = '/lobbies';
         } catch (error) {
             setStatus(error?.message || t('createLobby.failed'), 'error');

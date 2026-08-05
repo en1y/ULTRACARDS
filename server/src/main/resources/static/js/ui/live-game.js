@@ -156,6 +156,9 @@
             },
             load(id) {
                 try { return JSON.parse(localStorage.getItem('uc-prev-round-' + id)); } catch (e) { return null; }
+            },
+            remove(id) {
+                try { localStorage.removeItem('uc-prev-round-' + id); } catch (e) {}
             }
         };
         // Teammate hand only needs to survive this one game, so it's session-scoped
@@ -815,6 +818,10 @@
         function applyGame(game, gameEvent, result, skipTableDelay = false) {
             state.gameUpdateVersion++;
             if (gameEvent === 'STARTED') state.endState = null;
+            if (gameEvent === 'RESULTED' || gameEvent === 'CLOSED') {
+                PreviousRoundStore.remove(gameId);
+                try { localStorage.removeItem('treseta-declare-skip:' + gameId); } catch (_) {}
+            }
             clearPreviousRoundLabels();
             game.playersTurn = normalizePlayer(game.playersTurn);
             if (Number(game.turnDurationSeconds) > 0) {
