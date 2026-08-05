@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class I18nModelAdviceTest {
-    private final I18nModelAdvice advice = new I18nModelAdvice(new I18nConfig(false));
+    private final I18nModelAdvice advice = new I18nModelAdvice(new I18nConfig(false), "https://ultracards.test");
 
     @AfterEach
     void clearSecurityContext() {

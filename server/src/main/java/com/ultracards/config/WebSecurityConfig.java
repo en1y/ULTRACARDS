@@ -45,6 +45,9 @@ public class WebSecurityConfig {
                                 "/error",
                                 "/errors/**",
                                 "/favicon.ico",
+                                "/robots.txt",
+                                "/sitemap.xml",
+                                "/guides/**",
                                 "/css/**",
                                 "/pics/**",
                                 "/js/**"

@@ -1,8 +1,5 @@
 <th:block th:fragment="actions" xmlns:th="http://www.thymeleaf.org">
   <div class="uc-actions">
-    <a class="header-icon-button" th:unless="${isAuthenticated}" th:href="@{/leaderboards}" th:aria-label="#{header.leaderboards}">
-      <img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true" />
-    </a>
     <button class="theme-toggle" type="button" th:aria-label="#{header.theme.toggle}" aria-pressed="false" data-action="toggle-theme">
       <span class="theme-toggle-track" aria-hidden="true">
         <span class="theme-toggle-thumb">

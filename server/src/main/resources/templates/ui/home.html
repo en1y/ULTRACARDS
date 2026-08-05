@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" th:content="#{home.about.intro}">
+    <link rel="canonical" th:href="${siteUrl}">
     <title>ULTRACARDS</title>
+
+    <script type="application/ld+json" th:inline="javascript">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "ULTRACARDS",
+            "url": /*[[${siteUrl}]]*/ "https://ultracards.en1y.qzz.io"
+        }
+    </script>
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
@@ -88,10 +99,10 @@
 
             <div class="home-public-grid" th:aria-label="#{home.overview.aria}">
                 <article class="home-public-item">
-                    <p class="home-eyebrow" th:text="#{home.card1.eyebrow}">Live lobbies</p>
-                    <h3 th:text="#{home.card1.title}">Start a game in seconds!</h3>
+                    <p class="home-eyebrow" th:text="#{home.card1.eyebrow}">New in v0.4.0</p>
+                    <h3 th:text="#{home.card1.title}">Durak is here!</h3>
                     <p th:text="#{home.card1.copy}">
-                        Create a game, share the lobby code, or browse open rooms when you want to join someone already waiting for your company.
+                        Durak has joined ULTRACARDS in the latest release. Attack, defend, and empty your hand before everyone else.
                     </p>
                 </article>
 
@@ -125,10 +136,10 @@
 
         <div class="home-public-grid" th:aria-label="#{home.overview.aria}">
             <article class="home-public-item">
-                <p class="home-eyebrow" th:text="#{home.card1.eyebrow}">Live lobbies</p>
-                <h3 th:text="#{home.card1.title}">Start a game in seconds!</h3>
+                <p class="home-eyebrow" th:text="#{home.card1.eyebrow}">New in v0.4.0</p>
+                <h3 th:text="#{home.card1.title}">Durak is here!</h3>
                 <p th:text="#{home.card1.copy}">
-                    Create a game, share the lobby code, or browse open rooms when you want to join someone already waiting for your company.
+                    Durak has joined ULTRACARDS in the latest release. Attack, defend, and empty your hand before everyone else.
                 </p>
             </article>
 

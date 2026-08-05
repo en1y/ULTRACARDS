@@ -2,6 +2,7 @@ package com.ultracards.config;
 
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -10,16 +11,17 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import java.util.Map;
 
 /**
- * Exposes the resolved language and the full message map to every rendered
- * view, so templates can set the html lang attribute and the header fragment
- * can inject window.__I18N__ for the JS side.
+ * Exposes shared language, canonical-site and authorization metadata to every
+ * rendered view.
  */
 @ControllerAdvice
 public class I18nModelAdvice {
     private final I18nConfig i18nConfig;
+    private final String siteUrl;
 
-    public I18nModelAdvice(I18nConfig i18nConfig) {
+    public I18nModelAdvice(I18nConfig i18nConfig, @Value("${app.site-url}") String siteUrl) {
         this.i18nConfig = i18nConfig;
+        this.siteUrl = siteUrl.replaceFirst("/+$", "");
     }
 
     @ModelAttribute("i18n")
@@ -30,6 +32,11 @@ public class I18nModelAdvice {
     @ModelAttribute("lang")
     public String lang() {
         return I18nConfig.supportedLanguage(LocaleContextHolder.getLocale());
+    }
+
+    @ModelAttribute("siteUrl")
+    public String siteUrl() {
+        return siteUrl;
     }
 
     @ModelAttribute("isAdmin")
