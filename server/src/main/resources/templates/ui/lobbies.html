@@ -8,10 +8,9 @@
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/fragments/create-lobby.css}">
+    <th:block th:replace="~{ui/fragments/create-lobby :: createLobbyPopupStyles}"></th:block>
     <script th:src="@{/js/theme.js}" defer></script>
-        <link rel="stylesheet" th:href="@{/css/ui/lobbies.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/lobbies.css}">
 </head>
 <body>
     <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -122,7 +121,7 @@
                 </div>
             </section>
         </section>
-        <th:block th:replace="~{ui/fragments/create-lobby :: createLobbyMenu}"></th:block>
+        <th:block th:replace="~{ui/fragments/create-lobby :: createLobbyPopup}"></th:block>
     </main>
 
     <aside id="lobbies-toast" class="lobbies-toast" aria-live="polite" aria-atomic="true" hidden>
@@ -130,7 +129,6 @@
         <p id="lobbies-toast-text" class="lobbies-toast-text" th:text="#{lobbies.toast.full}">This lobby is already full.</p>
     </aside>
 
-    <script th:src="@{/js/ui/fragments/createLobby.js}"></script>
     <script th:inline="javascript">
         window.__INITIAL_LOBBIES__ = /*[[${lobbies}]]*/ [];
     </script>

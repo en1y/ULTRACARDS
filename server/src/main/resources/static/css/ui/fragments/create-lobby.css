@@ -4,7 +4,9 @@
 
 .create-lobby-modal {
     width: min(640px, 100%);
-    overflow: hidden;
+    max-height: calc(100dvh - 2rem);
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .create-lobby-header {

@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:fragment="createLobbyPopupStyles">
+    <link rel="stylesheet" th:href="@{/css/ui/fragments/create-lobby.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
+</th:block>
+</head>
 <body>
-<th:block th:fragment="createLobbyMenu">
+<th:block th:fragment="createLobbyPopup">
     <div id="create-div" class="modal-overlay create-lobby-overlay">
         <div class="modal create-lobby-modal" role="dialog" aria-modal="true" aria-labelledby="create-lobby-title">
             <header class="create-lobby-header">
@@ -54,6 +60,7 @@
             </form>
         </div>
     </div>
+    <script th:src="@{/js/ui/fragments/createLobby.js}"></script>
 </th:block>
 </body>
 </html>

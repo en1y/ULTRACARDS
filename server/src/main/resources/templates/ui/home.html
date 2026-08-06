@@ -20,7 +20,7 @@
 
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
-    <link rel="stylesheet" th:href="@{/css/ui/fragments/create-lobby.css}">
+    <th:block th:if="${isAuthenticated}" th:replace="~{ui/fragments/create-lobby :: createLobbyPopupStyles}"></th:block>
     <link rel="stylesheet" th:href="@{/css/ui/home.css}">
     <script th:src="@{/js/theme.js}" defer></script>
 </head>
@@ -180,10 +180,9 @@
     <p id="home-toast-text" class="home-toast-text" th:text="#{lobbies.toast.closed.body('your lobby')}">Your lobby was closed because its timer ran out.</p>
 </aside>
 
-<th:block th:if="${isAuthenticated}" th:replace="~{ui/fragments/create-lobby :: createLobbyMenu}"></th:block>
+<th:block th:if="${isAuthenticated}" th:replace="~{ui/fragments/create-lobby :: createLobbyPopup}"></th:block>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-    <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/createLobby.js}"></script>
     <script th:src="@{/js/ui/home.js}"></script>
 </body>
 </html>
