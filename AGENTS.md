@@ -25,6 +25,7 @@ Use Java 25, UTF-8, and 4-space indentation. Keep packages under `com.ultracards
 ## Date and Time Conventions
 
 Treat Monday as the first day of the week and use 24-hour time formatting throughout the application and user-facing UI.
+When working with dates use dd.mm.yyyy format for UI
 
 ## Frontend UI Verification
 
