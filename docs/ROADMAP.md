@@ -148,17 +148,25 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.4.1 - Add Elo or Glicko rating system for competitive play
-
-- Implement a rating system (Elo or Glicko) to track player skill levels based on game outcomes.
-- Update the game statistics and leaderboards to include player ratings.
-- Provide a way for players to view their rating history and progress over time.
-
----
-
-## v0.4.2 - Add an in-game currency system
+## v0.4.1 - Add an in-game currency system
 
 - Introduce an in-game currency that players can earn through gameplay and achievements.
 - Implement every day log in rewards
 - Allow players to spend currency on cosmetic items, card backs, or other non-gameplay affecting features.
 - Implement a currency management system in the backend with endpoints for earning, spending, and tracking currency balances.
+- Make users get 1500 currency as a base and if they have less than 1500 currency they get 1500 currency per day for logging in and clicking a separate button that is to be inside a currency page. 
+- Add a leaderboard for currency units
+- Show balance of a user in a header, use shorts like k, m, b, t for thousands, millions, billions, trillions, make it not take up too much space.
+- Add currencies into the user profile fragments when searched or accessed from other sources
+- Add info on amount of currency earned in the last 7 days, some kind of delta
+- Add that info to the admin dashboard and the admin cli
+
+---
+
+## v0.4.2 - Add something like githubs activity page
+
+- Add display for that in the profile page and in the profile pop up fragments
+- Add rewards for players that have played for 3, 7, 14, 30, 100, 200, 300, 365 days in a row. Add far-fetched achievements for 2 or 3 years too.
+- Add streak freezes that you get for playing 7 days in a row and max them out at 3 streak freezes. 
+- Make the current streak based on history but after it has been pulled from there implement a separate logic for storing it
+
