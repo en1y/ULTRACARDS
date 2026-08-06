@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{ui/fragments/head :: siteMetadata}"></th:block>
     <meta name="description" th:content="#{leaderboards.intro}">
     <link rel="canonical" th:href="|${siteUrl}/leaderboards|">
     <title th:text="#{leaderboards.pageTitle}">Leaderboards · ULTRACARDS</title>

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{ui/fragments/head :: siteMetadata}"></th:block>
     <meta name="description" th:content="#{home.about.intro}">
     <link rel="canonical" th:href="${siteUrl}">
     <title>ULTRACARDS</title>
@@ -12,6 +13,7 @@
             "@context": "https://schema.org",
             "@type": "WebSite",
             "name": "ULTRACARDS",
+            "alternateName": "UltraCards",
             "url": "[[${siteUrl}]]"
         }
     </script>

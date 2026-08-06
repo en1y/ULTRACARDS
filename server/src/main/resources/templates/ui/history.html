@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{ui/fragments/head :: siteMetadata}"></th:block>
     <title th:text="#{history.pageTitle}">Game History | ULTRACARDS</title>
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">

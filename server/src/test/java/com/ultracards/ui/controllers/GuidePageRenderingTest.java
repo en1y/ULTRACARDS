@@ -40,7 +40,10 @@ class GuidePageRenderingTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("rel=\"canonical\" href=\"https://ultracards.test\"")))
                 .andExpect(content().string(containsString("name=\"description\"")))
+                .andExpect(content().string(containsString("property=\"og:site_name\" content=\"ULTRACARDS\"")))
+                .andExpect(content().string(containsString("rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\"")))
                 .andExpect(content().string(containsString("\"@type\": \"WebSite\"")))
+                .andExpect(content().string(containsString("\"alternateName\": \"UltraCards\"")))
                 .andExpect(content().string(containsString("\"url\": \"https://ultracards.test\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"home-secondary-actions\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/guides\"")))
@@ -49,6 +52,8 @@ class GuidePageRenderingTest {
         mockMvc.perform(get("/guides"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("rel=\"canonical\" href=\"https://ultracards.test/guides\"")))
+                .andExpect(content().string(containsString("property=\"og:site_name\" content=\"ULTRACARDS\"")))
+                .andExpect(content().string(containsString("rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\"")))
                 .andExpect(content().string(containsString("name=\"description\"")));
 
         mockMvc.perform(get("/guides/briskula"))
@@ -89,6 +94,8 @@ class GuidePageRenderingTest {
         mockMvc.perform(get("/leaderboards"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("rel=\"canonical\" href=\"https://ultracards.test/leaderboards\"")))
+                .andExpect(content().string(containsString("property=\"og:site_name\" content=\"ULTRACARDS\"")))
+                .andExpect(content().string(containsString("rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\"")))
                 .andExpect(content().string(containsString("name=\"description\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/ui/leaderboards.css?v=test-version")));
 
@@ -98,6 +105,9 @@ class GuidePageRenderingTest {
         mockMvc.perform(get("/images/card-suits/poker/HEARTS.png"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("image/png"));
+        mockMvc.perform(get("/favicon.ico"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/x-icon"));
     }
 
     @Test
