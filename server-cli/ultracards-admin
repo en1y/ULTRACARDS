@@ -1,2 +1,16 @@
 #!/usr/bin/env sh
-exec java --enable-native-access=ALL-UNNAMED -jar "$(dirname "$0")/target/ultracards-admin.jar" "$@"
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+JAR_PATH="$SCRIPT_DIR/ultracards-admin.jar"
+
+if [ ! -f "$JAR_PATH" ]; then
+    JAR_PATH="$SCRIPT_DIR/target/ultracards-admin.jar"
+fi
+
+if [ ! -f "$JAR_PATH" ]; then
+    echo "No ultracards-admin.jar found beside this script or in target" >&2
+    exit 1
+fi
+
+exec java --enable-native-access=ALL-UNNAMED -jar "$JAR_PATH" "$@"
