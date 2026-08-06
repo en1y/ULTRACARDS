@@ -18,7 +18,7 @@ if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=prod"
 
 rem General properties: application.properties
 if "%APP_TITLE%"=="" set "APP_TITLE=ULTRACARDS Server"
-if "%APP_VERSION%"=="" set "APP_VERSION=0.3.4"
+if "%APP_VERSION%"=="" set "APP_VERSION=0.4.0"
 if "%APP_SITE_URL%"=="" set "APP_SITE_URL=https://ultracards.en1y.qzz.io"
 if "%SERVER_PORT%"=="" set "SERVER_PORT=8080"
 if "%SPRING_PROFILES_DEFAULT%"=="" set "SPRING_PROFILES_DEFAULT=dev"
