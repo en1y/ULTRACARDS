@@ -2,6 +2,9 @@ package com.ultracards.gateway.service;
 
 import com.ultracards.gateway.dto.admin.*;
 import com.ultracards.gateway.dto.notifications.NotificationDTO;
+import com.ultracards.gateway.dto.points.PointTransactionPageDTO;
+import com.ultracards.gateway.dto.points.PointsSeriesPointDTO;
+import com.ultracards.gateway.dto.points.PointsSettingsDTO;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -97,6 +100,37 @@ public class AdminService {
     }
     public void revokeSessions(Long id, String reason) {
         exchange("/users/" + id + "/sessions?reason=" + encode(reason), HttpMethod.DELETE, null, Void.class);
+    }
+    public AdminPointsAdjustmentDTO adjustPoints(Long id, AdminPointsPatchDTO patch) {
+        return exchange("/users/" + id + "/points", HttpMethod.PATCH, patch, AdminPointsAdjustmentDTO.class);
+    }
+    public PointTransactionPageDTO pointsLedger(Long id, int page, int size) {
+        return exchange("/users/" + id + "/points?page=" + page + "&size=" + size,
+                HttpMethod.GET, null, PointTransactionPageDTO.class);
+    }
+    public List<PointsSeriesPointDTO> pointsSeries(Long id, int days) {
+        return exchange("/users/" + id + "/points/series?days=" + days, HttpMethod.GET, null,
+                new ParameterizedTypeReference<List<PointsSeriesPointDTO>>() {});
+    }
+
+    public PointsSettingsDTO pointsSettings() {
+        return get("/economy/settings", PointsSettingsDTO.class);
+    }
+    public PointsSettingsDTO updatePointsSettings(AdminPointsSettingsPatchDTO patch) {
+        return exchange("/economy/settings", HttpMethod.PATCH, patch, PointsSettingsDTO.class);
+    }
+    public List<AdminPointEventDTO> pointEvents() {
+        return get("/economy/events", new ParameterizedTypeReference<>() {});
+    }
+    public AdminPointEventDTO createPointEvent(AdminPointEventPatchDTO patch) {
+        return exchange("/economy/events", HttpMethod.POST, patch, AdminPointEventDTO.class);
+    }
+    public AdminPointEventDTO updatePointEvent(UUID id, AdminPointEventPatchDTO patch) {
+        return exchange("/economy/events/" + id, HttpMethod.PUT, patch, AdminPointEventDTO.class);
+    }
+    public AdminPointEventDTO setPointEventEnabled(UUID id, boolean enabled, String reason) {
+        return exchange("/economy/events/" + id + "/enabled?enabled=" + enabled + "&reason=" + encode(reason),
+                HttpMethod.PATCH, null, AdminPointEventDTO.class);
     }
 
     public AdminLobbyDTO patchLobby(UUID id, AdminLobbyPatchDTO patch) {

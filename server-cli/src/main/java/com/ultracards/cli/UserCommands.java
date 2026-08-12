@@ -3,6 +3,7 @@ package com.ultracards.cli;
 import com.ultracards.gateway.dto.admin.AdminPageDTO;
 import com.ultracards.gateway.dto.admin.AdminUserSummaryDTO;
 import com.ultracards.gateway.dto.admin.AdminUserPatchDTO;
+import com.ultracards.gateway.dto.admin.AdminPointsPatchDTO;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -14,7 +15,8 @@ import java.util.function.IntFunction;
 
 @Command(name = "user", aliases = "users", description = "Inspect accounts, roles, status, and sessions.",
         subcommands = {UserCommands.ListUsers.class, UserCommands.Show.class, UserCommands.Role.class,
-                UserCommands.Stats.class, UserCommands.Enable.class, UserCommands.Disable.class, UserCommands.Sessions.class})
+                UserCommands.Stats.class, UserCommands.Points.class, UserCommands.Spending.class,
+                UserCommands.PointsChart.class, UserCommands.Enable.class, UserCommands.Disable.class, UserCommands.Sessions.class})
 class UserCommands implements Runnable {
     @Spec CommandSpec spec;
 
@@ -55,6 +57,53 @@ class UserCommands implements Runnable {
         public Integer call() {
             return root().withClient(client -> ok(client.admin().stats(resolveUserId(target,
                     page -> client.admin().users(page, 200)))));
+        }
+    }
+
+    @Command(name = "points", description = "Add or remove Points with an audited reason.")
+    static class Points extends CliCommand {
+        @Parameters(index = "0", paramLabel = "USER") String target;
+        @Option(names = "--amount", required = true) long amount;
+        @Option(names = "--reason", required = true) String reason;
+        @Option(names = "--dry-run", description = "Preview the resulting balance without changing it.") boolean dryRun;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                var id = resolveUserId(target, page -> client.admin().users(page, 200));
+                var current = client.admin().user(id);
+                if (!dryRun && !root().confirmChange("Points for user " + id,
+                        current.points() + "P", (amount >= 0 ? "+" : "") + amount + "P")) return 5;
+                return ok(client.admin().adjustPoints(id, new AdminPointsPatchDTO(amount, reason, dryRun)));
+            });
+        }
+    }
+
+    @Command(name = "spending", aliases = {"points-history", "ledger"},
+            description = "Show where a user's Points went, newest first.")
+    static class Spending extends CliCommand {
+        @Parameters(index = "0", paramLabel = "USER") String target;
+        @Option(names = "--page", description = "Zero-based page index.") int page;
+        @Option(names = "--size", description = "Entries per page (default 25).") int size = 25;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                var id = resolveUserId(target, p -> client.admin().users(p, 200));
+                return ok(client.admin().pointsLedger(id, page, size).items());
+            });
+        }
+    }
+
+    @Command(name = "points-chart", aliases = "chart",
+            description = "Draw a user's Points balance over time.")
+    static class PointsChart extends CliCommand {
+        @Parameters(index = "0", paramLabel = "USER") String target;
+        @Option(names = "--days", description = "Days to cover; 0 is the whole ledger (default 30).") int days = 30;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                var id = resolveUserId(target, p -> client.admin().users(p, 200));
+                return ok(client.admin().pointsSeries(id, Math.max(0, days)));
+            });
         }
     }
 

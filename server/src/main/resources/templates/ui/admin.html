@@ -9,6 +9,8 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/admin.css}">
     <script th:src="@{/js/theme.js}" defer></script>
+    <script th:src="@{/webjars/chart.js/4.4.6/dist/chart.umd.js}" defer></script>
+    <script th:src="@{/js/points-chart.js(v=${@environment.getProperty('app.version')})}" defer></script>
     <script th:src="@{/js/ui/admin.js}" defer></script>
 </head>
 <body th:attr="data-admin-page=${adminPage}">
@@ -24,6 +26,7 @@
             <nav class="admin-nav" aria-label="Administration sections">
                 <p class="admin-nav-group" th:text="#{admin.nav.general}">General</p>
                 <a th:href="@{/admin}" th:classappend="${adminPage == 'dashboard'} ? 'is-active'" th:attr="aria-current=${adminPage == 'dashboard'} ? 'page'"><img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.overview}">Overview</span></a>
+                <a th:href="@{/admin/economy}" th:classappend="${adminPage == 'economy'} ? 'is-active'" th:attr="aria-current=${adminPage == 'economy'} ? 'page'"><span class="admin-nav-points points-symbol" aria-hidden="true">P</span><span th:text="#{admin.tab.economy}">Points &amp; events</span></a>
                 <p class="admin-nav-group" th:text="#{admin.nav.people}">People</p>
                 <a th:href="@{/admin/users}" th:classappend="${adminPage == 'users'} ? 'is-active'" th:attr="aria-current=${adminPage == 'users'} ? 'page'"><img class="uc-icon" data-icon="person" th:src="@{/pics/light/person.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.users}">Users</span></a>
                 <a th:href="@{/admin/stats}" th:classappend="${adminPage == 'stats'} ? 'is-active'" th:attr="aria-current=${adminPage == 'stats'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.stats}">Stats</span></a>
@@ -51,6 +54,43 @@
                 <div class="admin-panel-heading"><div><h2 th:text="#{admin.overview.title}">System overview</h2><p th:text="#{admin.overview.copy}">Live counts and health signals.</p></div></div>
                 <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
                 <section id="admin-overview-breakdown" class="admin-breakdowns" aria-label="Detailed breakdowns"></section>
+            </section>
+
+            <section class="admin-panel" data-section="economy" th:hidden="${adminPage != 'economy'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.economy.title}">Points &amp; events</h2><p th:text="#{admin.economy.copy}">Set the fee shown to players and schedule reward events.</p></div></div>
+                <div class="admin-economy-layout">
+                    <article class="admin-economy-card">
+                        <h3 th:text="#{admin.economy.feeTitle}">Bet fee</h3>
+                        <p class="admin-meta" th:text="#{admin.economy.feeCopy}">The saved percentage is snapshotted when a game starts.</p>
+                        <form id="admin-points-settings" class="admin-form admin-economy-settings">
+                            <label><span th:text="#{admin.economy.feePercent}">Fee percentage</span><span class="admin-percent-input"><input name="wagerFeePercent" type="number" min="0" max="100" step="1" required inputmode="numeric"><span>%</span></span></label>
+                            <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"></label>
+                            <button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveFee}">Save fee</button>
+                        </form>
+                    </article>
+
+                    <article class="admin-economy-card admin-event-editor-card">
+                        <div class="admin-row-head"><h3 id="admin-event-editor-title" th:text="#{admin.economy.newEvent}">New event</h3><button id="admin-event-new" class="btn" type="button" th:text="#{admin.economy.clearEvent}">Clear</button></div>
+                        <form id="admin-event-form" class="admin-form">
+                            <input name="id" type="hidden">
+                            <label><span th:text="#{admin.common.name}">Name</span><input name="name" required maxlength="120"></label>
+                            <label><span th:text="#{admin.economy.description}">Description</span><textarea name="description" maxlength="1000" rows="3"></textarea></label>
+                            <div class="admin-event-dates">
+                                <label><span th:text="#{admin.economy.starts}">Starts</span><input name="startsAt" type="datetime-local" required></label>
+                                <label><span th:text="#{admin.economy.ends}">Ends (optional)</span><input name="endsAt" type="datetime-local"></label>
+                            </div>
+                            <fieldset class="admin-event-games"><legend th:text="#{admin.economy.games}">Eligible games</legend><p class="admin-meta" th:text="#{admin.economy.allGamesHint}">Leave all unchecked to count every game.</p><label class="admin-check"><input name="gameTypes" type="checkbox" value="BRISKULA">Briskula</label><label class="admin-check"><input name="gameTypes" type="checkbox" value="TRESETA">Treseta</label><label class="admin-check"><input name="gameTypes" type="checkbox" value="DURAK">Durak</label><label class="admin-check"><input name="gameTypes" type="checkbox" value="POKER">Poker</label></fieldset>
+                            <label><span th:text="#{admin.economy.completionReward}">All-goals bonus</span><span class="admin-points-input"><input name="completionRewardPoints" type="number" min="0" step="1" value="0" required inputmode="numeric"><span class="points-symbol">P</span></span></label>
+                            <label class="admin-check"><input name="enabled" type="checkbox" checked><span th:text="#{admin.economy.enabled}">Enabled</span></label>
+                            <div class="admin-event-achievements-head"><div><h4 th:text="#{admin.economy.achievements}">Sub-achievements</h4><p class="admin-meta" th:text="#{admin.economy.achievementsHint}">Optional. A goal completes only after every non-zero target is met.</p></div><button id="admin-event-add-achievement" class="btn" type="button" th:text="#{admin.economy.addAchievement}">Add goal</button></div>
+                            <div id="admin-event-achievements" class="admin-event-achievements"></div>
+                            <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"></label>
+                            <button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveEvent}">Save event</button>
+                        </form>
+                    </article>
+                </div>
+                <div class="admin-panel-heading admin-events-heading"><div><h3 th:text="#{admin.economy.events}">Configured events</h3><p th:text="#{admin.economy.eventsCopy}">Upcoming, active, ended, and disabled events.</p></div></div>
+                <div class="admin-results" data-results="economy-events"></div>
             </section>
 
             <section class="admin-panel" data-section="users" th:hidden="${adminPage != 'users'}">

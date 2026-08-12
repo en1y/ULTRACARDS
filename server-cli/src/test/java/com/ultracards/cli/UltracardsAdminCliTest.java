@@ -177,7 +177,12 @@ class UltracardsAdminCliTest {
         command.setOut(new PrintWriter(output));
 
         assertEquals(0, command.execute("--version"));
-        assertTrue(output.toString().contains("0.4.0"), output.toString());
+        assertTrue(output.toString().contains("0.4.1"), output.toString());
+
+        var points = command.parseArgs("user", "points", "7", "--amount", "250",
+                "--reason", "support correction", "--dry-run");
+        assertEquals(250L, points.subcommand().subcommand().matchedOptionValue("--amount", 0L));
+        assertTrue(points.subcommand().subcommand().matchedOptionValue("--dry-run", false));
 
         var mode = "P6_D54_JOKERS_EVERYONE_PASS";
         var availability = command.parseArgs("game", "disable", "DURAK",

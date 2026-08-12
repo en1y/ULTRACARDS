@@ -30,11 +30,11 @@ import java.util.function.Function;
                 "  ultracards-admin db edit stats --user ada --game BRISKULA --mode TWO_PLAYERS --wins 12 --reason correction",
                 "", "Use @|bold help <command>|@ or @|bold <command> --help|@ for details."},
         subcommands = {ServerCommands.class, Login.class, Logout.class, WhoAmI.class,
-                UserCommands.class, GameCommands.class, LeaderboardCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
+                UserCommands.class, EconomyCommands.class, GameCommands.class, LeaderboardCommands.class, LobbyCommands.class, DbCommands.class, SystemCommands.class,
                 OverviewCommands.class,
                 NotifyCommands.class, AuditCommands.class, SessionCommands.class, Shell.class, Clear.class, Completion.class, HelpCommand.class})
 public class UltracardsAdminCli implements Callable<Integer> {
-    static final String VERSION = "0.4.0";
+    static final String VERSION = "0.4.1";
     @Spec CommandSpec spec;
     @Option(names = "--output", defaultValue = "TABLE", scope = ScopeType.INHERIT, paramLabel = "FORMAT",
             description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")

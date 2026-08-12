@@ -13,10 +13,22 @@ class AdminTemplateRenderingTest {
             assertThat(stream).isNotNull();
             var template = new String(stream.readAllBytes());
 
-            for (var page : new String[]{"dashboard", "users", "stats", "lobbies", "games", "sessions", "availability", "database", "audit", "notifications"}) {
+            for (var page : new String[]{"dashboard", "economy", "users", "stats", "lobbies", "games", "sessions", "availability", "database", "audit", "notifications"}) {
                 assertThat(template).contains("data-section=\"" + page + "\" th:hidden=\"${adminPage != '" + page + "'}\"");
             }
         }
+    }
+
+    @Test
+    void exposesTheFullEventEditorAndFeeSnapshotCopy() throws IOException {
+        var template = resource("/templates/ui/admin.html");
+        var script = resource("/static/js/ui/admin.js");
+
+        assertThat(template).contains("id=\"admin-points-settings\"", "id=\"admin-event-form\"",
+                "name=\"startsAt\"", "name=\"endsAt\"", "name=\"gameTypes\"",
+                "id=\"admin-event-achievements\"");
+        assertThat(script).contains("eventAchievementEditor", "gamesRequired", "winsRequired",
+                "lossesRequired", "drawsRequired", "/economy/events", "/economy/settings");
     }
 
     @Test
@@ -85,13 +97,19 @@ class AdminTemplateRenderingTest {
     void keepsTheUiSandboxFrontendOnly() throws IOException {
         try (var templateStream = getClass().getResourceAsStream("/templates/ui/admin-sandbox.html");
              var scriptStream = getClass().getResourceAsStream("/static/js/ui/sandbox.js");
-             var durakScriptStream = getClass().getResourceAsStream("/static/js/ui/durak-sandbox.js")) {
+             var durakScriptStream = getClass().getResourceAsStream("/static/js/ui/durak-sandbox.js");
+             var liveGameScriptStream = getClass().getResourceAsStream("/static/js/ui/live-game.js");
+             var durakGameScriptStream = getClass().getResourceAsStream("/static/js/ui/games/durak.js")) {
             assertThat(templateStream).isNotNull();
             assertThat(scriptStream).isNotNull();
             assertThat(durakScriptStream).isNotNull();
+            assertThat(liveGameScriptStream).isNotNull();
+            assertThat(durakGameScriptStream).isNotNull();
             var template = new String(templateStream.readAllBytes());
             var script = new String(scriptStream.readAllBytes());
             var durakScript = new String(durakScriptStream.readAllBytes());
+            var liveGameScript = new String(liveGameScriptStream.readAllBytes());
+            var durakGameScript = new String(durakGameScriptStream.readAllBytes());
 
             assertThat(script).doesNotContain("fetch(");
             assertThat(durakScript).doesNotContain("fetch(");
@@ -99,6 +117,11 @@ class AdminTemplateRenderingTest {
             assertThat(durakScript).doesNotContain("/api/admin/sandbox");
             assertThat(script).contains("window.Stomp =");
             assertThat(durakScript).contains("window.Stomp =");
+            assertThat(script).contains("window.UltracardsSandboxWagerDeltas", "wagerDeltas:");
+            assertThat(durakScript).contains("window.UltracardsSandboxWagerDeltas", "wagerDeltas:");
+            assertThat(liveGameScript).contains("state.wagerPayoutAnimated = false;");
+            assertThat(durakGameScript).contains("state.wagerPayoutAnimated = false;");
+            assertThat(durakGameScript).contains("function startLobbyReturnCountdown(meta) {\n        if (gameEl.dataset.sandbox) return;");
             assertThat(durakScript).contains("/app/game/durak/action");
             assertThat(template).contains("<option value=\"durak\" th:text=\"#{game.durak}\">Durak</option>");
             assertThat(template).contains("id=\"sandbox-hand-cards\"");
@@ -141,7 +164,8 @@ class AdminTemplateRenderingTest {
             assertThat(gameScript).contains("prev-round-back");
             assertThat(gameScript).contains("prev-round-forward");
             assertThat(gameScript).contains("function seatSlot(index, count)");
-            assertThat(gameScript).contains("--seat-fan-index");
+            assertThat(gameScript).contains("Math.min(3, 32 / (target - 1))");
+            assertThat(gameScript).contains("--seat-fan-rotation");
             assertThat(gameScript).contains("is-dense-player-ring");
             assertThat(gameScript).contains("/app/game/durak/action");
             assertThat(gameScript).contains("function playOnRotate(card)");
@@ -197,6 +221,13 @@ class AdminTemplateRenderingTest {
             assertThat(adminScript).contains("syncGamesModeFilter();");
             assertThat(adminTemplate).contains("<option value=\"DURAK\">Durak</option>");
             assertThat(adminTemplate).contains("<option value=\"durak\">Durak</option>");
+        }
+    }
+
+    private String resource(String path) throws IOException {
+        try (var stream = getClass().getResourceAsStream(path)) {
+            assertThat(stream).isNotNull();
+            return new String(stream.readAllBytes());
         }
     }
 }
