@@ -148,25 +148,28 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.4.1 - Add an in-game currency system
+## v0.4.1 - Add the Points economy ✅
 
-- Introduce an in-game currency that players can earn through gameplay and achievements.
-- Implement every day log in rewards
-- Allow players to spend currency on cosmetic items, card backs, or other non-gameplay affecting features.
-- Implement a currency management system in the backend with endpoints for earning, spending, and tracking currency balances.
-- Make users get 1500 currency as a base and if they have less than 1500 currency they get 1500 currency per day for logging in and clicking a separate button that is to be inside a currency page. 
-- Add a leaderboard for currency units
-- Show balance of a user in a header, use shorts like k, m, b, t for thousands, millions, billions, trillions, make it not take up too much space.
-- Add currencies into the user profile fragments when searched or accessed from other sources
-- Add info on amount of currency earned in the last 7 days, some kind of delta
-- Add that info to the admin dashboard and the admin cli
+- Name the currency Points and display every amount as `{amount}P`.
+- Give each account a 1,500P starting balance and a once-per-day 1,500P claim from the Points page when its pre-claim balance is below 1,500P.
+- Award Points through daily goals that reset each day; finishing a game pays nothing by itself, so only bets
+  move Points during play. Every grant goes through an idempotent transaction ledger.
+- Add a toggleable host-selected bet to every supported lobby mode, with start-time escrow, crash-safe refunds, and deterministic settlement.
+- Pick the bet on a 100P–1,000,000P slider that steps in nines per decade, with preset stakes and 100 / 1K / 10K / 100K / 1M ticks.
+- Return each winner's stake plus an equal share of 96% of the losing pool; record the remaining 4% as economy rake. Refund draws and interrupted games.
+- Show each lobby's bet on its list card and filter the list by a stake range, with free lobbies as an opt-in.
+- Explain the betting maths per game mode in every game guide.
+- Add authenticated balance, daily-claim, and paginated transaction endpoints; expose Points through the gateway client.
+- Add the Points page, compact header balance, profile and profile-popup balances, seven-day delta, and a Points leaderboard.
+- Add audited administrator balance adjustments and economy metrics to the web dashboard and admin CLI.
+- Keep all balances and settlements server-authoritative, non-negative, transactionally locked, and protected against duplicate rewards.
 
 ---
 
 ## v0.4.2 - Add something like githubs activity page
 
+- Allow players to spend Points on cosmetic items, card backs, and other non-gameplay-affecting features.
 - Add display for that in the profile page and in the profile pop up fragments
 - Add rewards for players that have played for 3, 7, 14, 30, 100, 200, 300, 365 days in a row. Add far-fetched achievements for 2 or 3 years too.
 - Add streak freezes that you get for playing 7 days in a row and max them out at 3 streak freezes. 
 - Make the current streak based on history but after it has been pulled from there implement a separate logic for storing it
-
