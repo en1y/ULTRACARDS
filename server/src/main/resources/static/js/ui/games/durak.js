@@ -86,7 +86,8 @@
         targetRects: null,
         hoveredTarget: '',
         clearing: false,
-        previousDeckCount: null
+        previousDeckCount: null,
+        wagerPayoutAnimated: false
     };
 
     /* ---------------------------------- cards ---------------------------------- */
@@ -495,9 +496,10 @@
         const visualCardWidth = cardWidth * (mobileQuery.matches ? 1.85 : 1.45);
         const step = target > 1 ? Math.max(1, Math.min(mobileQuery.matches ? 5 : 8,
             (available - visualCardWidth) / (target - 1))) : 0;
+        const rotationStep = target > 1 ? Math.min(3, 32 / (target - 1)) : 0;
         Array.from(container.children).forEach((card, index) => {
             const offset = index - middle;
-            card.style.setProperty('--seat-fan-index', offset.toFixed(1));
+            card.style.setProperty('--seat-fan-rotation', `${(-offset * rotationStep).toFixed(2)}deg`);
             card.style.setProperty('--seat-fan-distance', Math.abs(offset).toFixed(1));
             card.style.setProperty('--seat-fan-x', `${(offset * step).toFixed(2)}px`);
         });
@@ -1379,11 +1381,17 @@
         // "You are the durak" already says who lost; naming yourself underneath it
         // only says the same thing twice.
         dom.dropZone.replaceChildren(...(selfLost ? [title, verdict, meta] : [title, verdict, winner, meta]));
+        if (!state.wagerPayoutAnimated) {
+            state.wagerPayoutAnimated = ui.animateWagerPayout(
+                result, dom.dropZone, dom.ring, currentUserId, dom.summary
+            ) === true;
+        }
         if (dom.turnOverlay) dom.turnOverlay.classList.remove('is-visible');
         startLobbyReturnCountdown(meta);
     }
 
     function startLobbyReturnCountdown(meta) {
+        if (gameEl.dataset.sandbox) return;
         if (state.endRedirect) return;
         let secondsLeft = 8;
         meta.textContent = t('briskula.returningIn', secondsLeft);
@@ -1677,6 +1685,7 @@
                 try {
                     const payload = JSON.parse(msg.body);
                     if (!payload?.gameEntity) return;
+                    if (payload.gameEvent === 'STARTED') state.wagerPayoutAnimated = false;
                     applyGame(payload.gameEntity);
                     if (payload.gameEvent === 'RESULTED') renderResult(payload.result);
                 } catch (error) {

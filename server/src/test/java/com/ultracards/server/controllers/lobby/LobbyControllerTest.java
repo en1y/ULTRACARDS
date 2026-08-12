@@ -6,6 +6,7 @@ import com.ultracards.server.service.lobby.LobbyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -14,10 +15,13 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class LobbyControllerTest {
@@ -42,6 +46,17 @@ class LobbyControllerTest {
                 .andExpect(status().isCreated());
 
         verify(lobbyService).inviteFriendToLobby(user, 2L);
+    }
+
+    @Test
+    void reportsWhyAPlayersPointsPreventTheLobbyFromStarting() throws Exception {
+        var user = user(1L, "Host");
+        when(lobbyService.startLobby(user)).thenThrow(new ResponseStatusException(
+                HttpStatus.CONFLICT, "Insufficient Points for 100P: PoorPlayer"));
+
+        mockMvc.perform(post("/api/lobby/start").with(authentication(user)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Insufficient Points for 100P: PoorPlayer"));
     }
 
     private RequestPostProcessor authentication(UserEntity user) {

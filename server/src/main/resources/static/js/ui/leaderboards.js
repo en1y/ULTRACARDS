@@ -1,6 +1,6 @@
 (() => {
     const PAGE_SIZE = 25;
-    const state = { metric: 'GAMES_PLAYED', gameType: '', mode: '', durak: null, page: 0, request: null };
+    const state = { metric: 'POINTS', gameType: '', mode: '', durak: null, page: 0, request: null };
     const gameSelect = document.getElementById('leaderboard-game');
     const modeSelect = document.getElementById('leaderboard-mode');
     const modeField = document.getElementById('leaderboard-mode-field');
@@ -24,12 +24,16 @@
     const previous = document.getElementById('leaderboard-previous');
     const next = document.getElementById('leaderboard-next');
     const pageLabel = document.getElementById('leaderboard-page-label');
+    const finalColumn = document.getElementById('leaderboard-final-column');
+    const gameStatColumns = document.querySelectorAll('.leaderboard-game-stat-column');
+    const filters = document.querySelector('.leaderboard-filters');
 
     const labels = {
         rank: t('leaderboards.column.rank'),
         games: t('leaderboards.column.games'),
         wins: t('leaderboards.column.wins'),
-        winRate: t('leaderboards.column.winRate')
+        winRate: t('leaderboards.column.winRate'),
+        points: t('points.title')
     };
 
     function selectedMetricButton() {
@@ -39,7 +43,7 @@
     function readUrl() {
         const params = new URLSearchParams(location.search);
         const metric = params.get('metric');
-        if (['GAMES_PLAYED', 'WIN_RATE', 'WINS'].includes(metric)) state.metric = metric;
+        if (['GAMES_PLAYED', 'WIN_RATE', 'WINS', 'POINTS'].includes(metric)) state.metric = metric;
         state.gameType = params.get('gameType') || '';
         state.mode = params.get('mode') || '';
         state.durak = {
@@ -52,6 +56,13 @@
         state.page = Math.max(0, Number.parseInt(params.get('page') || '0', 10) || 0);
         gameSelect.value = [...gameSelect.options].some(option => option.value === state.gameType)
             ? state.gameType : '';
+        state.gameType = gameSelect.value;
+        if (state.metric === 'POINTS') {
+            state.gameType = '';
+            state.mode = '';
+            state.durak = {players: '', deck: '', throwin: '', jokers: '', passing: ''};
+            gameSelect.value = '';
+        }
         document.querySelectorAll('[data-metric]').forEach(button => {
             const active = button.dataset.metric === state.metric;
             button.classList.toggle('is-active', active);
@@ -61,7 +72,7 @@
 
     function writeUrl() {
         const params = new URLSearchParams();
-        if (state.metric !== 'GAMES_PLAYED') params.set('metric', state.metric);
+        if (state.metric !== 'POINTS') params.set('metric', state.metric);
         if (state.gameType) params.set('gameType', state.gameType);
         if (state.mode && !isDurak()) params.set('mode', state.mode);
         if (isDurak()) {
@@ -159,11 +170,20 @@
         return output;
     }
 
+    function pointsCell(value, label) {
+        const output = document.createElement('td');
+        output.className = 'leaderboard-number points-value';
+        output.dataset.label = label;
+        output.append(pointsCompactNode(value));
+        return output;
+    }
+
     function metricLabel() {
         return selectedMetricButton()?.querySelector('span')?.textContent || state.metric;
     }
 
     function metricValue(entry) {
+        if (state.metric === 'POINTS') return entry.points;
         if (state.metric === 'WIN_RATE') return entry.winRate;
         if (state.metric === 'WINS') return entry.wins;
         return entry.gamesPlayed;
@@ -259,7 +279,11 @@
 
         const games = cell(entry.gamesPlayed.toLocaleString(), 'leaderboard-number', labels.games);
         const wins = cell(entry.wins.toLocaleString(), 'leaderboard-number', labels.wins);
-        const winRate = cell(`${entry.winRate.toFixed(1)}%`, 'leaderboard-number', labels.winRate);
+        games.hidden = state.metric === 'POINTS';
+        wins.hidden = state.metric === 'POINTS';
+        const winRate = state.metric === 'POINTS'
+            ? pointsCell(entry.points, labels.points)
+            : cell(`${entry.winRate.toFixed(1)}%`, 'leaderboard-number', labels.winRate);
         const primary = state.metric === 'GAMES_PLAYED' ? games : state.metric === 'WINS' ? wins : winRate;
         primary.classList.add('leaderboard-primary-value');
         row.append(rank, player, games, wins, winRate);
@@ -267,7 +291,10 @@
     }
 
     function render(data) {
+        if (finalColumn) finalColumn.textContent = state.metric === 'POINTS' ? labels.points : labels.winRate;
+        gameStatColumns.forEach(column => column.hidden = state.metric === 'POINTS');
         updateModes(data.availableModes || []);
+        if (filters) filters.hidden = state.metric === 'POINTS';
         if (data.items.length === 0 && data.totalElements > 0 && state.page > 0) {
             state.page = Math.max(0, data.totalPages - 1);
             writeUrl();
@@ -306,8 +333,8 @@
         showStatus(t('leaderboards.loading'));
         currentUser.hidden = true;
         const params = new URLSearchParams({ metric: state.metric, page: state.page, size: PAGE_SIZE });
-        if (state.gameType) params.set('gameType', state.gameType);
-        if (isDurak() && !durakFilterIsEmpty(state.durak)) {
+        if (state.gameType && state.metric !== 'POINTS') params.set('gameType', state.gameType);
+        if (state.metric !== 'POINTS' && isDurak() && !durakFilterIsEmpty(state.durak)) {
             const modes = durakModes();
             // A filter no rule set satisfies (Jokers on a 24-card pack) has no board.
             if (!modes.length) {
@@ -334,12 +361,18 @@
     document.querySelectorAll('[data-metric]').forEach(button => button.addEventListener('click', () => {
         if (button === selectedMetricButton()) return;
         state.metric = button.dataset.metric;
+        if (state.metric === 'POINTS') {
+            state.gameType = '';
+            state.mode = '';
+            gameSelect.value = '';
+        }
         state.page = 0;
         document.querySelectorAll('[data-metric]').forEach(item => {
             const active = item === button;
             item.classList.toggle('is-active', active);
             item.setAttribute('aria-pressed', String(active));
         });
+        if (filters) filters.hidden = state.metric === 'POINTS';
         writeUrl();
         load();
     }));
@@ -381,5 +414,6 @@
     });
 
     readUrl();
+    writeUrl();
     load();
 })();

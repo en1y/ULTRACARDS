@@ -22,6 +22,8 @@ class LeaderboardTemplateRenderingTest {
             assertThat(template).contains("aria-live=\"polite\"");
             assertThat(template).contains("data-metric=\"GAMES_PLAYED\"");
             assertThat(template).contains("data-metric=\"WIN_RATE\"");
+            assertThat(template.indexOf("data-metric=\"POINTS\"")).isLessThan(template.indexOf("data-metric=\"GAMES_PLAYED\""));
+            assertThat(template).contains("data-metric=\"POINTS\" aria-pressed=\"true\"");
             assertThat(template).contains("id=\"leaderboard-mode\" disabled");
             assertThat(template).contains("id=\"leaderboard-chart-bars\"");
             assertThat(template).contains("leaderboard-intro");
@@ -30,6 +32,7 @@ class LeaderboardTemplateRenderingTest {
             assertThat(script).contains("function renderChart(data)");
             assertThat(script).contains("data.items.slice(0, 10)");
             assertThat(script).contains("state.metric === 'WIN_RATE'");
+            assertThat(script).contains("metric: 'POINTS'");
             assertThat(script).contains("openUserProfilePopup");
             assertThat(stylesheet).contains("@media (max-width: 700px)");
             assertThat(stylesheet).contains(".leaderboard-chart-bars");

@@ -92,6 +92,20 @@
                 <li th:text="#{guides.durak.mode.options}">Optional Jokers, passing, and everyone-may-throw-in rules</li>
             </ul>
         </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.betting}">Betting</h3>
+            <p data-wager-guide-fee th:text="#{guides.bet.intro(4)}">A lobby host can attach a bet. Winners share what the losers put in, minus a 4% house fee.</p>
+            <p th:text="#{guides.bet.durakNote}">Only the durak pays, so the more players at the table, the smaller each winner's share.</p>
+            <p th:text="#{guides.bet.example}">At a 1,000P bet each winner walks away with:</p>
+            <ul class="guide-values">
+                <li><span th:text="#{guides.bet.mode.2p}">2 players</span><strong data-wager-example-losers="1" data-wager-example-winners="1">+960P</strong></li>
+                <li><span th:text="#{guides.bet.mode.3p}">3 players</span><strong data-wager-example-losers="1" data-wager-example-winners="2">+480P</strong></li>
+                <li><span th:text="#{guides.bet.mode.4p}">4 players</span><strong data-wager-example-losers="1" data-wager-example-winners="3">+320P</strong></li>
+                <li><span th:text="#{guides.bet.mode.5p}">5 players</span><strong data-wager-example-losers="1" data-wager-example-winners="4">+240P</strong></li>
+                <li><span th:text="#{guides.bet.mode.6p}">6 players</span><strong data-wager-example-losers="1" data-wager-example-winners="5">+192P</strong></li>
+            </ul>
+            <p th:text="#{guides.bet.refund}">A draw, or a game that never finishes, gives everyone their bet back.</p>
+        </article>
     </div>
     <div class="guide-footer-actions">
         <a class="btn guide-cta" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>

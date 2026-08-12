@@ -25,6 +25,7 @@
     let activeProfileAction = null;
     let friendIdsCache = null;
     let friendIdsPromise = null;
+    let pointsChartPromise = null;
     const currentUsername = document.getElementById('username-header')?.textContent?.trim() || '';
     const createIcon = (icon) => {
       if (window.createUcIcon) {
@@ -514,48 +515,17 @@
       return list;
     };
 
-    const createHistoryCard = (game, profile) => {
-      const card = document.createElement('article');
-      card.className = 'header-user-history-card';
-
-      const head = document.createElement('div');
-      head.className = 'header-user-history-head';
-
-      const titleWrap = document.createElement('div');
-      const title = document.createElement('strong');
-      title.textContent = game?.name || gameDisplayName(game?.gameType || 'Briskula');
-      const meta = document.createElement('small');
-      meta.textContent = `${formatHistoryDate(game?.endedAt || game?.createdAt)} - ${gameConfigDisplayName(game?.gameType || 'Briskula', game?.gameConfig)}`;
-      titleWrap.append(title, meta);
-
-      const result = document.createElement('span');
-      const won = userWonGame(game, profile?.id);
-      result.className = `header-user-history-result ${won ? 'win' : 'loss'}`;
-      result.textContent = won ? t('history.winLetter') : t('history.lossLetter');
-      result.title = won ? t('history.win') : t('history.loss');
-
-      head.append(titleWrap, result);
-
-      const playersRow = document.createElement('div');
-      playersRow.className = 'header-user-history-row';
-      const playersLabel = document.createElement('span');
-      playersLabel.textContent = t('lobby.players.chip');
-      playersRow.append(playersLabel, createPlayerList(game?.playersOrder || [], game));
-
-      const footer = document.createElement('div');
-      footer.className = 'header-user-history-footer';
-      const winners = document.createElement('p');
-      winners.textContent = t('search.winnersLabel', (game?.winners || []).map(playerName).join(', ') || t('history.noWinner'));
-      const replay = document.createElement('a');
-      replay.className = 'btn header-user-history-link';
-      replay.href = `/history/${encodeURIComponent(game?.id || '')}`;
-      replay.append(createIcon('history'), document.createElement('span'));
-      setButtonLabel(replay, t('history.replay'));
-      footer.append(winners, replay);
-
-      card.append(head, playersRow, footer);
-      return card;
-    };
+    // The card itself lives in ui/fragments/history-card.js; this just hands it the
+    // popup-local helpers it needs.
+    const createHistoryCard = (game, profile) => window.ucHistoryCard.create(game, profile, {
+      formatDate: formatHistoryDate,
+      configName: gameConfigDisplayName,
+      userWon: userWonGame,
+      playerList: createPlayerList,
+      playerName,
+      icon: createIcon,
+      setLabel: setButtonLabel
+    });
 
     const friendMatchupTypeLabel = (value) => {
       if (value === 'WITH_TEAMMATE') {
@@ -666,17 +636,25 @@
       return state;
     };
 
-    const createStatTile = (label, value) => {
+    const createStatTile = (label, value, note) => {
       const tile = document.createElement('article');
       tile.className = 'header-user-profile-stat';
 
       const strong = document.createElement('strong');
-      strong.textContent = String(value ?? 0);
+      if (value instanceof Node) strong.append(value);
+      else strong.textContent = String(value ?? 0);
 
       const span = document.createElement('span');
       span.textContent = label;
 
       tile.append(strong, span);
+      if (note != null) {
+        const trailing = document.createElement('small');
+        trailing.className = 'header-user-profile-stat-note';
+        if (note instanceof Node) trailing.append(note);
+        else trailing.textContent = note;
+        tile.append(trailing);
+      }
       return tile;
     };
 
@@ -799,7 +777,157 @@
       return true;
     };
 
-    const createProfileTabs = (statsPanel, historyPanel, profile) => {
+    const loadScript = (src) => new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Unable to load ${src}`));
+      document.head.append(script);
+    });
+
+    const ensurePointsChart = () => {
+      if (window.Chart && window.renderPointsChart) {
+        return Promise.resolve();
+      }
+      const chartReady = window.Chart
+        ? Promise.resolve()
+        : loadScript('/webjars/chart.js/4.4.6/dist/chart.umd.js');
+      pointsChartPromise ||= chartReady.then(() => window.renderPointsChart
+        ? undefined
+        : loadScript('/js/points-chart.js'));
+      return pointsChartPromise;
+    };
+
+    const renderProfilePoints = (profile, panel, transactions, series) => {
+      panel.replaceChildren();
+      const section = document.createElement('section');
+      section.className = 'header-user-profile-points';
+
+      const summary = document.createElement('div');
+      summary.className = 'header-user-profile-stats';
+      summary.append(
+          createStatTile(t('points.balance'), pointsCompactNode(profile?.points)),
+          createStatTile(t('points.change24h'), pointsDeltaNode(profile?.pointsChangeLast24Hours))
+      );
+
+      const chart = document.createElement('section');
+      chart.className = 'header-user-profile-points-chart';
+      const chartHead = document.createElement('div');
+      chartHead.className = 'header-user-profile-points-chart-head';
+      const chartTitle = document.createElement('h3');
+      chartTitle.textContent = t('points.chart.title');
+      const range = document.createElement('div');
+      range.className = 'points-range';
+      range.setAttribute('role', 'group');
+      range.setAttribute('aria-label', t('points.chart.range'));
+      const rangeButtons = [
+        ['1', '1d'], ['3', '3d'], ['7', '7d'], ['30', '30d'],
+        ['year', t('points.chart.year')], ['0', t('points.chart.all')]
+      ].map(([value, label]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `btn points-range-button${value === '3' ? ' is-active' : ''}`;
+        button.dataset.pointsRange = value;
+        button.setAttribute('aria-pressed', String(value === '3'));
+        button.textContent = label;
+        range.append(button);
+        return button;
+      });
+      const chartShell = document.createElement('div');
+      chartShell.className = 'header-user-profile-points-chart-shell';
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', t('points.chart.title'));
+      const empty = document.createElement('p');
+      empty.className = 'header-user-profile-state';
+      empty.textContent = t('points.chart.empty');
+      empty.hidden = true;
+      chartShell.append(canvas, empty);
+      chartHead.append(chartTitle, range);
+      chart.append(chartHead, chartShell);
+
+      const activity = document.createElement('section');
+      activity.className = 'header-user-profile-points-activity';
+      const activityTitle = document.createElement('h3');
+      activityTitle.textContent = t('points.ledger.title');
+      const list = document.createElement('div');
+      list.className = 'header-user-profile-points-list';
+      if (!transactions.length) {
+        list.append(createProfileState(t('points.ledger.empty')));
+      } else {
+        for (const item of transactions) {
+          const row = document.createElement('article');
+          row.className = 'header-user-profile-points-row';
+          const copy = document.createElement('span');
+          const reason = document.createElement('strong');
+          reason.textContent = t(`points.transaction.${String(item.type || '').toLowerCase()}`);
+          const time = document.createElement('small');
+          time.textContent = formatHistoryDate(item.createdAt);
+          copy.append(reason, time);
+          const amount = document.createElement('span');
+          amount.append(pointsDeltaNode(item.amount, false));
+          const balance = document.createElement('span');
+          balance.className = 'points-value';
+          balance.append(pointsNode(item.balanceAfter));
+          row.append(copy, amount, balance);
+          list.append(row);
+        }
+      }
+      activity.append(activityTitle, list);
+      section.append(summary, chart, activity);
+      panel.append(section);
+      const drawChart = (points, days) => window.requestAnimationFrame(() =>
+        window.renderPointsChart?.(canvas, points, {
+          balance: profile?.points,
+          days,
+          emptyElement: empty
+        }));
+      let chartRequest = 0;
+      rangeButtons.forEach(button => button.addEventListener('click', async () => {
+        const request = ++chartRequest;
+        const days = pointsRangeDays(button.dataset.pointsRange);
+        rangeButtons.forEach(other => {
+          const active = other === button;
+          other.classList.toggle('is-active', active);
+          other.setAttribute('aria-pressed', String(active));
+        });
+        try {
+          const response = await fetch(`/api/points/users/${encodeURIComponent(profile.id)}/series?days=${days}`,
+              {credentials: 'include', cache: 'no-store'});
+          if (!response.ok) throw new Error('Points series failed');
+          const points = await response.json();
+          if (request === chartRequest) drawChart(points, days);
+        } catch (error) {
+          console.warn('Unable to load profile Point history', error);
+        }
+      }));
+      drawChart(series, 3);
+    };
+
+    const loadProfilePoints = async (profile, panel) => {
+      panel.replaceChildren(createProfileState(t('common.loading')));
+      try {
+        const id = encodeURIComponent(profile.id);
+        const [transactionsResponse, seriesResponse] = await Promise.all([
+          fetch(`/api/points/users/${id}/transactions?page=0&size=10`, {credentials: 'include', cache: 'no-store'}),
+          fetch(`/api/points/users/${id}/series?days=3`, {credentials: 'include', cache: 'no-store'}),
+          ensurePointsChart()
+        ]);
+        if (!transactionsResponse.ok || !seriesResponse.ok) {
+          throw new Error('Points failed');
+        }
+        const [transactions, series] = await Promise.all([
+          transactionsResponse.json(),
+          seriesResponse.json()
+        ]);
+        renderProfilePoints(profile, panel, transactions.items || [], series || []);
+      } catch (error) {
+        console.warn('Unable to load profile Points', error);
+        panel.replaceChildren(createProfileState(t('points.loadFailed'), 'error'));
+      }
+    };
+
+    const createProfileTabs = (statsPanel, pointsPanel, historyPanel, profile) => {
       const tabs = document.createElement('div');
       tabs.className = 'header-user-profile-tabs';
       tabs.setAttribute('role', 'tablist');
@@ -812,6 +940,13 @@
       statsButton.setAttribute('aria-selected', 'true');
       statsButton.textContent = t('search.stats');
 
+      const pointsButton = document.createElement('button');
+      pointsButton.className = 'header-user-profile-tab';
+      pointsButton.type = 'button';
+      pointsButton.setAttribute('role', 'tab');
+      pointsButton.setAttribute('aria-selected', 'false');
+      pointsButton.textContent = t('points.title');
+
       const historyButton = document.createElement('button');
       historyButton.className = 'header-user-profile-tab';
       historyButton.type = 'button';
@@ -819,17 +954,27 @@
       historyButton.setAttribute('aria-selected', 'false');
       historyButton.textContent = t('header.menu.history');
 
+      let pointsLoaded = false;
       let historyLoaded = false;
       const activate = (tab) => {
+        const showStats = tab === 'stats';
+        const showPoints = tab === 'points';
         const showHistory = tab === 'history';
-        statsButton.classList.toggle('is-active', !showHistory);
+        statsButton.classList.toggle('is-active', showStats);
+        pointsButton.classList.toggle('is-active', showPoints);
         historyButton.classList.toggle('is-active', showHistory);
-        statsButton.setAttribute('aria-selected', String(!showHistory));
+        statsButton.setAttribute('aria-selected', String(showStats));
+        pointsButton.setAttribute('aria-selected', String(showPoints));
         historyButton.setAttribute('aria-selected', String(showHistory));
-        statsPanel.hidden = showHistory;
+        statsPanel.hidden = !showStats;
+        pointsPanel.hidden = !showPoints;
         historyPanel.hidden = !showHistory;
         profileModal?.content.focus({ preventScroll: true });
 
+        if (showPoints && !pointsLoaded) {
+          pointsLoaded = true;
+          loadProfilePoints(profile, pointsPanel);
+        }
         if (showHistory && !historyLoaded) {
           historyLoaded = true;
           loadProfileHistory(profile, historyPanel);
@@ -837,8 +982,9 @@
       };
 
       statsButton.addEventListener('click', () => activate('stats'));
+      pointsButton.addEventListener('click', () => activate('points'));
       historyButton.addEventListener('click', () => activate('history'));
-      tabs.append(statsButton, historyButton);
+      tabs.append(statsButton, pointsButton, historyButton);
       tabs.addEventListener('keydown', (event) => {
         if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || isTypingTarget(event.target)) {
           return;
@@ -971,6 +1117,10 @@
       const statsPanel = document.createElement('div');
       statsPanel.className = 'header-user-profile-panel';
 
+      const pointsPanel = document.createElement('div');
+      pointsPanel.className = 'header-user-profile-panel';
+      pointsPanel.hidden = true;
+
       const historyPanel = document.createElement('div');
       historyPanel.className = 'header-user-profile-panel';
       historyPanel.hidden = true;
@@ -979,7 +1129,8 @@
       totals.className = 'header-user-profile-stats';
       totals.append(
           createStatTile(t('search.tile.gamesPlayed'), profile?.gamesPlayed ?? 0),
-          createStatTile(t('search.tile.gamesWon'), profile?.gamesWon ?? 0)
+          createStatTile(t('search.tile.gamesWon'), profile?.gamesWon ?? 0),
+          createStatTile(t('points.balance'), pointsCompactNode(profile?.points))
       );
 
       const games = document.createElement('section');
@@ -1009,7 +1160,8 @@
       if (detailedFriend) {
         statsPanel.append(createDetailedFriendStatsSection(detailedFriend));
       }
-      root.append(summary, createProfileTabs(statsPanel, historyPanel, profile), statsPanel, historyPanel);
+      root.append(summary, createProfileTabs(statsPanel, pointsPanel, historyPanel, profile),
+          statsPanel, pointsPanel, historyPanel);
       setProfileModalContent(root);
     };
 

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* The one way Points are written on a server-rendered page: shortened amount,
+       a non-breaking space only when a K/M/B suffix needs one, then the symbol. */-->
+<th:block th:fragment="points(amount)"
+          th:with="text=${@pointsFormat.compact(amount)}"><span
+        th:text="${text} + (${@pointsFormat.spaced(amount)} ? '&#160;' : '')">1.5K </span><span
+        class="points-symbol" th:text="#{points.symbol}">P</span></th:block>
+
+<!--/* Same, with an explicit sign — for deltas that read better as +/−. */-->
+<th:block th:fragment="signedPoints(amount)"
+          th:with="value=${amount != null ? amount : 0}"><span class="points-delta"
+        th:classappend="${value > 0 ? 'is-up' : (value < 0 ? 'is-down' : 'is-zero')}"><span
+        th:if="${value > 0}">+</span><span th:if="${value < 0}">−</span><th:block
+        th:replace="~{ui/fragments/points :: points(${value < 0 ? -value : value})}"></th:block></span></th:block>
+</body>
+</html>

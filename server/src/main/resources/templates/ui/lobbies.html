@@ -80,6 +80,29 @@
 
                 <div id="game-settings" class="lobbies-dynamic-settings" hidden="hidden"></div>
 
+                <div class="lobbies-filter-group lobbies-bet-filter">
+                    <div id="bet-filter" class="wager-editor">
+                        <div class="wager-head">
+                            <span class="wager-head-label" th:text="#{lobbies.filter.bet}">Bet</span>
+                            <strong class="wager-amount"><span data-bet-min>100</span><span class="points-symbol"
+                                    th:text="#{points.symbol}">P</span> – <span data-bet-max>100,000</span><span
+                                    class="points-symbol" th:text="#{points.symbol}">P</span></strong>
+                        </div>
+                        <div class="wager-dual">
+                            <span class="wager-dual-track" aria-hidden="true"></span>
+                            <input id="bet-filter-min" class="wager-range" type="range" th:aria-label="#{lobbies.filter.betMin}">
+                            <input id="bet-filter-max" class="wager-range" type="range" th:aria-label="#{lobbies.filter.betMax}">
+                        </div>
+                        <div class="wager-ticks" aria-hidden="true"></div>
+                    </div>
+                    <label class="lobbies-bet-free" for="bet-filter-free">
+                        <input id="bet-filter-free" type="checkbox" checked>
+                        <span class="visibility-switch" aria-hidden="true"></span>
+                        <span th:text="#{lobbies.filter.betFree}">Include lobbies with no bet</span>
+                    </label>
+                    <p class="wager-help" data-wager-fee th:text="#{points.wager.help(4)}">Everyone bets this. Winners split the pot.</p>
+                </div>
+
                 <div class="lobbies-sidebar-actions">
                     <button id="apply-filters-button" class="btn-accent" type="button">
                         <img class="uc-icon" data-icon="search" th:src="@{/pics/light/search.svg}" alt="" aria-hidden="true" />

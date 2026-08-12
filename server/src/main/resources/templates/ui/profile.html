@@ -90,6 +90,15 @@
                 </div>
             </div>
             <div class="profile-meta-grid">
+                <a class="profile-summary-card profile-summary-stack profile-summary-inline" th:href="@{/points}"
+                   th:with="change=${profile.getPointsChangeLast24Hours() ?: 0}">
+                    <span class="summary-label" th:text="#{points.balance}">Points balance</span>
+                    <span class="summary-value points-value"><th:block
+                            th:replace="~{ui/fragments/points :: points(${profile.getPoints() ?: 0})}"></th:block></span>
+                    <small class="points-delta"
+                           th:classappend="${change > 0 ? 'is-up' : (change < 0 ? 'is-down' : 'is-zero')}"
+                           th:text="#{points.delta(${(change > 0 ? '+' : (change < 0 ? '−' : '')) + (change < 0 ? -change : change)})}">+100 Points in the last 24 hours</small>
+                </a>
                 <div class="profile-summary-card profile-summary-stack profile-summary-inline">
                     <span class="summary-label" th:text="#{profile.userId}">User ID</span>
                     <span class="summary-value" th:text="${profile.getId()}" id="id">-</span>

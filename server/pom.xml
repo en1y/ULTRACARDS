@@ -201,6 +201,13 @@
             <version>1.10.27</version>
         </dependency>
 
+        <!-- Points chart. Served off the classpath like the other webjars, never a CDN. -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>chart.js</artifactId>
+            <version>4.4.6</version>
+        </dependency>
+
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>webjars-locator-core</artifactId>

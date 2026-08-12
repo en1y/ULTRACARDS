@@ -310,6 +310,10 @@
             filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.22));
         }
 
+        .player-seat[data-player-id]:not(.is-self) .seat-avatar {
+            cursor: pointer;
+        }
+
         .player-seat.team-seat-ally .seat-avatar {
             background: linear-gradient(155deg, #379b5a, #1d6138);
         }
@@ -902,6 +906,88 @@
             font-weight: 700;
             color: rgba(255, 236, 203, 0.78);
             letter-spacing: 0;
+        }
+
+        .seat-wager-delta {
+            --bubble-bg: #102c18;
+            --bubble-color: var(--color-success);
+            position: absolute;
+            left: 50%;
+            top: calc(100% + 0.7rem);
+            z-index: 14;
+            padding: 0.58rem 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.18rem;
+            border: 1px solid color-mix(in oklab, var(--bubble-color) 70%, transparent);
+            border-radius: 12px;
+            background: var(--bubble-bg);
+            color: var(--bubble-color);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), 0 0 18px color-mix(in oklab, var(--bubble-color) 26%, transparent);
+            font-size: clamp(1rem, 2.6vmin, 1.3rem);
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+            transform: translateX(-50%);
+            pointer-events: none;
+            animation: wager-result-bubble-in 220ms ease-out both;
+        }
+
+        .seat-wager-delta::before,
+        .seat-wager-delta::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: 100%;
+            width: 0;
+            height: 0;
+            transform: translateX(-50%);
+            border-style: solid;
+            border-color: transparent;
+        }
+
+        .seat-wager-delta::before {
+            border-width: 0.65rem;
+            border-bottom-color: var(--bubble-color);
+        }
+
+        .seat-wager-delta::after {
+            margin-bottom: -0.09rem;
+            border-width: 0.5rem;
+            border-bottom-color: var(--bubble-bg);
+        }
+
+        .seat-wager-delta.is-loss {
+            --bubble-bg: #370d0e;
+            --bubble-color: var(--color-danger);
+        }
+
+        .seat-wager-delta .points-symbol { color: var(--color-points); }
+
+        .player-seat:has(.seat-cards:empty) > .seat-wager-delta {
+            top: calc(var(--avatar-size) + 2.2rem);
+        }
+
+        .player-summary > .seat-wager-delta {
+            top: auto;
+            bottom: calc(100% + 0.7rem);
+        }
+
+        .player-summary > .seat-wager-delta::before,
+        .player-summary > .seat-wager-delta::after {
+            bottom: auto;
+            top: 100%;
+            border-bottom-color: transparent;
+        }
+
+        .player-summary > .seat-wager-delta::before {
+            border-top-color: var(--bubble-color);
+        }
+
+        .player-summary > .seat-wager-delta::after {
+            margin-top: -0.09rem;
+            margin-bottom: 0;
+            border-top-color: var(--bubble-bg);
         }
 
         .table-turn-overlay {
@@ -1764,12 +1850,18 @@
             50% { transform: translateX(-50%) translateY(-3px) rotate(4deg); }
         }
 
+        @keyframes wager-result-bubble-in {
+            from { opacity: 0; translate: 0 -8px; scale: 0.88; }
+            to { opacity: 1; translate: 0 0; scale: 1; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .drop-zone.is-result,
             .drop-zone.is-result::before {
                 animation-duration: 1ms !important;
                 animation-iteration-count: 1 !important;
             }
+            .seat-wager-delta { animation: none !important; }
         }
 
         /* Gecko pays heavily for filters/backdrop roots on moving mobile cards.

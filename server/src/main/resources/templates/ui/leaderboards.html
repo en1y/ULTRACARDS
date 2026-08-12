@@ -28,7 +28,11 @@
     <section class="leaderboard-shell container" aria-labelledby="leaderboard-results-title">
         <div class="leaderboard-controls card">
             <div class="leaderboard-metrics" role="group" th:aria-label="#{leaderboards.metric.label}">
-                <button class="leaderboard-metric is-active" type="button" data-metric="GAMES_PLAYED" aria-pressed="true">
+                <button class="leaderboard-metric is-active" type="button" data-metric="POINTS" aria-pressed="true">
+                    <span th:text="#{leaderboards.metric.points}">Points</span>
+                    <small th:text="#{leaderboards.metric.points.hint}">Largest Points balance</small>
+                </button>
+                <button class="leaderboard-metric" type="button" data-metric="GAMES_PLAYED" aria-pressed="false">
                     <span th:text="#{leaderboards.metric.gamesPlayed}">Games played</span>
                     <small th:text="#{leaderboards.metric.gamesPlayed.hint}">The most experienced players</small>
                 </button>
@@ -111,9 +115,9 @@
                     <tr>
                         <th scope="col" th:text="#{leaderboards.column.rank}">Rank</th>
                         <th scope="col" th:text="#{leaderboards.column.player}">Player</th>
-                        <th scope="col" th:text="#{leaderboards.column.games}">Games</th>
-                        <th scope="col" th:text="#{leaderboards.column.wins}">Wins</th>
-                        <th scope="col" th:text="#{leaderboards.column.winRate}">Win rate</th>
+                        <th class="leaderboard-game-stat-column" scope="col" th:text="#{leaderboards.column.games}">Games</th>
+                        <th class="leaderboard-game-stat-column" scope="col" th:text="#{leaderboards.column.wins}">Wins</th>
+                        <th id="leaderboard-final-column" scope="col" th:text="#{leaderboards.column.winRate}">Win rate</th>
                     </tr>
                     </thead>
                     <tbody id="leaderboard-rows"></tbody>
@@ -130,6 +134,6 @@
 </main>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
-<script th:src="@{/js/ui/leaderboards.js(v='0.3.4-3')}"></script>
+<script th:src="@{/js/ui/leaderboards.js(v=${@environment.getProperty('app.version')})}"></script>
 </body>
 </html>

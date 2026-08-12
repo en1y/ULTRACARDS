@@ -332,11 +332,16 @@ body.friends-drawer-open .uc-header.hidden {
 .header-user-profile-view {
   display: grid;
   gap: 1rem;
+  min-width: 0;
   min-height: 0;
 }
 
 .header-user-profile-tabs {
   display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
   gap: 0.45rem;
   padding: 0.4rem;
 }
@@ -432,6 +437,17 @@ body.friends-drawer-open .uc-header.hidden {
   gap: 0.65rem;
 }
 
+.header-user-profile-stat-note {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.friend-points {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .header-user-profile-stat {
   display: grid;
   place-items: center;
@@ -447,7 +463,9 @@ body.friends-drawer-open .uc-header.hidden {
   font-size: 1.35rem;
 }
 
-.header-user-profile-stat span {
+/* Direct child only: the label is a span, but so is the P inside the value, and
+   this rule was painting it muted instead of gold. */
+.header-user-profile-stat > span {
   color: var(--color-text-muted);
   font-size: 0.82rem;
   font-weight: 700;
@@ -461,6 +479,74 @@ body.friends-drawer-open .uc-header.hidden {
 .header-user-profile-history {
   display: grid;
   gap: 0.65rem;
+}
+
+.header-user-profile-points,
+.header-user-profile-points-chart,
+.header-user-profile-points-activity,
+.header-user-profile-points-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.header-user-profile-points h3 {
+  margin: 0;
+}
+
+.header-user-profile-points-chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.header-user-profile-points-chart-shell {
+  position: relative;
+  height: 220px;
+  min-width: 0;
+  padding: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--color-surface) 58%, var(--color-bg));
+}
+
+.header-user-profile-points-chart-shell canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.header-user-profile-points-chart-shell .header-user-profile-state {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  transform: translate(-50%, -50%);
+}
+
+.header-user-profile-points-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--color-surface) 58%, var(--color-bg));
+  font-variant-numeric: tabular-nums;
+}
+
+.header-user-profile-points-row > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.header-user-profile-points-row small {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-user-history-list {
@@ -751,7 +837,8 @@ body.friends-drawer-open .uc-header.hidden {
 }
 
 .profile-action {
-  flex: 0 1 14rem;
+  flex: 0 1 auto;
+  max-width: 14rem;
 }
 
 .notification-bell,
@@ -1454,11 +1541,44 @@ body.friends-drawer-open .uc-header.hidden {
   position: relative;
   min-width: 0;
   max-width: 100%;
-  width: 100%;
+  width: auto;
+}
+
+.header-points-chip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 3.5rem;
+  max-width: 7.5rem;
+  flex: 0 1 auto;
+  padding: .42rem .65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-points-chip:hover { border-color: var(--color-accent); }
+.header-points-symbol { flex: 0 0 auto; }
+
+/* The P stands in for an icon in the menu, so give it an icon's box or the row
+   sits a few pixels off from every other item. */
+.menu-item > .header-points-symbol {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.header-points-chip strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
 .profile-chip {
-  width: 100%;
+  width: auto;
   max-width: 14rem;
   min-width: 0;
   display: inline-flex;
@@ -1675,10 +1795,18 @@ body.friends-drawer-open .uc-header.hidden {
 
   .uc-header-zone-search {
     width: 100%;
+    gap: 0.5rem;
   }
 
+  /* The search form takes the row; the relocated toggle sits at its end. */
   .header-search {
-    width: 100%;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .uc-header-zone-search .theme-toggle {
+    flex: 0 0 auto;
   }
 
   .uc-actions {
@@ -1715,6 +1843,12 @@ body.friends-drawer-open .uc-header.hidden {
   .profile-chip {
     max-width: none;
     padding-inline: 0.4rem;
+  }
+
+  .header-points-chip {
+    min-width: 0;
+    max-width: 5.7rem;
+    padding-inline: 0.5rem;
   }
 
   .profile-chip .username {
@@ -1805,5 +1939,23 @@ body.friends-drawer-open .uc-header.hidden {
   .friend-actions {
     justify-content: flex-end;
     gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* The wordmark used to collapse to a "U" badge here; with the theme toggle moved
+     down to the search row the top row has room to spell it out. */
+  .uc-brand {
+    flex: 0 0 auto;
+    padding-inline: 0.4rem;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Last 40px of headroom on the smallest phones: the balance keeps its own row
+     entry in the profile menu, the wordmark has nowhere else to go. */
+  .header-points-chip {
+    display: none;
   }
 }

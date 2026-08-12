@@ -60,6 +60,12 @@
     cursor: pointer;
 }
 
+.create-lobby-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
 .create-lobby-visibility-row > span:first-child {
     display: grid;
     gap: 0.2rem;
@@ -287,5 +293,46 @@
     .create-lobby-actions .btn,
     #create-lobby-submit {
         width: 100%;
+    }
+}
+.create-lobby-wager {
+    display: contents;
+}
+
+.create-lobby-wager-toggle {
+    min-width: 0;
+    padding: 0.95rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    cursor: pointer;
+}
+
+/* "safe" so an overflowing row still starts at the left edge instead of clipping it. */
+.create-lobby-wager-editor .wager-presets {
+    justify-content: safe center;
+}
+
+.create-lobby-wager-editor {
+    grid-column: 1 / -1;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+@media (max-width: 640px) {
+    .create-lobby-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .create-lobby-visibility-row,
+    .create-lobby-wager-toggle {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.55rem;
+        padding: 0.75rem;
     }
 }

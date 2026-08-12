@@ -449,7 +449,13 @@
         state.slots = [];
         state.ended = true;
         state.revision++;
-        publish('RESULTED', {draw: false, loser: publicPlayer(loser), winners: state.players.slice(0, -1).map(publicPlayer)});
+        const winners = state.players.slice(0, -1).map(publicPlayer);
+        publish('RESULTED', {
+            draw: false,
+            loser: publicPlayer(loser),
+            winners,
+            wagerDeltas: window.UltracardsSandboxWagerDeltas(state.players, winners)
+        });
         showStatus(tr('admin.sandbox.durak.result',
             `Showing a local result: ${loser.name} is the durak.`, loser.name));
     }

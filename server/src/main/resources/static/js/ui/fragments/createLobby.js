@@ -8,6 +8,9 @@
     const publicInput = document.getElementById('create-lobby-public');
     const visibilityText = document.getElementById('create-lobby-visibility-text');
     const visibilityLabel = document.getElementById('create-lobby-public-toggle-label');
+    const wagerEnabled = document.getElementById('create-wager-enabled');
+    const wagerControl = initWagerControl(document.getElementById('create-wager-editor'));
+    pointsBalance().then(balance => { if (balance != null) wagerControl?.limit(balance); });
     const settingsElement = document.getElementById('create-game-settings');
     const submitButton = document.getElementById('create-lobby-submit');
     const statusText = document.getElementById('create-lobby-status');
@@ -125,6 +128,15 @@
         return label;
     }
 
+    function syncWagerEnabled() {
+        wagerControl?.disable(wagerEnabled?.checked !== true);
+    }
+
+    function readWagerConfig() {
+        const enabled = wagerEnabled?.checked === true;
+        return {enabled, stakePoints: enabled ? wagerControl?.value() ?? WAGER_MIN : 0};
+    }
+
     function buildSettingsNotice(title, text) {
         const titleElement = document.createElement('h3');
         titleElement.className = 'create-lobby-settings-title';
@@ -213,6 +225,8 @@
         }
         gameTypeSelect.value = 'all';
         setSettingsContent([]);
+        wagerControl?.set(WAGER_MIN);
+        syncWagerEnabled();
         submitButton.textContent = t('createLobby.submit');
         syncVisibilityText();
         syncCreateState();
@@ -254,14 +268,16 @@
         setStatus(t('createLobby.creatingLobby'), 'success');
 
         try {
+            const payload = JSON.parse(buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value,
+                publicInput?.checked !== false, gameConfigExtrasFor(gameType)));
+            payload.wager = readWagerConfig();
             const response = await fetch('/api/lobby/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 credentials: 'include',
-                body: buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value, publicInput?.checked !== false,
-                    gameConfigExtrasFor(gameType))
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -299,11 +315,13 @@
 
     gameTypeSelect.addEventListener('change', applyGameTypeSettings);
     publicInput?.addEventListener('change', syncVisibilityText);
+    wagerEnabled?.addEventListener('change', syncWagerEnabled);
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         createLobby();
     });
 
     syncVisibilityText();
+    syncWagerEnabled();
     syncCreateState();
 })();

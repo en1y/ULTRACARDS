@@ -27,14 +27,17 @@
   <script th:if="${isAuthenticated}" th:src="@{/webjars/stomp-websocket/2.3.4/stomp.min.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/chat.js}"></script>
   <script th:src="@{/js/gameTypes.js}"></script>
+  <script th:src="@{/js/points.js(v=${@environment.getProperty('app.version')})}"></script>
   <script th:src="@{/js/ui/fragments/header/utils.js}"></script>
-  <script th:src="@{/js/ui/fragments/header/layout.js(v='0.3.5-1')}"></script>
+  <script th:src="@{/js/ui/fragments/header/layout.js(v=${@environment.getProperty('app.version')})}"></script>
   <script th:src="@{/js/ui/fragments/header/profile-popup.js}"></script>
+  <script th:src="@{/js/ui/fragments/history-card.js(v=${@environment.getProperty('app.version')})}"></script>
   <script th:src="@{/js/ui/fragments/header/search.js}"></script>
   <script th:src="@{/js/ui/fragments/header/profile-menu.js}"></script>
   <script th:src="@{/js/ui/fragments/header/language.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/notifications.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/friends.js}"></script>
+  <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/points.js(v=${@environment.getProperty('app.version')})}"></script>
   <script th:src="@{/js/ui/fragments/header/auth-modal.js}"></script>
   <script th:src="@{/js/ui/fragments/header.js}"></script>
 </th:block>
