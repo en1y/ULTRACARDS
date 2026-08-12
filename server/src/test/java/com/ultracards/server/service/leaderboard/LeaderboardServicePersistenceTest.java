@@ -65,6 +65,38 @@ class LeaderboardServicePersistenceTest {
     }
 
     @Test
+    void ranksPointsWithoutGameFilters() {
+        var first = user("points-a-" + UUID.randomUUID());
+        var second = user("points-z-" + UUID.randomUUID());
+        first.setPointsBalance(4_000);
+        second.setPointsBalance(2_500);
+        users.saveAndFlush(first);
+        users.saveAndFlush(second);
+
+        var result = service.get("POINTS", null, null, 0, 100, second);
+
+        assertThat(result.metric()).isEqualTo(LeaderboardMetricDTO.POINTS);
+        assertThat(result.items()).filteredOn(entry -> entry.userId().equals(first.getId()))
+                .singleElement().satisfies(entry -> assertThat(entry.points()).isEqualTo(4_000));
+        assertThat(result.items()).filteredOn(entry -> entry.userId().equals(second.getId()))
+                .singleElement().satisfies(entry -> assertThat(entry.points()).isEqualTo(2_500));
+        assertThatThrownBy(() -> service.get("POINTS", "Durak", null, 0, 100, second))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void defaultsToThePointsLeaderboard() {
+        var user = user("points-default-" + UUID.randomUUID().toString().substring(0, 8));
+        user.setPointsBalance(3_200);
+        users.saveAndFlush(user);
+
+        var result = service.get(null, null, null, 0, 25, user);
+
+        assertThat(result.metric()).isEqualTo(LeaderboardMetricDTO.POINTS);
+        assertThat(result.items()).extracting(entry -> entry.userId()).contains(user.getId());
+    }
+
+    @Test
     void appliesTheWinRateMinimumAndGameFilter() {
         var qualified = user("qualified-" + UUID.randomUUID());
         var tooFewGames = user("too-few-" + UUID.randomUUID());

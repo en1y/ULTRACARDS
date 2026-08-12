@@ -4,6 +4,7 @@ import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.WagerConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.games.durak.DurakGameConfig;
 import com.ultracards.gateway.dto.games.games.durak.DurakGameConfigDTO;
@@ -21,6 +22,7 @@ import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
+import com.ultracards.server.service.points.PointsService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -56,6 +58,7 @@ public class LobbyService {
     private final UltrakillLevelService ultrakillLevelService;
     private final NotificationService notificationService;
     private final FriendService friendService;
+    private final PointsService pointsService;
 
     private final TaskScheduler taskScheduler;
     private final LobbyEventPublisher eventPublisher;
@@ -72,6 +75,7 @@ public class LobbyService {
             UltrakillLevelService ultrakillLevelService,
             NotificationService notificationService,
             FriendService friendService,
+            PointsService pointsService,
             LobbyEventPublisher eventPublisher,
             @Qualifier("timer") TaskScheduler taskScheduler
     ) {
@@ -83,6 +87,7 @@ public class LobbyService {
         this.ultrakillLevelService = ultrakillLevelService;
         this.notificationService = notificationService;
         this.friendService = friendService;
+        this.pointsService = pointsService;
         this.eventPublisher = eventPublisher;
         this.taskScheduler = taskScheduler;
     }
@@ -91,6 +96,7 @@ public class LobbyService {
         if (getLobbyByUser(owner) != null)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already in a lobby");
         syncPlayerLimitsWithConfig(gameLobbyDTO);
+        gameLobbyDTO.setWager(validateWager(gameLobbyDTO.getWager(), owner));
         gameAvailabilityService.requireEnabled(gameLobbyDTO.getGameType(), gameLobbyDTO.getGameConfig());
 
         var levelNumbers = ultrakillLevelService.findLevelNumbers(gameLobbyDTO.getName(), 1);
@@ -127,7 +133,12 @@ public class LobbyService {
         if (lobby == null) {
             return JoinLobbyResult.NOT_FOUND;
         }
+        synchronized (lobby) {
+            return getJoinLobbyResultLocked(user, lobby);
+        }
+    }
 
+    private JoinLobbyResult getJoinLobbyResultLocked(UserEntity user, LobbyEntity lobby) {
         // Already started: nobody new gets in, but a player who is in it is simply
         // still in it — telling them "not found" strands them out of their own game.
         if (lobby.isStarted()) {
@@ -150,22 +161,26 @@ public class LobbyService {
     /** A started lobby is a running game; walking out of it is what {@code /api/game} is for. */
     public Boolean leaveLobby(@NotNull UUID lobbyId, UserEntity user) {
         var lobby = lobbyManager.getLobby(lobbyId);
-        if (lobby == null || lobby.isStarted() || !lobby.removeUser(user)) return false;
-        syncLobbyConfig(lobby);
-        eventPublisher.publish(lobby, UPDATED);
-        return true;
+        if (lobby == null) return false;
+        synchronized (lobby) {
+            if (lobby.isStarted() || !lobby.removeUser(user)) return false;
+            syncLobbyConfig(lobby);
+            eventPublisher.publish(lobby, UPDATED);
+            return true;
+        }
     }
 
     public Boolean startLobby(UserEntity user) {
         var lobby = lobbyManager.getLobby(user);
-        if (lobby != null && lobby.getOwner().equals(user) && hasRequiredPlayers(lobby)) {
+        if (lobby == null) return false;
+        synchronized (lobby) {
+            if (lobby.isStarted() || !lobby.getOwner().equals(user) || !hasRequiredPlayers(lobby)) return false;
             gameAvailabilityService.requireEnabled(lobby.getGameType(), lobby.getGameConfig());
             gameService.startGame(lobby);
             lobby.setStarted(true);
             eventPublisher.publish(lobby, STARTED);
             return true;
         }
-        return false;
     }
 
     private boolean hasRequiredPlayers(LobbyEntity lobby) {
@@ -212,7 +227,18 @@ public class LobbyService {
     }
 
     private GameLobbyDTO applyUpdate(LobbyEntity lobby, GameLobbyDTO lobbyDTO) {
+        synchronized (lobby) {
+            return applyUpdateLocked(lobby, lobbyDTO);
+        }
+    }
+
+    private GameLobbyDTO applyUpdateLocked(LobbyEntity lobby, GameLobbyDTO lobbyDTO) {
+        if (lobby.isStarted())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Started lobbies cannot be updated");
+        if (lobbyDTO.getGameType() != null && lobbyDTO.getGameType() != lobby.getGameType())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A lobby's game type cannot be changed");
         var config = lobbyDTO.getGameConfig();
+        var wager = validateWager(lobbyDTO.getWager(), lobby.getOwner());
         gameAvailabilityService.requireEnabled(lobby.getGameType(), config);
         if ((config instanceof BriskulaGameConfigDTO briskulaConfig
                 && briskulaConfig.getNumberOfPlayers() < lobby.getUsers().size())
@@ -230,6 +256,7 @@ public class LobbyService {
         lobby.setMaxPlayers(lobbyDTO.getMaxPlayers());
         if (lobbyDTO.getIsPublic() != null)
             lobby.setLobbyState(lobbyDTO.getIsPublic() ? LobbyState.PUBLIC : LobbyState.PRIVATE);
+        lobby.setWager(wager);
 
         if (config != null) {
             if (config instanceof BriskulaGameConfigDTO briskulaConfig)
@@ -244,8 +271,58 @@ public class LobbyService {
         return lobby.createLobbyDTO(true);
     }
 
+    private WagerConfigDTO validateWager(WagerConfigDTO wager, UserEntity owner) {
+        if (wager == null || !wager.isEnabled()) return WagerConfigDTO.disabled();
+        if (wager.stakePoints() < PointsService.MIN_STAKE || wager.stakePoints() > PointsService.MAX_STAKE)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Bet must be between " + PointsService.MIN_STAKE + "P and " + PointsService.MAX_STAKE + "P");
+        // A host who cannot cover their own stake would only have the game refuse to
+        // start, so refuse the stake instead.
+        var balance = pointsService.balance(owner);
+        if (wager.stakePoints() > balance)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "You cannot bet more than your balance of " + balance + "P");
+        return wager;
+    }
+
+    /**
+     * Settlement has already run by the time a lobby reopens, so anyone who can no
+     * longer cover the stake is dropped before they can sit through a game they
+     * cannot pay for. The owner losing that ability closes the lobby outright.
+     */
+    private boolean retainPlayersWhoCanCoverStake(LobbyEntity lobby) {
+        var wager = lobby.getWager();
+        if (wager == null || !wager.isEnabled()) return true;
+
+        // Balances live on freshly read users; the copies the lobby holds are stale.
+        if (pointsService.balance(lobby.getOwner()) < wager.stakePoints()) {
+            deleteLobby(lobby);
+            return false;
+        }
+
+        var broke = new ArrayList<UserEntity>();
+        for (var user : lobby.getUsers())
+            if (!user.equals(lobby.getOwner()) && pointsService.balance(user) < wager.stakePoints())
+                broke.add(user);
+        if (broke.isEmpty()) return true;
+
+        for (var user : broke) {
+            lobby.removeUser(user);
+            eventPublisher.publishKicked(user, lobby.getId());
+        }
+        syncLobbyConfig(lobby);
+        eventPublisher.publish(lobby, UPDATED);
+        return true;
+    }
+
     private void syncPlayerLimitsWithConfig(GameLobbyDTO dto) {
-        if (dto.getGameConfig() instanceof DurakGameConfigDTO durak) {
+        if (dto.getGameConfig() instanceof BriskulaGameConfigDTO briskula) {
+            dto.setMinPlayers(briskula.getNumberOfPlayers());
+            dto.setMaxPlayers(briskula.getNumberOfPlayers());
+        } else if (dto.getGameConfig() instanceof TresetaGameConfigDTO treseta) {
+            dto.setMinPlayers(treseta.getNumberOfPlayers());
+            dto.setMaxPlayers(treseta.getNumberOfPlayers());
+        } else if (dto.getGameConfig() instanceof DurakGameConfigDTO durak) {
             var players = DurakLobbyGameConfig.toConfig(durak).numberOfPlayers();
             dto.setMinPlayers(players);
             dto.setMaxPlayers(players);
@@ -289,13 +366,16 @@ public class LobbyService {
     public GameLobbyDTO kickPlayer(@NotNull Long playerToKickId, UserEntity owner) {
         var lobby = lobbyManager.getLobby(owner);
         if (lobby != null) {
-            var player = userService.getUserById(playerToKickId);
-            var removed = lobby.removeUser(player);
-            if (removed) {
-                syncLobbyConfig(lobby);
-                eventPublisher.publishKicked(player, lobby.getId());
-                eventPublisher.publish(lobby, UPDATED);
-                return lobby.createLobbyDTO(true);
+            synchronized (lobby) {
+                if (lobby.isStarted()) return null;
+                var player = userService.getUserById(playerToKickId);
+                var removed = lobby.removeUser(player);
+                if (removed) {
+                    syncLobbyConfig(lobby);
+                    eventPublisher.publishKicked(player, lobby.getId());
+                    eventPublisher.publish(lobby, UPDATED);
+                    return lobby.createLobbyDTO(true);
+                }
             }
         }
         return null;
@@ -304,15 +384,19 @@ public class LobbyService {
     public GameLobbyDTO kickPlayer(UUID lobbyId, Long playerToKickId) {
         var lobby = lobbyManager.getLobby(lobbyId);
         if (lobby == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
-        if (lobby.getOwner().getId().equals(playerToKickId))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "The lobby owner cannot be kicked; close the lobby instead");
-        var player = userService.getUserById(playerToKickId);
-        if (player == null || !lobby.removeUser(player))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player is not in this lobby");
-        syncLobbyConfig(lobby);
-        eventPublisher.publishKicked(player, lobby.getId());
-        eventPublisher.publish(lobby, UPDATED);
-        return lobby.createLobbyDTO(true);
+        synchronized (lobby) {
+            if (lobby.isStarted())
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Players cannot be kicked from a started lobby");
+            if (lobby.getOwner().getId().equals(playerToKickId))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "The lobby owner cannot be kicked; close the lobby instead");
+            var player = userService.getUserById(playerToKickId);
+            if (player == null || !lobby.removeUser(player))
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player is not in this lobby");
+            syncLobbyConfig(lobby);
+            eventPublisher.publishKicked(player, lobby.getId());
+            eventPublisher.publish(lobby, UPDATED);
+            return lobby.createLobbyDTO(true);
+        }
     }
 
     public Boolean deleteLobby(UserEntity user) {
@@ -320,7 +404,8 @@ public class LobbyService {
     }
 
     public Boolean deleteLobby(LobbyEntity lobby) {
-        if (lobby != null) {
+        if (lobby != null) synchronized (lobby) {
+            if (lobby.isStarted()) return false;
             chatService.deleteChat(lobby.getId());
             lobby.setLobbyState(LobbyState.CLOSED);
             var res = lobbyManager.deleteLobby(lobby);
@@ -334,23 +419,31 @@ public class LobbyService {
     }
 
     public Boolean openLobby(LobbyEntity lobby) {
-        if (lobby.isStarted()) lobby.setStarted(false);
-        var closedAt = Instant.now().plusSeconds(lobbyTimer);
-        scheduleClose(lobby, closedAt);
-        return true;
+        synchronized (lobby) {
+            // Only a lobby coming back from a game needs the affordability sweep; a
+            // fresh one was validated against its owner's balance a moment ago.
+            var afterGame = lobby.isStarted();
+            if (afterGame) lobby.setStarted(false);
+            if (afterGame && !retainPlayersWhoCanCoverStake(lobby)) return false;
+            var closedAt = Instant.now().plusSeconds(lobbyTimer);
+            scheduleClose(lobby, closedAt);
+            return true;
+        }
     }
 
     public GameLobbyDTO extendLobby(UUID lobbyId, long seconds) {
         var lobby = lobbyManager.getLobby(lobbyId);
         if (lobby == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
-        if (lobby.isStarted()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Started lobbies cannot be extended");
-        if (seconds < 60 || seconds > 86_400)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Extension must be between 60 and 86400 seconds");
-        var base = lobby.getClosedAt() != null && lobby.getClosedAt().isAfter(Instant.now())
-                ? lobby.getClosedAt() : Instant.now();
-        scheduleClose(lobby, base.plusSeconds(seconds));
-        eventPublisher.publish(lobby, UPDATED);
-        return lobby.createLobbyDTO(true);
+        synchronized (lobby) {
+            if (lobby.isStarted()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Started lobbies cannot be extended");
+            if (seconds < 60 || seconds > 86_400)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Extension must be between 60 and 86400 seconds");
+            var base = lobby.getClosedAt() != null && lobby.getClosedAt().isAfter(Instant.now())
+                    ? lobby.getClosedAt() : Instant.now();
+            scheduleClose(lobby, base.plusSeconds(seconds));
+            eventPublisher.publish(lobby, UPDATED);
+            return lobby.createLobbyDTO(true);
+        }
     }
 
     private void scheduleClose(LobbyEntity lobby, Instant closedAt) {

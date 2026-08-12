@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.gateway.dto.games.games.GameEventDTO;
+import com.ultracards.gateway.dto.games.games.GameResultDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameResultDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameResultDTO;
 import com.ultracards.server.entity.games.GameEntity;
@@ -14,6 +15,7 @@ import com.ultracards.server.entity.games.durak.DurakGameEntity;
 import com.ultracards.server.entity.games.durak.DurakPlayerEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaPlayerEntity;
+import com.ultracards.server.service.points.PointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeD
 @RequiredArgsConstructor
 public class GameEventPublisher {
     private final SimpMessagingTemplate messagingTemplate;
+    private final PointsService pointsService;
 
     public void publish(GameEntity<?, ?> gameEntity, GameEventTypeDTO gameEventDTO) {
         if (gameEntity.getGameType().equals(GameTypeDTO.Briskula)) {
@@ -39,8 +42,11 @@ public class GameEventPublisher {
                 for (var w: winners) {
                     res.add(((BriskulaPlayerEntity)w).getGamePlayerDTO());
                 }
-                var points = winners.getFirst().getPoints();
-                event.setResult(new BriskulaGameResultDTO(res, points));
+                var points = winners.isEmpty() ? 0 : winners.getFirst().getPoints();
+                var result = new BriskulaGameResultDTO(res, points);
+                result.setDraw(winners.isEmpty() || winners.size() == briskulaGame.getGame().getPlayers().size());
+                event.setResult(result);
+                attachWagerSettlement(event.getResult(), gameEntity);
             }
             messagingTemplate.convertAndSend("/topic/game/" + gameEntity.getId(), event);
             if (!gameEventDTO.equals(GameEventTypeDTO.RESULTED)) {
@@ -64,7 +70,11 @@ public class GameEventPublisher {
                 var winners = game.getGame().determineGameWinners();
                 var result = new ArrayList<GamePlayerDTO>();
                 for (var winner : winners) result.add(((TresetaPlayerEntity) winner).getGamePlayerDTO());
-                event.setResult(new TresetaGameResultDTO(result, winners.getFirst().getPoints()));
+                var points = winners.isEmpty() ? 0 : winners.getFirst().getPoints();
+                var gameResult = new TresetaGameResultDTO(result, points);
+                gameResult.setDraw(winners.isEmpty() || winners.size() == game.getGame().getPlayers().size());
+                event.setResult(gameResult);
+                attachWagerSettlement(event.getResult(), gameEntity);
             }
             messagingTemplate.convertAndSend("/topic/game/" + game.getId(), event);
             if (!gameEventDTO.equals(GameEventTypeDTO.RESULTED))
@@ -87,6 +97,7 @@ public class GameEventPublisher {
         var event = new GameEventDTO(game.createGameDTO(), eventType);
         if (eventType.equals(GameEventTypeDTO.RESULTED)) {
             event.setResult(game.createResultDTO());
+            attachWagerSettlement(event.getResult(), game);
         }
         messagingTemplate.convertAndSend("/topic/game/" + game.getId(), event);
         if (eventType.equals(GameEventTypeDTO.RESULTED)) {
@@ -99,6 +110,11 @@ public class GameEventPublisher {
             messagingTemplate.convertAndSendToUser(userId, "/queue/game/cards", cards);
             messagingTemplate.convertAndSendToUser(userId, "/queue/game/durak-actions", game.legalActions(player));
         }
+    }
+
+    private void attachWagerSettlement(GameResultDTO result, GameEntity<?, ?> game) {
+        result.setWagerPayouts(pointsService.wagerPayouts(game.getId()));
+        result.setWagerDeltas(pointsService.wagerDeltas(game.getId()));
     }
 
     /**

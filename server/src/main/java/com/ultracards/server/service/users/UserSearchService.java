@@ -3,6 +3,7 @@ package com.ultracards.server.service.users;
 import com.ultracards.gateway.dto.auth.ProfileDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.repositories.UserRepository;
+import com.ultracards.server.service.points.PointsService;
 import lombok.RequiredArgsConstructor;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
@@ -23,6 +24,7 @@ public class UserSearchService {
     private static final PolicyFactory NO_HTML_POLICY = new HtmlPolicyBuilder().toFactory();
 
     private final UserRepository userRepository;
+    private final PointsService pointsService;
 
     public List<ProfileDTO> searchUsersByUsername(String username, int lower, int higher) {
         var pageable = createPageable(lower, higher);
@@ -64,13 +66,17 @@ public class UserSearchService {
 
     private List<ProfileDTO> toProfileDTOs(List<UserEntity> users) {
         var profiles = new ArrayList<ProfileDTO>();
+        var userIds = new ArrayList<Long>(users.size());
+        for (var user : users) userIds.add(user.getId());
+        var changes = pointsService.changesLast24Hours(userIds);
+        if (changes == null) changes = java.util.Map.of();
         for (var user : users) {
-            profiles.add(toProfileDTO(user));
+            profiles.add(toProfileDTO(user, changes.getOrDefault(user.getId(), 0L)));
         }
         return profiles;
     }
 
-    private ProfileDTO toProfileDTO(UserEntity user) {
+    private ProfileDTO toProfileDTO(UserEntity user, long pointsChangeLast24Hours) {
         var profile = new ProfileDTO();
         var roles = new ArrayList<String>();
 
@@ -80,6 +86,8 @@ public class UserSearchService {
         profile.setId(user.getId());
         profile.setUsername(user.getUsername());
         profile.setRoles(roles);
+        profile.setPoints(user.getPointsBalance());
+        profile.setPointsChangeLast24Hours(pointsChangeLast24Hours);
         return profile;
     }
 }

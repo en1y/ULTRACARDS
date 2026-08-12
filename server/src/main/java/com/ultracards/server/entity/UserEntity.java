@@ -15,6 +15,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 @Entity
@@ -57,6 +58,12 @@ public class UserEntity implements UserDetails {
 
     @Column(name = "last_login")
     private Instant lastLoginAt;
+
+    @Column(name = "points_balance", nullable = false)
+    private long pointsBalance = 1500;
+
+    @Column(name = "last_points_claim_date")
+    private LocalDate lastPointsClaimDate;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(

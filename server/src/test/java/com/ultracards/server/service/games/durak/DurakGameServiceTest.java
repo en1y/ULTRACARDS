@@ -18,6 +18,7 @@ import com.ultracards.server.service.games.GameRecordingService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import com.ultracards.server.service.games.briskula.GameEventPublisher;
 import com.ultracards.server.service.lobby.LobbyManager;
+import com.ultracards.server.service.points.PointsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.TaskScheduler;
@@ -45,6 +46,7 @@ class DurakGameServiceTest {
     private final GameRecordingService gameRecordingService = mock(GameRecordingService.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+    private final PointsService pointsService = mock(PointsService.class);
     @SuppressWarnings("unchecked")
     private final Function<LobbyEntity, Boolean> openLobby = mock(Function.class);
 
@@ -53,7 +55,7 @@ class DurakGameServiceTest {
     @BeforeEach
     void setUp() {
         service = new DurakGameService(gameManager, eventPublisher, lobbyManager, userGamesStatsService,
-                userDurakStatsService, gameRecordingService, taskScheduler, transactionTemplate, openLobby);
+                userDurakStatsService, gameRecordingService, taskScheduler, transactionTemplate, pointsService, openLobby);
         doAnswer(invocation -> {
             java.util.function.Consumer<TransactionStatus> action = invocation.getArgument(0);
             action.accept(mock(TransactionStatus.class));

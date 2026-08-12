@@ -8,6 +8,7 @@ import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.enums.UserStatus;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.auth.SessionService;
+import com.ultracards.server.service.points.PointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,6 +29,7 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final SessionService sessionService;
     private final AdminAuditService auditService;
+    private final PointsService pointsService;
 
     @Value("${app.max-length.username:30}")
     private int maxUsernameLength;
@@ -39,7 +42,14 @@ public class AdminUserService {
         var safeSize = Math.max(1, Math.min(200, size));
         var users = userRepository.findAll(PageRequest.of(safePage, safeSize,
                 Sort.by(Sort.Direction.ASC, "id")));
-        return new AdminPageDTO<>(users.getContent().stream().map(this::toDto).toList(),
+        var userIds = new ArrayList<Long>(users.getNumberOfElements());
+        for (var user : users) userIds.add(user.getId());
+        var changes = pointsService.changesLast7Days(userIds);
+        if (changes == null) changes = Map.of();
+        var items = new ArrayList<AdminUserSummaryDTO>(users.getNumberOfElements());
+        for (var user : users)
+            items.add(toDto(user, changes.getOrDefault(user.getId(), 0L)));
+        return new AdminPageDTO<>(items,
                 users.getNumber(), users.getSize(), users.getTotalElements(), users.getTotalPages());
     }
 
@@ -66,7 +76,8 @@ public class AdminUserService {
         if ((!nextEnabled || nextStatus != UserStatus.ACTIVE) && user.hasRole(UserRole.ADMIN))
             guardAdminRemoval(actor, user);
 
-        var preview = toDto(user, nextEmail, nextUsername, nextEnabled, nextFakeAdmin, nextStatus, user.getRoles());
+        var preview = toDto(user, nextEmail, nextUsername, nextEnabled, nextFakeAdmin, nextStatus, user.getRoles(),
+                pointsService.changeLast7Days(user.getId()));
         if (patch.dryRun()) return preview;
 
         var emailChanged = !user.getEmail().equalsIgnoreCase(nextEmail);
@@ -184,15 +195,21 @@ public class AdminUserService {
     }
 
     AdminUserSummaryDTO toDto(UserEntity user) {
-        return toDto(user, user.getEmail(), user.getUsername(), user.isEnabled(), user.isFakeAdmin(), user.getStatus(), user.getRoles());
+        return toDto(user, pointsService.changeLast7Days(user.getId()));
+    }
+
+    private AdminUserSummaryDTO toDto(UserEntity user, long pointsChangeLast7Days) {
+        return toDto(user, user.getEmail(), user.getUsername(), user.isEnabled(), user.isFakeAdmin(), user.getStatus(),
+                user.getRoles(), pointsChangeLast7Days);
     }
 
     private AdminUserSummaryDTO toDto(UserEntity user, String email, String username, boolean enabled, boolean fakeAdmin,
-                                      UserStatus status, java.util.Set<UserRole> roles) {
+                                      UserStatus status, java.util.Set<UserRole> roles, long pointsChangeLast7Days) {
         var roleNames = new HashSet<String>();
         for (var role : roles) roleNames.add(role.name());
         return new AdminUserSummaryDTO(user.getId(), email, username, enabled, fakeAdmin, status.name(), roleNames,
-                user.getUserCreatedAt(), user.getUpdatedAt(), user.getLastLoginAt());
+                user.getUserCreatedAt(), user.getUpdatedAt(), user.getLastLoginAt(), user.getPointsBalance(),
+                pointsChangeLast7Days);
     }
 
     private ResponseStatusException badRequest(String message) { return new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }

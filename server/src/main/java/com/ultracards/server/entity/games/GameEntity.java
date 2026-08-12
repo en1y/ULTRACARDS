@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.lobby.GameConfig;
+import com.ultracards.gateway.dto.games.lobby.WagerConfigDTO;
 import com.ultracards.templates.game.model.AbstractGame;
 import lombok.Data;
 
@@ -39,6 +40,16 @@ public class GameEntity<Game extends AbstractGame<?, ?, ?, ?, ?, ?, ?>, GameLobb
     private GameLobbyConfig gameConfig;
 
     private GameCardDTO discardedCard;
+
+    private WagerConfigDTO wager = WagerConfigDTO.disabled();
+
+    private boolean finalizationPersisted;
+
+    private boolean resultPublished;
+
+    private boolean lobbyReopened;
+
+    private boolean finishRetryScheduled;
 
     protected GameEntity() {
     }

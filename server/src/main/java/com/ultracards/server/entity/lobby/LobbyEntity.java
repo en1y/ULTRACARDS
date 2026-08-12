@@ -4,6 +4,7 @@ import com.ultracards.gateway.dto.games.GameConfigDTO;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.WagerConfigDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import lombok.Data;
@@ -28,7 +29,8 @@ public class LobbyEntity {
     private LobbyState lobbyState;
     private LobbyCode lobbyCode;
     private Instant closedAt;
-    private boolean isStarted = false;
+    private volatile boolean isStarted = false;
+    private WagerConfigDTO wager = WagerConfigDTO.disabled();
 
     public LobbyEntity(String name, GameTypeDTO gameType, UserEntity owner, int minPlayers, int maxPlayers, GameConfigDTO gameConfig, LobbyState lobbyState, int lobbyTimer) {
         id = UUID.randomUUID();
@@ -62,29 +64,30 @@ public class LobbyEntity {
         this.lobbyGameConfig = GameConfig.from(gameType, gameConfig, users);
     }
 
-    public boolean containsUser(UserEntity user) {
+    public synchronized boolean containsUser(UserEntity user) {
         return users.contains(user);
     }
 
-    public boolean isFull() {
+    public synchronized boolean isFull() {
         return users.size() >= maxPlayers;
     }
 
-    public boolean addUser(UserEntity user) {
+    public synchronized boolean addUser(UserEntity user) {
         return users.contains(user) || ( users.size() < maxPlayers && !users.contains(user) && users.add(user) );
     }
 
-    public boolean removeUser(UserEntity user) {
+    public synchronized boolean removeUser(UserEntity user) {
         return !owner.equals(user) && users.remove(user);
     }
 
-    public GameEntity<?, ?> createGame() {
+    public synchronized GameEntity<?, ?> createGame() {
         var game = lobbyGameConfig.createGame(getId(), getName(), getOwner(), getUsers());
+        game.setWager(wager);
         isStarted = true;
         return game;
     }
 
-    public GameLobbyDTO createLobbyDTO(boolean includeLobbyCode) {
+    public synchronized GameLobbyDTO createLobbyDTO(boolean includeLobbyCode) {
         var users = new HashSet<GamePlayerDTO>();
 
         for (var u: getUsers()) {
@@ -103,7 +106,8 @@ public class LobbyEntity {
                 includeLobbyCode ? getLobbyCode().lobbyCode() : null,
                 isStarted(),
                 getGameConfig(),
-                closedAt
+                closedAt,
+                wager
         );
     }
 }

@@ -6,6 +6,7 @@ import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.enums.UserStatus;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.auth.SessionService;
+import com.ultracards.server.service.points.PointsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -27,11 +28,12 @@ class AdminUserServiceTest {
     private final UserRepository repository = mock(UserRepository.class);
     private final SessionService sessionService = mock(SessionService.class);
     private final AdminAuditService auditService = mock(AdminAuditService.class);
+    private final PointsService pointsService = mock(PointsService.class);
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminUserService(repository, sessionService, auditService);
+        service = new AdminUserService(repository, sessionService, auditService, pointsService);
         ReflectionTestUtils.setField(service, "maxUsernameLength", 30);
         ReflectionTestUtils.setField(service, "maxEmailLength", 150);
     }

@@ -13,14 +13,13 @@ public class GameManager {
     private final Map<UUID, GameEntity<?, ?>> gamesById = new ConcurrentHashMap<>();
     private final Map<Long, GameEntity<?, ?>> gamesByUser = new ConcurrentHashMap<>();
     private final Map<UUID, GameEntity<?, ?>> gamesByLobby = new ConcurrentHashMap<>();
-    private final Map<UUID, GameEntity<?, ?>>  lobbyByGameId = new ConcurrentHashMap<>();
     private final Map<GameTypeDTO, List<GameEntity<?, ?>>> gamesByGameType = new ConcurrentHashMap<>();
     @Getter
     private final List<GameEntity<?, ?>> games = Collections.synchronizedList(new ArrayList<>());
 
     public GameManager() {
         for (var gt: GameTypeDTO.values()) {
-            gamesByGameType.put(gt, new ArrayList<>());
+            gamesByGameType.put(gt, Collections.synchronizedList(new ArrayList<>()));
         }
     }
 
@@ -37,13 +36,8 @@ public class GameManager {
         return gamesByGameType.get(gameTypeDTO);
     }
 
-    public GameEntity<?, ?> getByLobby(UUID lobbyId) {
-        return lobbyByGameId.get(lobbyId);
-    }
-
     public GameEntity<?, ?> createGame(GameEntity<?, ?> gameEntity) {
         put(gameEntity);
-        lobbyByGameId.put(gameEntity.getLobbyId(), gameEntity);
         return gameEntity;
     }
     public Boolean deleteGame(GameEntity<?, ?> game) {
@@ -57,10 +51,9 @@ public class GameManager {
             for (var p: g.getPlayers()) {
                 gamesByUser.remove(p.getId());
             }
-            lobbyByGameId.remove(game.getId());
-            gamesByLobby.remove(game.getLobbyId());
+            gamesByLobby.remove(g.getLobbyId());
             gamesByGameType.get(g.getGameType()).remove(g);
-            games.remove(game);
+            games.remove(g);
         }
         return g != null;
     }

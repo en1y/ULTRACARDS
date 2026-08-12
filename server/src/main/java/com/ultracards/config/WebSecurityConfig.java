@@ -63,6 +63,7 @@ public class WebSecurityConfig {
                                 "/leaderboards"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/leaderboards").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/points/settings").permitAll()
                         // Public card art (immutable deck images, used by public guide pages)
                         .requestMatchers(HttpMethod.GET, "/api/cards/**").permitAll()
                         // Public auth endpoints
@@ -74,6 +75,7 @@ public class WebSecurityConfig {
                         // Post auth available endpoints
                         .requestMatchers(
                                 "/profile/**",
+                                "/points/**",
                                 "/lobbies/**",
                                 "/game/**"
                         ).authenticated()

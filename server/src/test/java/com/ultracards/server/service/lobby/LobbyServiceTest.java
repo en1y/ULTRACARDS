@@ -8,11 +8,13 @@ import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
+import com.ultracards.gateway.dto.games.lobby.WagerConfigDTO;
 import com.ultracards.server.service.chat.ChatService;
 import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
+import com.ultracards.server.service.points.PointsService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import com.ultracards.server.service.users.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.UUID;
 
+import static com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO.GameLobbyEventType.DELETED;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +34,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 class LobbyServiceTest {
@@ -43,6 +47,7 @@ class LobbyServiceTest {
     private final UltrakillLevelService ultrakillLevelService = mock(UltrakillLevelService.class);
     private final NotificationService notificationService = mock(NotificationService.class);
     private final FriendService friendService = mock(FriendService.class);
+    private final PointsService pointsService = mock(PointsService.class);
     private final LobbyEventPublisher eventPublisher = mock(LobbyEventPublisher.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
 
@@ -60,6 +65,7 @@ class LobbyServiceTest {
                 ultrakillLevelService,
                 notificationService,
                 friendService,
+                pointsService,
                 eventPublisher,
                 taskScheduler
         );
@@ -153,6 +159,77 @@ class LobbyServiceTest {
 
         verifyNoInteractions(chatService, eventPublisher, taskScheduler);
         verify(lobbyManager, never()).createLobby(any(GameLobbyDTO.class), any());
+    }
+
+    @Test
+    void refusesAStakeTheOwnerCannotCover() {
+        var owner = user(1L, "Owner");
+        when(pointsService.balance(owner)).thenReturn(900L);
+        var request = new GameLobbyDTO();
+        request.setGameType(GameTypeDTO.Briskula);
+        request.setGameConfig(new BriskulaGameConfigDTO(2, 3, false, null));
+        request.setWager(new WagerConfigDTO(true, 1_000));
+
+        assertThatThrownBy(() -> lobbyService.createLobby(owner, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("900P")
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(lobbyManager, never()).createLobby(any(GameLobbyDTO.class), any());
+    }
+
+    @Test
+    void dropsPlayersWhoCannotCoverTheStakeWhenTheLobbyReopens() {
+        var owner = user(1L, "Owner");
+        var broke = user(2L, "Broke");
+        var flush = user(3L, "Flush");
+        var lobby = startedLobbyWithWager(owner, 1_000, broke, flush);
+        when(pointsService.balance(owner)).thenReturn(5_000L);
+        when(pointsService.balance(broke)).thenReturn(120L);
+        when(pointsService.balance(flush)).thenReturn(1_000L);
+
+        assertThat(lobbyService.openLobby(lobby)).isTrue();
+
+        assertThat(lobby.getUsers()).containsExactlyInAnyOrder(owner, flush);
+        verify(eventPublisher).publishKicked(broke, lobby.getId());
+        verify(eventPublisher, never()).publishKicked(flush, lobby.getId());
+    }
+
+    @Test
+    void closesTheLobbyWhenTheOwnerCannotCoverTheStake() {
+        var owner = user(1L, "Owner");
+        var player = user(2L, "Player");
+        var lobby = startedLobbyWithWager(owner, 1_000, player);
+        when(pointsService.balance(owner)).thenReturn(200L);
+        when(lobbyManager.deleteLobby(lobby)).thenReturn(true);
+
+        assertThat(lobbyService.openLobby(lobby)).isFalse();
+
+        verify(lobbyManager).deleteLobby(lobby);
+        verify(eventPublisher).publish(lobby, DELETED);
+    }
+
+    @Test
+    void leavesAFreeLobbyAloneWhenItReopens() {
+        var owner = user(1L, "Owner");
+        var player = user(2L, "Player");
+        var lobby = startedLobbyWithWager(owner, 0, player);
+
+        assertThat(lobbyService.openLobby(lobby)).isTrue();
+
+        assertThat(lobby.getUsers()).containsExactlyInAnyOrder(owner, player);
+        verifyNoInteractions(pointsService);
+        verify(lobbyManager, never()).deleteLobby(lobby);
+    }
+
+    private LobbyEntity startedLobbyWithWager(UserEntity owner, long stake, UserEntity... players) {
+        var lobby = new LobbyEntity("Lobby", GameTypeDTO.Briskula, owner, 2, 4,
+                new BriskulaGameConfigDTO(4, 3, false, null), LobbyState.PUBLIC, 60);
+        for (var player : players) lobby.addUser(player);
+        lobby.setWager(stake == 0 ? WagerConfigDTO.disabled() : new WagerConfigDTO(true, stake));
+        lobby.setStarted(true);
+        return lobby;
     }
 
     @Test
@@ -270,6 +347,39 @@ class LobbyServiceTest {
         when(lobby.getUsers()).thenReturn(List.of(owner, player));
         assertThat(lobbyService.startLobby(owner)).isTrue();
         verify(gameService).startGame(lobby);
+    }
+
+    @Test
+    void startsALobbyOnlyOnce() {
+        var owner = user(1L, "Owner");
+        var lobby = new LobbyEntity("Lobby", GameTypeDTO.Briskula, owner, 2, 2,
+                new BriskulaGameConfigDTO(2, 3, false, null), LobbyState.PUBLIC, 60);
+        lobby.addUser(user(2L, "Player"));
+        when(lobbyManager.getLobby(owner)).thenReturn(lobby);
+
+        assertThat(lobbyService.startLobby(owner)).isTrue();
+        assertThat(lobbyService.startLobby(owner)).isFalse();
+
+        verify(gameService, times(1)).startGame(lobby);
+    }
+
+    @Test
+    void ownerCannotUpdateAStartedLobby() {
+        var owner = user(1L, "Owner");
+        var lobbyId = UUID.randomUUID();
+        var lobby = mock(LobbyEntity.class);
+        var update = new GameLobbyDTO();
+        update.setId(lobbyId);
+        when(lobbyManager.getLobby(lobbyId)).thenReturn(lobby);
+        when(lobby.getOwner()).thenReturn(owner);
+        when(lobby.isStarted()).thenReturn(true);
+
+        assertThatThrownBy(() -> lobbyService.updateLobby(update, owner))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verifyNoInteractions(gameAvailabilityService, eventPublisher);
     }
 
     @Test

@@ -26,11 +26,6 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
 
     private final DurakGameConfig persistedGameConfig;
     @Setter private long stateRevision;
-    @Setter private boolean finalizationPersisted;
-    @Setter private boolean resultPublished;
-    @Setter private boolean lobbyReopened;
-    @Setter private boolean finishRetryScheduled;
-
     public DurakGameEntity(UUID lobbyId, String name, UserEntity owner, DurakLobbyGameConfig config,
                            List<UserEntity> players) {
         super(lobbyId, name, owner, players, GameTypeDTO.Durak,

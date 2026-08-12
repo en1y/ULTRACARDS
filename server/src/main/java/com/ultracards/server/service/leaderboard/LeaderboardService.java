@@ -42,6 +42,13 @@ public class LeaderboardService {
             throw badRequest("size must be between 1 and " + MAX_PAGE_SIZE);
 
         var metric = parseMetric(metricValue);
+        if (metric == LeaderboardMetricDTO.POINTS) {
+            if ((gameTypeValue != null && !gameTypeValue.isBlank())
+                    || (modeValue != null && !modeValue.isBlank())
+                    || (modeValues != null && !modeValues.isEmpty()))
+                throw badRequest("Points leaderboard does not accept game or mode filters");
+            return points(page, size, currentUser);
+        }
         var gameType = parseGameType(gameTypeValue);
         var mode = parseMode(gameType, modeValue);
         var modes = parseModes(gameType, modeValues);
@@ -183,12 +190,49 @@ public class LeaderboardService {
             case GAMES_PLAYED -> "games_played DESC, wins DESC, LOWER(username), user_id";
             case WINS -> "wins DESC, win_rate DESC, games_played DESC, LOWER(username), user_id";
             case WIN_RATE -> "win_rate DESC, games_played DESC, wins DESC, LOWER(username), user_id";
+            case POINTS -> "points DESC, LOWER(username), user_id";
         };
+    }
+
+    private LeaderboardPageDTO points(int page, int size, UserEntity currentUser) {
+        var currentUserId = currentUser == null ? null : currentUser.getId();
+        var params = new MapSqlParameterSource()
+                .addValue("currentUserId", currentUserId)
+                .addValue("offset", (long) page * size)
+                .addValue("size", size);
+        var ranked = """
+                WITH ranked AS (
+                    SELECT ROW_NUMBER() OVER (ORDER BY points_balance DESC, LOWER(username), id) AS position,
+                           id AS user_id, username, points_balance AS points
+                    FROM users
+                    WHERE enabled = TRUE AND status = 'ACTIVE'
+                )
+                """;
+        var metadata = jdbc.queryForMap(ranked + """
+                SELECT COUNT(*) AS total_elements,
+                       MAX(CASE WHEN user_id = :currentUserId THEN position END) AS current_position
+                FROM ranked
+                """, params);
+        var totalElements = ((Number) metadata.get("total_elements")).longValue();
+        var currentValue = metadata.get("current_position");
+        var currentPosition = currentValue == null ? null : ((Number) currentValue).longValue();
+        var items = jdbc.query(ranked + """
+                SELECT position, user_id, username, points
+                FROM ranked
+                WHERE position > :offset AND position <= :offset + :size
+                ORDER BY position
+                """, params, (result, row) -> new LeaderboardEntryDTO(
+                result.getLong("position"), result.getLong("user_id"), result.getString("username"),
+                0, 0, 0, result.getLong("points"),
+                currentUserId != null && currentUserId.equals(result.getLong("user_id"))));
+        var totalPages = totalElements == 0 ? 0 : (int) ((totalElements + size - 1) / size);
+        return new LeaderboardPageDTO(items, page, size, totalElements, totalPages, currentPosition,
+                0, LeaderboardMetricDTO.POINTS, null, null, List.of());
     }
 
     private LeaderboardMetricDTO parseMetric(String value) {
         try {
-            return LeaderboardMetricDTO.valueOf(normalize(value == null || value.isBlank() ? "GAMES_PLAYED" : value));
+            return LeaderboardMetricDTO.valueOf(normalize(value == null || value.isBlank() ? "POINTS" : value));
         } catch (IllegalArgumentException ex) {
             throw badRequest("Unknown leaderboard metric: " + value);
         }

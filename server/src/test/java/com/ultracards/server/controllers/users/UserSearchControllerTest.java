@@ -88,6 +88,7 @@ class UserSearchControllerTest {
         profile.setRoles(List.of("USER"));
         profile.setGamesPlayed(4);
         profile.setGamesWon(2);
+        profile.setPointsChangeLast24Hours(125L);
 
         when(profileService.getPublicProfile(1L)).thenReturn(profile);
 
@@ -97,7 +98,8 @@ class UserSearchControllerTest {
                 .andExpect(jsonPath("$.username").value("Alice"))
                 .andExpect(jsonPath("$.email").isEmpty())
                 .andExpect(jsonPath("$.gamesPlayed").value(4))
-                .andExpect(jsonPath("$.gamesWon").value(2));
+                .andExpect(jsonPath("$.gamesWon").value(2))
+                .andExpect(jsonPath("$.pointsChangeLast24Hours").value(125));
 
         verify(profileService).getPublicProfile(1L);
     }

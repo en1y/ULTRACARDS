@@ -25,4 +25,6 @@ public class ProfileDTO {
     private Integer gamesPlayed;
     private Integer gamesWon;
     private UserGamesStatsDTO userGamesStats;
+    private Long points;
+    private Long pointsChangeLast24Hours;
 }

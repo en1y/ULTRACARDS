@@ -3,6 +3,7 @@ package com.ultracards.server.service.users;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.UserRole;
 import com.ultracards.server.repositories.UserRepository;
+import com.ultracards.server.service.points.PointsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +30,9 @@ class UserSearchServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PointsService pointsService;
 
     @InjectMocks
     private UserSearchService userSearchService;
@@ -90,6 +95,7 @@ class UserSearchServiceTest {
         user.addRole(UserRole.USER);
         when(userRepository.searchByUsername(eq("Example"), any(Pageable.class)))
                 .thenReturn(List.of(user));
+        when(pointsService.changesLast24Hours(List.of(1L))).thenReturn(Map.of(1L, 125L));
 
         var results = userSearchService.searchUsersByUsername("Example", 0, 50);
 
@@ -102,6 +108,7 @@ class UserSearchServiceTest {
         assertThat(profile.getGamesPlayed()).isNull();
         assertThat(profile.getGamesWon()).isNull();
         assertThat(profile.getUserGamesStats()).isNull();
+        assertThat(profile.getPointsChangeLast24Hours()).isEqualTo(125L);
     }
 
     private void assertBadRange(int lower, int higher) {

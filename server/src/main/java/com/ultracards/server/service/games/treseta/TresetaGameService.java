@@ -19,6 +19,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.ultracards.server.service.points.PointsService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -32,6 +35,7 @@ import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeD
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO.STARTED;
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO.UPDATED;
 
+@Slf4j
 @Service
 public class TresetaGameService {
     private final GameManager gameManager;
@@ -42,6 +46,8 @@ public class TresetaGameService {
     private final GameRecordingService gameRecordingService;
     private final TaskScheduler taskScheduler;
     private final Function<com.ultracards.server.entity.lobby.LobbyEntity, Boolean> openLobby;
+    private final TransactionTemplate transactionTemplate;
+    private final PointsService pointsService;
 
     @Value("${app.treseta-move.timer.duration-seconds}")
     private int timerDuration;
@@ -56,6 +62,8 @@ public class TresetaGameService {
                               UserTresetaStatsService userTresetaStatsService,
                               GameRecordingService gameRecordingService,
                               @Qualifier("timer") TaskScheduler taskScheduler,
+                              TransactionTemplate transactionTemplate,
+                              PointsService pointsService,
                               @Qualifier("openLobby") @Lazy Function<com.ultracards.server.entity.lobby.LobbyEntity, Boolean> openLobby) {
         this.gameManager = gameManager;
         this.eventPublisher = eventPublisher;
@@ -64,6 +72,8 @@ public class TresetaGameService {
         this.userTresetaStatsService = userTresetaStatsService;
         this.gameRecordingService = gameRecordingService;
         this.taskScheduler = taskScheduler;
+        this.transactionTemplate = transactionTemplate;
+        this.pointsService = pointsService;
         this.openLobby = openLobby;
     }
 
@@ -147,6 +157,29 @@ public class TresetaGameService {
     }
 
     private void finish(TresetaGameEntity game) {
+        try {
+            if (!game.isFinalizationPersisted()) {
+                transactionTemplate.executeWithoutResult(status -> persistFinalization(game));
+                gameRecordingService.release(game);
+                game.setFinalizationPersisted(true);
+            }
+            if (!game.isResultPublished()) {
+                eventPublisher.publish(game, RESULTED);
+                game.setResultPublished(true);
+            }
+            if (!game.isLobbyReopened()) {
+                var lobby = lobbyManager.getLobby(game.getLobbyId());
+                if (lobby != null) openLobby.apply(lobby);
+                game.setLobbyReopened(true);
+            }
+            gameManager.deleteGame(game);
+        } catch (RuntimeException ex) {
+            log.error("Treseta finalization failed for game {}; retrying", game.getId(), ex);
+            scheduleFinishRetry(game);
+        }
+    }
+
+    private void persistFinalization(TresetaGameEntity game) {
         var winners = new HashSet<>(game.getGame().determineGameWinners());
         var gameConfig = game.getPersistedGameConfig();
         var winnerUsers = new HashSet<UserEntity>();
@@ -163,9 +196,22 @@ public class TresetaGameService {
         }
         updateTresetaRelationshipStats(game.getPlayers(), winnerUsers, gameConfig);
         gameRecordingService.finish(game);
-        eventPublisher.publish(game, RESULTED);
-        gameManager.deleteGame(game);
-        openLobby.apply(lobbyManager.getLobby(game.getLobbyId()));
+        var winnerIds = new HashSet<Long>();
+        for (var winner : winnerUsers) winnerIds.add(winner.getId());
+        pointsService.completeGame(game.getId(), game.getPlayers(), winnerIds, GameType.TRESETA);
+    }
+
+    private void scheduleFinishRetry(TresetaGameEntity game) {
+        if (game.isFinishRetryScheduled()) return;
+        game.setFinishRetryScheduled(true);
+        var gameId = game.getId();
+        taskScheduler.schedule(() -> {
+            if (!(gameManager.getGame(gameId) instanceof TresetaGameEntity current)) return;
+            synchronized (current) {
+                current.setFinishRetryScheduled(false);
+                if (!current.isActive()) finish(current);
+            }
+        }, Instant.now().plusSeconds(5));
     }
 
     private void updateTresetaRelationshipStats(List<UserEntity> players, Set<UserEntity> winnerUsers,
