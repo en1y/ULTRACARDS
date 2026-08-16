@@ -1,0 +1,198 @@
+/* Calendar + clock picker — see templates/ui/fragments/date-time.html and js/ui/fragments/date-time.js. */
+
+.uc-datetime {
+    display: grid;
+    gap: .4rem;
+    min-width: 0;
+    padding: .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.uc-datetime-label { color: var(--color-text); font-size: .85rem; font-weight: 700; }
+
+.uc-datetime-field { display: flex; align-items: stretch; gap: .4rem; min-width: 0; }
+.uc-datetime-input { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.uc-datetime-input:invalid { border-color: var(--color-accent); }
+
+.uc-datetime-trigger {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 2.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+.uc-datetime-trigger:hover { border-color: var(--color-points); background: var(--color-surface-2); }
+.uc-datetime-trigger .uc-icon { width: 1.15rem; height: 1.15rem; }
+
+.uc-datetime-popup {
+    position: fixed;
+    z-index: 60;
+    display: grid;
+    gap: .75rem;
+    width: min(20rem, calc(100vw - 1rem));
+    padding: .85rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-modal);
+}
+.uc-datetime-popup[hidden] { display: none; }
+
+.uc-datetime-readout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding-bottom: .7rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.uc-datetime-readout-time { display: inline-flex; align-items: center; gap: .1rem; }
+.uc-datetime-colon { color: var(--color-text-muted); font-size: 1.35rem; font-weight: 800; }
+
+.uc-datetime-tab,
+.uc-datetime-unit {
+    padding: .25rem .5rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+.uc-datetime-tab { font-size: .95rem; font-weight: 700; }
+.uc-datetime-unit { font-size: 1.35rem; font-weight: 800; }
+.uc-datetime-tab:hover,
+.uc-datetime-unit:hover { color: var(--color-text); }
+.uc-datetime-tab.is-active,
+.uc-datetime-unit.is-active {
+    border-color: color-mix(in oklab, var(--color-points) 55%, var(--color-border));
+    background: color-mix(in oklab, var(--color-points) 14%, var(--color-bg));
+    color: var(--color-points);
+}
+
+.uc-datetime-pane[hidden] { display: none; }
+
+.uc-datetime-month { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.uc-datetime-month strong { font-size: .95rem; text-transform: capitalize; }
+.uc-datetime-step {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.uc-datetime-step:hover { border-color: var(--color-points); color: var(--color-points); }
+
+.uc-datetime-weekdays,
+.uc-datetime-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .15rem; }
+.uc-datetime-weekdays {
+    margin-top: .6rem;
+    color: var(--color-text-muted);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-align: center;
+    text-transform: uppercase;
+}
+.uc-datetime-grid { margin-top: .25rem; }
+
+.uc-datetime-day {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: .82rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    cursor: pointer;
+}
+.uc-datetime-day:hover { background: var(--color-surface-2); }
+.uc-datetime-day.is-outside { color: color-mix(in oklab, var(--color-text) 35%, transparent); }
+.uc-datetime-day.is-today { border-color: var(--color-points); }
+.uc-datetime-day.is-selected {
+    background: var(--color-points);
+    color: #1a1400;
+    font-weight: 800;
+}
+
+.uc-clock {
+    position: relative;
+    width: min(16rem, 100%);
+    margin: .2rem auto 0;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--color-bg);
+    touch-action: none;
+}
+
+.uc-clock-number {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: .82rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+.uc-clock-number.is-inner { width: 1.75rem; height: 1.75rem; font-size: .72rem; color: var(--color-text-muted); }
+.uc-clock-number.is-selected {
+    background: var(--color-points);
+    color: #1a1400;
+    font-weight: 800;
+}
+
+/* Anchored at the dial centre, rotated to the selected value; height switches between the two rings. */
+.uc-clock-hand {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    background: var(--color-points);
+    transform-origin: 50% 100%;
+    pointer-events: none;
+}
+.uc-clock-centre {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--color-points);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.uc-datetime-foot { display: flex; justify-content: flex-end; gap: .4rem; }
+.uc-datetime-foot .btn { padding: .35rem .7rem; min-height: 2.25rem; }
+.uc-datetime-foot .btn:first-child { margin-inline-end: auto; }
+
+@media (max-width: 560px) {
+    .uc-datetime-popup { width: calc(100vw - 1rem); }
+}

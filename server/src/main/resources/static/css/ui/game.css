@@ -964,6 +964,10 @@
 
         .seat-wager-delta .points-symbol { color: var(--color-points); }
 
+        .player-seat:has(> .seat-wager-delta) {
+            z-index: 6;
+        }
+
         .player-seat:has(.seat-cards:empty) > .seat-wager-delta {
             top: calc(var(--avatar-size) + 2.2rem);
         }

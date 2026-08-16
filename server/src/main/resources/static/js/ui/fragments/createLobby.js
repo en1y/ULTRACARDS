@@ -10,7 +10,9 @@
     const visibilityLabel = document.getElementById('create-lobby-public-toggle-label');
     const wagerEnabled = document.getElementById('create-wager-enabled');
     const wagerControl = initWagerControl(document.getElementById('create-wager-editor'));
-    pointsBalance().then(balance => { if (balance != null) wagerControl?.limit(balance); });
+    const balanceNode = document.querySelector('[data-points-balance-value]');
+    const balance = Number(balanceNode?.dataset.pointsBalanceValue);
+    if (balanceNode && Number.isFinite(balance)) wagerControl?.limit(balance);
     const settingsElement = document.getElementById('create-game-settings');
     const submitButton = document.getElementById('create-lobby-submit');
     const statusText = document.getElementById('create-lobby-status');
@@ -156,6 +158,7 @@
 
         submitButton.disabled = !canCreate;
         if (canCreate) {
+            quoteWagerFee(gameType, settingKey);
             setStatus(t('createLobby.status.ready'));
             return;
         }
@@ -166,6 +169,15 @@
         }
 
         setStatus(t('createLobby.status.unavailable'), 'error');
+    }
+
+    // Fees differ per game and mode, so the help text quotes the one this lobby would pay.
+    function quoteWagerFee(gameType, settingKey) {
+        try {
+            const config = JSON.parse(buildLobbyCreatePayload(gameType, settingKey, lobbyNameInput?.value,
+                true, gameConfigExtrasFor(gameType))).gameConfig;
+            window.refreshWagerFee?.(gameType, resolveGameConfigKey(gameType, config));
+        } catch { /* an unsupported combination keeps the default fee text */ }
     }
 
     function applyGameTypeSettings() {
@@ -193,11 +205,8 @@
         }
         setSettingsContent(nodes);
         const propertiesSelect = document.getElementById('create-properties');
-        propertiesSelect?.addEventListener('change', syncCreateState);
         if (gameType === 'durak') {
             const syncDurak = () => syncDurakSettingsAvailability('create-', selectedDurakPlayers());
-            propertiesSelect?.addEventListener('change', syncDurak);
-            document.getElementById('create-durak-deck')?.addEventListener('change', syncDurak);
             syncDurak();
         }
         syncCreateState();
@@ -314,6 +323,14 @@
     });
 
     gameTypeSelect.addEventListener('change', applyGameTypeSettings);
+    // The settings are rebuilt per game. One delegated listener keeps both the
+    // selected mode and its quoted fee current for every choice and toggle.
+    settingsElement.addEventListener('change', () => {
+        if (gameTypeSelect.value === 'durak') {
+            syncDurakSettingsAvailability('create-', selectedDurakPlayers());
+        }
+        syncCreateState();
+    });
     publicInput?.addEventListener('change', syncVisibilityText);
     wagerEnabled?.addEventListener('change', syncWagerEnabled);
     form.addEventListener('submit', (event) => {

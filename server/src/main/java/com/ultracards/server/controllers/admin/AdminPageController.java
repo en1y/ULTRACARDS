@@ -12,7 +12,7 @@ import java.util.Set;
 
 @Controller
 public class AdminPageController {
-    private static final Set<String> PAGES = Set.of("users", "lobbies", "games", "sessions", "availability", "audit", "notifications", "stats", "database", "economy");
+    private static final Set<String> PAGES = Set.of("users", "lobbies", "games", "sessions", "availability", "audit", "notifications", "stats", "database", "points", "events");
 
     @GetMapping("/admin/sandbox")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).ADMIN.name())")
@@ -26,10 +26,12 @@ public class AdminPageController {
     @GetMapping({"/admin", "/admin/{page}"})
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).ADMIN.name())")
     public String admin(@PathVariable(required = false) String page, @AuthenticationPrincipal UserEntity user, Model model) {
+        if ("economy".equals(page)) return "redirect:/admin/points";
         if (page != null && !PAGES.contains(page)) return "redirect:/admin";
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("username", user.getUsername());
-        model.addAttribute("adminPage", page == null ? "dashboard" : page);
+        var adminPage = page == null ? "dashboard" : page;
+        model.addAttribute("adminPage", adminPage);
         return "ui/admin";
     }
 }

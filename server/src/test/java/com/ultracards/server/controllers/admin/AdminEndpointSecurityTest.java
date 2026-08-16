@@ -104,12 +104,16 @@ class AdminEndpointSecurityTest {
                 () -> get("/api/admin/v1/audit"),
                 () -> get("/api/admin/v1/system/status"),
                 () -> get("/api/admin/v1/economy/settings"),
+                () -> get("/api/admin/v1/economy/dashboard"),
+                () -> get("/api/admin/v1/economy/events"),
                 () -> post("/api/admin/v1/sessions/00000000-0000-0000-0000-000000000001/expire?reason=security-test"),
                 () -> delete("/api/admin/v1/sessions/00000000-0000-0000-0000-000000000001?reason=security-test"),
                 () -> get("/admin"),
                 () -> get("/admin/users"),
                 () -> get("/admin/stats"),
                 () -> get("/admin/database"),
+                () -> get("/admin/points"),
+                () -> get("/admin/events"),
                 () -> get("/admin/sandbox"),
                 () -> post("/api/admin/v1/notifications/users/1")
                         .contentType("application/json")

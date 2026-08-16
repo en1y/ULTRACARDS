@@ -14,5 +14,21 @@
         th:classappend="${value > 0 ? 'is-up' : (value < 0 ? 'is-down' : 'is-zero')}"><span
         th:if="${value > 0}">+</span><span th:if="${value < 0}">−</span><th:block
         th:replace="~{ui/fragments/points :: points(${value < 0 ? -value : value})}"></th:block></span></th:block>
+
+<th:block th:fragment="activityPoints(amount)"
+          th:with="text=${@pointsFormat.compact(amount)}"><span
+        th:text="${text} + '&#160;'">1.5K </span><span
+        class="points-symbol" th:text="#{points.symbol}">P</span></th:block>
+
+<th:block th:fragment="signedActivityPoints(amount)"
+          th:with="value=${amount != null ? amount : 0}"><span class="points-delta"
+        th:classappend="${value > 0 ? 'is-up' : (value < 0 ? 'is-down' : 'is-zero')}"><span
+        th:if="${value > 0}">+</span><span th:if="${value < 0}">−</span><th:block
+        th:replace="~{ui/fragments/points :: activityPoints(${value < 0 ? -value : value})}"></th:block></span></th:block>
+
+<!--/* th:text/th:utext evaluate in Thymeleaf's restricted expression context, which
+       forbids bean references — compute the @bean call in th:with (unrestricted) like
+       every other @bean use on this page, then just output the plain variable. */-->
+<th:block th:fragment="markdown(text)" th:with="html=${@markdown.render(text)}" th:utext="${html}"></th:block>
 </body>
 </html>

@@ -1,7 +1,8 @@
 <th:block th:fragment="actions" xmlns:th="http://www.thymeleaf.org">
   <div class="uc-actions">
     <a class="header-points-chip" th:if="${isAuthenticated}" th:href="@{/points}" th:aria-label="#{points.open}">
-      <strong data-points-balance>—</strong>
+      <strong data-points-balance th:attr="data-points-balance-value=${pointsBalance}"
+              th:text="${@pointsFormat.compact(pointsBalance)}">0</strong>&nbsp;
       <span class="points-symbol header-points-symbol" th:text="#{points.symbol}">P</span>
     </a>
     <button class="theme-toggle" type="button" th:aria-label="#{header.theme.toggle}" aria-pressed="false" data-action="toggle-theme">

@@ -16,17 +16,38 @@
     const chartEmpty = document.getElementById('points-chart-empty');
     const rangeButtons = [...document.querySelectorAll('[data-points-range]')];
     let range = 3;
-    let lastBalance = 0;
+    let lastBalance = Number(document.querySelector('.points-page')?.dataset.pointsBalance || 0);
+    let initialSeries = null;
+    try { initialSeries = JSON.parse(document.getElementById('points-initial-series')?.textContent || 'null'); }
+    catch { /* fall back to the API loader below */ }
 
     const format = value => Number(value || 0).toLocaleString();
     const reason = type => t(`points.transaction.${String(type || '').toLowerCase()}`);
     const icon = code => ({FIRST_GAME: '◆', FIRST_WIN: '★', TEN_GAMES: '10', TEN_WINS: '♛'})[code] || '✦';
+
+    function pointActivityNode(node) {
+        const symbol = node.querySelector('.points-symbol');
+        if (symbol?.previousSibling) symbol.previousSibling.textContent = `${symbol.previousSibling.textContent.trimEnd()}\u00A0`;
+        return node;
+    }
 
     function formatDateTime(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return '—';
         const part = number => String(number).padStart(2, '0');
         return `${part(date.getDate())}.${part(date.getMonth() + 1)}.${date.getFullYear()} ${part(date.getHours())}:${part(date.getMinutes())}`;
+    }
+
+    const relativeTime = new Intl.RelativeTimeFormat(document.documentElement.lang || 'en', {numeric: 'auto'});
+
+    /** "in 5 days" reads better than a date on a countdown; the exact date stays in the tooltip. */
+    function relativeDateTime(value) {
+        const difference = new Date(value).getTime() - Date.now();
+        if (Number.isNaN(difference)) return '—';
+        const distance = Math.abs(difference);
+        const [unit, size] = distance < 3600000 ? ['minute', 60000]
+            : distance < 86400000 ? ['hour', 3600000] : ['day', 86400000];
+        return relativeTime.format(Math.round(difference / size), unit);
     }
 
     function renderAchievements(items) {
@@ -72,59 +93,209 @@
         renderAchievements(account.achievements || []);
     }
 
-    function eventAchievement(item) {
-        const row = document.createElement('div');
+    function eventTarget(label, current, target) {
+        const goal = document.createElement('div');
+        goal.className = `points-event-target${current >= target ? ' is-complete' : ''}`;
+        const copy = document.createElement('span');
+        copy.append(Object.assign(document.createElement('small'), {textContent: label}),
+            Object.assign(document.createElement('strong'), {textContent: `${format(current)} / ${format(target)}`}));
+        const track = document.createElement('span'); track.className = 'points-event-target-track';
+        track.setAttribute('role', 'progressbar'); track.setAttribute('aria-label', label);
+        track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', String(target));
+        track.setAttribute('aria-valuenow', String(Math.min(current, target)));
+        const fill = document.createElement('span');
+        fill.style.setProperty('--event-target-progress', `${Math.min(100, current / Math.max(target, 1) * 100)}%`);
+        track.append(fill); goal.append(copy, track);
+        return goal;
+    }
+
+    function gameChips(types) {
+        const list = document.createElement('span'); list.className = 'points-event-game-list';
+        list.append(...types.map(game => Object.assign(document.createElement('span'), {
+            textContent: game.length > 1 ? game[0] + game.slice(1).toLowerCase() : game
+        })));
+        return list;
+    }
+
+    function eventAchievement(item, event) {
+        const row = document.createElement('article');
         row.className = `points-event-achievement${item.completed ? ' is-complete' : ''}`;
-        const copy = document.createElement('div');
-        const title = document.createElement('strong'); title.textContent = item.name;
-        const description = document.createElement('small');
-        const targets = [];
-        if (item.gamesRequired) targets.push(t('points.events.gamesProgress', item.games, item.gamesRequired));
-        if (item.winsRequired) targets.push(t('points.events.winsProgress', item.wins, item.winsRequired));
-        if (item.lossesRequired) targets.push(t('points.events.lossesProgress', item.losses, item.lossesRequired));
-        if (item.drawsRequired) targets.push(t('points.events.drawsProgress', item.draws, item.drawsRequired));
-        description.textContent = item.completed ? t('points.events.completed') : targets.join(' · ');
+        const head = document.createElement('header');
+        const state = document.createElement('span'); state.className = 'points-event-goal-state';
+        state.textContent = item.completed ? '✓' : '✦'; state.setAttribute('aria-hidden', 'true');
+        const copy = document.createElement('div'); copy.className = 'points-event-goal-copy';
+        const title = document.createElement('h5'); title.textContent = item.name;
         copy.append(title);
-        if (item.description) copy.append(document.createTextNode(` — ${item.description}`));
-        copy.append(description);
+        // An unfinished goal is already described by its own progress bars, so only
+        // the states that add information get a caption.
+        const note = item.completed ? t('points.events.completed') : '';
+        if (note) copy.append(Object.assign(document.createElement('small'), {textContent: note}));
         const reward = document.createElement('span'); reward.className = 'points-event-reward';
         reward.append(pointsDeltaNode(item.rewardPoints));
-        row.append(copy, reward);
+        head.append(state, copy, reward); row.append(head);
+        if (item.description) row.append(Object.assign(document.createElement('p'), {textContent: item.description}));
+        // Only when the goal is stricter than its event — repeating the event's own
+        // list under every goal was pure noise.
+        if (item.gameTypes?.length && String(item.gameTypes) !== String(event.gameTypes || [])) {
+            const games = document.createElement('div'); games.className = 'points-event-goal-games';
+            games.append(Object.assign(document.createElement('small'), {textContent: t('points.events.eligibleGames')}),
+                gameChips(item.gameTypes));
+            row.append(games);
+        }
+        const targets = document.createElement('div'); targets.className = 'points-event-targets';
+        if (item.gamesRequired) targets.append(eventTarget(t('points.events.target.games'), item.games, item.gamesRequired));
+        if (item.winsRequired) targets.append(eventTarget(t('points.events.target.wins'), item.wins, item.winsRequired));
+        if (item.lossesRequired) targets.append(eventTarget(t('points.events.target.losses'), item.losses, item.lossesRequired));
+        if (item.drawsRequired) targets.append(eventTarget(t('points.events.target.draws'), item.draws, item.drawsRequired));
+        row.append(targets);
         return row;
+    }
+
+    function hiddenEventAchievements(count) {
+        const row = document.createElement('article'); row.className = 'points-event-achievement';
+        const head = document.createElement('header');
+        const state = document.createElement('span'); state.className = 'points-event-goal-state';
+        state.textContent = '?'; state.setAttribute('aria-hidden', 'true');
+        const copy = document.createElement('div'); copy.className = 'points-event-goal-copy';
+        copy.append(Object.assign(document.createElement('h5'),
+                {textContent: t('points.events.hiddenAchievements', count)}),
+            Object.assign(document.createElement('small'),
+                {textContent: t('points.events.hiddenAchievementHint')}));
+        head.append(state, copy); row.append(head);
+        return row;
+    }
+
+    /** The one line that says where an event stands in time — the rest is styling. */
+    function eventSchedule(model) {
+        const {item, past} = model;
+        const when = document.createElement('time');
+        const at = past || item.active ? item.endsAt : item.startsAt;
+        if (!at) {
+            when.textContent = t('points.events.noEnd');
+            return when;
+        }
+        when.dateTime = at;
+        when.title = formatDateTime(at);
+        // A finished event is a diary entry, so it gets a date; anything still ahead
+        // reads better as a countdown.
+        when.textContent = past ? t('points.events.endedOn', formatDateTime(at))
+            : t(item.active ? 'points.events.ends' : 'points.events.starts', relativeDateTime(at));
+        return when;
+    }
+
+    function eventCard(model) {
+        const {item, goals, completeGoals, goalCount, hiddenAchievementCount, completed, totalReward, past} = model;
+        // <details> carries the open state natively: a page full of events stays
+        // scannable and only the one you can still work on starts expanded.
+        const card = document.createElement('details');
+        card.className = `points-event${completed ? ' is-complete' : past ? ' is-past' : item.active ? ' is-active' : ' is-upcoming'}`;
+        card.open = item.active && !completed;
+
+        const summary = document.createElement('summary');
+        const heading = document.createElement('span'); heading.className = 'points-event-heading';
+        heading.append(Object.assign(document.createElement('h4'), {textContent: item.name}), eventSchedule(model));
+        const badge = document.createElement('span'); badge.className = 'points-event-state';
+        badge.textContent = completed ? t('points.events.completed')
+            : past ? t('points.events.expired')
+                : item.active ? t('points.events.active') : t('points.events.upcoming');
+        const chevron = document.createElement('span');
+        chevron.className = 'points-event-chevron'; chevron.setAttribute('aria-hidden', 'true');
+        summary.append(heading, badge, chevron);
+
+        if (goalCount) {
+            const progress = document.createElement('span'); progress.className = 'points-event-progress';
+            const track = document.createElement('span'); track.className = 'points-event-progress-track';
+            track.setAttribute('role', 'progressbar'); track.setAttribute('aria-label', t('points.events.overallProgress'));
+            track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', String(goalCount));
+            track.setAttribute('aria-valuenow', String(completeGoals));
+            const fill = document.createElement('span');
+            fill.style.setProperty('--event-progress', `${completeGoals / goalCount * 100}%`);
+            track.append(fill);
+            progress.append(track, Object.assign(document.createElement('strong'),
+                {textContent: t('points.events.goalProgress', completeGoals, goalCount)}));
+            // What is still on the table while an event runs; what you walked away
+            // with once it is over — or once you have collected the lot.
+            const banked = past || completed;
+            const reward = document.createElement('span'); reward.className = 'points-event-total-reward';
+            reward.append(Object.assign(document.createElement('small'),
+                    {textContent: t(banked ? 'points.events.earned' : 'points.events.totalReward')}),
+                pointsDeltaNode(banked ? Number(item.earnedPoints || 0) : totalReward));
+            summary.append(progress);
+            if (banked || !hiddenAchievementCount) summary.append(reward);
+        }
+        card.append(summary);
+
+        const body = document.createElement('div'); body.className = 'points-event-body';
+        if (item.description) body.append(Object.assign(document.createElement('p'),
+            {className: 'points-event-description', textContent: item.description}));
+
+        const meta = document.createElement('div'); meta.className = 'points-event-meta';
+        const games = document.createElement('span'); games.className = 'points-event-games';
+        games.append(Object.assign(document.createElement('small'), {textContent: t('points.events.eligibleGames')}),
+            gameChips(item.gameTypes.length ? item.gameTypes : [t('points.events.allGames')]));
+        meta.append(games);
+        if (goalCount && item.completionRewardPoints > 0) {
+            const bonus = document.createElement('span'); bonus.className = 'points-event-bonus';
+            bonus.append(Object.assign(document.createElement('small'), {textContent: t('points.events.completionBonus')}),
+                pointsDeltaNode(item.completionRewardPoints));
+            meta.append(bonus);
+        }
+        body.append(meta);
+
+        if (goalCount) {
+            const goalList = document.createElement('div'); goalList.className = 'points-event-achievements';
+            goalList.append(...goals.map(goal => eventAchievement(goal, item)));
+            if (hiddenAchievementCount) goalList.append(hiddenEventAchievements(hiddenAchievementCount));
+            body.append(goalList);
+        } else {
+            body.append(Object.assign(document.createElement('p'),
+                {className: 'points-event-notice', textContent: t('points.events.noGoals')}));
+        }
+        card.append(body);
+        return card;
+    }
+
+    /** The rest of the list behind a disclosure — <details> keeps the open state, so
+     *  there is no button to wire up and nothing to remember across a refresh. */
+    function moreEvents(models) {
+        const more = document.createElement('details');
+        more.className = 'points-events-more';
+        const summary = document.createElement('summary');
+        summary.className = 'btn points-events-more-button';
+        const chevron = document.createElement('span');
+        chevron.className = 'points-event-chevron'; chevron.setAttribute('aria-hidden', 'true');
+        summary.append(Object.assign(document.createElement('span'),
+                {className: 'points-events-more-show', textContent: t('points.events.showMore', models.length)}),
+            Object.assign(document.createElement('span'),
+                {className: 'points-events-more-hide', textContent: t('points.events.showLess')}), chevron);
+        const list = document.createElement('div');
+        list.className = 'points-events-list';
+        list.append(...models.map(eventCard));
+        more.append(summary, list);
+        return more;
     }
 
     function renderEvents(items) {
         eventsSection.hidden = !items.length;
-        events.replaceChildren(...items.map(item => {
-            const card = document.createElement('article');
-            card.className = `points-event${item.active ? ' is-active' : ' is-upcoming'}`;
-            const head = document.createElement('header');
-            const heading = document.createElement('div');
-            const title = document.createElement('h3'); title.textContent = item.name;
-            const schedule = document.createElement('small');
-            schedule.textContent = item.active
-                ? item.endsAt ? t('points.events.ends', formatDateTime(item.endsAt)) : t('points.events.noEnd')
-                : t('points.events.starts', formatDateTime(item.startsAt));
-            heading.append(title, schedule);
-            const badge = document.createElement('span'); badge.className = 'points-event-state';
-            badge.textContent = item.active ? t('points.events.active') : t('points.events.upcoming');
-            head.append(heading, badge); card.append(head);
-            if (item.description) card.append(Object.assign(document.createElement('p'), {textContent: item.description}));
-            const meta = document.createElement('p'); meta.className = 'points-event-meta';
-            meta.textContent = item.gameTypes.length
-                ? t('points.events.games', item.gameTypes.map(game => game[0] + game.slice(1).toLowerCase()).join(', '))
-                : t('points.events.allGames');
-            if (item.completionRewardPoints > 0) {
-                meta.append(' · ', t('points.events.completionBonus'), ' ');
-                meta.append(pointsDeltaNode(item.completionRewardPoints));
-            }
-            card.append(meta);
-            if (item.achievements?.length) {
-                const goals = document.createElement('div'); goals.className = 'points-event-achievements';
-                goals.append(...item.achievements.map(eventAchievement)); card.append(goals);
-            }
-            return card;
-        }));
+        const now = Date.now();
+        const models = items.map(item => {
+            const goals = item.achievements || [];
+            const hiddenAchievementCount = Math.max(0, Number(item.hiddenAchievementCount || 0));
+            const goalCount = goals.length + hiddenAchievementCount;
+            const completeGoals = goals.filter(goal => goal.completed).length;
+            const ends = item.endsAt ? new Date(item.endsAt).getTime() : Infinity;
+            return {
+                item, goals, completeGoals, goalCount, hiddenAchievementCount, ends,
+                completed: goalCount > 0 && hiddenAchievementCount === 0 && completeGoals === goals.length,
+                past: ends <= now,
+                totalReward: goals.length
+                    ? goals.reduce((total, goal) => total + Number(goal.rewardPoints || 0), Number(item.completionRewardPoints || 0))
+                    : 0
+            };
+        });
+        const [first, ...rest] = models;
+        if (!first) return events.replaceChildren();
+        events.replaceChildren(...rest.length ? [eventCard(first), moreEvents(rest)] : [eventCard(first)]);
     }
 
     async function loadEvents() {
@@ -163,10 +334,10 @@
             ? `${reason(latest.type)} ×${batch.length}`
             : reason(latest.type);
         const amountCell = document.createElement('td');
-        amountCell.append(pointsDeltaNode(amount, false));
+        amountCell.append(pointActivityNode(pointsDeltaNode(amount)));
         const balanceCell = document.createElement('td');
         balanceCell.className = 'points-value';
-        balanceCell.append(pointsNode(latest.balanceAfter));
+        balanceCell.append(pointActivityNode(pointsCompactNode(latest.balanceAfter)));
         const whenCell = document.createElement('td');
         const time = document.createElement('time');
         time.dateTime = latest.createdAt;
@@ -228,5 +399,7 @@
     document.getElementById('points-refresh').addEventListener('click', refresh);
     previous.addEventListener('click', () => { if (page > 0) { page--; loadTransactions(); } });
     next.addEventListener('click', () => { if (!next.disabled) { page++; loadTransactions(); } });
-    refresh();
+    if (initialSeries) renderPointsChart(chartCanvas, initialSeries,
+        {emptyElement: chartEmpty, balance: lastBalance, days: range});
+    else refresh();
 })();

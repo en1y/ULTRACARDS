@@ -47,6 +47,7 @@ public class ErrorViewConfig {
         model.put("isFakeAdmin", isAuthenticated && user.isFakeAdmin());
         if (isAuthenticated) {
             model.put("username", user.getUsername());
+            model.put("pointsBalance", user.getPointsBalance());
         }
 
         // Error views bypass @ControllerAdvice model attributes, so the i18n

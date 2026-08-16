@@ -105,6 +105,10 @@ a {
 .points-delta.is-down { color: var(--color-danger); }
 .points-delta.is-zero { color: var(--color-text-muted); }
 
+/* The P glyph is always gold, whatever it sits in. The doubled class outranks the delta colours
+   above and container rules like `.admin-tile span`, which a single class would lose to. */
+.points-symbol.points-symbol { color: var(--color-points); }
+
 .points-range {
   display: flex;
   flex-wrap: wrap;
@@ -920,4 +924,77 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* The switch behind ui/fragments/toggle.html. Geometry is scoped to .uc-toggle so
+   it matches the pill the lobby pages already draw without redefining it globally.
+   ponytail: lobby.css, create-lobby.css and durak-options.css still carry their own
+   copies — migrate them onto the fragment the next time one of them changes. */
+.uc-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.uc-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.uc-toggle .visibility-switch {
+  position: relative;
+  width: 3.5rem;
+  height: 1.9rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.uc-toggle .visibility-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--color-bg);
+  box-shadow: 0 1px 4px var(--color-shadow);
+  transition: transform 180ms ease;
+}
+
+.uc-toggle input:checked + .visibility-switch {
+  border-color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-2));
+}
+
+.uc-toggle input:checked + .visibility-switch::after {
+  transform: translateX(1.6rem);
+}
+
+.uc-toggle input:focus-visible + .visibility-switch {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 60%, transparent);
+  outline-offset: 3px;
+}
+
+.uc-toggle-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.uc-toggle-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.uc-toggle-hint {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
 }

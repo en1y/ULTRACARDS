@@ -52,4 +52,11 @@ public class I18nModelAdvice {
         var principal = authentication == null ? null : authentication.getPrincipal();
         return principal instanceof UserEntity user && user.isFakeAdmin();
     }
+
+    @ModelAttribute("pointsBalance")
+    public long pointsBalance() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        var principal = authentication == null ? null : authentication.getPrincipal();
+        return principal instanceof UserEntity user ? user.getPointsBalance() : 0;
+    }
 }

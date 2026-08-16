@@ -707,6 +707,8 @@
         }
 
         function syncLobbyWager(lobby, isHost) {
+            // Fees differ per game and mode; quote the one this lobby would actually pay.
+            window.refreshWagerFee?.(lobby.gameType, resolveGameConfigKey(lobby.gameType, lobby.gameConfig));
             const enabled = lobby.wager?.enabled === true;
             const stake = Number(lobby.wager?.stakePoints) || 0;
             if (dom.wagerValue) {

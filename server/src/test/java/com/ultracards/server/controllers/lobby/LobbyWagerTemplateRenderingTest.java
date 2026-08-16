@@ -52,4 +52,21 @@ class LobbyWagerTemplateRenderingTest {
             assertThat(stylesheet).contains("grid-template-columns: repeat(2, minmax(0, 1fr))");
         }
     }
+
+    @Test
+    void quotesTheFeeForEveryCreateLobbyRuleChange() throws IOException {
+        var gameTypes = resource("/static/js/gameTypes.js");
+        var createLobby = resource("/static/js/ui/fragments/createLobby.js");
+
+        assertThat(gameTypes).contains("`${mode}_WITH_DECLARATIONS`", "config.declarationsEnabled");
+        assertThat(createLobby).contains("settingsElement.addEventListener('change'", "syncCreateState();",
+                "resolveGameConfigKey(gameType, config)");
+    }
+
+    private String resource(String path) throws IOException {
+        try (var stream = getClass().getResourceAsStream(path)) {
+            assertThat(stream).isNotNull();
+            return new String(stream.readAllBytes());
+        }
+    }
 }

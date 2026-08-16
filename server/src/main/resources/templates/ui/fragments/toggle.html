@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* The one boolean control for server-rendered forms: a real checkbox behind a
+       switch pill, so form serialisation, labels and keyboard focus keep working.
+       value and hint are optional — pass null for a bare on/off switch. */-->
+<th:block th:fragment="toggle(name, value, label, hint, checked)">
+    <label class="uc-toggle">
+        <!--/* th:value renders an empty attribute for null, so spell out the browser's own default. */-->
+        <input type="checkbox" th:name="${name}" th:value="${value} ?: 'on'" th:checked="${checked}">
+        <span class="visibility-switch" aria-hidden="true"></span>
+        <span class="uc-toggle-copy">
+            <span class="uc-toggle-label" th:text="${label}">Enabled</span>
+            <span class="uc-toggle-hint" th:if="${hint}" th:text="${hint}">What this changes</span>
+        </span>
+    </label>
+</th:block>
+</body>
+</html>

@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.HashSet;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,5 +36,6 @@ class I18nModelAdviceTest {
 
         user.setFakeAdmin(true);
         assertTrue(advice.isFakeAdmin());
+        assertEquals(1500, advice.pointsBalance());
     }
 }

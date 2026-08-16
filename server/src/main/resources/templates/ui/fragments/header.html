@@ -37,7 +37,6 @@
   <script th:src="@{/js/ui/fragments/header/language.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/notifications.js}"></script>
   <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/friends.js}"></script>
-  <script th:if="${isAuthenticated}" th:src="@{/js/ui/fragments/header/points.js(v=${@environment.getProperty('app.version')})}"></script>
   <script th:src="@{/js/ui/fragments/header/auth-modal.js}"></script>
   <script th:src="@{/js/ui/fragments/header.js}"></script>
 </th:block>

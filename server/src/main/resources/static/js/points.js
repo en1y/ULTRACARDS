@@ -14,10 +14,22 @@
     window.WAGER_MAX = steps[steps.length - 1];
     window.WAGER_RAKE_PERCENT = 4;
 
-    let settingsRequest = null;
-    window.pointsSettings = () => (settingsRequest ??= fetch('/api/points/settings', {credentials: 'same-origin'})
-        .then(response => response.ok ? response.json() : {wagerFeePercent: 4})
-        .catch(() => ({wagerFeePercent: 4})));
+    // Admins can charge a different fee per game and per mode, so the answer is cached
+    // per game/mode pair rather than once for the whole page.
+    const settingsRequests = new Map();
+    window.pointsSettings = (game, mode) => {
+        const key = `${game || ''}|${mode || ''}`;
+        if (!settingsRequests.has(key)) {
+            const params = new URLSearchParams();
+            if (game) params.set('game', game);
+            if (game && mode) params.set('mode', mode);
+            const search = params.toString();
+            settingsRequests.set(key, fetch(`/api/points/settings${search ? `?${search}` : ''}`, {credentials: 'same-origin'})
+                .then(response => response.ok ? response.json() : {wagerFeePercent: WAGER_RAKE_PERCENT})
+                .catch(() => ({wagerFeePercent: WAGER_RAKE_PERCENT})));
+        }
+        return settingsRequests.get(key);
+    };
 
     const renderWagerFee = settings => {
         const percent = Number(settings?.wagerFeePercent ?? 4);
@@ -35,7 +47,9 @@
             node.textContent = pointsText(Math.floor(distributable / winners), true);
         });
     };
-    const loadWagerFee = () => pointsSettings().then(renderWagerFee);
+    // Lobby pages call this once they know which game and mode they are quoting.
+    window.refreshWagerFee = (game, mode) => pointsSettings(game, mode).then(renderWagerFee);
+    const loadWagerFee = () => refreshWagerFee();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadWagerFee, {once: true});
     else loadWagerFee();
 
@@ -68,12 +82,6 @@
             .then(response => response.ok ? response.json() : {})
             .catch(() => ({}));
     };
-
-    // One request per page even though the header chip and the bet sliders all want it.
-    let balanceRequest = null;
-    window.pointsBalance = () => (balanceRequest ??= fetch('/api/points/balance', {credentials: 'same-origin'})
-        .then(response => response.ok ? response.json() : null)
-        .catch(() => null));
 
     const compactFormat = new Intl.NumberFormat(undefined, {notation: 'compact', maximumFractionDigits: 1});
 
