@@ -119,6 +119,16 @@ public class AdminService {
     public PointsSettingsDTO updatePointsSettings(AdminPointsSettingsPatchDTO patch) {
         return exchange("/economy/settings", HttpMethod.PATCH, patch, PointsSettingsDTO.class);
     }
+    public List<AdminWagerFeeDTO> wagerFees() {
+        return get("/economy/fees", new ParameterizedTypeReference<>() {});
+    }
+    public AdminWagerFeeDTO updateWagerFee(String game, AdminWagerFeePatchDTO patch) {
+        return exchange("/economy/fees/" + encode(game), HttpMethod.PATCH, patch, AdminWagerFeeDTO.class);
+    }
+    public AdminWagerFeeDTO resetWagerFee(String game, String mode, String reason) {
+        return exchange("/economy/fees/" + encode(game) + "?reason=" + encode(reason) + query("mode", mode),
+                HttpMethod.DELETE, null, AdminWagerFeeDTO.class);
+    }
     public List<AdminPointEventDTO> pointEvents() {
         return get("/economy/events", new ParameterizedTypeReference<>() {});
     }
@@ -131,6 +141,9 @@ public class AdminService {
     public AdminPointEventDTO setPointEventEnabled(UUID id, boolean enabled, String reason) {
         return exchange("/economy/events/" + id + "/enabled?enabled=" + enabled + "&reason=" + encode(reason),
                 HttpMethod.PATCH, null, AdminPointEventDTO.class);
+    }
+    public void deletePointEvent(UUID id, String reason) {
+        exchange("/economy/events/" + id + "?reason=" + encode(reason), HttpMethod.DELETE, null, Void.class);
     }
 
     public AdminLobbyDTO patchLobby(UUID id, AdminLobbyPatchDTO patch) {

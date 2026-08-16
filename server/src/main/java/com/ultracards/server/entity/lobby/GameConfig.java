@@ -23,5 +23,8 @@ public interface GameConfig {
 
     GameConfigDTO toDto();
 
+    /** Availability and bet-fee rules are keyed on this, so it must match {@code GameAvailabilityService} modes. */
+    String modeKey();
+
     GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users);
 }

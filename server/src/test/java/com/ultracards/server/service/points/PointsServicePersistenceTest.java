@@ -6,6 +6,7 @@ import com.ultracards.gateway.dto.points.PointsAchievementDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,6 +35,7 @@ class PointsServicePersistenceTest {
     @Autowired private PointsService points;
     @Autowired private UserRepository users;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ObjectMapper objectMapper;
 
     @Test
     void initializesAndClaimsTheDailyReserveOnlyBelowTheThreshold() {
@@ -61,6 +63,7 @@ class PointsServicePersistenceTest {
         var gameId = UUID.randomUUID();
         var participants = List.of(first, second, loser);
 
+        points.updateWagerFeePercent(4, first.getId());
         points.reserveWager(gameId, UUID.randomUUID(), new WagerConfigDTO(true, 100), participants);
         points.completeGame(gameId, participants, Set.of(first.getId(), second.getId()));
 
@@ -102,12 +105,65 @@ class PointsServicePersistenceTest {
     }
 
     @Test
+    void prefersTheModeFeeThenTheGameFeeThenTheGlobalOne() {
+        var winner = user("mode-fee-winner");
+        var loser = user("mode-fee-loser");
+        points.updateWagerFeePercent(4, winner.getId());
+        points.setWagerFee(GameType.DURAK, null, 10);
+        points.setWagerFee(GameType.DURAK, "P2_D36_NO_JOKERS_NEIGHBORS_NO_PASS", 25);
+
+        assertThat(feeOf(winner, loser, GameType.DURAK, "P2_D36_NO_JOKERS_NEIGHBORS_NO_PASS")).isEqualTo(25);
+        assertThat(feeOf(winner, loser, GameType.DURAK, "P3_D36_NO_JOKERS_NEIGHBORS_NO_PASS")).isEqualTo(10);
+        assertThat(feeOf(winner, loser, GameType.BRISKULA, "TWO_PLAYERS")).isEqualTo(4);
+
+        points.resetWagerFee(GameType.DURAK, "P2_D36_NO_JOKERS_NEIGHBORS_NO_PASS");
+        assertThat(feeOf(winner, loser, GameType.DURAK, "P2_D36_NO_JOKERS_NEIGHBORS_NO_PASS")).isEqualTo(10);
+        points.resetWagerFee(GameType.DURAK, null);
+        assertThat(feeOf(winner, loser, GameType.DURAK, "P2_D36_NO_JOKERS_NEIGHBORS_NO_PASS")).isEqualTo(4);
+    }
+
+    private int feeOf(UserEntity first, UserEntity second, GameType gameType, String mode) {
+        var gameId = UUID.randomUUID();
+        points.reserveWager(gameId, UUID.randomUUID(), new WagerConfigDTO(true, 100), List.of(first, second),
+                gameType, mode);
+        return jdbc.queryForObject("SELECT fee_percent FROM point_wagers WHERE game_id = ?", Integer.class, gameId);
+    }
+
+    @Test
+    void buildsTheAdminEconomyDashboardFromBalancesLedgerAndWagers() {
+        var before = points.adminDashboard();
+        var first = user("dashboard-first");
+        var second = user("dashboard-second");
+        try {
+            points.updateWagerFeePercent(7, first.getId());
+            points.reserveWager(UUID.randomUUID(), UUID.randomUUID(), new WagerConfigDTO(true, 100), List.of(first, second));
+            users.flush();
+
+            var dashboard = points.adminDashboard();
+
+            assertThat(dashboard.wagerFeePercent()).isEqualTo(7);
+            assertThat(dashboard.pointsInAccounts()).isEqualTo(before.pointsInAccounts() + 2_800);
+            assertThat(dashboard.pointsInEscrow()).isEqualTo(before.pointsInEscrow() + 200);
+            assertThat(dashboard.pointsInCirculation()).isEqualTo(before.pointsInCirculation() + 3_000);
+            assertThat(dashboard.totalWagers()).isEqualTo(before.totalWagers() + 1);
+            assertThat(dashboard.openWagers()).isEqualTo(before.openWagers() + 1);
+            assertThat(dashboard.biggestWager()).isGreaterThanOrEqualTo(100);
+            assertThat(dashboard.totalStaked()).isEqualTo(before.totalStaked() + 200);
+            assertThat(dashboard.dailyTotals()).hasSize(30);
+            assertThat(dashboard.leaderboard()).hasSizeLessThanOrEqualTo(10)
+                    .extracting(item -> item.points()).isSortedAccordingTo(java.util.Comparator.reverseOrder());
+        } finally {
+            points.updateWagerFeePercent(before.wagerFeePercent(), first.getId());
+        }
+    }
+
+    @Test
     void scheduledEventCountsWinsLossesAndDrawsAndAwardsOnlyOnce() {
         var user = user("event-player");
         var opponent = user("event-opponent");
         var third = user("event-third");
         var goal = new AdminPointEventPatchDTO.Achievement(null, "Durak set", "Do all three",
-                3, 1, 1, 1, 200L);
+                3, 1, 1, 1, 200L, List.of("DURAK"), false);
         var event = points.createEvent(new AdminPointEventPatchDTO("Durak weekend", "", Instant.now().minusSeconds(60),
                 Instant.now().plusSeconds(3_600), List.of("DURAK"), 300L, true, List.of(goal), "test"));
 
@@ -129,42 +185,157 @@ class PointsServicePersistenceTest {
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM point_transactions
                 WHERE user_id = ? AND transaction_type IN ('EVENT_ACHIEVEMENT', 'EVENT_COMPLETION')
-                """, Long.class, user.getId())).isEqualTo(2L);
+                  AND reference_id IN (?, ?)
+                """, Long.class, user.getId(), event.id().toString(),
+                event.achievements().getFirst().id().toString())).isEqualTo(2L);
         assertThat(jdbc.queryForObject("""
                 SELECT COALESCE(SUM(amount), 0) FROM point_transactions
                 WHERE user_id = ? AND transaction_type IN ('EVENT_ACHIEVEMENT', 'EVENT_COMPLETION')
-                """, Long.class, user.getId())).isEqualTo(500L);
+                  AND reference_id IN (?, ?)
+                """, Long.class, user.getId(), event.id().toString(),
+                event.achievements().getFirst().id().toString())).isEqualTo(500L);
     }
 
     @Test
-    void upcomingEventWithoutAchievementsIsAnnouncedButCannotAutoPay() {
-        var user = user("upcoming-player");
-        var event = points.createEvent(new AdminPointEventPatchDTO("Tomorrow", "Notice only",
-                Instant.now().plusSeconds(3_600), null, List.of(), 500L, true, List.of(), "test"));
+    void keepsAFinishedEventInHistoryOnlyForThePlayersWhoTookPart() {
+        var user = user("history-player");
+        var opponent = user("history-opponent");
+        var bystander = user("history-bystander");
+        var goal = new AdminPointEventPatchDTO.Achievement(null, "Play once", "", 1, 0, 0, 0,
+                200L, List.of("DURAK"), false);
+        var event = points.createEvent(new AdminPointEventPatchDTO("Last weekend", "",
+                Instant.now().minusSeconds(3_600), Instant.now().plusSeconds(3_600), List.of("DURAK"),
+                300L, true, List.of(goal), "test"));
 
-        var shown = points.events(user).stream().filter(item -> item.id().equals(event.id())).findFirst().orElseThrow();
+        points.completeGame(UUID.randomUUID(), List.of(user, opponent), Set.of(user.getId()), GameType.DURAK);
+        // Back-date the games and then close the window, so the event reads as one
+        // that ran and finished with these two players in it.
+        jdbc.update("UPDATE point_game_results SET ended_at = ? WHERE user_id IN (?, ?)",
+                Timestamp.from(Instant.now().minusSeconds(600)), user.getId(), opponent.getId());
+        jdbc.update("UPDATE point_events SET ends_at = ? WHERE id = ?",
+                Timestamp.from(Instant.now().minusSeconds(300)), event.id());
 
-        assertThat(shown.active()).isFalse();
-        assertThat(shown.achievements()).isEmpty();
-        assertThat(jdbc.queryForObject("""
+        var history = points.events(user).stream().filter(item -> item.id().equals(event.id()))
+                .findFirst().orElseThrow();
+        assertThat(history.active()).isFalse();
+        assertThat(history.earnedPoints()).isEqualTo(500L);
+        assertThat(history.achievements()).singleElement()
+                .satisfies(achievement -> assertThat(achievement.completed()).isTrue());
+        assertThat(points.events(bystander)).noneMatch(item -> item.id().equals(event.id()));
+    }
+
+    @Test
+    void ordersPlayerEventsByActiveStatusThenNewestStart() {
+        var user = user("ordered-events");
+        var goal = new AdminPointEventPatchDTO.Achievement(null, "Play once", "", 1, 0, 0, 0,
+                0L, List.of(), false);
+        var now = Instant.now();
+        var activeOlder = points.createEvent(new AdminPointEventPatchDTO("Active older", "",
+                now.minusSeconds(300), now.plusSeconds(3_600), List.of(), 0L, true, List.of(goal), "test"));
+        var activeNewest = points.createEvent(new AdminPointEventPatchDTO("Active newest", "",
+                now.minusSeconds(60), now.plusSeconds(3_600), List.of(), 0L, true, List.of(goal), "test"));
+        var inactiveOlder = points.createEvent(new AdminPointEventPatchDTO("Inactive older", "",
+                now.plusSeconds(300), now.plusSeconds(3_600), List.of(), 0L, true, List.of(goal), "test"));
+        var inactiveNewest = points.createEvent(new AdminPointEventPatchDTO("Inactive newest", "",
+                now.plusSeconds(600), now.plusSeconds(3_600), List.of(), 0L, true, List.of(goal), "test"));
+        var ids = Set.of(activeOlder.id(), activeNewest.id(), inactiveOlder.id(), inactiveNewest.id());
+
+        assertThat(points.events(user).stream().filter(event -> ids.contains(event.id())).map(event -> event.name()))
+                .containsExactly("Active newest", "Active older", "Inactive newest", "Inactive older");
+    }
+
+    @Test
+    void rejectsEventsWithoutAchievements() {
+        assertThatThrownBy(() -> points.createEvent(new AdminPointEventPatchDTO("Tomorrow", "Notice only",
+                Instant.now().plusSeconds(3_600), null, List.of(), 500L, true, List.of(), "test")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("at least one sub-achievement");
+
+        var durakOnly = new AdminPointEventPatchDTO.Achievement(null, "Wrong game", "", 1, 0, 0, 0,
+                10L, List.of("DURAK"), false);
+        assertThatThrownBy(() -> points.createEvent(new AdminPointEventPatchDTO("Treseta event", "",
+                Instant.now(), null, List.of("TRESETA"), 0L, true, List.of(durakOnly), "test")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("must be allowed by its event");
+    }
+
+    @Test
+    void keepsHiddenAchievementsOpaqueUntilCompletion() throws Exception {
+        var user = user("hidden-event-player");
+        var opponent = user("hidden-event-opponent");
+        var visible = new AdminPointEventPatchDTO.Achievement(null, "Play once", "", 1, 0, 0, 0,
+                0L, List.of(), false);
+        var hidden = new AdminPointEventPatchDTO.Achievement(null, "Durak secret", "Win at Durak",
+                0, 1, 0, 0, 200L, List.of("DURAK"), true);
+        var event = points.createEvent(new AdminPointEventPatchDTO("Mixed event", "", Instant.now().minusSeconds(60),
+                Instant.now().plusSeconds(3_600), List.of("DURAK", "TRESETA"), 0L, true,
+                List.of(visible, hidden), "test"));
+        var hiddenId = event.achievements().get(1).id();
+
+        points.completeGame(UUID.randomUUID(), List.of(user, opponent), Set.of(user.getId()), GameType.TRESETA);
+        var shown = points.events(user).stream().filter(item -> item.id().equals(event.id()))
+                .findFirst().orElseThrow();
+        assertThat(shown.hiddenAchievementCount()).isOne();
+        assertThat(shown.achievements()).singleElement()
+                .satisfies(goal -> assertThat(goal.name()).isEqualTo("Play once"));
+        assertThat(objectMapper.writeValueAsString(shown))
+                .doesNotContain(hiddenId.toString(), "Durak secret", "Win at Durak", "\"rewardPoints\":200");
+        assertThat(eventRewardCount(user.getId(), hiddenId)).isZero();
+        assertThat(achievementNotificationCount(user, "Play once")).isOne();
+        assertThat(achievementNotificationCount(user, "Durak secret")).isZero();
+
+        points.completeGame(UUID.randomUUID(), List.of(user, opponent), Set.of(user.getId()), GameType.DURAK);
+        shown = points.events(user).stream().filter(item -> item.id().equals(event.id()))
+                .findFirst().orElseThrow();
+        assertThat(shown.hiddenAchievementCount()).isZero();
+        assertThat(shown.achievements()).extracting(goal -> goal.name())
+                .containsExactly("Play once", "Durak secret");
+        assertThat(shown.achievements().get(1).completed()).isTrue();
+        assertThat(eventRewardCount(user.getId(), hiddenId)).isOne();
+        assertThat(achievementNotificationCount(user, "Durak secret")).isOne();
+
+        points.summary(user);
+        assertThat(achievementNotificationCount(user, "Play once")).isOne();
+        assertThat(achievementNotificationCount(user, "Durak secret")).isOne();
+    }
+
+    private long eventRewardCount(Long userId, UUID achievementId) {
+        return jdbc.queryForObject("""
                 SELECT COUNT(*) FROM point_transactions
-                WHERE user_id = ? AND transaction_type LIKE 'EVENT_%'
-                """, Long.class, user.getId())).isZero();
+                WHERE user_id = ? AND transaction_type = 'EVENT_ACHIEVEMENT' AND reference_id = ?
+                """, Long.class, userId, achievementId.toString());
     }
 
     @Test
     void preservesAchievementIdentityWhenAnAdminClientUpdatesGoalsByPosition() {
-        var goal = new AdminPointEventPatchDTO.Achievement(null, "Original", "", 1, 0, 0, 0, 10L);
+        var goal = new AdminPointEventPatchDTO.Achievement(null, "Original", "", 1, 0, 0, 0, 10L,
+                List.of(), false);
         var patch = new AdminPointEventPatchDTO("Editable", "", Instant.now().minusSeconds(60), null,
                 List.of(), 0L, true, List.of(goal), "test");
         var event = points.createEvent(patch);
         var originalId = event.achievements().getFirst().id();
 
-        var renamed = new AdminPointEventPatchDTO.Achievement(null, "Renamed", "", 2, 0, 0, 0, 20L);
+        var renamed = new AdminPointEventPatchDTO.Achievement(null, "Renamed", "", 2, 0, 0, 0, 20L,
+                List.of(), false);
         var updated = points.updateEvent(event.id(), new AdminPointEventPatchDTO("Editable", "",
                 patch.startsAt(), null, List.of(), 0L, true, List.of(renamed), "test"));
 
         assertThat(updated.achievements().getFirst().id()).isEqualTo(originalId);
+    }
+
+    @Test
+    void deletesAnEventAndItsSubAchievements() {
+        var goal = new AdminPointEventPatchDTO.Achievement(null, "Temporary goal", "", 1, 0, 0, 0,
+                10L, List.of(), false);
+        var event = points.createEvent(new AdminPointEventPatchDTO("Temporary event", "", Instant.now(), null,
+                List.of(), 0L, true, List.of(goal), "test"));
+
+        var deleted = points.deleteEvent(event.id());
+
+        assertThat(deleted.name()).isEqualTo("Temporary event");
+        assertThat(points.adminEvents()).noneMatch(item -> item.id().equals(event.id()));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM point_event_achievements WHERE event_id = ?",
+                Long.class, event.id())).isZero();
     }
 
     @Test
@@ -299,10 +470,15 @@ class PointsServicePersistenceTest {
 
         assertThat(account.achievements()).allMatch(PointsAchievementDTO::earned);
         assertThat(achievementCount(user)).isEqualTo(4);
+        assertThat(achievementNotificationCount(user, "Play a game")).isOne();
+        assertThat(achievementNotificationCount(user, "Win a game")).isOne();
+        assertThat(achievementNotificationCount(user, "Play 10 games")).isOne();
+        assertThat(achievementNotificationCount(user, "Win 10 games")).isOne();
         assertThat(achievementReferences(user)).allMatch(reference -> reference.endsWith(':' + today()));
         // Re-reading the page must not pay the same day's goals twice.
         var balance = account.balance();
         assertThat(points.summary(user).balance()).isEqualTo(balance);
+        assertThat(achievementNotificationCount(user, "Play a game")).isOne();
     }
 
     @Test
@@ -335,6 +511,14 @@ class PointsServicePersistenceTest {
         return jdbc.queryForObject(
                 "SELECT COUNT(*) FROM point_transactions WHERE user_id = ? AND transaction_type = 'ACHIEVEMENT'",
                 Long.class, user.getId());
+    }
+
+    private long achievementNotificationCount(UserEntity user, String name) {
+        users.flush();
+        return jdbc.queryForObject("""
+                SELECT COUNT(*) FROM notifications
+                WHERE recipient_user_id = ? AND message LIKE ?
+                """, Long.class, user.getId(), "Achievement completed: " + name + " (%");
     }
 
     private List<String> achievementReferences(UserEntity user) {

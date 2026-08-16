@@ -3,7 +3,9 @@ package com.ultracards.server.service.games;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.lobby.WagerConfigDTO;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
+import com.ultracards.server.entity.lobby.BriskulaLobbyGameConfig;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.games.briskula.BriskulaGameService;
 import com.ultracards.server.service.games.durak.DurakGameService;
 import com.ultracards.server.service.games.treseta.TresetaGameService;
@@ -43,13 +45,16 @@ class GameServiceTest {
         when(game.getGameType()).thenReturn(GameTypeDTO.Briskula);
         when(game.getPlayers()).thenReturn(List.of());
         when(game.getWager()).thenReturn(wager);
+        var config = mock(BriskulaLobbyGameConfig.class);
+        when(config.modeKey()).thenReturn("TWO_PLAYERS");
+        doReturn(config).when(game).getGameConfig();
         doThrow(new IllegalStateException("startup failed")).when(briskula).onGameStarted(game);
 
         assertThatThrownBy(() -> service.startGame(lobby))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("startup failed");
 
-        verify(points).reserveWager(gameId, lobbyId, wager, List.of());
+        verify(points).reserveWager(gameId, lobbyId, wager, List.of(), GameType.BRISKULA, "TWO_PLAYERS");
         verify(points).cancelWager(gameId);
         verify(recording).release(game);
         verify(lobby).setStarted(false);

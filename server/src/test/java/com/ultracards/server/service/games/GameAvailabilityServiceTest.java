@@ -2,6 +2,7 @@ package com.ultracards.server.service.games;
 
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
+import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.server.entity.games.GameAvailability;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.games.GameAvailabilityRepository;
@@ -79,5 +80,19 @@ class GameAvailabilityServiceTest {
                 new BriskulaGameConfigDTO(3, 3, false, null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("BRISKULA / THREE_PLAYERS");
+    }
+
+    @Test
+    void treatsTresetaDeclarationsAsTheirOwnMode() {
+        when(repository.findAll()).thenReturn(List.of(new GameAvailability(GameType.TRESETA,
+                "TWO_PLAYERS_WITH_DECLARATIONS", false)));
+
+        assertThatThrownBy(() -> service.requireEnabled(GameTypeDTO.Treseta,
+                new TresetaGameConfigDTO(2, 10, false, true, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("TRESETA / TWO_PLAYERS_WITH_DECLARATIONS");
+
+        service.requireEnabled(GameTypeDTO.Treseta,
+                new TresetaGameConfigDTO(2, 10, false, false, null));
     }
 }

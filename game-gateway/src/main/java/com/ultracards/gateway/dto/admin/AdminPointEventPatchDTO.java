@@ -23,7 +23,9 @@ public record AdminPointEventPatchDTO(
             Integer winsRequired,
             Integer lossesRequired,
             Integer drawsRequired,
-            Long rewardPoints
+            Long rewardPoints,
+            List<String> gameTypes,
+            Boolean hidden
     ) {
     }
 }

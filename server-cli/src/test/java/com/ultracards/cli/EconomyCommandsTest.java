@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EconomyCommandsTest {
     @Test
     void parsesTheFullRepeatableAchievementFormat() {
-        var goal = EconomyCommands.SaveEvent.parseAchievement("Durak set|750|8|3|2|1|Complete the set");
+        var goal = EconomyCommands.SaveEvent.parseAchievement("Durak set|750|8|3|2|1|DURAK|true|Complete the set");
 
         assertEquals("Durak set", goal.name());
         assertEquals(750, goal.rewardPoints());
@@ -18,6 +18,8 @@ class EconomyCommandsTest {
         assertEquals(2, goal.lossesRequired());
         assertEquals(1, goal.drawsRequired());
         assertEquals("Complete the set", goal.description());
+        assertEquals(java.util.List.of("DURAK"), goal.gameTypes());
+        assertTrue(goal.hidden());
     }
 
     @Test

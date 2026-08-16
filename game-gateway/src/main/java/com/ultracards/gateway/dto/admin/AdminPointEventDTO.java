@@ -23,7 +23,9 @@ public record AdminPointEventDTO(
             int winsRequired,
             int lossesRequired,
             int drawsRequired,
-            long rewardPoints
+            long rewardPoints,
+            List<String> gameTypes,
+            boolean hidden
     ) {
     }
 }

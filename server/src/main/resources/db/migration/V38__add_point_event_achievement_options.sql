@@ -1,0 +1,3 @@
+ALTER TABLE point_event_achievements
+    ADD COLUMN game_types VARCHAR(128) NOT NULL DEFAULT '',
+    ADD COLUMN hidden BOOLEAN NOT NULL DEFAULT FALSE;

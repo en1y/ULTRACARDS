@@ -38,6 +38,9 @@ public class BriskulaLobbyGameConfig implements GameConfig {
     }
 
     @Override
+    public String modeKey() { return gameConfig.name(); }
+
+    @Override
     public GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
         if (gameConfig.areTeamsEnabled())
             return new BriskulaGameEntity(lobbyId, name, owner, this,

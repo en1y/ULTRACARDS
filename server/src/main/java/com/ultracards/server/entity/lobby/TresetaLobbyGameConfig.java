@@ -34,6 +34,9 @@ public class TresetaLobbyGameConfig implements GameConfig {
     }
 
     @Override
+    public String modeKey() { return gameConfig.name(); }
+
+    @Override
     public GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
         var gameUsers = users;
         if (gameConfig.areTeamsEnabled())

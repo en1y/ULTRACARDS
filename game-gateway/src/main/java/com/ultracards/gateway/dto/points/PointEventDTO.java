@@ -13,6 +13,8 @@ public record PointEventDTO(
         List<String> gameTypes,
         long completionRewardPoints,
         boolean active,
+        long earnedPoints,
+        int hiddenAchievementCount,
         List<Achievement> achievements
 ) {
     public record Achievement(
@@ -28,7 +30,8 @@ public record PointEventDTO(
             long lossesRequired,
             long draws,
             long drawsRequired,
-            boolean completed
+            boolean completed,
+            List<String> gameTypes
     ) {
     }
 }

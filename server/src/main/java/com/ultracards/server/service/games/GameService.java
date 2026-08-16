@@ -10,6 +10,7 @@ import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.durak.DurakGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.games.briskula.BriskulaGameService;
 import com.ultracards.server.service.games.durak.DurakGameService;
 import com.ultracards.server.service.games.treseta.TresetaGameService;
@@ -33,7 +34,8 @@ public class GameService {
     public GameEntity<?, ?> startGame(LobbyEntity lobby) {
         var game = lobby.createGame();
         try {
-            pointsService.reserveWager(game.getId(), lobby.getId(), game.getWager(), game.getPlayers());
+            pointsService.reserveWager(game.getId(), lobby.getId(), game.getWager(), game.getPlayers(),
+                    GameType.fromDTO(game.getGameType()), game.getGameConfig().modeKey());
             gameManager.createGame(game);
             if (game.getGameType().equals(GameTypeDTO.Briskula)) {
                 var briskulaGame = (BriskulaGameEntity) game;

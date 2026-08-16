@@ -2,6 +2,7 @@ package com.ultracards.server.service.points;
 
 import com.ultracards.gateway.dto.admin.AdminPointEventDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventPatchDTO;
+import com.ultracards.gateway.dto.admin.AdminEconomyDashboardDTO;
 import com.ultracards.gateway.dto.games.lobby.WagerConfigDTO;
 import com.ultracards.gateway.dto.points.PointEventDTO;
 import com.ultracards.gateway.dto.points.PointTransactionDTO;
@@ -14,6 +15,7 @@ import com.ultracards.gateway.dto.points.PointsSettingsDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
+import com.ultracards.server.service.notifications.NotificationService;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -44,14 +46,18 @@ public class PointsService {
     public static final long MIN_STAKE = 100;
     public static final long MAX_STAKE = 1_000_000;
     public static final int DEFAULT_WAGER_FEE_PERCENT = 4;
+    /** Fee override row that covers every mode of a game. */
+    private static final String ALL_MODES = "*";
     private static final ZoneId POINTS_ZONE = ZoneId.of("Europe/Zagreb");
 
     private final UserRepository users;
     private final JdbcTemplate jdbc;
+    private final NotificationService notifications;
 
-    public PointsService(UserRepository users, JdbcTemplate jdbc) {
+    public PointsService(UserRepository users, JdbcTemplate jdbc, NotificationService notifications) {
         this.users = users;
         this.jdbc = jdbc;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -72,7 +78,7 @@ public class PointsService {
     public PointsAccountDTO summary(UserEntity user) {
         var current = users.findByIdForUpdate(user.getId()).orElseThrow(() -> notFound(user.getId()));
         awardAchievements(current);
-        awardEventAchievements(current, null);
+        awardEventAchievements(current, null, null);
         return buildSummary(current);
     }
 
@@ -219,6 +225,12 @@ public class PointsService {
 
     @Transactional
     public void reserveWager(UUID gameId, UUID lobbyId, WagerConfigDTO wager, List<UserEntity> participants) {
+        reserveWager(gameId, lobbyId, wager, participants, null, null);
+    }
+
+    @Transactional
+    public void reserveWager(UUID gameId, UUID lobbyId, WagerConfigDTO wager, List<UserEntity> participants,
+                             GameType gameType, String mode) {
         var config = normalize(wager);
         if (!config.isEnabled()) return;
         var locked = lock(userIds(participants));
@@ -239,7 +251,7 @@ public class PointsService {
         jdbc.update("""
                 INSERT INTO point_wagers(game_id, lobby_id, stake_points, fee_percent, status, created_at)
                 VALUES (?, ?, ?, ?, 'OPEN', ?)
-                """, gameId, lobbyId, config.stakePoints(), wagerFeePercent(), Timestamp.from(Instant.now()));
+                """, gameId, lobbyId, config.stakePoints(), wagerFeePercent(gameType, mode), Timestamp.from(Instant.now()));
         for (var user : locked.values()) {
             jdbc.update("""
                     INSERT INTO point_wager_players(game_id, user_id, stake_points)
@@ -269,14 +281,14 @@ public class PointsService {
         var draw = participantWinnerCount == 0 || participantWinnerCount == locked.size();
         for (var user : locked.values()) {
             var outcome = draw ? "DRAW" : winnerIds.contains(user.getId()) ? "WIN" : "LOSS";
-            jdbc.update("""
+            var recorded = jdbc.update("""
                     INSERT INTO point_game_results(game_id, user_id, won, ended_at, game_type, outcome)
                     VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT DO NOTHING
                     """, gameId, user.getId(), "WIN".equals(outcome), endedAt,
-                    gameType == null ? null : gameType.name(), outcome);
+                    gameType == null ? null : gameType.name(), outcome) > 0;
             awardAchievements(user);
-            awardEventAchievements(user, gameType);
+            awardEventAchievements(user, gameType, recorded ? gameId : null);
         }
         settleWager(gameId, locked, winnerIds);
     }
@@ -301,7 +313,13 @@ public class PointsService {
 
     @Transactional(readOnly = true)
     public PointsSettingsDTO settings() {
-        return new PointsSettingsDTO(wagerFeePercent());
+        return settings(null, null);
+    }
+
+    /** The fee a player would pay in this game and mode; both null gives the global default. */
+    @Transactional(readOnly = true)
+    public PointsSettingsDTO settings(GameType gameType, String mode) {
+        return new PointsSettingsDTO(wagerFeePercent(gameType, mode));
     }
 
     @Transactional
@@ -323,11 +341,39 @@ public class PointsService {
         return result;
     }
 
+    /**
+     * Everything live or announced, plus the finished events this player actually
+     * showed up for — the page needs that tail to have a history to show.
+     */
     @Transactional(readOnly = true)
     public List<PointEventDTO> events(UserEntity user) {
+        var now = Instant.now();
+        var earned = eventRewards(user.getId());
         var result = new ArrayList<PointEventDTO>();
-        for (var event : eventRows(true)) result.add(pointEvent(event, user.getId()));
+        for (var event : eventRows(false)) {
+            if (!event.enabled()) continue;
+            var ended = event.endsAt() != null && !event.endsAt().isAfter(now);
+            if (ended && eventProgress(user.getId(), event, List.of()).games() == 0) continue;
+            var item = pointEvent(event, user.getId(), earned);
+            if (!item.achievements().isEmpty() || item.hiddenAchievementCount() > 0) result.add(item);
+        }
+        result.sort(Comparator.comparing(PointEventDTO::active).reversed()
+                .thenComparing(PointEventDTO::startsAt, Comparator.reverseOrder()));
         return result;
+    }
+
+    /** Points already paid out per event goal and per event completion, by reference id. */
+    private Map<String, Long> eventRewards(Long userId) {
+        return jdbc.query("""
+                SELECT reference_id, COALESCE(SUM(amount), 0) AS total
+                FROM point_transactions
+                WHERE user_id = ? AND transaction_type IN ('EVENT_ACHIEVEMENT', 'EVENT_COMPLETION')
+                GROUP BY reference_id
+                """, result -> {
+            var totals = new HashMap<String, Long>();
+            while (result.next()) totals.put(result.getString("reference_id"), result.getLong("total"));
+            return totals;
+        }, userId);
     }
 
     @Transactional
@@ -363,10 +409,20 @@ public class PointsService {
 
     @Transactional
     public AdminPointEventDTO setEventEnabled(UUID id, boolean enabled) {
-        if (jdbc.update("UPDATE point_events SET enabled = ?, updated_at = ? WHERE id = ?",
-                enabled, Timestamp.from(Instant.now()), id) == 0)
+        if (scalar("SELECT COUNT(*) FROM point_events WHERE id = ?", id) == 0)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Point event not found");
+        if (enabled && scalar("SELECT COUNT(*) FROM point_event_achievements WHERE event_id = ?", id) == 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An event needs at least one sub-achievement");
+        jdbc.update("UPDATE point_events SET enabled = ?, updated_at = ? WHERE id = ?",
+                enabled, Timestamp.from(Instant.now()), id);
         return adminEvent(findEvent(id));
+    }
+
+    @Transactional
+    public AdminPointEventDTO deleteEvent(UUID id) {
+        var event = adminEvent(findEvent(id));
+        jdbc.update("DELETE FROM point_events WHERE id = ?", id);
+        return event;
     }
 
     @Transactional(readOnly = true)
@@ -425,6 +481,75 @@ public class PointsService {
                 scalar("SELECT COALESCE(SUM(rake_points), 0) FROM point_wagers WHERE settled_at >= ?", since),
                 escrowed,
                 scalar("SELECT COUNT(*) FROM point_transactions WHERE transaction_type = 'DAILY_CLAIM' AND reference_id = ?", today));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminEconomyDashboardDTO adminDashboard() {
+        var now = Instant.now();
+        var since24Hours = Timestamp.from(now.minusSeconds(86_400L));
+        var since7Days = Timestamp.from(now.minusSeconds(7 * 86_400L));
+        var since30Days = Timestamp.from(now.minusSeconds(30 * 86_400L));
+        var dailySince = Timestamp.from(LocalDate.now(POINTS_ZONE).minusDays(29).atStartOfDay(POINTS_ZONE).toInstant());
+        var accounts = scalar("SELECT COALESCE(SUM(points_balance), 0) FROM users");
+        var escrow = scalar("""
+                SELECT COALESCE(SUM(p.stake_points), 0)
+                FROM point_wager_players p JOIN point_wagers w ON w.game_id = p.game_id
+                WHERE w.status = 'OPEN'
+                """);
+        var dailyChanges = jdbc.query("""
+                SELECT CAST(created_at AT TIME ZONE 'Europe/Zagreb' AS DATE) AS day,
+                       COALESCE(SUM(amount), 0) AS change
+                FROM point_transactions
+                WHERE created_at >= ?
+                GROUP BY CAST(created_at AT TIME ZONE 'Europe/Zagreb' AS DATE)
+                ORDER BY day
+                """, (result, row) -> Map.entry(result.getObject("day", LocalDate.class), result.getLong("change")),
+                dailySince);
+        var changesByDay = new HashMap<LocalDate, Long>();
+        long windowChange = 0;
+        for (var entry : dailyChanges) {
+            changesByDay.put(entry.getKey(), entry.getValue());
+            windowChange = Math.addExact(windowChange, entry.getValue());
+        }
+        var dailyTotals = new ArrayList<AdminEconomyDashboardDTO.DailyTotal>();
+        var day = LocalDate.now(POINTS_ZONE).minusDays(29);
+        var running = Math.subtractExact(accounts, windowChange);
+        for (int index = 0; index < 30; index++) {
+            var change = changesByDay.getOrDefault(day, 0L);
+            running = Math.addExact(running, change);
+            dailyTotals.add(new AdminEconomyDashboardDTO.DailyTotal(day, running, change));
+            day = day.plusDays(1);
+        }
+        var leaders = jdbc.query("""
+                SELECT id, username, points_balance
+                FROM users
+                WHERE enabled = TRUE AND status = 'ACTIVE'
+                ORDER BY points_balance DESC, LOWER(username), id
+                LIMIT 10
+                """, (result, row) -> new AdminEconomyDashboardDTO.LeaderboardEntry(
+                row + 1L, result.getLong("id"), result.getString("username"), result.getLong("points_balance")));
+        return new AdminEconomyDashboardDTO(
+                wagerFeePercent(), accounts, escrow, Math.addExact(accounts, escrow),
+                scalar("SELECT COALESCE(SUM(amount), 0) FROM point_transactions WHERE created_at >= ?", since24Hours),
+                scalar("SELECT COALESCE(SUM(amount), 0) FROM point_transactions WHERE created_at >= ?", since7Days),
+                scalar("SELECT COALESCE(SUM(amount), 0) FROM point_transactions WHERE created_at >= ?", since30Days),
+                scalar("""
+                        SELECT COALESCE(SUM(amount), 0) FROM point_transactions
+                        WHERE amount > 0 AND transaction_type NOT IN ('WAGER_PAYOUT', 'WAGER_REFUND')
+                        """),
+                Math.addExact(scalar("""
+                        SELECT COALESCE(-SUM(amount), 0) FROM point_transactions
+                        WHERE amount < 0 AND transaction_type <> 'WAGER_STAKE'
+                        """), scalar("SELECT COALESCE(SUM(rake_points), 0) FROM point_wagers")),
+                scalar("SELECT COUNT(*) FROM point_wagers"),
+                scalar("SELECT COUNT(*) FROM point_wagers WHERE status = 'OPEN'"),
+                scalar("SELECT COALESCE(MAX(stake_points), 0) FROM point_wagers"),
+                scalar("SELECT COALESCE(SUM(stake_points), 0) FROM point_wager_players"),
+                scalar("SELECT COALESCE(SUM(payout_points), 0) FROM point_wager_players"),
+                scalar("SELECT COALESCE(SUM(rake_points), 0) FROM point_wagers"),
+                scalar("SELECT COUNT(*) FROM point_transactions WHERE transaction_type = 'DAILY_CLAIM' AND reference_id = ?",
+                        LocalDate.now(POINTS_ZONE).toString()),
+                dailyTotals, leaders);
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -492,6 +617,53 @@ public class PointsService {
         return value == null ? DEFAULT_WAGER_FEE_PERCENT : value;
     }
 
+    /**
+     * The fee a game actually pays: the mode's own override first, then the game-wide
+     * one, then the global setting.
+     */
+    private int wagerFeePercent(GameType gameType, String mode) {
+        if (gameType == null) return wagerFeePercent();
+        var overrides = wagerFeeOverrides(gameType);
+        if (mode != null && overrides.containsKey(mode)) return overrides.get(mode);
+        var game = overrides.get(ALL_MODES);
+        return game == null ? wagerFeePercent() : game;
+    }
+
+    private Map<String, Integer> wagerFeeOverrides(GameType gameType) {
+        var overrides = new HashMap<String, Integer>();
+        jdbc.query("SELECT mode, fee_percent FROM point_wager_fees WHERE game_type = ?", result -> {
+            overrides.put(result.getString("mode"), result.getInt("fee_percent"));
+        }, gameType.name());
+        return overrides;
+    }
+
+    /** Every stored override, keyed {@code GAME:MODE} with {@code *} for the game-wide row. */
+    @Transactional(readOnly = true)
+    public Map<String, Integer> wagerFees() {
+        var fees = new HashMap<String, Integer>();
+        jdbc.query("SELECT game_type, mode, fee_percent FROM point_wager_fees", result -> {
+            fees.put(result.getString("game_type") + ':' + result.getString("mode"), result.getInt("fee_percent"));
+        });
+        return fees;
+    }
+
+    @Transactional
+    public void setWagerFee(GameType gameType, String mode, int percent) {
+        if (percent < 0 || percent > 100)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bet fee must be between 0% and 100%");
+        var key = mode == null ? ALL_MODES : mode;
+        var updated = jdbc.update("UPDATE point_wager_fees SET fee_percent = ? WHERE game_type = ? AND mode = ?",
+                percent, gameType.name(), key);
+        if (updated == 0) jdbc.update("INSERT INTO point_wager_fees(game_type, mode, fee_percent) VALUES (?, ?, ?)",
+                gameType.name(), key, percent);
+    }
+
+    @Transactional
+    public void resetWagerFee(GameType gameType, String mode) {
+        jdbc.update("DELETE FROM point_wager_fees WHERE game_type = ? AND mode = ?",
+                gameType.name(), mode == null ? ALL_MODES : mode);
+    }
+
     private List<EventRow> eventRows(boolean visibleOnly) {
         var suffix = visibleOnly
                 ? " WHERE enabled AND (ends_at IS NULL OR ends_at > CURRENT_TIMESTAMP)"
@@ -527,14 +699,15 @@ public class PointsService {
     private List<GoalRow> eventAchievements(UUID eventId) {
         return jdbc.query("""
                 SELECT id, name, description, games_required, wins_required, losses_required,
-                       draws_required, reward_points
+                       draws_required, reward_points, game_types, hidden
                 FROM point_event_achievements
                 WHERE event_id = ? ORDER BY sort_order, id
                 """, (result, row) -> new GoalRow(
                 result.getObject("id", UUID.class), result.getString("name"), result.getString("description"),
                 result.getInt("games_required"), result.getInt("wins_required"),
                 result.getInt("losses_required"), result.getInt("draws_required"),
-                result.getLong("reward_points")), eventId);
+                result.getLong("reward_points"), parseGameTypes(result.getString("game_types")),
+                result.getBoolean("hidden")), eventId);
     }
 
     private AdminPointEventDTO adminEvent(EventRow event) {
@@ -542,26 +715,43 @@ public class PointsService {
         for (var goal : eventAchievements(event.id()))
             achievements.add(new AdminPointEventDTO.Achievement(goal.id(), goal.name(), goal.description(),
                     goal.gamesRequired(), goal.winsRequired(), goal.lossesRequired(), goal.drawsRequired(),
-                    goal.rewardPoints()));
+                    goal.rewardPoints(), goal.gameTypes(), goal.hidden()));
         return new AdminPointEventDTO(event.id(), event.name(), event.description(), event.startsAt(), event.endsAt(),
                 event.gameTypes(), event.completionRewardPoints(), event.enabled(), achievements);
     }
 
-    private PointEventDTO pointEvent(EventRow event, Long userId) {
+    private PointEventDTO pointEvent(EventRow event, Long userId, Map<String, Long> earned) {
         var achievements = new ArrayList<PointEventDTO.Achievement>();
-        var progress = eventProgress(userId, event);
-        for (var goal : eventAchievements(event.id()))
+        var earnedPoints = earned.getOrDefault(event.id().toString(), 0L);
+        var hiddenAchievementCount = 0;
+        // ponytail: one progress query per goal, so the page costs O(events × goals)
+        // round trips. Fold them into a single grouped query if the list ever grows.
+        for (var goal : eventAchievements(event.id())) {
+            var progress = eventProgress(userId, event, goal.gameTypes());
+            var completed = complete(goal, progress);
+            if (goal.hidden() && !completed) {
+                hiddenAchievementCount++;
+                continue;
+            }
+            earnedPoints += earned.getOrDefault(goal.id().toString(), 0L);
             achievements.add(new PointEventDTO.Achievement(goal.id(), goal.name(), goal.description(),
-                    goal.rewardPoints(), progress.games(), goal.gamesRequired(), progress.wins(), goal.winsRequired(),
-                    progress.losses(), goal.lossesRequired(), progress.draws(), goal.drawsRequired(),
-                    complete(goal, progress)));
+                    goal.rewardPoints(), progress.games(), goal.gamesRequired(), progress.wins(),
+                    goal.winsRequired(), progress.losses(), goal.lossesRequired(), progress.draws(),
+                    goal.drawsRequired(), completed, goal.gameTypes()));
+        }
         var now = Instant.now();
         var active = !event.startsAt().isAfter(now) && (event.endsAt() == null || event.endsAt().isAfter(now));
         return new PointEventDTO(event.id(), event.name(), event.description(), event.startsAt(), event.endsAt(),
-                event.gameTypes(), event.completionRewardPoints(), active, achievements);
+                event.gameTypes(), event.completionRewardPoints(), active, earnedPoints, hiddenAchievementCount,
+                achievements);
     }
 
-    private EventProgress eventProgress(Long userId, EventRow event) {
+    private EventProgress eventProgress(Long userId, EventRow event, List<String> goalGameTypes) {
+        return eventProgress(userId, event, goalGameTypes, null);
+    }
+
+    private EventProgress eventProgress(Long userId, EventRow event, List<String> goalGameTypes,
+                                        UUID excludedGameId) {
         var sql = new StringBuilder("""
                 SELECT COUNT(*) AS games,
                        COUNT(*) FILTER (WHERE outcome = 'WIN') AS wins,
@@ -577,11 +767,16 @@ public class PointsService {
             sql.append(" AND ended_at < ?");
             args.add(Timestamp.from(event.endsAt()));
         }
-        if (!event.gameTypes().isEmpty()) {
+        if (excludedGameId != null) {
+            sql.append(" AND game_id <> ?");
+            args.add(excludedGameId);
+        }
+        var gameTypes = goalGameTypes.isEmpty() ? event.gameTypes() : goalGameTypes;
+        if (!gameTypes.isEmpty()) {
             sql.append(" AND game_type IN (")
-                    .append(String.join(",", java.util.Collections.nCopies(event.gameTypes().size(), "?")))
+                    .append(String.join(",", java.util.Collections.nCopies(gameTypes.size(), "?")))
                     .append(')');
-            args.addAll(event.gameTypes());
+            args.addAll(gameTypes);
         }
         return jdbc.query(sql.toString(), result -> {
             result.next();
@@ -590,7 +785,7 @@ public class PointsService {
         }, args.toArray());
     }
 
-    private void awardEventAchievements(UserEntity user, GameType completedGameType) {
+    private void awardEventAchievements(UserEntity user, GameType completedGameType, UUID completedGameId) {
         var now = Instant.now();
         for (var event : eventRows(true)) {
             if (event.startsAt().isAfter(now) || (event.endsAt() != null && !event.endsAt().isAfter(now))) continue;
@@ -598,13 +793,17 @@ public class PointsService {
                     && !event.gameTypes().contains(completedGameType.name())) continue;
             var goals = eventAchievements(event.id());
             if (goals.isEmpty()) continue;
-            var progress = eventProgress(user.getId(), event);
             var allComplete = true;
             for (var goal : goals) {
+                var progress = eventProgress(user.getId(), event, goal.gameTypes());
                 var complete = complete(goal, progress);
                 allComplete &= complete;
-                if (complete && goal.rewardPoints() > 0)
-                    applyOnce(user, goal.rewardPoints(), Type.EVENT_ACHIEVEMENT, goal.id().toString());
+                if (complete && goal.rewardPoints() > 0
+                        && applyOnce(user, goal.rewardPoints(), Type.EVENT_ACHIEVEMENT, goal.id().toString()))
+                    notifyAchievement(user, goal.name(), goal.rewardPoints());
+                if (complete && goal.rewardPoints() == 0 && completedGameId != null
+                        && !complete(goal, eventProgress(user.getId(), event, goal.gameTypes(), completedGameId)))
+                    notifyAchievement(user, goal.name(), 0);
             }
             if (allComplete && event.completionRewardPoints() > 0)
                 applyOnce(user, event.completionRewardPoints(), Type.EVENT_COMPLETION, event.id().toString());
@@ -640,20 +839,16 @@ public class PointsService {
                 if (!gameTypes.contains(gameType)) gameTypes.add(gameType);
             }
         }
+        validateEventAchievements(patch.achievements(), gameTypes);
         return new EventRow(id, patch.name().trim(), patch.description() == null ? "" : patch.description().trim(),
                 patch.startsAt(), patch.endsAt(), gameTypes, reward, patch.enabled() == null || patch.enabled());
     }
 
-    private void replaceEventAchievements(UUID eventId, List<AdminPointEventPatchDTO.Achievement> achievements) {
-        var existingIds = jdbc.query("""
-                        SELECT id FROM point_event_achievements
-                        WHERE event_id = ? ORDER BY sort_order, id
-                        """, (result, row) -> result.getObject(1, UUID.class), eventId);
-        jdbc.update("DELETE FROM point_event_achievements WHERE event_id = ?", eventId);
-        if (achievements == null) return;
-        var ids = new LinkedHashSet<UUID>();
-        for (int index = 0; index < achievements.size(); index++) {
-            var achievement = achievements.get(index);
+    private void validateEventAchievements(List<AdminPointEventPatchDTO.Achievement> achievements,
+                                           List<String> eventGameTypes) {
+        if (achievements == null || achievements.isEmpty())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An event needs at least one sub-achievement");
+        for (var achievement : achievements) {
             if (achievement == null || achievement.name() == null || achievement.name().isBlank())
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every event achievement needs a name");
             var games = count(achievement.gamesRequired());
@@ -663,19 +858,59 @@ public class PointsService {
             if (games == 0 && wins == 0 && losses == 0 && draws == 0)
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Every event achievement needs at least one games, wins, losses, or draws target");
+            if (achievement.rewardPoints() != null && achievement.rewardPoints() < 0)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Achievement reward cannot be negative");
+            goalGameTypes(achievement.gameTypes(), eventGameTypes);
+        }
+    }
+
+    private List<String> goalGameTypes(List<String> values, List<String> eventGameTypes) {
+        var result = new ArrayList<String>();
+        if (values == null) return result;
+        for (var value : values) {
+            if (value == null || value.isBlank()) continue;
+            var gameType = value.trim().toUpperCase();
+            try {
+                GameType.valueOf(gameType);
+            } catch (IllegalArgumentException error) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown achievement game type: " + value);
+            }
+            if (!eventGameTypes.isEmpty() && !eventGameTypes.contains(gameType))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Achievement game type must be allowed by its event: " + value);
+            if (!result.contains(gameType)) result.add(gameType);
+        }
+        return result;
+    }
+
+    private void replaceEventAchievements(UUID eventId, List<AdminPointEventPatchDTO.Achievement> achievements) {
+        var eventGameTypes = findEvent(eventId).gameTypes();
+        var existingIds = jdbc.query("""
+                        SELECT id FROM point_event_achievements
+                        WHERE event_id = ? ORDER BY sort_order, id
+                        """, (result, row) -> result.getObject(1, UUID.class), eventId);
+        jdbc.update("DELETE FROM point_event_achievements WHERE event_id = ?", eventId);
+        var ids = new LinkedHashSet<UUID>();
+        for (int index = 0; index < achievements.size(); index++) {
+            var achievement = achievements.get(index);
+            var games = count(achievement.gamesRequired());
+            var wins = count(achievement.winsRequired());
+            var losses = count(achievement.lossesRequired());
+            var draws = count(achievement.drawsRequired());
             var reward = achievement.rewardPoints() == null ? 0 : achievement.rewardPoints();
-            if (reward < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Achievement reward cannot be negative");
+            var gameTypes = goalGameTypes(achievement.gameTypes(), eventGameTypes);
             var id = achievement.id() != null ? achievement.id()
                     : index < existingIds.size() ? existingIds.get(index) : UUID.randomUUID();
             if (!ids.add(id)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate achievement ID");
             jdbc.update("""
                     INSERT INTO point_event_achievements(id, event_id, name, description, games_required,
                                                          wins_required, losses_required, draws_required,
-                                                         reward_points, sort_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                         reward_points, game_types, hidden, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, id, eventId, achievement.name().trim(),
                     achievement.description() == null ? "" : achievement.description().trim(),
-                    games, wins, losses, draws, reward, index);
+                    games, wins, losses, draws, reward, String.join(",", gameTypes),
+                    achievement.hidden() != null && achievement.hidden(), index);
         }
     }
 
@@ -716,8 +951,9 @@ public class PointsService {
     private void awardAchievements(UserEntity user) {
         var progress = todayProgress(user.getId());
         for (var achievement : Achievement.values())
-            if (progress.of(achievement) >= achievement.target())
-                applyOnce(user, achievement.reward(), Type.ACHIEVEMENT, reference(achievement));
+            if (progress.of(achievement) >= achievement.target()
+                    && applyOnce(user, achievement.reward(), Type.ACHIEVEMENT, reference(achievement)))
+                notifyAchievement(user, achievement.title(), achievement.reward());
     }
 
     private List<PointsAchievementDTO> achievements(UserEntity user) {
@@ -769,8 +1005,15 @@ public class PointsService {
         return ids;
     }
 
-    private void applyOnce(UserEntity user, long amount, Type type, String reference) {
-        if (!transactionExists(user.getId(), type, reference)) apply(user, amount, type, reference);
+    private boolean applyOnce(UserEntity user, long amount, Type type, String reference) {
+        if (transactionExists(user.getId(), type, reference)) return false;
+        apply(user, amount, type, reference);
+        return true;
+    }
+
+    private void notifyAchievement(UserEntity user, String name, long reward) {
+        notifications.createTextNotification(user.getId(),
+                "Achievement completed: %s (+%dP)".formatted(name, reward));
     }
 
     private void apply(UserEntity user, long amount, Type type, String reference) {
@@ -837,7 +1080,8 @@ public class PointsService {
     }
 
     private record GoalRow(UUID id, String name, String description, int gamesRequired, int winsRequired,
-                           int lossesRequired, int drawsRequired, long rewardPoints) {
+                           int lossesRequired, int drawsRequired, long rewardPoints, List<String> gameTypes,
+                           boolean hidden) {
     }
 
     private record EventProgress(long games, long wins, long losses, long draws) {
@@ -859,21 +1103,24 @@ public class PointsService {
 
     /** Daily goals: the target counts games finished today, not for all time. */
     private enum Achievement {
-        FIRST_GAME(250, 1, false),
-        FIRST_WIN(500, 1, true),
-        TEN_GAMES(500, 10, false),
-        TEN_WINS(1_000, 10, true);
+        FIRST_GAME("Play a game", 250, 1, false),
+        FIRST_WIN("Win a game", 500, 1, true),
+        TEN_GAMES("Play 10 games", 500, 10, false),
+        TEN_WINS("Win 10 games", 1_000, 10, true);
 
+        private final String title;
         private final long reward;
         private final long target;
         private final boolean countsWins;
 
-        Achievement(long reward, long target, boolean countsWins) {
+        Achievement(String title, long reward, long target, boolean countsWins) {
+            this.title = title;
             this.reward = reward;
             this.target = target;
             this.countsWins = countsWins;
         }
 
+        String title() { return title; }
         long reward() { return reward; }
         long target() { return target; }
         boolean countsWins() { return countsWins; }
