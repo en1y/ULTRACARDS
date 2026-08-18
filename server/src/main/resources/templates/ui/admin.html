@@ -8,12 +8,14 @@
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
     <link rel="stylesheet" th:href="@{/css/ui/fragments/date-time.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/markdown.css(v=${@environment.getProperty('app.version')})}">
     <script th:src="@{/js/theme.js}" defer></script>
     <script th:src="@{/js/ui/fragments/date-time.js(v=${@environment.getProperty('app.version')})}" defer></script>
     <script th:src="@{/webjars/chart.js/4.4.6/dist/chart.umd.js}" defer></script>
     <script th:src="@{/js/points-chart.js(v=${@environment.getProperty('app.version')})}" defer></script>
-    <script th:src="@{/js/ui/admin.js(v=${@environment.getProperty('app.version')},rev='points-events-datetime-picker')}" defer></script>
+    <script th:src="@{/js/ui/admin.js(v=${@environment.getProperty('app.version')},rev='point-event-goal-markdown')}" defer></script>
 </head>
 <body th:attr="data-admin-page=${adminPage}">
 <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -74,12 +76,14 @@
                 </div>
                 <div class="admin-economy-layout">
                     <article class="admin-economy-card">
-                        <h3 th:text="#{admin.economy.feeTitle}">Bet fee</h3>
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.economy.rulesTitle}">Points rules</h3><p class="admin-meta" th:text="#{admin.economy.rulesHint}">Set how many Points new accounts receive and how many an eligible daily claim awards.</p></div></div>
                         <form id="admin-points-settings" class="admin-form admin-economy-settings">
                             <label><span th:text="#{admin.economy.feePercent}">Fee percentage</span><span class="admin-percent-input"><input name="wagerFeePercent" type="number" min="0" max="100" step="1" required inputmode="numeric"><span>%</span></span></label>
+                            <label><span th:text="#{admin.economy.startingBalance}">New account grant</span><span class="admin-points-input"><input name="startingBalance" type="number" min="0" step="1" required inputmode="numeric"><span class="points-symbol">P</span></span></label>
+                            <label><span th:text="#{admin.economy.dailyReward}">Daily Points award</span><span class="admin-points-input"><input name="dailyReward" type="number" min="1" step="1" required inputmode="numeric"><span class="points-symbol">P</span></span></label>
                             <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"></label>
                             <div class="admin-actions">
-                                <button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveFee}">Save fee</button>
+                                <button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveRules}">Save rules</button>
                                 <span id="admin-fee-status" class="admin-meta" role="status" aria-live="polite" hidden></span>
                             </div>
                         </form>
@@ -89,6 +93,20 @@
                         <div class="admin-results" data-results="fees" aria-live="polite"></div>
                     </article>
                 </div>
+                <article class="admin-economy-card admin-daily-goals-card">
+                    <div class="admin-event-achievements-head">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.economy.dailyGoals}">Daily goals</h3><p class="admin-meta" th:text="#{admin.economy.dailyGoalsHint}">Each goal pays once per player per day, counting only games finished that day.</p></div></div>
+                        <button id="admin-daily-goal-add" class="btn" type="button" th:text="#{admin.economy.addDailyGoal}">Add goal</button>
+                    </div>
+                    <form id="admin-daily-goals-form" class="admin-form admin-daily-goals-form">
+                        <p id="admin-daily-goals-empty" class="admin-event-achievements-empty" th:text="#{admin.economy.noDailyGoals}">No daily goals. Players see an empty list.</p>
+                        <div id="admin-daily-goals" class="admin-daily-goals"></div>
+                        <footer class="admin-event-submit-bar">
+                            <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"><small class="admin-hint" th:text="#{admin.economy.reasonHint}">Stored in the audit log next to your name.</small></label>
+                            <div class="admin-event-submit-actions"><span id="admin-daily-goals-status" class="admin-meta" role="status" aria-live="polite" hidden></span><button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveDailyGoals}">Save goals</button></div>
+                        </footer>
+                    </form>
+                </article>
             </section>
 
             <section class="admin-panel" data-section="events" th:hidden="${adminPage != 'events'}">
@@ -102,7 +120,18 @@
                                 <div class="admin-event-section-head"><span aria-hidden="true">1</span><div><h4 th:text="#{admin.economy.details}">Event details</h4><p class="admin-meta" th:text="#{admin.economy.detailsHint}">Players read the name and description on their Points page while the event runs.</p></div></div>
                                 <div class="admin-event-fields">
                                     <label><span th:text="#{admin.common.name}">Name</span><input name="name" required maxlength="120"></label>
-                                    <label><span th:text="#{admin.economy.description}">Description</span><textarea name="description" maxlength="1000" rows="3"></textarea><small class="admin-hint" th:text="#{admin.economy.descriptionHint}">Summarize the event. Each visible goal explains its own task below.</small></label>
+                                    <div class="admin-markdown-editor">
+                                        <div class="admin-markdown-tabs" role="tablist" th:aria-label="#{admin.economy.descriptionMode}">
+                                            <button id="admin-event-description-edit-tab" class="btn" type="button" role="tab" aria-selected="true" aria-controls="admin-event-description-edit" data-event-description-mode="edit" th:text="#{admin.economy.descriptionEdit}">Edit</button>
+                                            <button id="admin-event-description-preview-tab" class="btn" type="button" role="tab" aria-selected="false" aria-controls="admin-event-description-preview-panel" tabindex="-1" data-event-description-mode="preview" th:text="#{admin.economy.descriptionPreview}">Preview</button>
+                                        </div>
+                                        <div id="admin-event-description-edit" role="tabpanel" aria-labelledby="admin-event-description-edit-tab">
+                                            <label><span th:text="#{admin.economy.description}">Description</span><textarea name="description" maxlength="1000" rows="6" aria-describedby="admin-event-description-hint"></textarea><small id="admin-event-description-hint" class="admin-hint" th:text="#{admin.economy.descriptionMarkdownHint}">Markdown is supported.</small></label>
+                                        </div>
+                                        <div id="admin-event-description-preview-panel" role="tabpanel" aria-labelledby="admin-event-description-preview-tab" hidden>
+                                            <div id="admin-event-description-preview" class="admin-markdown-preview markdown-body" aria-live="polite"><p class="admin-empty" th:text="#{admin.economy.descriptionPreviewEmpty}">Nothing to preview yet.</p></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
                             <section class="admin-event-section">

@@ -178,7 +178,7 @@ public class BriskulaGameService {
         gameRecordingService.finish(game);
         var winnerIds = new HashSet<Long>();
         for (var winner : winnerUsers) winnerIds.add(winner.getId());
-        pointsService.completeGame(game.getId(), game.getPlayers(), winnerIds, GameType.BRISKULA);
+        pointsService.completeGame(game.getId(), game.getPlayers(), winnerIds, GameType.BRISKULA, gameConfig.name());
     }
 
     private void scheduleFinishRetry(BriskulaGameEntity game) {

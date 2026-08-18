@@ -12,6 +12,7 @@
         dbTable: page === "database" ? params.get("table") : null,
         dbFilters: {}
     };
+    let goalDescriptionId = 0;
     if (page === "database") for (const [key, value] of params) if (key !== "table") state.dbFilters[key] = value;
     const durakModes = [];
     for (let players = 2; players <= 6; players++) {
@@ -26,7 +27,9 @@
     const modes = {
         briskula: ["TWO_PLAYERS", "TWO_PLAYERS_FOUR_CARDS_IN_HAND_EACH", "THREE_PLAYERS", "FOUR_PLAYERS_NO_TEAMS", "FOUR_PLAYERS_WITH_TEAMS"],
         durak: durakModes,
-        treseta: ["TWO_PLAYERS", "THREE_PLAYERS", "FOUR_PLAYERS_WITH_TEAMS", "FOUR_PLAYERS_NO_TEAMS"]
+        treseta: ["TWO_PLAYERS", "THREE_PLAYERS", "FOUR_PLAYERS_WITH_TEAMS", "FOUR_PLAYERS_NO_TEAMS",
+            "TWO_PLAYERS_WITH_DECLARATIONS", "THREE_PLAYERS_WITH_DECLARATIONS",
+            "FOUR_PLAYERS_WITH_TEAMS_WITH_DECLARATIONS", "FOUR_PLAYERS_NO_TEAMS_WITH_DECLARATIONS"]
     };
     const status = document.querySelector("#admin-status");
     const tr = (key, fallback, ...args) => typeof window.t === "function" && (window.__I18N__ || {})[key] ? window.t(key, ...args) : fallback;
@@ -43,6 +46,8 @@
         throw new Error(message);
     };
     const element = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
+    // HTML comes only from MarkdownRenderer after raw HTML escaping and OWASP sanitization.
+    const renderTrustedMarkdown = (target, html) => { target.innerHTML = html || ""; };
     const link = (href, text, className) => { const node = element("a", text, className); node.href = href; return node; };
     const userHref = id => `/admin/users?id=${encodeURIComponent(id)}`;
     const userLink = (id, label) => link(userHref(id), label ?? `${tr("admin.common.user", "User")} #${id}`, "admin-link");
@@ -375,6 +380,121 @@
             toggleField("gameTypes", game, game[0] + game.slice(1).toLowerCase(), selectedTypes.has(game))));
     };
 
+    const achievementGameTypes = node => [...node.querySelectorAll('.admin-event-goal-game-list [name="gameTypes"]:checked')]
+        .map(box => box.value);
+
+    const renderDescriptionPreview = async (description, preview) => {
+        if (!preview) return;
+        if (!description) {
+            preview.replaceChildren(element("p", tr("admin.economy.descriptionPreviewEmpty", "Nothing to preview yet."), "admin-empty"));
+            return;
+        }
+        preview.setAttribute("aria-busy", "true");
+        try {
+            const result = await request("/economy/events/preview", {
+                method: "POST", body: JSON.stringify({ description })
+            });
+            renderTrustedMarkdown(preview, result.html);
+        } catch (error) {
+            preview.replaceChildren(element("p", tr("admin.economy.descriptionPreviewError", "Preview could not be loaded."), "admin-empty is-error"));
+        } finally {
+            preview.removeAttribute("aria-busy");
+        }
+    };
+
+    const renderEventDescriptionPreview = () => renderDescriptionPreview(
+        document.querySelector('#admin-event-form [name="description"]')?.value.trim(),
+        document.querySelector("#admin-event-description-preview"));
+
+    const moveMarkdownTabSelection = event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]')];
+        const current = tabs.indexOf(document.activeElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+            : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        event.preventDefault();
+        tabs[next].click();
+        tabs[next].focus();
+    };
+
+    const setEventDescriptionMode = mode => {
+        const edit = document.querySelector("#admin-event-description-edit");
+        const preview = document.querySelector("#admin-event-description-preview-panel");
+        if (!edit || !preview) return;
+        const showPreview = mode === "preview";
+        edit.hidden = showPreview;
+        preview.hidden = !showPreview;
+        document.querySelectorAll("[data-event-description-mode]").forEach(tab => {
+            const selected = tab.dataset.eventDescriptionMode === mode;
+            tab.setAttribute("aria-selected", String(selected));
+            tab.tabIndex = selected ? 0 : -1;
+        });
+        if (showPreview) renderEventDescriptionPreview();
+    };
+
+    const durakFilterFromModes = gameModes => {
+        const configs = (gameModes || []).map(mode => parseDurakModeKey(mode)).filter(Boolean);
+        if (!configs.length) return {};
+        const common = property => {
+            const values = new Set(configs.map(config => String(config[property])));
+            return values.size === 1 ? values.values().next().value : "";
+        };
+        return {
+            players: common("numberOfPlayers"), deck: common("deckSize"),
+            throwin: common("throwInPolicy"), jokers: common("jokersEnabled"),
+            passing: common("passingEnabled")
+        };
+    };
+
+    const gameModeSummary = (gameType, gameModes) => {
+        if (!gameModes?.length) return "";
+        if (gameType === "DURAK") return describeDurakFilter(durakFilterFromModes(gameModes));
+        if (gameModes.length === 1) return modeLabel(gameType, gameModes[0]);
+        return tr("admin.economy.modeCount", `${gameModes.length} exact modes`, gameModes.length);
+    };
+
+    const achievementGameModes = node => {
+        const type = achievementGameTypes(node)[0];
+        const editor = node.querySelector(".admin-event-goal-mode-editor");
+        if (!type || !editor || editor.hidden) return [];
+        if (type === "DURAK") {
+            const filter = readDurakFilter(node.dataset.modeEditorId);
+            if (durakFilterIsEmpty(filter)) return [];
+            return durakAllModeKeys().filter(mode => durakConfigMatchesFilter(mode, filter));
+        }
+        const mode = editor.querySelector("select")?.value;
+        return mode ? [mode] : [];
+    };
+
+    let achievementModeEditorId = 0;
+    const renderAchievementModes = (node, selectedModes = null) => {
+        const previous = selectedModes || achievementGameModes(node);
+        const gameTypes = achievementGameTypes(node);
+        const editor = node.querySelector(".admin-event-goal-mode-editor");
+        const note = node.querySelector(".admin-event-goal-mode-note");
+        editor.replaceChildren();
+        const exactGame = gameTypes.length === 1 ? gameTypes[0] : null;
+        const available = exactGame ? modes[exactGame.toLowerCase()] || [] : [];
+        editor.hidden = !exactGame || !available.length;
+        note.hidden = !editor.hidden;
+        if (editor.hidden) return;
+        if (exactGame === "DURAK") {
+            node.dataset.modeEditorId ||= `admin-event-durak-${++achievementModeEditorId}`;
+            renderDurakFilter(editor, node.dataset.modeEditorId, durakFilterFromModes(previous));
+            return;
+        }
+        const label = element("label", null, "admin-event-mode-select");
+        label.append(element("span", tr("admin.economy.exactMode", "Exact mode")));
+        const select = document.createElement("select");
+        select.name = "gameMode";
+        const any = element("option", tr("admin.economy.anyMode", "Any mode")); any.value = "";
+        select.append(any, ...available.map(mode => {
+            const option = element("option", modeLabel(exactGame, mode)); option.value = mode; return option;
+        }));
+        select.value = previous.length === 1 ? previous[0] : "";
+        label.append(select); editor.append(label);
+    };
+
     const eventAchievementEditor = (achievement = {}) => {
         const node = element("fieldset", null, "admin-event-achievement");
         if (achievement.id) node.dataset.id = achievement.id;
@@ -398,12 +518,43 @@
         // Goal fields must not reuse the event's own field names: two controls sharing a name inside
         // one form makes form.elements[name] a RadioNodeList whose .value is always "".
         const identity = element("div", null, "admin-event-achievement-fields");
-        identity.append(field("goalName", tr("admin.common.name", "Name"), "text", achievement.name || ""));
-        const description = element("label");
-        description.append(element("span", tr("admin.economy.description", "Description")));
-        const descriptionInput = document.createElement("input");
-        descriptionInput.name = "goalDescription"; descriptionInput.maxLength = 500; descriptionInput.value = achievement.description || "";
-        description.append(descriptionInput); identity.append(description); node.append(identity);
+        const name = field("goalName", tr("admin.common.name", "Name"), "text", achievement.name || "");
+        name.classList.add("admin-event-goal-name"); identity.append(name);
+        const description = element("div", null, "admin-markdown-editor admin-goal-markdown-editor");
+        const descriptionPrefix = `admin-goal-description-${++goalDescriptionId}`;
+        const descriptionTabs = element("div", null, "admin-markdown-tabs");
+        descriptionTabs.setAttribute("role", "tablist");
+        descriptionTabs.setAttribute("aria-label", tr("admin.economy.descriptionMode", "Description mode"));
+        const editTab = element("button", tr("admin.economy.descriptionEdit", "Edit"), "btn");
+        editTab.type = "button"; editTab.id = `${descriptionPrefix}-edit-tab`; editTab.setAttribute("role", "tab");
+        editTab.setAttribute("aria-selected", "true"); editTab.setAttribute("aria-controls", `${descriptionPrefix}-edit`);
+        const previewTab = element("button", tr("admin.economy.descriptionPreview", "Preview"), "btn");
+        previewTab.type = "button"; previewTab.id = `${descriptionPrefix}-preview-tab`; previewTab.setAttribute("role", "tab");
+        previewTab.setAttribute("aria-selected", "false"); previewTab.setAttribute("aria-controls", `${descriptionPrefix}-preview`);
+        previewTab.tabIndex = -1; descriptionTabs.append(editTab, previewTab);
+        const editPanel = element("div"); editPanel.id = `${descriptionPrefix}-edit`; editPanel.setAttribute("role", "tabpanel");
+        editPanel.setAttribute("aria-labelledby", editTab.id);
+        const descriptionLabel = element("label"); descriptionLabel.append(element("span", tr("admin.economy.description", "Description")));
+        const descriptionInput = document.createElement("textarea");
+        descriptionInput.name = "goalDescription"; descriptionInput.maxLength = 500; descriptionInput.rows = 3;
+        descriptionInput.value = achievement.description || ""; descriptionInput.setAttribute("aria-describedby", `${descriptionPrefix}-hint`);
+        const descriptionHint = element("small", tr("admin.economy.descriptionMarkdownHint", "Markdown is supported."), "admin-hint");
+        descriptionHint.id = `${descriptionPrefix}-hint`; descriptionLabel.append(descriptionInput, descriptionHint); editPanel.append(descriptionLabel);
+        const previewPanel = element("div"); previewPanel.id = `${descriptionPrefix}-preview`; previewPanel.setAttribute("role", "tabpanel");
+        previewPanel.setAttribute("aria-labelledby", previewTab.id); previewPanel.hidden = true;
+        const preview = element("div", null, "admin-markdown-preview markdown-body"); preview.setAttribute("aria-live", "polite");
+        previewPanel.append(preview);
+        const setDescriptionMode = mode => {
+            const showPreview = mode === "preview";
+            editPanel.hidden = showPreview; previewPanel.hidden = !showPreview;
+            editTab.setAttribute("aria-selected", String(!showPreview)); editTab.tabIndex = showPreview ? -1 : 0;
+            previewTab.setAttribute("aria-selected", String(showPreview)); previewTab.tabIndex = showPreview ? 0 : -1;
+            if (showPreview) renderDescriptionPreview(descriptionInput.value.trim(), preview);
+        };
+        editTab.addEventListener("click", () => setDescriptionMode("edit"));
+        previewTab.addEventListener("click", () => setDescriptionMode("preview"));
+        descriptionTabs.addEventListener("keydown", moveMarkdownTabSelection);
+        description.append(descriptionTabs, editPanel, previewPanel); identity.append(description); node.append(identity);
         const targets = element("div", null, "admin-event-targets");
         const requirements = element("div", null, "admin-event-requirements");
         requirements.append(
@@ -427,9 +578,17 @@
             element("div", null, "admin-event-goal-game-list"));
         options.append(games, toggleField("hidden", "true", tr("admin.economy.hiddenGoal", "Hidden goal"), achievement.hidden === true,
             tr("admin.economy.hiddenGoalHint", "Players see the task only after completing it.")));
-        node.append(options, element("p", tr("admin.economy.requirementsHint",
+        const mode = element("fieldset", null, "admin-event-goal-mode");
+        mode.append(element("legend", tr("admin.economy.gameSetup", "Game setup")),
+            element("p", tr("admin.economy.gameSetupHint", "Choose exactly one goal game to require a specific mode or Durak setup."), "admin-hint admin-event-goal-mode-note"),
+            element("div", null, "admin-event-goal-mode-editor"));
+        node.append(options, mode, element("p", tr("admin.economy.requirementsHint",
             "Totals counted across the whole event window, not per game. A target left at 0 is ignored."), "admin-hint"));
         renderAchievementGameTypes(node, new Set(achievement.gameTypes || []));
+        renderAchievementModes(node, achievement.gameModes || []);
+        node.addEventListener("change", event => {
+            if (event.target.matches('.admin-event-goal-game-list [name="gameTypes"]')) renderAchievementModes(node);
+        });
         return node;
     };
 
@@ -438,6 +597,7 @@
         form.reset(); form.elements.id.value = event?.id || "";
         form.elements.name.value = event?.name || "";
         form.elements.description.value = event?.description || "";
+        setEventDescriptionMode("edit");
         form.elements.startsAt.value = formDateTime(event?.startsAt || new Date());
         form.elements.endsAt.value = formDateTime(event?.endsAt);
         syncDateTimeWidgets(form);
@@ -477,6 +637,7 @@
             drawsRequired: Number(node.querySelector('[name="drawsRequired"]').value || 0),
             rewardPoints: Number(node.querySelector('[name="rewardPoints"]').value || 0),
             gameTypes: [...node.querySelectorAll('[name="gameTypes"]:checked')].map(box => box.value),
+            gameModes: achievementGameModes(node),
             hidden: node.querySelector('[name="hidden"]').checked
         })),
         reason: form.elements.reason.value.trim()
@@ -549,8 +710,14 @@
         });
     };
 
+    const renderPointsSettings = settings => {
+        const form = document.querySelector("#admin-points-settings");
+        form.elements.wagerFeePercent.value = settings.wagerFeePercent;
+        form.elements.startingBalance.value = settings.startingBalance;
+        form.elements.dailyReward.value = settings.dailyReward;
+    };
+
     const renderPointsDashboard = dashboard => {
-        document.querySelector("#admin-points-settings").elements.wagerFeePercent.value = dashboard.wagerFeePercent;
         const metrics = document.querySelector("#admin-points-metrics");
         metrics.replaceChildren();
         const pointValue = value => {
@@ -601,8 +768,76 @@
             leaders.append(element("p", tr("admin.pointsAdmin.noLeaders", "No active accounts yet."), "admin-empty"));
     };
 
+    const metricLabels = () => ({
+        GAMES: tr("admin.economy.metricGames", "Games played"),
+        WINS: tr("admin.economy.metricWins", "Wins"),
+        LOSSES: tr("admin.economy.metricLosses", "Losses"),
+        DRAWS: tr("admin.economy.metricDraws", "Draws")
+    });
+
+    const syncDailyGoalEditors = () => {
+        const goals = [...document.querySelectorAll("#admin-daily-goals > .admin-daily-goal")];
+        const emptyState = document.querySelector("#admin-daily-goals-empty");
+        if (emptyState) emptyState.hidden = goals.length > 0;
+        goals.forEach((goal, index) => {
+            goal.querySelector(":scope > legend").textContent = `${tr("admin.economy.dailyGoal", "Goal")} ${index + 1}`;
+        });
+    };
+
+    const dailyGoalEditor = (goal = {}) => {
+        const node = element("fieldset", null, "admin-daily-goal");
+        node.dataset.code = goal.code || "";
+        node.append(element("legend", tr("admin.economy.dailyGoal", "Goal")));
+        const head = element("div", null, "admin-event-achievement-head");
+        const remove = element("button", tr("admin.common.delete", "Delete"), "btn btn-danger");
+        remove.type = "button";
+        remove.addEventListener("click", () => { node.remove(); syncDailyGoalEditors(); });
+        head.append(remove);
+        const fields = element("div", null, "admin-daily-goal-fields");
+        const name = element("label", null, "admin-daily-goal-name");
+        const nameInput = document.createElement("input");
+        nameInput.name = "goalName"; nameInput.required = true; nameInput.maxLength = 120; nameInput.value = goal.name || "";
+        name.append(element("span", tr("admin.common.name", "Name")), nameInput);
+        const metric = element("label");
+        const metricSelect = document.createElement("select");
+        metricSelect.name = "metric";
+        metricSelect.append(...Object.entries(metricLabels()).map(([value, label]) => {
+            const option = element("option", label); option.value = value; return option;
+        }));
+        metricSelect.value = goal.metric || "GAMES";
+        metric.append(element("span", tr("admin.economy.metric", "Counts")), metricSelect);
+        const number = (field, label, value, min, suffix) => {
+            const wrapper = element("label");
+            wrapper.append(element("span", label));
+            const input = document.createElement("input");
+            input.name = field; input.type = "number"; input.min = String(min); input.step = "1";
+            input.inputMode = "numeric"; input.required = true; input.value = value;
+            if (!suffix) { wrapper.append(input); return wrapper; }
+            const shell = element("span", null, "admin-points-input");
+            shell.append(input, element("span", suffix, "points-symbol"));
+            wrapper.append(shell);
+            return wrapper;
+        };
+        fields.append(name, metric,
+            number("target", tr("admin.economy.dailyTarget", "Target"), goal.target ?? 1, 1, null),
+            number("rewardPoints", tr("admin.economy.reward", "Reward (P)").replace(/\s*\(P\)\s*$/, ""),
+                goal.rewardPoints ?? 0, 0, "P"),
+            toggleField("enabled", "true", tr("admin.economy.enabled", "Enabled"), goal.enabled !== false));
+        node.append(head, fields);
+        return node;
+    };
+
+    const renderDailyGoals = goals => {
+        document.querySelector("#admin-daily-goals").replaceChildren(...goals.map(dailyGoalEditor));
+        syncDailyGoalEditors();
+    };
+
+    const loadDailyGoals = async () => renderDailyGoals(await request("/economy/daily-goals"));
+
     const loadPoints = async () => {
+        renderPointsSettings(await request("/economy/settings"));
         await loadFees();
+        await loadDailyGoals();
         renderPointsDashboard(await request("/economy/dashboard"));
     };
 
@@ -634,7 +869,11 @@
             const head = element("header", null, "admin-event-summary-head");
             head.append(element("h3", event.name), chip(eventState, statusKey === "active" ? "is-good" : event.enabled ? "is-warn" : "is-bad"));
             card.append(head);
-            if (event.description) card.append(element("p", event.description, "admin-meta"));
+            if (event.descriptionHtml) {
+                const description = element("div", null, "admin-meta markdown-body");
+                renderTrustedMarkdown(description, event.descriptionHtml);
+                card.append(description);
+            }
             const facts = element("dl", null, "admin-event-summary-facts");
             const fact = (label, value) => { const wrapper = element("div"); wrapper.append(element("dt", label)); const output = element("dd"); content(output, value); wrapper.append(output); facts.append(wrapper); };
             fact(tr("admin.common.when", "When"), schedule);
@@ -643,6 +882,25 @@
             const reward = element("span"); reward.append(document.createTextNode(totalReward.toLocaleString()), element("span", " P", "points-symbol"));
             fact(tr("admin.economy.totalReward", "Total listed reward"), reward);
             card.append(facts);
+            const goalDetails = element("details", null, "admin-event-summary-goals");
+            goalDetails.append(element("summary", goals));
+            const goalList = element("div", null, "admin-event-summary-goal-list");
+            achievements.forEach(achievement => {
+                const goal = element("article");
+                const goalCopy = element("div", null, "admin-event-summary-goal-copy");
+                const criteria = achievement.gameTypes?.length === 1 && achievement.gameModes?.length
+                    ? gameModeSummary(achievement.gameTypes[0], achievement.gameModes)
+                    : achievement.gameTypes?.length ? achievement.gameTypes.join(", ") : games;
+                goalCopy.append(element("strong", achievement.name));
+                if (achievement.descriptionHtml) {
+                    const description = element("div", null, "admin-meta markdown-body");
+                    renderTrustedMarkdown(description, achievement.descriptionHtml);
+                    goalCopy.append(description);
+                }
+                goal.append(goalCopy, element("span", criteria, "admin-meta"));
+                goalList.append(goal);
+            });
+            goalDetails.append(goalList); card.append(goalDetails);
             const foot = element("footer", null, "admin-event-summary-foot");
             const gameChips = element("div", null, "admin-chips");
             gameChips.append(...(gameTypes.length ? gameTypes : [tr("admin.economy.allGames", "All games")]).map(game => chip(game)));
@@ -1177,8 +1435,15 @@
     });
     document.querySelectorAll('#admin-event-form .admin-event-games input[name="gameTypes"]').forEach(box => box.addEventListener("change", () =>
         document.querySelectorAll("#admin-event-achievements > .admin-event-achievement")
-            .forEach(achievement => renderAchievementGameTypes(achievement))));
+            .forEach(achievement => {
+                const selectedModes = achievementGameModes(achievement);
+                renderAchievementGameTypes(achievement);
+                renderAchievementModes(achievement, selectedModes);
+            })));
     document.querySelector("#admin-event-new")?.addEventListener("click", () => resetEventForm());
+    document.querySelectorAll("[data-event-description-mode]").forEach(tab => tab.addEventListener("click", () =>
+        setEventDescriptionMode(tab.dataset.eventDescriptionMode)));
+    document.querySelector(".admin-markdown-tabs")?.addEventListener("keydown", moveMarkdownTabSelection);
     document.querySelector("#admin-points-settings")?.addEventListener("submit", async event => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -1188,15 +1453,52 @@
         button.disabled = true;
         form.setAttribute("aria-busy", "true");
         try {
-            const saved = await request("/economy/settings", { method: "PATCH", body: JSON.stringify({ wagerFeePercent: Number(values.wagerFeePercent), reason: values.reason }) });
-            form.elements.wagerFeePercent.value = saved.wagerFeePercent;
+            const saved = await request("/economy/settings", { method: "PATCH", body: JSON.stringify({
+                wagerFeePercent: Number(values.wagerFeePercent), startingBalance: Number(values.startingBalance),
+                dailyReward: Number(values.dailyReward), reason: values.reason }) });
+            renderPointsSettings(saved);
             form.elements.reason.value = "";
             await loadFees();
-            const message = tr("admin.economy.feeSaved", "Bet fee updated. New games will use it.");
+            const message = tr("admin.economy.rulesSaved", "Points rules updated.");
             feeStatus.textContent = message; feeStatus.hidden = false; feeStatus.classList.remove("is-error");
             setStatus(message);
         } catch (error) {
             feeStatus.textContent = error.message; feeStatus.hidden = false; feeStatus.classList.add("is-error");
+            setStatus(error.message, true);
+        } finally {
+            button.disabled = false;
+            form.removeAttribute("aria-busy");
+        }
+    });
+    document.querySelector("#admin-daily-goal-add")?.addEventListener("click", () => {
+        const goal = dailyGoalEditor();
+        document.querySelector("#admin-daily-goals").append(goal);
+        syncDailyGoalEditors();
+        goal.querySelector('[name="goalName"]').focus();
+    });
+    document.querySelector("#admin-daily-goals-form")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector('button[type="submit"]');
+        const goalStatus = document.querySelector("#admin-daily-goals-status");
+        button.disabled = true;
+        form.setAttribute("aria-busy", "true");
+        try {
+            const goals = [...document.querySelectorAll("#admin-daily-goals > .admin-daily-goal")].map(node => ({
+                code: node.dataset.code || null,
+                name: node.querySelector('[name="goalName"]').value.trim(),
+                metric: node.querySelector('[name="metric"]').value,
+                target: Number(node.querySelector('[name="target"]').value || 0),
+                rewardPoints: Number(node.querySelector('[name="rewardPoints"]').value || 0),
+                enabled: node.querySelector('[name="enabled"]').checked
+            }));
+            renderDailyGoals(await request("/economy/daily-goals", { method: "PUT", body: JSON.stringify({ goals, reason: form.elements.reason.value.trim() }) }));
+            form.elements.reason.value = "";
+            const message = tr("admin.economy.dailyGoalsSaved", "Daily goals updated.");
+            goalStatus.textContent = message; goalStatus.hidden = false; goalStatus.classList.remove("is-error");
+            setStatus(message);
+        } catch (error) {
+            goalStatus.textContent = error.message; goalStatus.hidden = false; goalStatus.classList.add("is-error");
             setStatus(error.message, true);
         } finally {
             button.disabled = false;

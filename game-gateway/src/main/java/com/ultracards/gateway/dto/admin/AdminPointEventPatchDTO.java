@@ -25,7 +25,14 @@ public record AdminPointEventPatchDTO(
             Integer drawsRequired,
             Long rewardPoints,
             List<String> gameTypes,
+            List<String> gameModes,
             Boolean hidden
     ) {
+        public Achievement(UUID id, String name, String description, Integer gamesRequired, Integer winsRequired,
+                           Integer lossesRequired, Integer drawsRequired, Long rewardPoints,
+                           List<String> gameTypes, Boolean hidden) {
+            this(id, name, description, gamesRequired, winsRequired, lossesRequired, drawsRequired, rewardPoints,
+                    gameTypes, List.of(), hidden);
+        }
     }
 }

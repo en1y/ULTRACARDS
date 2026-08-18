@@ -208,6 +208,60 @@ class UltracardsAdminCliTest {
     }
 
     @Test
+    void economySettingsUpdatesNewAccountAndDailyPointsTogether() {
+        var store = new ConfigStore(directory);
+        store.add("local", "http://localhost:8080");
+        store.token("session-token");
+        var template = new org.springframework.web.client.RestTemplate();
+        var server = MockRestServiceServer.bindTo(template).build();
+        var endpoint = "http://localhost:8080/api/admin/v1/economy/settings";
+        server.expect(request -> {
+                    assertEquals(endpoint, request.getURI().toString());
+                    assertEquals(HttpMethod.GET, request.getMethod());
+                })
+                .andRespond(withSuccess("{\"wagerFeePercent\":20,\"startingBalance\":1500,\"dailyReward\":500}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(request -> {
+                    assertEquals(endpoint, request.getURI().toString());
+                    assertEquals(HttpMethod.PATCH, request.getMethod());
+                    var body = ((MockClientHttpRequest) request).getBodyAsString();
+                    assertTrue(body.contains("\"wagerFeePercent\":null"), body);
+                    assertTrue(body.contains("\"startingBalance\":2400"), body);
+                    assertTrue(body.contains("\"dailyReward\":350"), body);
+                    assertTrue(body.contains("\"reason\":\"economy rebalance\""), body);
+                })
+                .andRespond(withSuccess("{\"wagerFeePercent\":20,\"startingBalance\":2400,\"dailyReward\":350}",
+                        MediaType.APPLICATION_JSON));
+        var root = new UltracardsAdminCli(store) {
+            @Override org.springframework.web.client.RestTemplate restTemplateWithImmediateTokenPersistence() {
+                return template;
+            }
+        };
+        var output = new ByteArrayOutputStream();
+        var review = new ByteArrayOutputStream();
+        var originalOut = System.out;
+        var originalErr = System.err;
+        try {
+            System.setOut(new java.io.PrintStream(output));
+            System.setErr(new java.io.PrintStream(review));
+            assertEquals(0, root.commandLine().execute("economy", "settings",
+                    "--new-account-points", "2400", "--daily-points", "350",
+                    "--reason", "economy rebalance", "--yes", "--no-color"));
+        } finally {
+            System.setOut(originalOut);
+            System.setErr(originalErr);
+        }
+        server.verify();
+
+        assertTrue(review.toString(StandardCharsets.UTF_8)
+                .contains("1500 P for new accounts; 500 P per daily claim"));
+        assertTrue(review.toString(StandardCharsets.UTF_8)
+                .contains("2400 P for new accounts; 350 P per daily claim"));
+        assertTrue(output.toString(StandardCharsets.UTF_8).contains("Starting Balance"));
+        assertTrue(output.toString(StandardCharsets.UTF_8).contains("2400"));
+    }
+
+    @Test
     void leaderboardCommandDisplaysAReadableRankedPage() {
         var store = new ConfigStore(directory);
         store.add("local", "http://localhost:8080");

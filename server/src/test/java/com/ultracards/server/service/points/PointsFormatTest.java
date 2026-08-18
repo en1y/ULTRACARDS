@@ -24,11 +24,4 @@ class PointsFormatTest {
         assertThat(format.compact(-1_500)).isEqualTo("-1.5K");
         assertThat(format.compact(null)).isEqualTo("0");
     }
-
-    @Test
-    void asksForASpaceOnlyWhenASuffixLetterFollows() {
-        assertThat(format.spaced(500)).isFalse();
-        assertThat(format.spaced(1_500)).isTrue();
-        assertThat(format.spaced(1_000_000)).isTrue();
-    }
 }

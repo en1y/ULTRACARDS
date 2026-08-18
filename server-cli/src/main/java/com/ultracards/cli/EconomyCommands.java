@@ -14,12 +14,46 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Command(name = "economy", aliases = "points-economy", description = "Manage bet fees and scheduled Point events.",
-        subcommands = {EconomyCommands.Fee.class, EconomyCommands.Events.class})
+@Command(name = "economy", aliases = "points-economy", description = "Manage Points grants, bet fees, and scheduled events.",
+        subcommands = {EconomyCommands.Settings.class, EconomyCommands.Fee.class, EconomyCommands.Events.class})
 class EconomyCommands implements Runnable {
     @Spec CommandSpec spec;
 
     @Override public void run() { spec.commandLine().usage(System.out); }
+
+    @Command(name = "settings", aliases = "rules",
+            description = "Show or update the Points granted to new accounts and by daily claims.")
+    static class Settings extends CliCommand {
+        @Option(names = {"--new-account-points", "--starting-balance"}, paramLabel = "POINTS",
+                description = "Points granted when a new account is initialized.") Long startingBalance;
+        @Option(names = {"--daily-points", "--daily-reward"}, paramLabel = "POINTS",
+                description = "Points awarded by an eligible daily claim.") Long dailyReward;
+        @Option(names = "--reason", description = "Audited reason; required when changing a value.") String reason;
+
+        public Integer call() {
+            if (startingBalance == null && dailyReward == null)
+                return root().withClient(client -> ok(client.admin().pointsSettings()));
+            if (reason == null || reason.isBlank())
+                throw new IllegalArgumentException("--reason is required when changing Points settings");
+            if (startingBalance != null && startingBalance < 0)
+                throw new IllegalArgumentException("--new-account-points cannot be negative");
+            if (dailyReward != null && dailyReward <= 0)
+                throw new IllegalArgumentException("--daily-points must be above 0");
+            return root().withClient(client -> {
+                var current = client.admin().pointsSettings();
+                var proposedStart = startingBalance == null ? current.startingBalance() : startingBalance;
+                var proposedDaily = dailyReward == null ? current.dailyReward() : dailyReward;
+                if (!root().confirmChange("Points account rules", summary(current.startingBalance(), current.dailyReward()),
+                        summary(proposedStart, proposedDaily))) return 5;
+                return ok(client.admin().updatePointsSettings(
+                        new AdminPointsSettingsPatchDTO(null, startingBalance, dailyReward, reason)));
+            });
+        }
+
+        private static String summary(long starting, long daily) {
+            return starting + " P for new accounts; " + daily + " P per daily claim";
+        }
+    }
 
     @Command(name = "fee", description = "Show or update the fee charged on losing bet stakes.")
     static class Fee extends CliCommand {
@@ -43,7 +77,8 @@ class EconomyCommands implements Runnable {
                 if (percent == null) return ok(game == null ? client.admin().pointsSettings() : client.admin().wagerFees());
                 requireReason();
                 if (!root().confirmChange(target, currentFee(client.admin(), game, mode), percent + "%")) return 5;
-                if (game == null) return ok(client.admin().updatePointsSettings(new AdminPointsSettingsPatchDTO(percent, reason)));
+                if (game == null) return ok(client.admin().updatePointsSettings(
+                        new AdminPointsSettingsPatchDTO(percent, null, null, reason)));
                 return ok(client.admin().updateWagerFee(game, new AdminWagerFeePatchDTO(mode, percent, reason)));
             });
         }
@@ -84,7 +119,7 @@ class EconomyCommands implements Runnable {
         @Option(names = "--game", split = ",", description = "Eligible game types. Repeat or comma-separate; omit for all.") List<String> games = new ArrayList<>();
         @Option(names = "--completion-reward", defaultValue = "0") long completionReward;
         @Option(names = "--disabled", description = "Save without making the event visible or rewardable.") boolean disabled;
-        @Option(names = "--achievement", description = "Repeatable NAME|REWARD|GAMES|WINS|LOSSES|DRAWS|GAME_TYPES|HIDDEN|DESCRIPTION goal.") List<String> achievementSpecs = new ArrayList<>();
+        @Option(names = "--achievement", description = "Repeatable NAME|REWARD|GAMES|WINS|LOSSES|DRAWS|GAME_TYPES|GAME_MODES|HIDDEN|DESCRIPTION goal.") List<String> achievementSpecs = new ArrayList<>();
         @Option(names = "--reason", required = true) String reason;
 
         public Integer call() {
@@ -102,16 +137,21 @@ class EconomyCommands implements Runnable {
 
         static AdminPointEventPatchDTO.Achievement parseAchievement(String value) {
             var fields = value == null ? new String[0] : value.split("\\|", -1);
-            if (fields.length < 8 || fields.length > 9 || fields[0].isBlank())
-                throw new IllegalArgumentException("Achievement must be NAME|REWARD|GAMES|WINS|LOSSES|DRAWS|GAME_TYPES|HIDDEN|DESCRIPTION");
+            if (fields.length < 8 || fields.length > 10 || fields[0].isBlank())
+                throw new IllegalArgumentException("Achievement must be NAME|REWARD|GAMES|WINS|LOSSES|DRAWS|GAME_TYPES|GAME_MODES|HIDDEN|DESCRIPTION");
+            var withModes = fields.length == 10;
             var gameTypes = fields[6].isBlank() ? List.<String>of()
                     : List.of(fields[6].trim().toUpperCase().split(","));
-            if (!fields[7].equalsIgnoreCase("true") && !fields[7].equalsIgnoreCase("false"))
+            var gameModes = withModes && !fields[7].isBlank()
+                    ? List.of(fields[7].trim().toUpperCase().split(",")) : List.<String>of();
+            var hiddenIndex = withModes ? 8 : 7;
+            if (!fields[hiddenIndex].equalsIgnoreCase("true") && !fields[hiddenIndex].equalsIgnoreCase("false"))
                 throw new IllegalArgumentException("hidden must be true or false");
-            return new AdminPointEventPatchDTO.Achievement(null, fields[0].trim(), fields.length == 9 ? fields[8].trim() : "",
+            var description = withModes ? fields[9].trim() : fields.length == 9 ? fields[8].trim() : "";
+            return new AdminPointEventPatchDTO.Achievement(null, fields[0].trim(), description,
                     number(fields[2], "games"), number(fields[3], "wins"), number(fields[4], "losses"),
-                    number(fields[5], "draws"), points(fields[1], "reward"), gameTypes,
-                    Boolean.parseBoolean(fields[7]));
+                    number(fields[5], "draws"), points(fields[1], "reward"), gameTypes, gameModes,
+                    Boolean.parseBoolean(fields[hiddenIndex]));
         }
 
         private static int number(String value, String label) {

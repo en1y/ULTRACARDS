@@ -63,6 +63,16 @@ class LobbyWagerTemplateRenderingTest {
                 "resolveGameConfigKey(gameType, config)");
     }
 
+    @Test
+    void jokerFiltersAlwaysSelectTheOnlyValidDeck() throws IOException {
+        assertThat(resource("/static/js/gameTypes.js")).contains(
+                "if (chosen.jokers === 'true') chosen.deck = '54';",
+                "jokers.addEventListener('change'",
+                "setDurakChoice(deck, '54')",
+                "deck.addEventListener('change'",
+                "setDurakChoice(jokers, DURAK_FILTER_ANY)");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).isNotNull();

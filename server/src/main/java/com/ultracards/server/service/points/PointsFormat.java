@@ -27,10 +27,4 @@ public class PointsFormat {
                 + String.format(Locale.ROOT, "%,." + decimals + "f", rounded)
                 + SUFFIXES[tier];
     }
-
-    /** True when the shortened amount ends in a letter and so needs a space before the P. */
-    public boolean spaced(Number value) {
-        var text = compact(value);
-        return !Character.isDigit(text.charAt(text.length() - 1));
-    }
 }

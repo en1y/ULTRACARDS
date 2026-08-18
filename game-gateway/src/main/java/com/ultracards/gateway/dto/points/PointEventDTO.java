@@ -8,8 +8,10 @@ public record PointEventDTO(
         UUID id,
         String name,
         String description,
+        String descriptionHtml,
         Instant startsAt,
         Instant endsAt,
+        Instant completedAt,
         List<String> gameTypes,
         long completionRewardPoints,
         boolean active,
@@ -21,6 +23,7 @@ public record PointEventDTO(
             UUID id,
             String name,
             String description,
+            String descriptionHtml,
             long rewardPoints,
             long games,
             long gamesRequired,
@@ -31,7 +34,8 @@ public record PointEventDTO(
             long draws,
             long drawsRequired,
             boolean completed,
-            List<String> gameTypes
+            List<String> gameTypes,
+            List<String> gameModes
     ) {
     }
 }

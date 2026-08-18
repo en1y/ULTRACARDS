@@ -334,13 +334,39 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
 .admin-points-leader-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .admin-economy-settings {
-    grid-template-columns: minmax(8rem, 12rem) minmax(14rem, 1fr) auto;
+    grid-template-columns: repeat(3, minmax(7rem, .8fr)) minmax(12rem, 1.4fr) auto;
     align-items: end;
     max-width: none;
     margin-top: .9rem;
 }
 
 .admin-economy-settings .admin-actions { align-items: center; }
+
+.admin-daily-goals-card { margin-top: 1rem; }
+.admin-daily-goals-form { display: grid; max-width: none; margin-top: .9rem; }
+.admin-daily-goals { display: grid; gap: .75rem; }
+.admin-daily-goals:empty { display: none; }
+
+.admin-daily-goal {
+    display: grid !important;
+    gap: .65rem;
+    padding: .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-daily-goal > legend { padding: 0 .35rem; color: var(--color-text); font-weight: 800; }
+
+.admin-daily-goal-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 6rem 8rem auto;
+    gap: .65rem;
+    align-items: end;
+}
+
+.admin-daily-goal-fields > .uc-toggle { align-self: center; }
+.admin-daily-goals-form #admin-daily-goals-status.is-error { color: var(--color-accent); }
 .admin-events-manager { display: grid; gap: 1rem; margin-top: 1.5rem; }
 .admin-events-manager > .admin-panel-heading { margin: 0; }
 
@@ -356,9 +382,12 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
 .admin-economy-card > h3,
 .admin-event-achievements-head h4 { margin-top: 0; }
 
+/* min-width: 0 or the grid cell inherits the number input's intrinsic width and
+   the field spills over the column next to it. */
 .admin-percent-input,
 .admin-points-input {
     display: flex;
+    min-width: 0;
     align-items: center;
     gap: .5rem;
 }
@@ -527,6 +556,9 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     gap: .65rem;
 }
 
+.admin-event-goal-name,
+.admin-goal-markdown-editor { grid-column: 1 / -1; }
+
 .admin-event-targets {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 8.5rem;
@@ -564,6 +596,25 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
 .admin-event-goal-game-list { display: flex; flex-wrap: wrap; gap: .45rem; }
 .admin-event-goal-game-list .uc-toggle { flex: 0 1 auto; padding: .45rem .55rem; }
 .admin-event-goal-game-list .uc-toggle-copy { min-width: 0; }
+
+.admin-event-goal-mode {
+    min-width: 0;
+    margin: 0;
+    padding: .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.admin-event-goal-mode > legend { padding: 0 .3rem; font-weight: 800; }
+.admin-event-goal-mode > .admin-hint { margin: 0; }
+.admin-event-goal-mode-editor[hidden],
+.admin-event-goal-mode-note[hidden] { display: none; }
+.admin-event-goal-mode-editor .durak-options { gap: .55rem; }
+.admin-event-goal-mode-editor .durak-option { grid-template-columns: minmax(6rem, .4fr) minmax(0, 1fr); }
+.admin-event-mode-select { display: grid; grid-template-columns: minmax(6rem, .4fr) minmax(0, 1fr); align-items: center; gap: .75rem; }
+.admin-event-mode-select select { min-width: 0; width: 100%; }
+
 .admin-event-achievement-options > .uc-toggle {
     min-width: 0;
     padding: .7rem;
@@ -653,12 +704,39 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
 }
 
 .admin-event-summary-card .admin-chips { margin-top: 0; }
+
+.admin-markdown-editor { display: grid; gap: .55rem; min-width: 0; }
+.admin-markdown-tabs { display: flex; gap: .4rem; }
+.admin-markdown-tabs .btn[aria-selected="true"] { border-color: var(--color-accent); color: var(--color-accent); }
+.admin-markdown-editor [role="tabpanel"][hidden] { display: none; }
+.admin-markdown-preview {
+    min-height: 9.2rem;
+    padding: .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+.admin-goal-markdown-editor .admin-markdown-preview { min-height: 5rem; }
+.admin-event-summary-card > .markdown-body { color: var(--color-text-muted); }
+
+.admin-event-summary-goals {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.admin-event-summary-goals > summary { padding: .65rem .75rem; cursor: pointer; font-weight: 800; }
+.admin-event-summary-goal-list { display: grid; gap: .4rem; padding: 0 .75rem .75rem; }
+.admin-event-summary-goal-list article { display: flex; justify-content: space-between; gap: .75rem; }
+.admin-event-summary-goal-copy { display: grid; gap: .3rem; min-width: 0; }
+.admin-event-summary-goal-copy > .markdown-body { color: var(--color-text-muted); font-weight: 400; }
 .admin-events-list-heading { padding-top: .5rem; border-top: 1px solid var(--color-border); }
 
 @media (max-width: 900px) {
     .admin-points-dashboard-grid { grid-template-columns: 1fr; }
     .admin-economy-settings { grid-template-columns: 1fr 1fr; }
     .admin-economy-settings .admin-actions { grid-column: 1 / -1; justify-content: start; }
+    .admin-daily-goal-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .admin-event-summary-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -668,6 +746,7 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-event-achievement-fields,
     .admin-event-targets,
     .admin-event-achievement-options,
+    .admin-daily-goal-fields,
     .admin-event-submit-bar { grid-template-columns: 1fr; }
     .admin-economy-settings { grid-template-columns: 1fr; }
     .admin-economy-settings .admin-actions { grid-column: auto; }
@@ -682,6 +761,9 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-event-summary-foot .admin-actions,
     .admin-event-summary-foot .btn { width: 100%; }
     .admin-event-summary-facts { grid-template-columns: 1fr; }
+    .admin-event-goal-mode-editor .durak-option,
+    .admin-event-mode-select { grid-template-columns: 1fr; }
+    .admin-event-summary-goal-list article { align-items: start; flex-direction: column; }
     .admin-points-leader-row { grid-template-columns: 2.25rem minmax(0, 1fr); }
     .admin-points-leader-value { grid-column: 2; }
 }

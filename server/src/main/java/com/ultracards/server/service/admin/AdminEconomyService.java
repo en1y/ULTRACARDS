@@ -1,5 +1,7 @@
 package com.ultracards.server.service.admin;
 
+import com.ultracards.gateway.dto.admin.AdminDailyGoalDTO;
+import com.ultracards.gateway.dto.admin.AdminDailyGoalsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminEconomyDashboardDTO;
@@ -39,12 +41,28 @@ public class AdminEconomyService {
     @Transactional
     public PointsSettingsDTO updateSettings(UserEntity actor, AdminPointsSettingsPatchDTO patch) {
         requireReason(patch == null ? null : patch.reason());
-        if (patch.wagerFeePercent() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bet fee percentage is required");
-        var previous = points.settings().wagerFeePercent();
-        var updated = points.updateWagerFeePercent(patch.wagerFeePercent(), actor.getId());
-        audit.record(actor.getId(), "UPDATE_WAGER_FEE", "POINTS", "SETTINGS", patch.reason().trim(),
-                previous + "% -> " + updated.wagerFeePercent() + "%", "SUCCESS");
+        var previous = points.settings();
+        // A PATCH that names one setting leaves the others where they are.
+        var updated = points.updateSettings(patch.wagerFeePercent(), patch.startingBalance(), patch.dailyReward(),
+                actor.getId());
+        audit.record(actor.getId(), "UPDATE_POINT_SETTINGS", "POINTS", "SETTINGS", patch.reason().trim(),
+                "fee %d%% -> %d%%, start %dP -> %dP, daily %dP -> %dP".formatted(
+                        previous.wagerFeePercent(), updated.wagerFeePercent(),
+                        previous.startingBalance(), updated.startingBalance(),
+                        previous.dailyReward(), updated.dailyReward()), "SUCCESS");
+        return updated;
+    }
+
+    public List<AdminDailyGoalDTO> dailyGoals() {
+        return points.adminDailyGoals();
+    }
+
+    @Transactional
+    public List<AdminDailyGoalDTO> updateDailyGoals(UserEntity actor, AdminDailyGoalsPatchDTO patch) {
+        requireReason(patch == null ? null : patch.reason());
+        var updated = points.replaceDailyGoals(patch.goals());
+        audit.record(actor.getId(), "UPDATE_DAILY_GOALS", "POINTS", "DAILY_GOALS", patch.reason().trim(),
+                updated.size() + " goals", "SUCCESS");
         return updated;
     }
 

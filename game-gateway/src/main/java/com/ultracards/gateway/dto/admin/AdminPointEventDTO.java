@@ -8,6 +8,7 @@ public record AdminPointEventDTO(
         UUID id,
         String name,
         String description,
+        String descriptionHtml,
         Instant startsAt,
         Instant endsAt,
         List<String> gameTypes,
@@ -19,12 +20,14 @@ public record AdminPointEventDTO(
             UUID id,
             String name,
             String description,
+            String descriptionHtml,
             int gamesRequired,
             int winsRequired,
             int lossesRequired,
             int drawsRequired,
             long rewardPoints,
             List<String> gameTypes,
+            List<String> gameModes,
             boolean hidden
     ) {
     }

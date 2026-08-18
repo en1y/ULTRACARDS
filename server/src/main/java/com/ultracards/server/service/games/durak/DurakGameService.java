@@ -193,7 +193,7 @@ public class DurakGameService {
         var winnerIds = new HashSet<Long>();
         for (var raw : winners)
             winnerIds.add(((DurakPlayerEntity) raw).getUser().getId());
-        pointsService.completeGame(game.getId(), users, winnerIds, GameType.DURAK);
+        pointsService.completeGame(game.getId(), users, winnerIds, GameType.DURAK, modeKey);
     }
 
     private void scheduleFinishRetry(DurakGameEntity game) {

@@ -115,24 +115,33 @@ class PointsTemplateRenderingTest {
         var script = resource("/static/js/ui/points.js");
         var stylesheet = resource("/static/css/ui/points.css");
         var wagerHelper = resource("/static/js/points.js");
+        var gameTypes = resource("/static/js/gameTypes.js");
+        var eventFragment = resource("/templates/ui/fragments/points.html");
 
         assertThat(template).contains("id=\"points-events-section\"", "id=\"points-events\"", "id=\"points-fee\"");
-        assertThat(template).contains("goal.completed ? '✓' : '✦'", "event.hiddenAchievementCount > 0",
+        assertThat(template).contains("/css/ui/markdown.css");
+        assertThat(eventFragment).contains("event.descriptionHtml", "th:utext=\"${event.descriptionHtml}\"",
+                "goal.descriptionHtml", "th:utext=\"${goal.descriptionHtml}\"",
+                "points-event-goal-description markdown-body", "event.completedAt", "historyAt");
+        assertThat(eventFragment).contains("goal.completed ? '✓' : '✦'", "event.hiddenAchievementCount > 0",
                         "points.events.hiddenAchievements", "points.events.hiddenAchievementHint")
                 .doesNotContain("goal.hidden", "points.events.hiddenGoal");
         assertThat(script).contains("eventsSection.hidden = !items.length", "const completeGoals",
                 "points-event-progress-track", "points-event-target-track", "points.events.noGoals",
                 "aria-valuenow", "item.gameTypes", "item.completed ? '✓' : '✦'",
                 "gamesRequired", "winsRequired", "lossesRequired", "drawsRequired",
-                "hiddenAchievementCount", "hiddenEventAchievements");
+                "hiddenAchievementCount", "hiddenEventAchievements", "item.gameModes", "gameModeSummary",
+                "points.events.requiredSetup", "item.descriptionHtml", "renderTrustedMarkdown",
+                "points-event-goal-description markdown-body", "item.completedAt", "historyAt");
         assertThat(script).doesNotContain("points.events.hiddenGoal", "concealed");
         // Events collapse to a summary line; only a live, unfinished event opens itself.
         assertThat(script).contains("createElement('details')", "card.open = item.active && !completed",
                 "relativeDateTime");
         // The server supplies one shared order for the pre-rendered and refreshed lists.
-        assertThat(script).contains("const [first, ...rest] = models",
-                "if (!first) return events.replaceChildren()",
-                "[eventCard(first), moreEvents(rest)] : [eventCard(first)]",
+        assertThat(script).contains("const active = models.filter(model => model.item.active)",
+                "model.item.endsAt && model.past", "const primary = active.length ? active : fallback",
+                "const more = models.filter(model => !primary.includes(model))",
+                "...primary.map(eventCard)", "moreEvents(more)",
                 "points.events.showMore", "points.events.showLess");
         // A finished event reports the date it ended plus what the player took home.
         assertThat(script).contains("points.events.endedOn", "points.events.expired",
@@ -148,6 +157,7 @@ class PointsTemplateRenderingTest {
                 "background: var(--color-points);", "color: #201600;",
                 "@media (max-width: 560px)");
         assertThat(wagerHelper).contains("/api/points/settings", "data-wager-fee", "data-wager-guide-fee");
+        assertThat(gameTypes).contains("filter.jokers && (!filter.deck || filter.deck === '54')");
     }
 
     @Test

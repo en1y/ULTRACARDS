@@ -198,7 +198,7 @@ public class TresetaGameService {
         gameRecordingService.finish(game);
         var winnerIds = new HashSet<Long>();
         for (var winner : winnerUsers) winnerIds.add(winner.getId());
-        pointsService.completeGame(game.getId(), game.getPlayers(), winnerIds, GameType.TRESETA);
+        pointsService.completeGame(game.getId(), game.getPlayers(), winnerIds, GameType.TRESETA, gameConfig.name());
     }
 
     private void scheduleFinishRetry(TresetaGameEntity game) {

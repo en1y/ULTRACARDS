@@ -85,14 +85,10 @@
 
     const compactFormat = new Intl.NumberFormat(undefined, {notation: 'compact', maximumFractionDigits: 1});
 
-    /**
-     * A shortened amount ready to sit in front of a `.points-symbol`: "1.5K" comes
-     * back as "1.5K " so the suffix letter gets breathing room, while a plain
-     * "500" stays glued to its P. The space is non-breaking — the pair never wraps.
-     */
+    /** A shortened amount followed by a non-breaking space, ready for the P symbol. */
     window.pointsCompactAmount = value => {
         const text = compactFormat.format(Number(value) || 0);
-        return /\d$/.test(text) ? text : text + '\u00A0';
+        return text + '\u00A0';
     };
 
     window.pointsText = (value, signed = false) => {

@@ -360,6 +360,7 @@
 
 .points-event.is-upcoming { border-left-color: var(--color-text-muted); }
 .points-event.is-past { border-left-color: var(--color-border); opacity: .85; }
+.points-event.is-failed { border-left-color: var(--color-danger); }
 .points-event.is-complete { border-left-color: var(--color-success); }
 
 /* Two explicit rows: title over progress on the left, state over reward on the
@@ -411,7 +412,7 @@
     white-space: nowrap;
 }
 
-.points-event-body { display: grid; gap: .75rem; padding: 0 1rem 1rem; }
+.points-event-body { display: grid; gap: .75rem; padding: .75rem 1rem 1rem; }
 .points-event-description { max-width: 62rem; margin: 0; }
 .points-event-description code {
     padding: .1rem .35rem;
@@ -526,7 +527,7 @@
 .points-event-goal-copy { min-width: 0; }
 .points-event-goal-copy h5 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 .points-event-goal-copy small { color: var(--color-text-muted); }
-.points-event-achievement > p { margin: 0; color: var(--color-text-muted); font-size: .86rem; }
+.points-event-goal-description { color: var(--color-text-muted); font-size: .86rem; }
 .points-event-achievement.is-complete {
     border-color: color-mix(in oklab, var(--color-success) 50%, var(--color-border));
     background: color-mix(in oklab, var(--color-success) 6%, var(--color-bg));
@@ -547,7 +548,7 @@
     letter-spacing: .04em;
     text-transform: uppercase;
 }
-.points-event-goal-games span {
+.points-event-goal-games > .points-event-game-list > span {
     padding: .15rem .45rem;
     border: 1px solid var(--color-border);
     border-radius: 999px;

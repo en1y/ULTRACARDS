@@ -24,6 +24,8 @@
     const format = value => Number(value || 0).toLocaleString();
     const reason = type => t(`points.transaction.${String(type || '').toLowerCase()}`);
     const icon = code => ({FIRST_GAME: '◆', FIRST_WIN: '★', TEN_GAMES: '10', TEN_WINS: '♛'})[code] || '✦';
+    // HTML comes only from MarkdownRenderer after raw HTML escaping and OWASP sanitization.
+    const renderTrustedMarkdown = (target, html) => { target.innerHTML = html || ''; };
 
     function pointActivityNode(node) {
         const symbol = node.querySelector('.points-symbol');
@@ -63,7 +65,7 @@
             const copy = document.createElement('span');
             copy.className = 'points-achievement-copy';
             const title = document.createElement('strong');
-            title.textContent = t(`points.achievement.${item.code.toLowerCase()}`);
+            title.textContent = item.name;
             const progressText = document.createElement('small');
             progressText.textContent = item.earned
                 ? t('points.achievement.complete')
@@ -117,6 +119,25 @@
         return list;
     }
 
+    function durakModeFilter(gameModes) {
+        const configs = (gameModes || []).map(mode => parseDurakModeKey(mode)).filter(Boolean);
+        if (!configs.length) return {};
+        const common = property => {
+            const values = new Set(configs.map(config => String(config[property])));
+            return values.size === 1 ? values.values().next().value : '';
+        };
+        return {players: common('numberOfPlayers'), deck: common('deckSize'),
+            throwin: common('throwInPolicy'), jokers: common('jokersEnabled'),
+            passing: common('passingEnabled')};
+    }
+
+    function gameModeSummary(gameType, gameModes) {
+        if (!gameModes?.length) return '';
+        if (gameType === 'DURAK') return describeDurakFilter(durakModeFilter(gameModes));
+        if (gameModes.length === 1) return getGameConfigDisplayName(gameType, gameModes[0]);
+        return t('points.events.exactModeCount', gameModes.length);
+    }
+
     function eventAchievement(item, event) {
         const row = document.createElement('article');
         row.className = `points-event-achievement${item.completed ? ' is-complete' : ''}`;
@@ -133,13 +154,22 @@
         const reward = document.createElement('span'); reward.className = 'points-event-reward';
         reward.append(pointsDeltaNode(item.rewardPoints));
         head.append(state, copy, reward); row.append(head);
-        if (item.description) row.append(Object.assign(document.createElement('p'), {textContent: item.description}));
+        if (item.descriptionHtml) {
+            const description = document.createElement('div');
+            description.className = 'points-event-goal-description markdown-body';
+            renderTrustedMarkdown(description, item.descriptionHtml);
+            row.append(description);
+        }
         // Only when the goal is stricter than its event — repeating the event's own
         // list under every goal was pure noise.
-        if (item.gameTypes?.length && String(item.gameTypes) !== String(event.gameTypes || [])) {
+        if ((item.gameTypes?.length && String(item.gameTypes) !== String(event.gameTypes || [])) || item.gameModes?.length) {
             const games = document.createElement('div'); games.className = 'points-event-goal-games';
-            games.append(Object.assign(document.createElement('small'), {textContent: t('points.events.eligibleGames')}),
+            if (item.gameTypes?.length) games.append(
+                Object.assign(document.createElement('small'), {textContent: t('points.events.eligibleGames')}),
                 gameChips(item.gameTypes));
+            if (item.gameModes?.length) games.append(
+                Object.assign(document.createElement('small'), {textContent: t('points.events.requiredSetup')}),
+                gameChips([gameModeSummary(item.gameTypes[0], item.gameModes)]));
             row.append(games);
         }
         const targets = document.createElement('div'); targets.className = 'points-event-targets';
@@ -167,9 +197,9 @@
 
     /** The one line that says where an event stands in time — the rest is styling. */
     function eventSchedule(model) {
-        const {item, past} = model;
+        const {item, past, historyAt} = model;
         const when = document.createElement('time');
-        const at = past || item.active ? item.endsAt : item.startsAt;
+        const at = past ? historyAt : item.active ? item.endsAt : item.startsAt;
         if (!at) {
             when.textContent = t('points.events.noEnd');
             return when;
@@ -226,8 +256,12 @@
         card.append(summary);
 
         const body = document.createElement('div'); body.className = 'points-event-body';
-        if (item.description) body.append(Object.assign(document.createElement('p'),
-            {className: 'points-event-description', textContent: item.description}));
+        if (item.descriptionHtml) {
+            const description = document.createElement('div');
+            description.className = 'points-event-description markdown-body';
+            renderTrustedMarkdown(description, item.descriptionHtml);
+            body.append(description);
+        }
 
         const meta = document.createElement('div'); meta.className = 'points-event-meta';
         const games = document.createElement('span'); games.className = 'points-event-games';
@@ -284,18 +318,21 @@
             const goalCount = goals.length + hiddenAchievementCount;
             const completeGoals = goals.filter(goal => goal.completed).length;
             const ends = item.endsAt ? new Date(item.endsAt).getTime() : Infinity;
+            const historyAt = !item.endsAt && item.completedAt ? item.completedAt : item.endsAt;
             return {
-                item, goals, completeGoals, goalCount, hiddenAchievementCount, ends,
+                item, goals, completeGoals, goalCount, hiddenAchievementCount, ends, historyAt,
                 completed: goalCount > 0 && hiddenAchievementCount === 0 && completeGoals === goals.length,
-                past: ends <= now,
+                past: ends <= now || Boolean(!item.endsAt && item.completedAt),
                 totalReward: goals.length
                     ? goals.reduce((total, goal) => total + Number(goal.rewardPoints || 0), Number(item.completionRewardPoints || 0))
                     : 0
             };
         });
-        const [first, ...rest] = models;
-        if (!first) return events.replaceChildren();
-        events.replaceChildren(...rest.length ? [eventCard(first), moreEvents(rest)] : [eventCard(first)]);
+        const active = models.filter(model => model.item.active);
+        const fallback = active.length ? [] : models.filter(model => model.item.endsAt && model.past).slice(0, 1);
+        const primary = active.length ? active : fallback;
+        const more = models.filter(model => !primary.includes(model));
+        events.replaceChildren(...primary.map(eventCard), ...(more.length ? [moreEvents(more)] : []));
     }
 
     async function loadEvents() {
@@ -399,6 +436,10 @@
     document.getElementById('points-refresh').addEventListener('click', refresh);
     previous.addEventListener('click', () => { if (page > 0) { page--; loadTransactions(); } });
     next.addEventListener('click', () => { if (!next.disabled) { page++; loadTransactions(); } });
+    document.querySelectorAll('[data-game-mode-label]').forEach(label => {
+        const modes = [...label.parentElement.querySelectorAll('[data-game-mode]')].map(item => item.dataset.gameMode);
+        label.textContent = gameModeSummary(label.dataset.gameType, modes);
+    });
     if (initialSeries) renderPointsChart(chartCanvas, initialSeries,
         {emptyElement: chartEmpty, balance: lastBalance, days: range});
     else refresh();

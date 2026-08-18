@@ -1,5 +1,6 @@
 package com.ultracards.server.service.points;
 
+import com.ultracards.gateway.dto.admin.AdminDailyGoalDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminEconomyDashboardDTO;
@@ -15,6 +16,7 @@ import com.ultracards.gateway.dto.points.PointsSettingsDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
+import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
@@ -41,31 +43,39 @@ import java.util.UUID;
 
 @Service
 public class PointsService {
-    public static final long INITIAL_BALANCE = 1_500;
-    public static final long DAILY_REWARD = 1_500;
     public static final long MIN_STAKE = 100;
     public static final long MAX_STAKE = 1_000_000;
     public static final int DEFAULT_WAGER_FEE_PERCENT = 4;
     /** Fee override row that covers every mode of a game. */
     private static final String ALL_MODES = "*";
+    /** What a daily goal can count; mirrors the point_daily_goals metric check. */
+    private static final List<String> DAILY_METRICS = List.of("GAMES", "WINS", "LOSSES", "DRAWS");
     private static final ZoneId POINTS_ZONE = ZoneId.of("Europe/Zagreb");
 
     private final UserRepository users;
     private final JdbcTemplate jdbc;
     private final NotificationService notifications;
+    private final GameAvailabilityService gameAvailability;
+    private final MarkdownRenderer markdown;
 
-    public PointsService(UserRepository users, JdbcTemplate jdbc, NotificationService notifications) {
+    public PointsService(UserRepository users, JdbcTemplate jdbc, NotificationService notifications,
+                         GameAvailabilityService gameAvailability, MarkdownRenderer markdown) {
         this.users = users;
         this.jdbc = jdbc;
         this.notifications = notifications;
+        this.gameAvailability = gameAvailability;
+        this.markdown = markdown;
     }
 
     @Transactional
     public void initialize(UserEntity user) {
         if (transactionExists(user.getId(), Type.INITIAL_GRANT, "INITIAL")) return;
-        user.setPointsBalance(INITIAL_BALANCE);
+        // ponytail: a 0 starting balance leaves no grant row to mark the account as
+        // initialized. Only user creation calls this, so nothing runs it twice.
+        var starting = startingBalance();
+        user.setPointsBalance(starting);
         users.save(user);
-        insert(user.getId(), INITIAL_BALANCE, INITIAL_BALANCE, Type.INITIAL_GRANT, "INITIAL");
+        if (starting > 0) insert(user.getId(), starting, starting, Type.INITIAL_GRANT, "INITIAL");
     }
 
     /**
@@ -137,17 +147,19 @@ public class PointsService {
     public PointsClaimDTO claimDaily(UserEntity principal) {
         var user = users.findByIdForUpdate(principal.getId()).orElseThrow(() -> notFound(principal.getId()));
         var today = LocalDate.now(POINTS_ZONE);
-        if (user.getPointsBalance() >= INITIAL_BALANCE)
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Daily Points are available below 1500P");
+        var settings = settingsRow();
+        if (user.getPointsBalance() >= settings.startingBalance())
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Daily Points are available below " + settings.startingBalance() + "P");
         if (today.equals(user.getLastPointsClaimDate()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Daily Points have already been claimed today");
 
         var reference = today.toString();
         if (transactionExists(user.getId(), Type.DAILY_CLAIM, reference))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Daily Points have already been claimed today");
-        apply(user, DAILY_REWARD, Type.DAILY_CLAIM, reference);
+        apply(user, settings.dailyReward(), Type.DAILY_CLAIM, reference);
         user.setLastPointsClaimDate(today);
-        return new PointsClaimDTO(DAILY_REWARD, buildSummary(user));
+        return new PointsClaimDTO(settings.dailyReward(), buildSummary(user));
     }
 
     @Transactional(readOnly = true)
@@ -267,11 +279,17 @@ public class PointsService {
      */
     @Transactional
     public void completeGame(UUID gameId, List<UserEntity> participants, Set<Long> winnerIds) {
-        completeGame(gameId, participants, winnerIds, null);
+        completeGame(gameId, participants, winnerIds, null, null);
     }
 
     @Transactional
     public void completeGame(UUID gameId, List<UserEntity> participants, Set<Long> winnerIds, GameType gameType) {
+        completeGame(gameId, participants, winnerIds, gameType, null);
+    }
+
+    @Transactional
+    public void completeGame(UUID gameId, List<UserEntity> participants, Set<Long> winnerIds, GameType gameType,
+                             String gameMode) {
         var locked = lock(userIds(participants));
         var endedAt = Timestamp.from(Instant.now());
         var participantWinnerCount = 0;
@@ -282,11 +300,11 @@ public class PointsService {
         for (var user : locked.values()) {
             var outcome = draw ? "DRAW" : winnerIds.contains(user.getId()) ? "WIN" : "LOSS";
             var recorded = jdbc.update("""
-                    INSERT INTO point_game_results(game_id, user_id, won, ended_at, game_type, outcome)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO point_game_results(game_id, user_id, won, ended_at, game_type, game_mode, outcome)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT DO NOTHING
                     """, gameId, user.getId(), "WIN".equals(outcome), endedAt,
-                    gameType == null ? null : gameType.name(), outcome) > 0;
+                    gameType == null ? null : gameType.name(), gameMode, outcome) > 0;
             awardAchievements(user);
             awardEventAchievements(user, gameType, recorded ? gameId : null);
         }
@@ -319,19 +337,40 @@ public class PointsService {
     /** The fee a player would pay in this game and mode; both null gives the global default. */
     @Transactional(readOnly = true)
     public PointsSettingsDTO settings(GameType gameType, String mode) {
-        return new PointsSettingsDTO(wagerFeePercent(gameType, mode));
+        var settings = settingsRow();
+        return new PointsSettingsDTO(wagerFeePercent(gameType, mode), settings.startingBalance(),
+                settings.dailyReward());
     }
 
+    /** Null leaves a setting where it is, so a caller can change just one of them. */
     @Transactional
-    public PointsSettingsDTO updateWagerFeePercent(int percent, Long actorId) {
+    public PointsSettingsDTO updateSettings(Integer feePercent, Long balance, Long reward, Long actorId) {
+        var current = settingsRow();
+        var percent = feePercent == null ? current.wagerFeePercent() : feePercent;
+        var startingBalance = balance == null ? current.startingBalance() : balance;
+        var dailyReward = reward == null ? current.dailyReward() : reward;
         if (percent < 0 || percent > 100)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bet fee must be between 0% and 100%");
+        if (startingBalance < 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Starting balance cannot be negative");
+        if (dailyReward <= 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Daily reward must be above 0P");
         jdbc.update("""
                 UPDATE point_settings
-                SET wager_fee_percent = ?, updated_at = ?, updated_by = ?
+                SET wager_fee_percent = ?, starting_balance = ?, daily_reward = ?, updated_at = ?, updated_by = ?
                 WHERE id = 1
-                """, percent, Timestamp.from(Instant.now()), actorId);
-        return new PointsSettingsDTO(percent);
+                """, percent, startingBalance, dailyReward, Timestamp.from(Instant.now()), actorId);
+        return new PointsSettingsDTO(percent, startingBalance, dailyReward);
+    }
+
+    private long startingBalance() {
+        return settingsRow().startingBalance();
+    }
+
+    private SettingsRow settingsRow() {
+        return jdbc.queryForObject("""
+                SELECT wager_fee_percent, starting_balance, daily_reward FROM point_settings WHERE id = 1
+                """, (result, row) -> new SettingsRow(result.getInt(1), result.getLong(2), result.getLong(3)));
     }
 
     @Transactional(readOnly = true)
@@ -349,17 +388,30 @@ public class PointsService {
     public List<PointEventDTO> events(UserEntity user) {
         var now = Instant.now();
         var earned = eventRewards(user.getId());
+        var completions = eventCompletions(user.getId());
         var result = new ArrayList<PointEventDTO>();
         for (var event : eventRows(false)) {
             if (!event.enabled()) continue;
             var ended = event.endsAt() != null && !event.endsAt().isAfter(now);
             if (ended && eventProgress(user.getId(), event, List.of()).games() == 0) continue;
-            var item = pointEvent(event, user.getId(), earned);
+            var item = pointEvent(event, user.getId(), earned, completions);
             if (!item.achievements().isEmpty() || item.hiddenAchievementCount() > 0) result.add(item);
         }
-        result.sort(Comparator.comparing(PointEventDTO::active).reversed()
-                .thenComparing(PointEventDTO::startsAt, Comparator.reverseOrder()));
+        result.sort(Comparator.comparingInt((PointEventDTO event) -> eventGroup(event, now))
+                .thenComparing(event -> eventSortAt(event, now), Comparator.reverseOrder()));
         return result;
+    }
+
+    private static int eventGroup(PointEventDTO event, Instant now) {
+        if (event.active()) return 0;
+        if (event.startsAt().isAfter(now)) return 1;
+        return 2;
+    }
+
+    private static Instant eventSortAt(PointEventDTO event, Instant now) {
+        if (event.completedAt() != null && event.endsAt() == null) return event.completedAt();
+        if (event.endsAt() != null && !event.endsAt().isAfter(now)) return event.endsAt();
+        return event.startsAt();
     }
 
     /** Points already paid out per event goal and per event completion, by reference id. */
@@ -373,6 +425,19 @@ public class PointsService {
             var totals = new HashMap<String, Long>();
             while (result.next()) totals.put(result.getString("reference_id"), result.getLong("total"));
             return totals;
+        }, userId);
+    }
+
+    private Map<UUID, Instant> eventCompletions(Long userId) {
+        return jdbc.query("""
+                SELECT event_id, completed_at
+                FROM point_event_completions
+                WHERE user_id = ?
+                """, result -> {
+            var completions = new HashMap<UUID, Instant>();
+            while (result.next())
+                completions.put(result.getObject("event_id", UUID.class), result.getTimestamp("completed_at").toInstant());
+            return completions;
         }, userId);
     }
 
@@ -677,7 +742,7 @@ public class PointsService {
                 result.getObject("id", UUID.class), result.getString("name"), result.getString("description"),
                 result.getTimestamp("starts_at").toInstant(),
                 result.getTimestamp("ends_at") == null ? null : result.getTimestamp("ends_at").toInstant(),
-                parseGameTypes(result.getString("game_types")), result.getLong("completion_reward_points"),
+                parseList(result.getString("game_types")), result.getLong("completion_reward_points"),
                 result.getBoolean("enabled")));
     }
 
@@ -690,7 +755,7 @@ public class PointsService {
                 result.getObject("id", UUID.class), result.getString("name"), result.getString("description"),
                 result.getTimestamp("starts_at").toInstant(),
                 result.getTimestamp("ends_at") == null ? null : result.getTimestamp("ends_at").toInstant(),
-                parseGameTypes(result.getString("game_types")), result.getLong("completion_reward_points"),
+                parseList(result.getString("game_types")), result.getLong("completion_reward_points"),
                 result.getBoolean("enabled")), id);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Point event not found");
         return rows.getFirst();
@@ -699,14 +764,15 @@ public class PointsService {
     private List<GoalRow> eventAchievements(UUID eventId) {
         return jdbc.query("""
                 SELECT id, name, description, games_required, wins_required, losses_required,
-                       draws_required, reward_points, game_types, hidden
+                       draws_required, reward_points, game_types, game_modes, hidden
                 FROM point_event_achievements
                 WHERE event_id = ? ORDER BY sort_order, id
                 """, (result, row) -> new GoalRow(
                 result.getObject("id", UUID.class), result.getString("name"), result.getString("description"),
                 result.getInt("games_required"), result.getInt("wins_required"),
                 result.getInt("losses_required"), result.getInt("draws_required"),
-                result.getLong("reward_points"), parseGameTypes(result.getString("game_types")),
+                result.getLong("reward_points"), parseList(result.getString("game_types")),
+                parseList(result.getString("game_modes")),
                 result.getBoolean("hidden")), eventId);
     }
 
@@ -714,20 +780,23 @@ public class PointsService {
         var achievements = new ArrayList<AdminPointEventDTO.Achievement>();
         for (var goal : eventAchievements(event.id()))
             achievements.add(new AdminPointEventDTO.Achievement(goal.id(), goal.name(), goal.description(),
-                    goal.gamesRequired(), goal.winsRequired(), goal.lossesRequired(), goal.drawsRequired(),
-                    goal.rewardPoints(), goal.gameTypes(), goal.hidden()));
-        return new AdminPointEventDTO(event.id(), event.name(), event.description(), event.startsAt(), event.endsAt(),
-                event.gameTypes(), event.completionRewardPoints(), event.enabled(), achievements);
+                    markdown.render(goal.description()), goal.gamesRequired(), goal.winsRequired(),
+                    goal.lossesRequired(), goal.drawsRequired(),
+                    goal.rewardPoints(), goal.gameTypes(), goal.gameModes(), goal.hidden()));
+        return new AdminPointEventDTO(event.id(), event.name(), event.description(), markdown.render(event.description()),
+                event.startsAt(), event.endsAt(), event.gameTypes(), event.completionRewardPoints(), event.enabled(),
+                achievements);
     }
 
-    private PointEventDTO pointEvent(EventRow event, Long userId, Map<String, Long> earned) {
+    private PointEventDTO pointEvent(EventRow event, Long userId, Map<String, Long> earned,
+                                     Map<UUID, Instant> completions) {
         var achievements = new ArrayList<PointEventDTO.Achievement>();
         var earnedPoints = earned.getOrDefault(event.id().toString(), 0L);
         var hiddenAchievementCount = 0;
         // ponytail: one progress query per goal, so the page costs O(events × goals)
         // round trips. Fold them into a single grouped query if the list ever grows.
         for (var goal : eventAchievements(event.id())) {
-            var progress = eventProgress(userId, event, goal.gameTypes());
+            var progress = eventProgress(userId, event, goal.gameTypes(), goal.gameModes());
             var completed = complete(goal, progress);
             if (goal.hidden() && !completed) {
                 hiddenAchievementCount++;
@@ -735,22 +804,31 @@ public class PointsService {
             }
             earnedPoints += earned.getOrDefault(goal.id().toString(), 0L);
             achievements.add(new PointEventDTO.Achievement(goal.id(), goal.name(), goal.description(),
-                    goal.rewardPoints(), progress.games(), goal.gamesRequired(), progress.wins(),
+                    markdown.render(goal.description()), goal.rewardPoints(), progress.games(),
+                    goal.gamesRequired(), progress.wins(),
                     goal.winsRequired(), progress.losses(), goal.lossesRequired(), progress.draws(),
-                    goal.drawsRequired(), completed, goal.gameTypes()));
+                    goal.drawsRequired(), completed, goal.gameTypes(), goal.gameModes()));
         }
         var now = Instant.now();
-        var active = !event.startsAt().isAfter(now) && (event.endsAt() == null || event.endsAt().isAfter(now));
-        return new PointEventDTO(event.id(), event.name(), event.description(), event.startsAt(), event.endsAt(),
-                event.gameTypes(), event.completionRewardPoints(), active, earnedPoints, hiddenAchievementCount,
-                achievements);
+        var completedAt = completions.get(event.id());
+        var active = !event.startsAt().isAfter(now) && (event.endsAt() == null || event.endsAt().isAfter(now))
+                && !(event.endsAt() == null && completedAt != null);
+        return new PointEventDTO(event.id(), event.name(), event.description(), markdown.render(event.description()),
+                event.startsAt(), event.endsAt(), completedAt, event.gameTypes(), event.completionRewardPoints(), active,
+                earnedPoints, hiddenAchievementCount, achievements);
     }
 
     private EventProgress eventProgress(Long userId, EventRow event, List<String> goalGameTypes) {
-        return eventProgress(userId, event, goalGameTypes, null);
+        return eventProgress(userId, event, goalGameTypes, List.of(), null);
     }
 
     private EventProgress eventProgress(Long userId, EventRow event, List<String> goalGameTypes,
+                                        List<String> goalGameModes) {
+        return eventProgress(userId, event, goalGameTypes, goalGameModes, null);
+    }
+
+    private EventProgress eventProgress(Long userId, EventRow event, List<String> goalGameTypes,
+                                        List<String> goalGameModes,
                                         UUID excludedGameId) {
         var sql = new StringBuilder("""
                 SELECT COUNT(*) AS games,
@@ -778,6 +856,12 @@ public class PointsService {
                     .append(')');
             args.addAll(gameTypes);
         }
+        if (!goalGameModes.isEmpty()) {
+            sql.append(" AND game_mode IN (")
+                    .append(String.join(",", java.util.Collections.nCopies(goalGameModes.size(), "?")))
+                    .append(')');
+            args.addAll(goalGameModes);
+        }
         return jdbc.query(sql.toString(), result -> {
             result.next();
             return new EventProgress(result.getLong("games"), result.getLong("wins"),
@@ -795,19 +879,31 @@ public class PointsService {
             if (goals.isEmpty()) continue;
             var allComplete = true;
             for (var goal : goals) {
-                var progress = eventProgress(user.getId(), event, goal.gameTypes());
+                var progress = eventProgress(user.getId(), event, goal.gameTypes(), goal.gameModes());
                 var complete = complete(goal, progress);
                 allComplete &= complete;
                 if (complete && goal.rewardPoints() > 0
                         && applyOnce(user, goal.rewardPoints(), Type.EVENT_ACHIEVEMENT, goal.id().toString()))
                     notifyAchievement(user, goal.name(), goal.rewardPoints());
                 if (complete && goal.rewardPoints() == 0 && completedGameId != null
-                        && !complete(goal, eventProgress(user.getId(), event, goal.gameTypes(), completedGameId)))
+                        && !complete(goal, eventProgress(user.getId(), event, goal.gameTypes(), goal.gameModes(),
+                        completedGameId)))
                     notifyAchievement(user, goal.name(), 0);
             }
-            if (allComplete && event.completionRewardPoints() > 0)
-                applyOnce(user, event.completionRewardPoints(), Type.EVENT_COMPLETION, event.id().toString());
+            if (allComplete) {
+                recordEventCompletion(user.getId(), event.id());
+                if (event.completionRewardPoints() > 0)
+                    applyOnce(user, event.completionRewardPoints(), Type.EVENT_COMPLETION, event.id().toString());
+            }
         }
+    }
+
+    private void recordEventCompletion(Long userId, UUID eventId) {
+        jdbc.update("""
+                INSERT INTO point_event_completions(event_id, user_id, completed_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT (event_id, user_id) DO NOTHING
+                """, eventId, userId, Timestamp.from(Instant.now()));
     }
 
     private boolean complete(GoalRow goal, EventProgress progress) {
@@ -860,7 +956,8 @@ public class PointsService {
                         "Every event achievement needs at least one games, wins, losses, or draws target");
             if (achievement.rewardPoints() != null && achievement.rewardPoints() < 0)
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Achievement reward cannot be negative");
-            goalGameTypes(achievement.gameTypes(), eventGameTypes);
+            var gameTypes = goalGameTypes(achievement.gameTypes(), eventGameTypes);
+            goalGameModes(achievement.gameModes(), gameTypes);
         }
     }
 
@@ -883,6 +980,27 @@ public class PointsService {
         return result;
     }
 
+    private List<String> goalGameModes(List<String> values, List<String> goalGameTypes) {
+        var result = new ArrayList<String>();
+        if (values == null || values.isEmpty()) return result;
+        for (var value : values)
+            if (value != null && !value.isBlank()) result.add(value.trim().toUpperCase());
+        if (result.isEmpty()) return result;
+        if (goalGameTypes.size() != 1)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Game modes require exactly one achievement game type");
+        var game = GameType.valueOf(goalGameTypes.getFirst());
+        var allowed = gameAvailability.modes(game);
+        var normalized = new ArrayList<String>();
+        for (var mode : result) {
+            if (!allowed.contains(mode))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unknown " + game.name() + " achievement mode: " + mode);
+            if (!normalized.contains(mode)) normalized.add(mode);
+        }
+        return normalized;
+    }
+
     private void replaceEventAchievements(UUID eventId, List<AdminPointEventPatchDTO.Achievement> achievements) {
         var eventGameTypes = findEvent(eventId).gameTypes();
         var existingIds = jdbc.query("""
@@ -899,17 +1017,18 @@ public class PointsService {
             var draws = count(achievement.drawsRequired());
             var reward = achievement.rewardPoints() == null ? 0 : achievement.rewardPoints();
             var gameTypes = goalGameTypes(achievement.gameTypes(), eventGameTypes);
+            var gameModes = goalGameModes(achievement.gameModes(), gameTypes);
             var id = achievement.id() != null ? achievement.id()
                     : index < existingIds.size() ? existingIds.get(index) : UUID.randomUUID();
             if (!ids.add(id)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate achievement ID");
             jdbc.update("""
                     INSERT INTO point_event_achievements(id, event_id, name, description, games_required,
                                                          wins_required, losses_required, draws_required,
-                                                         reward_points, game_types, hidden, sort_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                         reward_points, game_types, game_modes, hidden, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, id, eventId, achievement.name().trim(),
                     achievement.description() == null ? "" : achievement.description().trim(),
-                    games, wins, losses, draws, reward, String.join(",", gameTypes),
+                    games, wins, losses, draws, reward, String.join(",", gameTypes), String.join(",", gameModes),
                     achievement.hidden() != null && achievement.hidden(), index);
         }
     }
@@ -920,7 +1039,7 @@ public class PointsService {
         return value;
     }
 
-    private List<String> parseGameTypes(String value) {
+    private List<String> parseList(String value) {
         if (value == null || value.isBlank()) return List.of();
         return List.of(value.split(","));
     }
@@ -930,51 +1049,112 @@ public class PointsService {
     }
 
     /**
-     * Achievements reset with the Points day, so today's play is what counts and
-     * every grant is stamped with its date. The ledger already records one
-     * GAME_PLAYED and one GAME_WON per game, which makes it the day's scoreboard.
+     * Goals reset with the Points day, so today's play is what counts and every
+     * grant is stamped with its date.
      */
     private DailyProgress todayProgress(Long userId) {
         var since = Timestamp.from(LocalDate.now(POINTS_ZONE).atStartOfDay(POINTS_ZONE).toInstant());
-        return new DailyProgress(
-                scalar("SELECT COUNT(*) FROM point_game_results WHERE user_id = ? AND ended_at >= ?",
-                        userId, since),
-                scalar("SELECT COUNT(*) FROM point_game_results WHERE user_id = ? AND ended_at >= ? AND won",
-                        userId, since));
+        return jdbc.query("""
+                SELECT COUNT(*) AS games,
+                       COUNT(*) FILTER (WHERE outcome = 'WIN') AS wins,
+                       COUNT(*) FILTER (WHERE outcome = 'LOSS') AS losses,
+                       COUNT(*) FILTER (WHERE outcome = 'DRAW') AS draws
+                FROM point_game_results
+                WHERE user_id = ? AND ended_at >= ?
+                """, result -> {
+            result.next();
+            return new DailyProgress(result.getLong("games"), result.getLong("wins"),
+                    result.getLong("losses"), result.getLong("draws"));
+        }, userId, since);
     }
 
-    /** Dated reference: one grant per achievement per day, still idempotent within it. */
-    private static String reference(Achievement achievement) {
-        return achievement.name() + ':' + LocalDate.now(POINTS_ZONE);
+    /** Dated reference: one grant per goal per day, still idempotent within it. */
+    private static String reference(DailyGoalRow goal) {
+        return goal.code() + ':' + LocalDate.now(POINTS_ZONE);
+    }
+
+    private List<DailyGoalRow> dailyGoalRows(boolean enabledOnly) {
+        return jdbc.query("""
+                SELECT code, name, metric, target, reward_points, enabled
+                FROM point_daily_goals%s
+                ORDER BY sort_order, code
+                """.formatted(enabledOnly ? " WHERE enabled" : ""), (result, row) -> new DailyGoalRow(
+                result.getString("code"), result.getString("name"), result.getString("metric"),
+                result.getLong("target"), result.getLong("reward_points"), result.getBoolean("enabled")));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminDailyGoalDTO> adminDailyGoals() {
+        var result = new ArrayList<AdminDailyGoalDTO>();
+        for (var goal : dailyGoalRows(false))
+            result.add(new AdminDailyGoalDTO(goal.code(), goal.name(), goal.metric(), goal.target(),
+                    goal.rewardPoints(), goal.enabled()));
+        return result;
+    }
+
+    /** The list replaces what is stored: goals left out of it are dropped. */
+    @Transactional
+    public List<AdminDailyGoalDTO> replaceDailyGoals(List<AdminDailyGoalDTO> goals) {
+        if (goals == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Daily goals are required");
+        jdbc.update("DELETE FROM point_daily_goals");
+        var codes = new LinkedHashSet<String>();
+        for (int index = 0; index < goals.size(); index++) {
+            var goal = goals.get(index);
+            if (goal == null || goal.name() == null || goal.name().isBlank())
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every daily goal needs a name");
+            var metric = goal.metric() == null ? "" : goal.metric().trim().toUpperCase();
+            if (!DAILY_METRICS.contains(metric))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown daily goal metric: " + goal.metric());
+            if (goal.target() == null || goal.target() <= 0)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Daily goal target must be above 0");
+            var reward = goal.rewardPoints() == null ? 0 : goal.rewardPoints();
+            if (reward < 0)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Daily goal reward cannot be negative");
+            // A new goal gets its own code so its grants never collide with a deleted one's.
+            var code = goal.code() == null || goal.code().isBlank()
+                    ? UUID.randomUUID().toString() : goal.code().trim();
+            if (!codes.add(code)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate daily goal");
+            jdbc.update("""
+                    INSERT INTO point_daily_goals(code, name, metric, target, reward_points, enabled, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, code, goal.name().trim(), metric, goal.target(), reward,
+                    goal.enabled() == null || goal.enabled(), index);
+        }
+        return adminDailyGoals();
     }
 
     private void awardAchievements(UserEntity user) {
         var progress = todayProgress(user.getId());
-        for (var achievement : Achievement.values())
-            if (progress.of(achievement) >= achievement.target()
-                    && applyOnce(user, achievement.reward(), Type.ACHIEVEMENT, reference(achievement)))
-                notifyAchievement(user, achievement.title(), achievement.reward());
+        for (var goal : dailyGoalRows(true))
+            if (progress.of(goal.metric()) >= goal.target()
+                    && applyOnce(user, goal.rewardPoints(), Type.ACHIEVEMENT, reference(goal)))
+                notifyAchievement(user, goal.name(), goal.rewardPoints());
     }
 
     private List<PointsAchievementDTO> achievements(UserEntity user) {
         var progress = todayProgress(user.getId());
         var result = new ArrayList<PointsAchievementDTO>();
-        for (var achievement : Achievement.values())
-            result.add(new PointsAchievementDTO(achievement.name(), achievement.reward(),
-                    Math.min(progress.of(achievement), achievement.target()), achievement.target(),
-                    transactionExists(user.getId(), Type.ACHIEVEMENT, reference(achievement))));
+        for (var goal : dailyGoalRows(true))
+            result.add(new PointsAchievementDTO(goal.code(), goal.name(), goal.rewardPoints(),
+                    Math.min(progress.of(goal.metric()), goal.target()), goal.target(),
+                    transactionExists(user.getId(), Type.ACHIEVEMENT, reference(goal))));
         return result;
     }
 
-    private record DailyProgress(long played, long wins) {
-        long of(Achievement achievement) {
-            return achievement.countsWins() ? wins : played;
+    private record DailyProgress(long games, long wins, long losses, long draws) {
+        long of(String metric) {
+            return switch (metric) {
+                case "WINS" -> wins;
+                case "LOSSES" -> losses;
+                case "DRAWS" -> draws;
+                default -> games;
+            };
         }
     }
 
     private PointsAccountDTO buildSummary(UserEntity user) {
         var today = LocalDate.now(POINTS_ZONE);
-        var available = user.getPointsBalance() < INITIAL_BALANCE && !today.equals(user.getLastPointsClaimDate());
+        var available = user.getPointsBalance() < startingBalance() && !today.equals(user.getLastPointsClaimDate());
         var next = today.equals(user.getLastPointsClaimDate())
                 ? today.plusDays(1).atStartOfDay(POINTS_ZONE).toInstant() : null;
         return new PointsAccountDTO(user.getPointsBalance(), changeLast24Hours(user.getId()), available,
@@ -1081,10 +1261,18 @@ public class PointsService {
 
     private record GoalRow(UUID id, String name, String description, int gamesRequired, int winsRequired,
                            int lossesRequired, int drawsRequired, long rewardPoints, List<String> gameTypes,
-                           boolean hidden) {
+                           List<String> gameModes, boolean hidden) {
     }
 
     private record EventProgress(long games, long wins, long losses, long draws) {
+    }
+
+    private record SettingsRow(int wagerFeePercent, long startingBalance, long dailyReward) {
+    }
+
+    /** Daily goal: the target counts games finished today, not for all time. */
+    private record DailyGoalRow(String code, String name, String metric, long target, long rewardPoints,
+                                boolean enabled) {
     }
 
     private enum Type {
@@ -1101,28 +1289,4 @@ public class PointsService {
         EVENT_COMPLETION
     }
 
-    /** Daily goals: the target counts games finished today, not for all time. */
-    private enum Achievement {
-        FIRST_GAME("Play a game", 250, 1, false),
-        FIRST_WIN("Win a game", 500, 1, true),
-        TEN_GAMES("Play 10 games", 500, 10, false),
-        TEN_WINS("Win 10 games", 1_000, 10, true);
-
-        private final String title;
-        private final long reward;
-        private final long target;
-        private final boolean countsWins;
-
-        Achievement(String title, long reward, long target, boolean countsWins) {
-            this.title = title;
-            this.reward = reward;
-            this.target = target;
-            this.countsWins = countsWins;
-        }
-
-        String title() { return title; }
-        long reward() { return reward; }
-        long target() { return target; }
-        boolean countsWins() { return countsWins; }
-    }
 }
