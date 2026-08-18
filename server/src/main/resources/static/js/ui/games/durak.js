@@ -19,6 +19,7 @@
     const PENDING_TIMEOUT_MS = 2600; // how long a played card may wait for the server
     const SLOT = '\u0000';           // sentinel for splitting a translated sentence
     const STATE_BUBBLE_MS = 1500;    // how long the board waits on a "Done"/"Taking" bubble
+    const CLEAR_TIMEOUT_MS = 1500;   // how long the table may spend flying a finished bout away
 
     const dom = {
         layout: document.querySelector('.game-layout'),
@@ -52,6 +53,7 @@
         game: window.__INITIAL_GAME__ || null,
         hand: window.__INITIAL_HAND__ || [],
         legal: null,
+        seenRevision: Number(window.__INITIAL_GAME__?.stateRevision) || 0,
         handSort: 'suit',
         handEls: new Map(),
         handZone: null,
@@ -191,7 +193,7 @@
     const defenderHasOpenAttack = () => state.game?.phase === 'WAITING_FOR_DEFENSE'
         && (state.game?.attackSlots || []).some((slot) => !slot.defenseCard);
     const defenderHandIsIdle = () => selfIsDefender() && !defenderHasOpenAttack();
-    const canAct = () => !state.replayingPrevious && !state.clearing
+    const canAct = () => !state.replayingPrevious && !state.clearing && !state.pendingStates.length
         && Array.isArray(currentLegal()?.allowedActionTypes)
         && currentLegal().allowedActionTypes.length > 0;
 
@@ -297,6 +299,13 @@
     function sendAction(type, card, targetSlotId) {
         if (!state.wsConnected || !state.wsClient) {
             showHint(t('game.connectionLost'));
+            return false;
+        }
+        // While a finished bout is frozen on screen the board is deliberately behind the
+        // server, so anything sent now would aim at a table nobody is looking at. The single
+        // choke point for every action, since the drop targets read their own legality.
+        if (state.pendingStates.length || state.clearing) {
+            showHint(t('durak.hint.notNow'));
             return false;
         }
         const revision = Number(state.game?.stateRevision);
@@ -1439,6 +1448,15 @@
      */
     function applyGame(game) {
         if (!game) return;
+        // States can arrive out of order: a resync answering a request the topic has already
+        // overtaken, a reconnect replaying an old snapshot. Stepping backwards would replay a
+        // finished bout, restore a turn clock that has already expired, and leave every action
+        // stamped with a revision the server has passed — one rejection then feeds the next.
+        const revision = Number(game.stateRevision);
+        if (Number.isFinite(revision)) {
+            if (revision < state.seenRevision) return;
+            state.seenRevision = revision;
+        }
         // A bout that resolves arrives as ONE state: the last "Done"/"Take" and the
         // cleared table in the same message. Rendering it straight away means nobody
         // ever sees the decision that ended the round, so the closing bubble is put
@@ -1451,6 +1469,9 @@
         if (state.holdUntil > Date.now() && state.pendingStates.length < 2) {
             state.pendingStates.push(game);
             armHold();
+            // The board is frozen but the buttons are not, and acting is refused while it is:
+            // grey them out rather than letting a live-looking control answer with a hint.
+            renderActions();
             return;
         }
         if (state.holdTimer) {
@@ -1529,12 +1550,23 @@
             renderActions();
             renderTurn();
             refreshPreviousBoutControls();
-            collectTableCards(oldTableCards, previous).finally(() => {
+            // `clearing` locks the hand, so it has to come back down however the collect
+            // animation ends. One that throws, or never settles at all — a backgrounded tab
+            // stops the frame clock the tweens ride on — would otherwise leave the player
+            // unable to act for the rest of the game, so the flag also comes down on a
+            // deadline. Same guarantee the deal animation gives the hand.
+            let settled = false;
+            const finishClearing = () => {
+                if (settled) return;
+                settled = true;
                 state.clearing = false;
                 dom.slots?.classList.remove('is-clearing');
                 if (dom.slots) dom.slots.dataset.signature = '';
                 render();
-            });
+            };
+            Promise.resolve().then(() => collectTableCards(oldTableCards, previous))
+                .catch(() => {}).finally(finishClearing);
+            setTimeout(finishClearing, CLEAR_TIMEOUT_MS);
             return;
         }
         render();

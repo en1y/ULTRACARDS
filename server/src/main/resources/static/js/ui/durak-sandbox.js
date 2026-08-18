@@ -107,7 +107,9 @@
             done: new Set(),
             takeDeclared: false,
             bout: 1,
-            revision: 1,
+            // The board refuses states older than the one it holds, so a reset carries the
+            // revision on rather than restarting it — a fresh table is still a newer state.
+            revision: (state?.revision || 0) + 1,
             ended: false
         };
         syncDeckSizeInput();

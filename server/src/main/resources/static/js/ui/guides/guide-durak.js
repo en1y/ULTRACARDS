@@ -138,7 +138,9 @@
             done: new Set(),
             takeDeclared: false,
             bout: 1,
-            revision: 1,
+            // The board refuses states older than the one it holds, so the next lesson carries
+            // the revision on rather than restarting it.
+            revision: (state?.revision || 0) + 1,
             finished: false
         };
     }

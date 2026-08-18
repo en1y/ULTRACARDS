@@ -124,11 +124,13 @@ public class DurakGameService {
             DurakActionResult result;
             try {
                 // Closes the whole throw window when one is open: every attacker shares one clock.
-                result = game.getGame().applyTimeout();
-                game.setStateRevision(game.getStateRevision() + 1);
-                game.setTurnNumber(game.getTurnNumber() + 1);
+                result = game.applyTimeout();
             } catch (RuntimeException ex) {
+                // Returning here would leave a running game with no timer at all and no way to
+                // get one back, so the clock is restarted even though the state did not move.
                 log.warn("Durak timeout action failed for game {}: {}", gameId, ex.getMessage());
+                scheduleTimeout(game);
+                eventPublisher.publish(game, UPDATED);
                 return;
             }
             if (result.resolvedBout() != null) eventPublisher.publishDurakBoutClosed(game);

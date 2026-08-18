@@ -10,7 +10,6 @@ import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.lobby.DurakLobbyGameConfig;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +24,18 @@ import java.util.UUID;
 public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig> {
 
     private final DurakGameConfig persistedGameConfig;
-    @Setter private long stateRevision;
+    private long stateRevision;
+
+    /**
+     * The revision the current bout started at. An action is accepted from anywhere inside its
+     * own bout rather than only at the exact latest revision: several players legitimately act
+     * at once in one bout — a shared throw-in window, a defence landing while somebody throws
+     * in — so an action a beat behind still describes the table its player is looking at, and
+     * {@link DurakGame} validates everything else about it. Across a bout boundary it does not:
+     * slot ids restart with the new table, so those are still refused.
+     */
+    private long boutStartRevision;
+
     public DurakGameEntity(UUID lobbyId, String name, UserEntity owner, DurakLobbyGameConfig config,
                            List<UserEntity> players) {
         super(lobbyId, name, owner, players, GameTypeDTO.Durak,
@@ -53,14 +63,34 @@ public class DurakGameEntity extends GameEntity<DurakGame, DurakLobbyGameConfig>
         if (actor == null) {
             throw new DurakRuleException(DurakErrorCode.DURAK_NOT_ACTION_PLAYER, "You are not in this game.");
         }
-        if (request.getExpectedRevision() == null || request.getExpectedRevision() != stateRevision) {
+        var expected = request.getExpectedRevision();
+        if (expected == null || expected > stateRevision || expected < boutStartRevision) {
             throw new DurakRuleException(DurakErrorCode.DURAK_STALE_REVISION,
-                    "This action was based on an outdated game state.");
+                    "That bout is already over.");
         }
+        var boutBefore = currentBoutNumber();
         var result = getGame().apply(actor, toAction(request));
+        bumpRevision(boutBefore);
+        return result;
+    }
+
+    /** The phase's fallback action for a turn that ran out, on the same clock as {@link #apply}. */
+    public DurakActionResult applyTimeout() {
+        var boutBefore = currentBoutNumber();
+        var result = getGame().applyTimeout();
+        bumpRevision(boutBefore);
+        return result;
+    }
+
+    private void bumpRevision(int boutBefore) {
         stateRevision++;
         setTurnNumber(getTurnNumber() + 1);
-        return result;
+        if (currentBoutNumber() != boutBefore) boutStartRevision = stateRevision;
+    }
+
+    private int currentBoutNumber() {
+        var field = getGame().getPlayingField();
+        return field == null ? -1 : field.getBoutNumber();
     }
 
     private DurakAction toAction(DurakActionRequestDTO request) {
