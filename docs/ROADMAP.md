@@ -150,19 +150,29 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ## v0.4.1 - Add the Points economy ✅
 
-- Name the currency Points and display every amount as `{amount}P`.
-- Give each account a 1,500P starting balance and a once-per-day 1,500P claim from the Points page when its pre-claim balance is below 1,500P.
-- Award Points through daily goals that reset each day; finishing a game pays nothing by itself, so only bets
-  move Points during play. Every grant goes through an idempotent transaction ledger.
-- Add a toggleable host-selected bet to every supported lobby mode, with start-time escrow, crash-safe refunds, and deterministic settlement.
-- Pick the bet on a 100P–1,000,000P slider that steps in nines per decade, with preset stakes and 100 / 1K / 10K / 100K / 1M ticks.
-- Return each winner's stake plus an equal share of 96% of the losing pool; record the remaining 4% as economy rake. Refund draws and interrupted games.
-- Show each lobby's bet on its list card and filter the list by a stake range, with free lobbies as an opt-in.
-- Explain the betting maths per game mode in every game guide.
-- Add authenticated balance, daily-claim, and paginated transaction endpoints; expose Points through the gateway client.
-- Add the Points page, compact header balance, profile and profile-popup balances, seven-day delta, and a Points leaderboard.
-- Add audited administrator balance adjustments and economy metrics to the web dashboard and admin CLI.
-- Keep all balances and settlements server-authoritative, non-negative, transactionally locked, and protected against duplicate rewards.
+**Core economy and rewards**
+- Name the currency Points, display it as `P`, compact large balances with K/M/B/T suffixes, and expose balances and recent changes across profiles, search results, friend lists, and the header.
+- Give every account a 1,500P starting balance and a once-per-day 1,500P reserve claim when its pre-claim balance is below 1,500P.
+- Add daily achievements for games played and won, reset their progress each day, award each reward once, and notify the player when it is completed.
+- Add scheduled Point events with game and exact-mode eligibility, visible or hidden sub-achievements for games, wins, losses, and draws, individual rewards, an all-goals bonus, and sanitized Markdown descriptions.
+- Persist every grant, deduction, refund, and adjustment in an idempotent transaction ledger with stored post-transaction balances and non-negative database constraints.
+
+**Wagers**
+- Add an optional host-selected bet to every supported lobby mode and let the host update it before the game starts.
+- Pick stakes from 100P to 1,000,000P with the logarithmic slider, presets, and compact ticks; show bets on lobby cards and filter the lobby list by stake while optionally including free lobbies.
+- Lock and deduct every player's stake when the game starts, reject unaffordable games, persist the applied fee, and settle each completed game once.
+- Return each winner's stake plus an equal share of the losing pool after the configured fee; refund draws, interrupted games, failed starts, and stranded open wagers.
+- Support audited global, per-game, and per-mode fee rules, resolving the exact mode first, then the game-wide rule, then the global default.
+- Explain each game's wager settlement in its guide and show the effective fee in lobby and Points interfaces.
+
+**Player and administration interfaces**
+- Add the responsive Points page with the daily reserve, daily achievements, active/upcoming/past events, balance history chart, paginated activity ledger, and current fee.
+- Add authenticated APIs and gateway contracts for accounts, balances, daily claims, events, transaction history, balance series, and effective wager settings.
+- Add Points to the leaderboard, game history and replay results, profile surfaces, user search, friend lists, lobby cards, and the compact header balance.
+- Add a dedicated admin Points dashboard for circulation, account and escrow totals, minting, removals, claims, wagers, rake, 30-day movement, and the highest balances.
+- Add separate admin event management with schedules, game/mode filters, sub-achievements, hidden goals, Markdown preview, enable/disable controls, and required audit reasons.
+- Extend the admin web UI, gateway, and CLI with audited balance adjustments, Point-event management, and global/game/mode wager-fee controls.
+- Keep all economy mutations server-authoritative, transactionally locked, retry-safe, and protected against duplicate rewards or settlements.
 
 ---
 
