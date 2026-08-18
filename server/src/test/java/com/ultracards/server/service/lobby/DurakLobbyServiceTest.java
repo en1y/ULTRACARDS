@@ -15,6 +15,7 @@ import com.ultracards.server.service.friends.FriendService;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.games.GameService;
 import com.ultracards.server.service.notifications.NotificationService;
+import com.ultracards.server.service.points.PointsService;
 import com.ultracards.server.service.ultrakill.UltrakillLevelService;
 import com.ultracards.server.service.users.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ class DurakLobbyServiceTest {
     private final UltrakillLevelService ultrakillLevelService = mock(UltrakillLevelService.class);
     private final NotificationService notificationService = mock(NotificationService.class);
     private final FriendService friendService = mock(FriendService.class);
+    private final PointsService pointsService = mock(PointsService.class);
     private final LobbyEventPublisher eventPublisher = mock(LobbyEventPublisher.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
 
@@ -49,7 +51,7 @@ class DurakLobbyServiceTest {
     @BeforeEach
     void setUp() {
         lobbyService = new LobbyService(lobbyManager, userService, gameService, gameAvailabilityService, chatService,
-                ultrakillLevelService, notificationService, friendService, eventPublisher, taskScheduler);
+                ultrakillLevelService, notificationService, friendService, pointsService, eventPublisher, taskScheduler);
     }
 
     private static UserEntity user(Long id, String name) {

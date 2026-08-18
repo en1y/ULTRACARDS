@@ -12,6 +12,7 @@ import com.ultracards.recorder.RecordedDurakGame;
 import com.ultracards.recorder.RecordedPlayer;
 import com.ultracards.recorder.RecordedTresetaGame;
 import com.ultracards.recorder.TresetaGameRecorder;
+import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.briskula.BriskulaPlayerEntity;
 import com.ultracards.server.entity.games.durak.DurakGameEntity;
@@ -56,11 +57,11 @@ public class GameRecordingService {
     }
 
     public void finish(BriskulaGameEntity game) {
-        var recorder = recorders.remove(game.getId());
+        var recorder = recorders.get(game.getId());
         if (recorder == null) {
             throw new IllegalStateException("No recorder attached");
         }
-        briskulaGameRepository.save((RecordedBriskulaGame) recorder.recording());
+        briskulaGameRepository.saveAndFlush((RecordedBriskulaGame) recorder.recording());
     }
 
     public void start(TresetaGameEntity game) {
@@ -78,9 +79,9 @@ public class GameRecordingService {
     }
 
     public void finish(TresetaGameEntity game) {
-        var recorder = recorders.remove(game.getId());
+        var recorder = recorders.get(game.getId());
         if (recorder == null) throw new IllegalStateException("No recorder attached");
-        tresetaGameRepository.save((RecordedTresetaGame) recorder.recording());
+        tresetaGameRepository.saveAndFlush((RecordedTresetaGame) recorder.recording());
     }
 
     public void start(DurakGameEntity game) {
@@ -114,7 +115,7 @@ public class GameRecordingService {
     }
 
     /** Releases the live recorder only after the surrounding result transaction committed. */
-    public void release(DurakGameEntity game) {
+    public void release(GameEntity<?, ?> game) {
         recorders.remove(game.getId());
     }
 

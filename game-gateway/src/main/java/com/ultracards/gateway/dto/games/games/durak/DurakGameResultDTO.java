@@ -16,13 +16,12 @@ import java.util.List;
 public class DurakGameResultDTO extends GameResultDTO {
     private GamePlayerDTO loser;
     private List<GamePlayerDTO> finishOrder;
-    private boolean draw;
 
     public DurakGameResultDTO(List<GamePlayerDTO> gameWinners, GamePlayerDTO loser,
                               List<GamePlayerDTO> finishOrder, boolean draw) {
         super(gameWinners);
         this.loser = loser;
         this.finishOrder = finishOrder;
-        this.draw = draw;
+        setDraw(draw);
     }
 }

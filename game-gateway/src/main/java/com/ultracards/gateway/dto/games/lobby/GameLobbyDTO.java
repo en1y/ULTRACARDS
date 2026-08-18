@@ -6,6 +6,7 @@ import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,6 +34,15 @@ public class GameLobbyDTO {
             include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
             property = "gameType"
     )
-    @NotNull private GameConfigDTO gameConfig;
+    @Valid @NotNull private GameConfigDTO gameConfig;
     private Instant openUntil;
+    @Valid private WagerConfigDTO wager;
+
+    public GameLobbyDTO(UUID id, String name, Integer minPlayers, Integer maxPlayers,
+                        Set<GamePlayerDTO> players, GamePlayerDTO host, GameTypeDTO gameType,
+                        Boolean isPublic, String lobbyCode, Boolean isStarted,
+                        GameConfigDTO gameConfig, Instant openUntil) {
+        this(id, name, minPlayers, maxPlayers, players, host, gameType, isPublic, lobbyCode,
+                isStarted, gameConfig, openUntil, WagerConfigDTO.disabled());
+    }
 }

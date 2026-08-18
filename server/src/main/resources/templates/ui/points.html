@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" th:lang="${lang}" xmlns:th="http://www.thymeleaf.org" th:with="theme=${theme} ? ${theme} : 'dark'" th:attr="data-theme=${theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{ui/fragments/head :: siteMetadata}"></th:block>
+    <title th:text="#{points.pageTitle}">Points · ULTRACARDS</title>
+    <script th:src="@{/js/theme-preload.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/points.css(v=${@environment.getProperty('app.version')})}">
+    <link rel="stylesheet" th:href="@{/css/ui/markdown.css(v=${@environment.getProperty('app.version')})}">
+    <script th:src="@{/js/theme.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{ui/fragments/header :: header}"></div>
+<main class="points-page container" th:attr="data-points-balance=${pointsAccount.balance}">
+    <section class="points-hero card">
+        <div>
+            <p class="points-kicker" th:text="#{points.eyebrow}">ULTRACARDS economy</p>
+            <h1 th:text="#{points.title}">Points</h1>
+            <p th:text="#{points.intro}">Earn Points by playing, winning, and completing achievements.</p>
+        </div>
+        <div class="points-balance" aria-live="polite">
+            <span th:text="#{points.balance}">Balance</span>
+            <strong id="points-balance" class="points-value"><th:block th:replace="~{ui/fragments/points :: points(${pointsAccount.balance})}"></th:block></strong>
+            <small id="points-delta"><th:block th:replace="~{ui/fragments/points :: signedPoints(${pointsAccount.changeLast24Hours})}"></th:block><span th:text="#{points.delta('')}"> Points in the last 24 hours</span></small>
+            <small id="points-fee" class="points-fee" th:text="#{points.fee.notice(${pointsSettings.wagerFeePercent})}">Current bet fee: 4% of losing stakes</small>
+        </div>
+    </section>
+
+    <section id="points-events-section" class="card points-events-card" th:hidden="${#lists.isEmpty(pointsEvents) and #lists.isEmpty(pointsMoreEvents)}">
+        <div class="points-section-head">
+            <div>
+                <p class="points-kicker" th:text="#{points.events.eyebrow}">Limited-time rewards</p>
+                <h2 th:text="#{points.events.title}">Events</h2>
+            </div>
+        </div>
+        <div id="points-events" class="points-events">
+            <th:block th:each="event : ${pointsEvents}"><th:block th:replace="~{ui/fragments/points :: eventCard(${event}, ${pointsNow}, true)}"></th:block></th:block>
+            <details class="points-events-more" th:if="${!#lists.isEmpty(pointsMoreEvents)}">
+                <summary>
+                    <span class="points-events-more-show" th:text="#{points.events.showMore(${#lists.size(pointsMoreEvents)})}">Show 2 more</span>
+                    <span class="points-events-more-hide" th:text="#{points.events.showLess}">Show less</span>
+                    <span class="points-event-chevron" aria-hidden="true"></span>
+                </summary>
+                <div class="points-events-list">
+                    <th:block th:each="event : ${pointsMoreEvents}"><th:block th:replace="~{ui/fragments/points :: eventCard(${event}, ${pointsNow}, false)}"></th:block></th:block>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <section class="points-grid">
+        <article class="card points-claim-card">
+            <div class="points-claim-copy">
+                <p class="points-kicker" th:text="#{points.daily.eyebrow}">Daily reserve</p>
+                <h2 th:text="#{points.daily.title}">Daily Points</h2>
+                <p th:text="#{points.daily.copy(${@pointsFormat.compact(pointsSettings.startingBalance)})}">When your balance is below 1.5K Points, refill it once per day.</p>
+            </div>
+            <div class="points-daily-reward" aria-hidden="true">
+                <strong class="points-delta is-up">+<span th:text="${@pointsFormat.compact(pointsSettings.dailyReward)}">1.5K</span></strong>
+                <span class="points-daily-coin points-symbol">P</span>
+                <span th:text="#{points.daily.rewardLabel}">daily refill</span>
+            </div>
+            <button id="points-claim" class="btn btn-accent points-claim-button" type="button" th:disabled="${!pointsAccount.dailyClaimAvailable}">
+                <span th:text="${pointsAccount.dailyClaimAvailable} ? #{points.daily.claim} : #{points.daily.unavailable}">Claim reserve</span>
+                <span class="points-claim-button-value"><th:block
+                        th:replace="~{ui/fragments/points :: signedPoints(${pointsSettings.dailyReward})}"></th:block></span>
+            </button>
+            <p id="points-claim-status" class="points-status" role="status" aria-live="polite"></p>
+        </article>
+        <article class="card points-achievements-card">
+            <p class="points-kicker" th:text="#{points.achievements.eyebrow}">Milestones</p>
+            <h2 th:text="#{points.achievements.title}">Achievements</h2>
+            <div id="points-achievements" class="points-achievements">
+                <div class="points-achievement" th:each="achievement : ${pointsAccount.achievements}" th:classappend="${achievement.earned ? ' is-complete' : ''}">
+                    <span class="points-achievement-icon" aria-hidden="true" th:text="${achievement.earned ? '✓' : '✦'}">✦</span>
+                    <span class="points-achievement-copy"><strong th:text="${achievement.name}">Achievement</strong><small th:text="${achievement.earned} ? #{points.achievement.complete} : #{points.achievement.progress(${achievement.current}, ${achievement.target})}">0 of 1</small></span>
+                    <span class="points-achievement-reward"><th:block th:replace="~{ui/fragments/points :: signedActivityPoints(${achievement.reward})}"></th:block></span>
+                    <span class="points-achievement-track"><span th:style="|--achievement-progress:${achievement.current >= achievement.target ? 100 : achievement.current * 100 / (achievement.target > 0 ? achievement.target : 1)}%|"></span></span>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="card points-chart-card">
+        <div class="points-section-head">
+            <div>
+                <p class="points-kicker" th:text="#{points.chart.eyebrow}">Balance over time</p>
+                <h2 th:text="#{points.chart.title}">Points history</h2>
+            </div>
+            <div class="points-range" role="group" th:aria-label="#{points.chart.range}">
+                <button type="button" class="btn points-range-button" data-points-range="1">1d</button>
+                <button type="button" class="btn points-range-button is-active" data-points-range="3">3d</button>
+                <button type="button" class="btn points-range-button" data-points-range="7">7d</button>
+                <button type="button" class="btn points-range-button" data-points-range="30">30d</button>
+                <button type="button" class="btn points-range-button" data-points-range="year" th:text="#{points.chart.year}">This year</button>
+                <button type="button" class="btn points-range-button" data-points-range="0" th:text="#{points.chart.all}">All</button>
+            </div>
+        </div>
+        <div class="points-chart-shell">
+            <canvas id="points-chart" th:aria-label="#{points.chart.title}" role="img"></canvas>
+            <p id="points-chart-empty" class="points-chart-empty" th:text="#{points.chart.empty}" hidden>No games played yet.</p>
+        </div>
+    </section>
+
+    <section class="card points-ledger-card">
+        <div class="points-section-head">
+            <div>
+                <p class="points-kicker" th:text="#{points.ledger.eyebrow}">Audit trail</p>
+                <h2 th:text="#{points.ledger.title}">Point activity</h2>
+            </div>
+            <button id="points-refresh" class="btn points-refresh" type="button" th:aria-label="#{common.refresh}">
+                <img class="uc-icon" data-icon="refresh" th:src="@{/pics/light/refresh.svg}" alt="" aria-hidden="true" />
+            </button>
+        </div>
+        <div class="points-ledger-shell">
+            <table class="points-ledger">
+                <thead><tr><th th:text="#{points.ledger.reason}">Reason</th><th th:text="#{points.ledger.amount}">Amount</th><th th:text="#{points.balance}">Balance</th><th th:text="#{points.ledger.when}">When</th></tr></thead>
+                <tbody id="points-transactions">
+                    <tr th:each="item : ${pointsTransactions.items}">
+                        <td th:text="#{__${'points.transaction.' + #strings.toLowerCase(item.type)}__}">Reason</td>
+                        <td><th:block th:replace="~{ui/fragments/points :: signedActivityPoints(${item.amount})}"></th:block></td>
+                        <td class="points-value"><th:block th:replace="~{ui/fragments/points :: activityPoints(${item.balanceAfter})}"></th:block></td>
+                        <td><time th:datetime="${item.createdAt}" th:text="${#temporals.format(item.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2026 12:00</time></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(pointsTransactions.items)}"><td colspan="4" th:text="#{points.ledger.empty}">No Point activity yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="points-pagination">
+            <button id="points-previous" class="btn points-page-arrow" type="button" th:aria-label="#{common.previous}" th:disabled="${pointsTransactions.page <= 0}">
+                <img class="uc-icon" data-icon="previous_round" th:src="@{/pics/light/previous_round.svg}" alt="" aria-hidden="true" />
+            </button>
+            <span id="points-page-label" th:text="${#messages.msg('leaderboards.page', pointsTransactions.page + 1, pointsTransactions.totalPages > 0 ? pointsTransactions.totalPages : 1)}">Page 1 of 1</span>
+            <button id="points-next" class="btn points-page-arrow" type="button" th:aria-label="#{common.next}" th:disabled="${pointsTransactions.page + 1 >= pointsTransactions.totalPages}">
+                <img class="uc-icon" data-icon="next_round" th:src="@{/pics/light/next_round.svg}" alt="" aria-hidden="true" />
+            </button>
+        </div>
+    </section>
+</main>
+<script th:src="@{/webjars/chart.js/4.4.6/dist/chart.umd.js}"></script>
+<script th:src="@{/js/points-chart.js(v=${@environment.getProperty('app.version')})}"></script>
+<script id="points-initial-series" type="application/json" th:inline="javascript">/*[[${pointsSeries}]]*/ []</script>
+<script th:src="@{/js/ui/points.js(v=${@environment.getProperty('app.version')})}"></script>
+<div th:replace="~{ui/fragments/footer :: footer}"></div>
+</body>
+</html>

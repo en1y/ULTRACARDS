@@ -258,10 +258,12 @@ function resolveGameConfigKey(gameType, config) {
     }
     if (String(gameType || '').toLowerCase() === 'treseta' && config && typeof config === 'object') {
         const players = Number(config.numberOfPlayers);
-        if (players === 2) return 'TWO_PLAYERS';
-        if (players === 3) return 'THREE_PLAYERS';
-        if (players === 4 && config.teamsEnabled) return 'FOUR_PLAYERS_WITH_TEAMS';
-        if (players === 4) return 'FOUR_PLAYERS_NO_TEAMS';
+        let mode = '';
+        if (players === 2) mode = 'TWO_PLAYERS';
+        if (players === 3) mode = 'THREE_PLAYERS';
+        if (players === 4 && config.teamsEnabled) mode = 'FOUR_PLAYERS_WITH_TEAMS';
+        if (players === 4 && !config.teamsEnabled) mode = 'FOUR_PLAYERS_NO_TEAMS';
+        return mode && config.declarationsEnabled ? `${mode}_WITH_DECLARATIONS` : mode;
     }
     if (String(gameType || '').toLowerCase() === 'durak' && config && typeof config === 'object') {
         return config.modeKey || durakModeKey(config);
@@ -585,7 +587,8 @@ const DURAK_FILTER_ROWS = [
 /** Builds the five filter rows into `container`, pre-selected from `filter`. */
 function renderDurakFilter(container, idPrefix, filter) {
     if (!container) return;
-    const chosen = filter || {};
+    const chosen = {...filter};
+    if (chosen.jokers === 'true') chosen.deck = '54';
     container.replaceChildren(...DURAK_FILTER_ROWS.map((row) => buildDurakChoice(
         durakOptionId(idPrefix, `filter-${row.name}`),
         t(row.labelKey),
@@ -593,6 +596,17 @@ function renderDurakFilter(container, idPrefix, filter) {
         chosen[row.name] ?? DURAK_FILTER_ANY
     )));
     container.classList.add('durak-options', 'durak-filter');
+
+    const deck = container.querySelector(`#${durakOptionId(idPrefix, 'filter-deck')}`);
+    const jokers = container.querySelector(`#${durakOptionId(idPrefix, 'filter-jokers')}`);
+    jokers.addEventListener('change', () => {
+        if (jokers.dataset.value === 'true') setDurakChoice(deck, '54');
+    });
+    deck.addEventListener('change', () => {
+        if (deck.dataset.value !== '54' && jokers.dataset.value === 'true') {
+            setDurakChoice(jokers, DURAK_FILTER_ANY);
+        }
+    });
 }
 
 function readDurakFilter(idPrefix) {
@@ -636,7 +650,9 @@ function describeDurakFilter(filter) {
     if (filter.deck) parts.push(t('durak.filter.deck', filter.deck));
     if (filter.throwin) parts.push(filter.throwin === 'EVERYONE'
         ? t('durak.throwIn.everyone') : t('durak.throwIn.neighbors'));
-    if (filter.jokers) parts.push(filter.jokers === 'true' ? t('durak.filter.jokers') : t('durak.filter.noJokers'));
+    if (filter.jokers && (!filter.deck || filter.deck === '54')) {
+        parts.push(filter.jokers === 'true' ? t('durak.filter.jokers') : t('durak.filter.noJokers'));
+    }
     if (filter.passing) parts.push(filter.passing === 'true' ? t('durak.filter.passing') : t('durak.filter.noPassing'));
     return parts.join(' · ');
 }

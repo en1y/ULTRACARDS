@@ -1764,9 +1764,37 @@
         return card;
     }
 
+    /** Shows each player's signed settlement beside their seat. */
+    function animateWagerPayout(result, _sourceEl, ringEl, currentUserId, selfTarget) {
+        if (!ringEl) return false;
+        const suppliedDeltas = Object.entries(result?.wagerDeltas || {});
+        const changes = (suppliedDeltas.length ? suppliedDeltas : Object.entries(result?.wagerPayouts || {}))
+            .map(([userId, amount]) => [userId, Number(amount)])
+            .filter(([, amount]) => Number.isFinite(amount) && amount !== 0);
+        if (!changes.length) return false;
+
+        let animated = false;
+        changes.forEach(([userId, amount]) => {
+            const isSelf = currentUserId != null && String(userId) === String(currentUserId);
+            const targetEl = isSelf && selfTarget
+                ? selfTarget
+                : ringEl.querySelector(`[data-player-id="${CSS.escape(String(userId))}"]`);
+            if (!targetEl) return;
+            animated = true;
+            const won = amount > 0;
+            const label = document.createElement('span');
+            label.className = `seat-wager-delta ${won ? 'is-win' : 'is-loss'}`;
+            label.setAttribute('role', 'status');
+            label.append(won ? '+' : '−', pointsCompactNode(Math.abs(amount)));
+            targetEl.append(label);
+        });
+        return animated;
+    }
+
     window.UltracardsGameUi = {
         applyHandFan,
         applyCardImage,
+        animateWagerPayout,
         animateHandChange: animateZoneChange,
         animateZoneChange,
         cardBackUrl,

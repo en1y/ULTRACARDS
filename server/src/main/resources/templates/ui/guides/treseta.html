@@ -90,6 +90,18 @@
                 <li th:text="#{guides.treseta.mode.declarations}">Every mode is available with or without declarations</li>
             </ul>
         </article>
+        <article class="card guide-rule">
+            <h3 th:text="#{guides.rules.betting}">Betting</h3>
+            <p data-wager-guide-fee th:text="#{guides.bet.intro(4)}">A lobby host can attach a bet. Winners share what the losers put in, minus a 4% house fee.</p>
+            <p th:text="#{guides.bet.example}">At a 1,000P bet each winner walks away with:</p>
+            <ul class="guide-values">
+                <li><span th:text="#{guides.bet.mode.2p}">2 players</span><strong data-wager-example-losers="1" data-wager-example-winners="1">+960P</strong></li>
+                <li><span th:text="#{guides.bet.mode.3p}">3 players</span><strong data-wager-example-losers="2" data-wager-example-winners="1">+1,920P</strong></li>
+                <li><span th:text="#{guides.bet.mode.4pSolo}">4 players, no teams</span><strong data-wager-example-losers="3" data-wager-example-winners="1">+2,880P</strong></li>
+                <li><span th:text="#{guides.bet.mode.4pTeams}">4 players, 2 teams (each)</span><strong data-wager-example-losers="2" data-wager-example-winners="2">+960P</strong></li>
+            </ul>
+            <p th:text="#{guides.bet.refund}">A draw, or a game that never finishes, gives everyone their bet back.</p>
+        </article>
     </div>
     <div class="guide-footer-actions">
         <a class="btn guide-cta" th:href="@{/guides}" th:text="#{guides.back}">← All guides</a>

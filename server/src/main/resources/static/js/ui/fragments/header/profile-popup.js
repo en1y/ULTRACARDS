@@ -51,4 +51,22 @@
       refocusElement: event.detail?.refocusElement || null
     });
   });
+
+  document.addEventListener('dblclick', (event) => {
+    const avatar = event.target instanceof Element
+      ? event.target.closest('.player-seat .seat-avatar')
+      : null;
+    const seat = avatar?.closest('.player-seat');
+    if (!seat?.dataset.playerId || seat.classList.contains('is-self') || seat.dataset.isSelf === '1') {
+      return;
+    }
+
+    window.ucHeader.openUserProfilePopup({
+      id: seat.dataset.playerId,
+      username: seat.dataset.playerName || seat.querySelector('.seat-name')?.textContent?.trim() || 'User'
+    }, {
+      source: 'game',
+      refocusElement: avatar
+    });
+  });
 })();

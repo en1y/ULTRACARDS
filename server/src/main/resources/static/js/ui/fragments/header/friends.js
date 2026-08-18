@@ -398,7 +398,11 @@
       const meta = document.createElement('span');
       meta.textContent = t('friends.gamesTogether', friend.totalPlayedTogether || 0);
 
-      copy.append(name, meta);
+      const points = document.createElement('span');
+      points.className = 'friend-points';
+      points.dataset.friendPoints = String(id ?? '');
+
+      copy.append(name, meta, points);
       main.append(avatar, copy);
 
       const actions = document.createElement('div');
@@ -487,6 +491,17 @@
       return section;
     };
 
+    /** One request for the whole drawer rather than one per row. */
+    function fillFriendPoints() {
+      const slots = [...document.querySelectorAll('[data-friend-points]')];
+      const ids = slots.map(slot => Number(slot.dataset.friendPoints)).filter(Boolean);
+      if (!ids.length) return;
+      pointsBalances(ids).then(balances => slots.forEach(slot => {
+        const points = balances[slot.dataset.friendPoints];
+        if (points != null) slot.replaceChildren(pointsCompactNode(points));
+      }));
+    }
+
     function renderGroups() {
       if (!groups) {
         return;
@@ -501,6 +516,7 @@
       for (const config of groupConfig) {
         groups.append(createGroup(config, state.friends.filter(config.accepts)));
       }
+      fillFriendPoints();
       window.syncThemeUi?.();
     }
 

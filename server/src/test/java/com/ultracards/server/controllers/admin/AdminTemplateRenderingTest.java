@@ -13,10 +13,75 @@ class AdminTemplateRenderingTest {
             assertThat(stream).isNotNull();
             var template = new String(stream.readAllBytes());
 
-            for (var page : new String[]{"dashboard", "users", "stats", "lobbies", "games", "sessions", "availability", "database", "audit", "notifications"}) {
+            for (var page : new String[]{"dashboard", "points", "events", "users", "stats", "lobbies", "games", "sessions", "availability", "database", "audit", "notifications"}) {
                 assertThat(template).contains("data-section=\"" + page + "\" th:hidden=\"${adminPage != '" + page + "'}\"");
             }
         }
+    }
+
+    @Test
+    void exposesSeparatePointSettingsAndWorkingEventActions() throws IOException {
+        var template = resource("/templates/ui/admin.html");
+        var script = resource("/static/js/ui/admin.js");
+
+        assertThat(template).contains("id=\"admin-points-settings\"", "id=\"admin-fee-status\"", "id=\"admin-event-form\"",
+                "admin-events-manager", "id=\"admin-event-submit\"", "name='startsAt'", "name='endsAt'", "name='gameTypes'",
+                "id=\"admin-event-achievements\"", "id=\"admin-event-achievements-empty\"",
+                "admin-event-section", "admin-event-submit-bar", "ui/fragments/date-time :: dateTime",
+                "id=\"admin-points-metrics\"", "id=\"admin-points-total-chart\"", "id=\"admin-points-leaderboard\"",
+                "data-results=\"economy-events\" aria-live=\"polite\"><p class=\"admin-empty\"",
+                "rev='point-event-goal-markdown'", "/css/ui/fragments/date-time.css", "/js/ui/fragments/date-time.js",
+                "/css/ui/durak-options.css", "/css/ui/markdown.css", "role=\"tablist\"",
+                "data-event-description-mode=\"edit\"", "data-event-description-mode=\"preview\"",
+                "id=\"admin-event-description-preview\"", "name=\"startingBalance\"", "name=\"dailyReward\"",
+                "id=\"admin-daily-goals\"", "id=\"admin-daily-goals-empty\"", "id=\"admin-daily-goal-add\"")
+                .doesNotContain("type=\"datetime-local\"", "id=\"admin-fee-example\"");
+        assertThat(script).contains("eventAchievementEditor", "gamesRequired", "winsRequired",
+                "lossesRequired", "drawsRequired", "/economy/events", "/economy/settings", "/economy/dashboard",
+                "syncEventAchievementEditors", "admin-event-summary-card", "totalReward",
+                "renderAchievementGameTypes", "selectedEventGameTypes", "gameTypes:", "hidden:",
+                "renderAchievementModes", "achievementGameModes", "gameModes:", "renderDurakFilter",
+                "durakConfigMatchesFilter", "admin-event-goal-mode-editor", "admin-event-summary-goals",
+                "renderDescriptionPreview", "renderEventDescriptionPreview", "/economy/events/preview",
+                "renderTrustedMarkdown", "setEventDescriptionMode", "event.descriptionHtml",
+                "goalDescriptionId", "admin-event-goal-name", "admin-goal-markdown-editor", "achievement.descriptionHtml",
+                "document.createElement(\"textarea\")", "moveMarkdownTabSelection",
+                "oneAchievementRequired", ".admin-event-games input[name=\"gameTypes\"]",
+                "button.disabled = true", "renderPointsSettings", "feeStatus.textContent",
+                "dailyGoalEditor", "syncDailyGoalEditors", "/economy/daily-goals",
+                "admin.economy.createEvent", "admin.economy.updateEvent", "delete-point-event",
+                "method: \"DELETE\"", "const parseDateTime", "date.getHours() !== hour",
+                "parseDateTime(form.elements.startsAt.value)", "parseDateTime(values.lastPlayedAt)",
+                "const loadPoints", "const loadEvents", "syncDateTimeWidget", "renderPointsChart",
+                // Goal fields must stay off the event's own field names, or form.elements.name becomes a
+                // RadioNodeList and every create/update posts a blank name.
+                "[name=\"goalName\"]", "[name=\"goalDescription\"]")
+                .doesNotContain("node.querySelector('[name=\"name\"]')", "node.querySelector('[name=\"description\"]')",
+                        "renderFeeExample", "const totalReward = Number(event.completionRewardPoints || 0) + achievements.reduce((sum, achievement) => sum + Number(achievement.rewardPoints || 0), 0);\n            const totalReward");
+        assertThat(script).doesNotContain("const loadEconomy");
+        assertThat(resource("/templates/ui/fragments/date-time.html"))
+                .contains("th:fragment=\"dateTime(name, label, hint, required)\"", "type=\"hidden\"",
+                        "placeholder=\"dd.mm.yyyy HH:mm\"", "data-date-time-input", "data-date-time-open",
+                        "aria-haspopup=\"dialog\"", "data-icon=\"calendar_month\"")
+                .doesNotContain("type=\"datetime-local\"", "type=\"date\"", "type=\"time\"");
+        assertThat(resource("/static/js/ui/fragments/date-time.js"))
+                .contains("(first.getDay() + 6) % 7", "24-hour Material dial", "draft.setHours", "draft.setMinutes",
+                        "active.widget.getBoundingClientRect()", "event.composedPath().includes(popup)",
+                        "if (active) place()", "parts.dateTab.focus()", "close(false)");
+        assertThat(resource("/static/css/ui/fragments/date-time.css"))
+                .contains(".uc-datetime-day {", ".uc-clock-number {", "place-items: center;", "padding: 0;", "line-height: 1;");
+    }
+
+    /** Every boolean in the admin UI goes through the shared switch, never a bare checkbox. */
+    @Test
+    void booleansUseTheSharedToggleFragment() throws IOException {
+        var template = resource("/templates/ui/admin.html");
+
+        assertThat(resource("/templates/ui/fragments/toggle.html"))
+                .contains("th:fragment=\"toggle(name, value, label, hint, checked)\"", "type=\"checkbox\"");
+        for (var name : new String[]{"gameTypes", "enabled", "dryRun", "fakeAdmin", "MODERATOR", "ADMIN"})
+            assertThat(template).contains("ui/fragments/toggle :: toggle(name='" + name + "'");
+        assertThat(template).doesNotContain("type=\"checkbox\"", "admin-check");
     }
 
     @Test
@@ -85,13 +150,19 @@ class AdminTemplateRenderingTest {
     void keepsTheUiSandboxFrontendOnly() throws IOException {
         try (var templateStream = getClass().getResourceAsStream("/templates/ui/admin-sandbox.html");
              var scriptStream = getClass().getResourceAsStream("/static/js/ui/sandbox.js");
-             var durakScriptStream = getClass().getResourceAsStream("/static/js/ui/durak-sandbox.js")) {
+             var durakScriptStream = getClass().getResourceAsStream("/static/js/ui/durak-sandbox.js");
+             var liveGameScriptStream = getClass().getResourceAsStream("/static/js/ui/live-game.js");
+             var durakGameScriptStream = getClass().getResourceAsStream("/static/js/ui/games/durak.js")) {
             assertThat(templateStream).isNotNull();
             assertThat(scriptStream).isNotNull();
             assertThat(durakScriptStream).isNotNull();
+            assertThat(liveGameScriptStream).isNotNull();
+            assertThat(durakGameScriptStream).isNotNull();
             var template = new String(templateStream.readAllBytes());
             var script = new String(scriptStream.readAllBytes());
             var durakScript = new String(durakScriptStream.readAllBytes());
+            var liveGameScript = new String(liveGameScriptStream.readAllBytes());
+            var durakGameScript = new String(durakGameScriptStream.readAllBytes());
 
             assertThat(script).doesNotContain("fetch(");
             assertThat(durakScript).doesNotContain("fetch(");
@@ -99,6 +170,11 @@ class AdminTemplateRenderingTest {
             assertThat(durakScript).doesNotContain("/api/admin/sandbox");
             assertThat(script).contains("window.Stomp =");
             assertThat(durakScript).contains("window.Stomp =");
+            assertThat(script).contains("window.UltracardsSandboxWagerDeltas", "wagerDeltas:");
+            assertThat(durakScript).contains("window.UltracardsSandboxWagerDeltas", "wagerDeltas:");
+            assertThat(liveGameScript).contains("state.wagerPayoutAnimated = false;");
+            assertThat(durakGameScript).contains("state.wagerPayoutAnimated = false;");
+            assertThat(durakGameScript).contains("function startLobbyReturnCountdown(meta) {\n        if (gameEl.dataset.sandbox) return;");
             assertThat(durakScript).contains("/app/game/durak/action");
             assertThat(template).contains("<option value=\"durak\" th:text=\"#{game.durak}\">Durak</option>");
             assertThat(template).contains("id=\"sandbox-hand-cards\"");
@@ -141,7 +217,8 @@ class AdminTemplateRenderingTest {
             assertThat(gameScript).contains("prev-round-back");
             assertThat(gameScript).contains("prev-round-forward");
             assertThat(gameScript).contains("function seatSlot(index, count)");
-            assertThat(gameScript).contains("--seat-fan-index");
+            assertThat(gameScript).contains("Math.min(3, 32 / (target - 1))");
+            assertThat(gameScript).contains("--seat-fan-rotation");
             assertThat(gameScript).contains("is-dense-player-ring");
             assertThat(gameScript).contains("/app/game/durak/action");
             assertThat(gameScript).contains("function playOnRotate(card)");
@@ -197,6 +274,13 @@ class AdminTemplateRenderingTest {
             assertThat(adminScript).contains("syncGamesModeFilter();");
             assertThat(adminTemplate).contains("<option value=\"DURAK\">Durak</option>");
             assertThat(adminTemplate).contains("<option value=\"durak\">Durak</option>");
+        }
+    }
+
+    private String resource(String path) throws IOException {
+        try (var stream = getClass().getResourceAsStream(path)) {
+            assertThat(stream).isNotNull();
+            return new String(stream.readAllBytes());
         }
     }
 }

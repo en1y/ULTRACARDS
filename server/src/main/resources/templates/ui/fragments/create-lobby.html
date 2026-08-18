@@ -37,17 +37,51 @@
                         </select>
                     </label>
 
-                    <label class="create-lobby-visibility-row" for="create-lobby-public">
-                        <span>
-                            <span class="create-lobby-meta-label" th:text="#{createLobby.visibility}">Visibility</span>
-                            <span id="create-lobby-visibility-text" class="create-lobby-visibility-value" th:text="#{createLobby.visibility.publicLobby}">Public lobby</span>
-                        </span>
-                        <span class="create-lobby-visibility-control">
-                            <input id="create-lobby-public" type="checkbox" checked>
-                            <span class="visibility-switch" aria-hidden="true"></span>
-                            <span id="create-lobby-public-toggle-label" th:text="#{createLobby.visibility.public}">Public</span>
-                        </span>
-                    </label>
+                    <div class="create-lobby-meta-grid">
+                        <label class="create-lobby-visibility-row" for="create-lobby-public">
+                            <span>
+                                <span class="create-lobby-meta-label" th:text="#{createLobby.visibility}">Visibility</span>
+                                <span id="create-lobby-visibility-text" class="create-lobby-visibility-value" th:text="#{createLobby.visibility.publicLobby}">Public lobby</span>
+                            </span>
+                            <span class="create-lobby-visibility-control">
+                                <input id="create-lobby-public" type="checkbox" checked>
+                                <span class="visibility-switch" aria-hidden="true"></span>
+                                <span id="create-lobby-public-toggle-label" th:text="#{createLobby.visibility.public}">Public</span>
+                            </span>
+                        </label>
+
+                        <section class="create-lobby-wager" aria-labelledby="create-wager-title">
+                            <label class="create-lobby-wager-toggle" for="create-wager-enabled">
+                                <span id="create-wager-title" class="create-lobby-visibility-value" th:text="#{points.wager.title}">Bet Points</span>
+                                <span class="create-lobby-visibility-control">
+                                    <input id="create-wager-enabled" type="checkbox" checked>
+                                    <span class="visibility-switch" aria-hidden="true"></span>
+                                </span>
+                            </label>
+                            <div id="create-wager-editor" class="create-lobby-wager-editor wager-editor" aria-disabled="false">
+                                <div class="wager-head">
+                                    <span class="wager-head-label" th:text="#{points.wager.stake}">Your bet</span>
+                                    <strong class="wager-amount"><span data-wager-amount>100</span><span
+                                            class="points-symbol" th:text="#{points.symbol}">P</span></strong>
+                                </div>
+                                <input id="create-wager-range" class="wager-range" type="range"
+                                       th:aria-label="#{points.wager.stake}">
+                                <div class="wager-ticks" aria-hidden="true"></div>
+                                <div class="wager-presets" th:aria-label="#{points.wager.stake}">
+                                    <button type="button" data-wager-preset="100">100</button>
+                                    <button type="button" data-wager-preset="500">500</button>
+                                    <button type="button" data-wager-preset="1000">1,000</button>
+                                    <button type="button" data-wager-preset="5000">5,000</button>
+                                    <button type="button" data-wager-preset="10000">10,000</button>
+                                    <button type="button" data-wager-preset="50000">50,000</button>
+                                    <button type="button" data-wager-preset="100000">100,000</button>
+                                    <button type="button" data-wager-preset="500000">500,000</button>
+                                    <button type="button" data-wager-preset="1000000">1,000,000</button>
+                                </div>
+                                <p class="wager-help" data-wager-fee th:text="#{points.wager.help(4)}">Everyone bets this. Winners split the pot.</p>
+                            </div>
+                        </section>
+                    </div>
 
                     <div id="create-game-settings" class="create-lobby-settings" hidden="hidden"></div>
                     <p id="create-lobby-status" class="create-lobby-status" aria-live="polite" th:text="#{createLobby.status.pickGame}">Pick a game to continue.</p>

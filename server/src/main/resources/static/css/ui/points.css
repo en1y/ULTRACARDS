@@ -1,0 +1,596 @@
+.points-page {
+    display: grid;
+    /* minmax(0,…) or the ledger table's min-content width stretches every card
+       past the viewport on a phone. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    padding-block: clamp(1rem, 3vw, 2.5rem);
+}
+
+.points-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    padding: clamp(1.2rem, 4vw, 2.4rem);
+    overflow: hidden;
+}
+
+.points-hero h1,
+.points-section-head h2,
+.points-grid h2 {
+    margin: .2rem 0 .55rem;
+}
+
+.points-kicker {
+    margin: 0;
+    color: var(--color-accent);
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-size: .78rem;
+}
+
+.points-balance {
+    min-width: 12rem;
+    display: grid;
+    text-align: right;
+}
+
+.points-balance strong {
+    font-size: clamp(2rem, 7vw, 3.7rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.points-balance small,
+.points-status {
+    color: var(--color-text-muted);
+}
+
+.points-grid {
+    display: grid;
+    grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+    gap: 1rem;
+}
+
+.points-grid > article,
+.points-ledger-card {
+    padding: 1.2rem;
+}
+
+.points-claim-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    overflow: hidden;
+}
+
+.points-claim-copy p:last-child {
+    margin-bottom: 0;
+    color: var(--color-text-muted);
+}
+
+.points-daily-reward {
+    min-width: 8.4rem;
+    padding: 1rem;
+    display: grid;
+    justify-items: center;
+    border: 1px solid color-mix(in oklab, var(--color-points) 55%, var(--color-border));
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-2);
+}
+
+.points-daily-coin {
+    margin-top: .45rem;
+    width: 2.65rem;
+    height: 2.65rem;
+    display: grid;
+    place-items: center;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    background: var(--color-surface);
+    font-size: 1.3rem;
+}
+
+.points-daily-reward strong {
+    color: var(--color-points);
+    font-size: 1.45rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.points-daily-reward > span:last-child {
+    margin-top: .25rem;
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.points-claim-button {
+    grid-column: 1 / -1;
+    min-height: 3rem;
+    justify-content: space-between !important;
+    background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
+}
+
+.points-claim-button-value {
+    padding-left: .85rem;
+    border-left: 1px solid color-mix(in oklab, var(--color-text) 18%, transparent);
+}
+
+.points-status {
+    grid-column: 1 / -1;
+    min-height: 1.5rem;
+    margin: 0;
+}
+
+.points-achievements {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 1rem;
+}
+
+.points-achievement {
+    position: relative;
+    min-width: 0;
+    padding: .9rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: .65rem;
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: color-mix(in oklab, var(--color-surface-2) 45%, var(--color-surface));
+}
+
+.points-achievement-icon,
+.points-event-goal-state {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--color-points) 12%, var(--color-bg));
+    color: var(--color-points);
+    font-size: 1rem;
+}
+
+.points-achievement-copy {
+    min-width: 0;
+    display: grid;
+    gap: .12rem;
+}
+
+.points-achievement-copy strong {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.points-achievement-copy small {
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.points-achievement-reward {
+    color: var(--color-points);
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.points-achievement-track {
+    grid-column: 1 / -1;
+    height: .4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-surface-2);
+}
+
+.points-achievement-track span {
+    display: block;
+    width: var(--achievement-progress);
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-points);
+    transition: width 320ms ease;
+}
+
+.points-achievement.is-complete {
+    border-color: color-mix(in oklab, var(--color-points) 68%, var(--color-border));
+    background: color-mix(in oklab, var(--color-points) 9%, var(--color-surface));
+}
+
+.points-achievement.is-complete .points-achievement-icon,
+.points-event-achievement.is-complete .points-event-goal-state {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 0;
+    background: var(--color-points);
+    color: #201600;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.points-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem 1rem;
+}
+
+.points-refresh,
+.points-page-arrow {
+    width: 2.6rem;
+    height: 2.6rem;
+    padding: .55rem;
+}
+
+.points-ledger-shell {
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.points-ledger {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.points-ledger th,
+.points-ledger td {
+    padding: .75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.points-ledger th:nth-child(n+2),
+.points-ledger td:nth-child(n+2) {
+    text-align: right;
+}
+
+.points-ledger time {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.points-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: .8rem;
+    margin-top: 1rem;
+}
+
+.points-pagination > span {
+    min-width: 5.5rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+    .points-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .points-balance { text-align: left; }
+    .points-grid { grid-template-columns: 1fr; }
+    .points-ledger th:nth-child(3),
+    .points-ledger td:nth-child(3) { display: none; }
+}
+
+@media (max-width: 520px) {
+    .points-claim-card { grid-template-columns: 1fr; }
+    .points-daily-reward { grid-row: 2; }
+    .points-achievements { grid-template-columns: 1fr; }
+    .points-ledger th,
+    .points-ledger td { padding-inline: .55rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .points-achievement-track span { transition: none; }
+}
+
+.points-chart-card {
+    display: grid;
+    gap: 1.1rem;
+    padding: 1.2rem;
+}
+
+.points-chart-shell {
+    position: relative;
+    height: clamp(200px, 34vh, 340px);
+    padding: 0.35rem 0.15rem 0;
+}
+
+/* The class sets display, so it has to opt back out of [hidden] explicitly. */
+.points-chart-empty[hidden] {
+    display: none;
+}
+
+.points-chart-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+.points-fee {
+    display: block;
+    margin-top: .35rem;
+    color: var(--color-text-muted);
+}
+
+.points-events-card { margin-top: 1rem; padding: 1.2rem; }
+.points-events { display: grid; gap: .6rem; margin-top: 1rem; }
+.points-events-list { display: grid; gap: .6rem; padding-top: .6rem; }
+
+/* Only the most pressing event is on show; everything else waits behind this. */
+.points-events-more > summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    cursor: pointer;
+    list-style: none;
+    font-size: .9rem;
+    color: var(--color-text-muted);
+}
+
+.points-events-more > summary::-webkit-details-marker { display: none; }
+.points-events-more > summary:focus-visible { outline: 2px solid var(--color-points); outline-offset: 2px; }
+.points-events-more[open] > summary .points-events-more-show,
+.points-events-more:not([open]) > summary .points-events-more-hide { display: none; }
+
+.points-event {
+    border: 1px solid var(--color-border);
+    border-left: .25rem solid var(--color-points);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+}
+
+.points-event.is-upcoming { border-left-color: var(--color-text-muted); }
+.points-event.is-past { border-left-color: var(--color-border); opacity: .85; }
+.points-event.is-failed { border-left-color: var(--color-danger); }
+.points-event.is-complete { border-left-color: var(--color-success); }
+
+/* Two explicit rows: title over progress on the left, state over reward on the
+   right, chevron spanning both. Auto-placement used to shuffle these five
+   children whenever an event had no goals to show. */
+.points-event > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 1rem;
+    gap: .5rem .9rem;
+    align-items: center;
+    padding: .9rem 1rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    list-style: none;
+}
+
+.points-event > summary::-webkit-details-marker { display: none; }
+.points-event > summary:hover { background: var(--color-surface-2); }
+.points-event > summary:focus-visible { outline: 2px solid var(--color-points); outline-offset: -2px; }
+
+.points-event-heading { grid-column: 1; grid-row: 1; min-width: 0; }
+.points-event > summary > .points-event-state { grid-column: 2; grid-row: 1; }
+.points-event > summary > .points-event-chevron { grid-column: 3; grid-row: 1 / -1; }
+.points-event-progress { grid-column: 1; grid-row: 2; }
+.points-event-total-reward { grid-column: 2; grid-row: 2; }
+
+.points-event-heading h4 { margin: 0 0 .35rem; font-size: 1.15rem; overflow-wrap: anywhere; }
+.points-event-heading time { display: block; color: var(--color-text-muted); font-size: .85rem; }
+
+.points-event-chevron {
+    justify-self: end;
+    width: .5rem;
+    height: .5rem;
+    border-right: 2px solid var(--color-text-muted);
+    border-bottom: 2px solid var(--color-text-muted);
+    transform: rotate(45deg);
+    transition: transform 180ms ease;
+}
+
+.points-event[open] > summary .points-event-chevron,
+.points-events-more[open] > summary .points-event-chevron { transform: rotate(-135deg); }
+
+.points-event-progress { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.points-event-progress .points-event-progress-track { flex: 1; min-width: 3rem; }
+.points-event-progress strong {
+    color: var(--color-text-muted);
+    font-size: .82rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.points-event-body { display: grid; gap: .75rem; padding: .75rem 1rem 1rem; }
+.points-event-description { max-width: 62rem; margin: 0; }
+.points-event-description code {
+    padding: .1rem .35rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-2);
+    font-size: .9em;
+}
+.points-event-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .9rem; }
+
+.points-event-state {
+    justify-self: end;
+    padding: .25rem .55rem;
+    border: 1px solid color-mix(in oklab, var(--color-success) 45%, var(--color-border));
+    border-radius: 999px;
+    color: var(--color-success);
+    background: color-mix(in oklab, var(--color-success) 12%, var(--color-surface));
+    font-size: .75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.points-event.is-upcoming .points-event-state,
+.points-event.is-past .points-event-state {
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+    background: var(--color-surface-2);
+}
+
+.points-event-games,
+.points-event-bonus,
+.points-event-total-reward {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .4rem;
+    min-width: 0;
+}
+
+.points-event-games > small,
+.points-event-total-reward > small,
+.points-event-bonus > small {
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 750;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.points-event-game-list { display: flex; flex-wrap: wrap; gap: .4rem; }
+.points-event-game-list span {
+    padding: .2rem .55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg);
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.points-event-total-reward { justify-self: end; white-space: nowrap; }
+.points-event-bonus { margin-left: auto; }
+
+.points-event-progress-track,
+.points-event-target-track {
+    display: block;
+    height: .5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-surface-2);
+}
+
+.points-event-progress-track > span,
+.points-event-target-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-points);
+    transition: width 320ms ease;
+}
+
+.points-event-progress-track > span { width: var(--event-progress); }
+.points-event.is-complete .points-event-progress-track > span { background: var(--color-success); }
+
+.points-event-notice {
+    margin: 0;
+    padding: .7rem .8rem;
+    border: 1px solid color-mix(in oklab, orange 45%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-text-muted);
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.points-event-achievements { display: grid; gap: .65rem; }
+
+.points-event-achievement {
+    display: grid;
+    gap: .75rem;
+    padding: .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.points-event-achievement > header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: .65rem;
+    align-items: center;
+}
+
+.points-event-goal-copy { min-width: 0; }
+.points-event-goal-copy h5 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.points-event-goal-copy small { color: var(--color-text-muted); }
+.points-event-goal-description { color: var(--color-text-muted); font-size: .86rem; }
+.points-event-achievement.is-complete {
+    border-color: color-mix(in oklab, var(--color-success) 50%, var(--color-border));
+    background: color-mix(in oklab, var(--color-success) 6%, var(--color-bg));
+}
+
+.points-event-targets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: .55rem;
+}
+
+.points-event-goal-games { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.points-event-goal-games small {
+    margin-right: .15rem;
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 750;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.points-event-goal-games > .points-event-game-list > span {
+    padding: .15rem .45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.points-event-target {
+    display: grid;
+    gap: .4rem;
+    padding: .55rem .65rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+}
+
+.points-event-target > span:first-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.points-event-target small { color: var(--color-text-muted); }
+.points-event-target strong { font-size: .82rem; font-variant-numeric: tabular-nums; }
+.points-event-target-track > span { width: var(--event-target-progress); }
+.points-event-target.is-complete .points-event-target-track > span { background: var(--color-success); }
+.points-event-reward { flex: none; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+    .points-event-progress-track > span,
+    .points-event-target-track > span,
+    .points-event-chevron { transition: none; }
+}
+
+@media (max-width: 560px) {
+    .points-events-card { padding: .85rem; }
+    .points-event > summary { padding: .8rem; }
+    .points-event-body { padding: 0 .8rem .8rem; }
+    /* Too narrow to keep the reward beside the bar — give each its own line. */
+    .points-event-progress { grid-column: 1 / 3; grid-row: 2; }
+    .points-event-total-reward { grid-column: 1 / 3; grid-row: 3; justify-self: start; }
+    .points-event-bonus { margin-left: 0; }
+    .points-event-achievement > header { align-items: start; }
+}

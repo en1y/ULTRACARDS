@@ -13,6 +13,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.ultracards.server.service.points.PointsService;
 
 import java.time.Instant;
 
@@ -27,7 +29,9 @@ public class UserService {
     private final UserDurakStatsService userDurakStatsService;
     private final UserGamesStatsService userGamesStatsService;
     private final UserRepository userRepository;
+    private final PointsService pointsService;
 
+    @Transactional
     public UserEntity createUser(@Valid EmailDTO email) {
         if (email.getEmail().length() > MAX_EMAIL_LENGTH)
             throw new IllegalArgumentException("Email too long");
@@ -38,6 +42,7 @@ public class UserService {
         userBriskulaStatsService.createEmptyStats(user);
         userTresetaStatsService.createEmptyStats(user);
         userDurakStatsService.createEmptyStats(user);
+        pointsService.initialize(user);
         return user;
     }
 

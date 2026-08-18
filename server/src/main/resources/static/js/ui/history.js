@@ -101,6 +101,17 @@
   const durakPlayer = (game) => (game.playersOrder || [])
     .find((player) => !(game.winners || []).some((winner) => playerId(winner) === playerId(player))) || null;
 
+  // What the game did to your balance: stake, payout and rewards netted out.
+  const pointsBadge = (game) => {
+    const delta = Number(game?.pointsDelta);
+    if (!Number.isFinite(delta) || delta === 0) return '';
+    const sign = delta > 0 ? '+' : '−';
+    const title = delta > 0 ? t('history.pointsWon') : t('history.pointsLost');
+    return `<span class="history-points points-delta ${delta > 0 ? 'is-up' : 'is-down'}" title="${escapeHtml(title)}">`
+      + `${sign}${escapeHtml(pointsCompactAmount(Math.abs(delta)))}`
+      + `<span class="points-symbol">${escapeHtml(t('points.symbol'))}</span></span>`;
+  };
+
   const renderGame = (game) => {
     const won = currentUserWon(game);
     if (isDurakGame(game)) return renderDurakGame(game, won);
@@ -116,7 +127,10 @@
               <span>${escapeHtml(settingsText(game, game.gameConfig))}</span>
             </div>
           </div>
-          <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
+          <div class="history-card-outcome">
+            ${pointsBadge(game)}
+            <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
+          </div>
         </div>
         <div class="history-card-row">
           <strong>${t('lobby.players.chip')}</strong>
@@ -146,7 +160,10 @@
               <span>${escapeHtml(settingsText(game, game.gameConfig))}</span>
             </div>
           </div>
-          <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
+          <div class="history-card-outcome">
+            ${pointsBadge(game)}
+            <span class="history-result ${won ? 'win' : 'loss'}" title="${won ? t('history.win') : t('history.loss')}">${won ? t('history.winLetter') : t('history.lossLetter')}</span>
+          </div>
         </div>
         <div class="history-card-row">
           <strong>${t('lobby.players.chip')}</strong>

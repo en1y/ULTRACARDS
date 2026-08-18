@@ -7,6 +7,11 @@ public record LeaderboardEntryDTO(
         long gamesPlayed,
         long wins,
         double winRate,
+        long points,
         boolean currentUser
 ) {
+    public LeaderboardEntryDTO(long position, Long userId, String username, long gamesPlayed,
+                               long wins, double winRate, boolean currentUser) {
+        this(position, userId, username, gamesPlayed, wins, winRate, 0, currentUser);
+    }
 }

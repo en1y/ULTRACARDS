@@ -73,6 +73,39 @@ class DurakGameEntityTest {
         assertThat(actor.handSize()).isEqualTo(6);
     }
 
+    /**
+     * Several players act inside one bout at once, so an action a beat behind is normal traffic
+     * rather than a mistake — but one from a bout that has already been cleared is not, because
+     * slot ids restart with the new table.
+     */
+    @Test
+    void acceptsAnEarlierRevisionFromTheSameBoutButNotFromAFinishedOne() {
+        var game = game(2, 36, false, false);
+        var attacker = game.getActionPlayer();
+        game.apply(attacker.getUser(),
+                request(DurakActionTypeDTO.ATTACK, attacker.getHand().getCards().getFirst().code(), null, 0L));
+        var defender = game.getActionPlayer();
+
+        // Composed one revision ago, still about the table on screen.
+        game.apply(defender.getUser(), request(DurakActionTypeDTO.TAKE, null, null, 0L));
+        assertThat(game.getStateRevision()).isEqualTo(2L);
+
+        // The attacker closing the throw window ends the bout and starts a new one.
+        game.apply(attacker.getUser(), request(DurakActionTypeDTO.DONE, null, null, 0L));
+        assertThat(game.createGameDTO().getPhase()).isEqualTo(DurakPhaseDTO.WAITING_FOR_ATTACK);
+
+        var next = game.getActionPlayer();
+        var card = next.getHand().getCards().getFirst();
+        assertThatThrownBy(() -> game.apply(next.getUser(),
+                request(DurakActionTypeDTO.ATTACK, card.code(), null, 2L)))
+                .isInstanceOf(DurakRuleException.class)
+                .extracting(ex -> ((DurakRuleException) ex).getCode())
+                .isEqualTo(DurakErrorCode.DURAK_STALE_REVISION);
+
+        game.apply(next.getUser(), request(DurakActionTypeDTO.ATTACK, card.code(), null, 3L));
+        assertThat(game.createGameDTO().getAttackSlots()).hasSize(1);
+    }
+
     @Test
     void rejectsAnActionFromAnyoneButTheActionPlayer() {
         var game = game(3, 36, false, false);

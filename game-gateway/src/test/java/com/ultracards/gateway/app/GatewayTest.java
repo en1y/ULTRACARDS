@@ -92,6 +92,8 @@ class GatewayTest {
                 null, 30, config, List.of(), List.of());
         var event = new GameEventDTO<>(game, GameEventDTO.GameEventTypeDTO.RESULTED);
         event.setResult(new GameResultDTO(List.of(player), 33));
+        event.getResult().setWagerPayouts(Map.of(1L, 148L));
+        event.getResult().setWagerDeltas(Map.of(1L, 48L, 2L, -100L));
 
         var mapper = new ObjectMapper();
         var json = mapper.writeValueAsString(event);
@@ -100,6 +102,8 @@ class GatewayTest {
         assertInstanceOf(TresetaGameEntityDTO.class, copy.getGameEntity());
         assertInstanceOf(TresetaGameConfigDTO.class, copy.getGameEntity().getGameConfig());
         assertEquals(33, copy.getResult().getWinnerPointsNum());
+        assertEquals(Map.of(1L, 148L), copy.getResult().getWagerPayouts());
+        assertEquals(Map.of(1L, 48L, 2L, -100L), copy.getResult().getWagerDeltas());
 
         var generic = mapper.readValue(json, new TypeReference<GameEventDTO<GameEntityDTO>>() {});
         assertInstanceOf(GameEntityDTO.class, generic.getGameEntity());

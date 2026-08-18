@@ -53,9 +53,39 @@
       }
     };
 
+    // The theme toggle rides the search row on phones, which frees enough of the
+    // top row for the whole ULTRACARDS wordmark. Moved rather than duplicated:
+    // theme.js binds one toggle and syncs its aria-pressed.
+    const narrowHeader = window.matchMedia('(max-width: 880px)');
+    let themeToggle = null;
+    let toggleParent = null;
+    let toggleAnchor = null;
+
+    const placeThemeToggle = () => {
+      themeToggle = themeToggle || document.querySelector('.uc-header .theme-toggle');
+      const searchZone = document.querySelector('.uc-header-zone-search');
+      if (!themeToggle || !searchZone) {
+        return;
+      }
+      if (!toggleParent) {
+        toggleParent = themeToggle.parentElement;
+        toggleAnchor = themeToggle.nextElementSibling;
+      }
+      if (narrowHeader.matches) {
+        searchZone.append(themeToggle);
+      } else if (themeToggle.parentElement !== toggleParent) {
+        toggleParent.insertBefore(themeToggle, toggleAnchor);
+      }
+    };
+
     return {
       init() {
+        placeThemeToggle();
         refreshHeaderMetrics();
+        narrowHeader.addEventListener('change', () => {
+          placeThemeToggle();
+          refreshHeaderMetrics();
+        });
         window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('resize', refreshHeaderMetrics);
       }

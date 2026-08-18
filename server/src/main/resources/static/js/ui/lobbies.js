@@ -149,11 +149,20 @@ const gameSettingsAnimationDurationMs = 420;
             const toastText = document.getElementById('lobbies-toast-text');
             const lobbyClosedNoticeKey = 'uc-lobby-closed-notice';
             const lobbyFilterStorageKey = 'uc-lobbies-filter';
+            const betFilter = document.getElementById('bet-filter');
+            const betMinRange = document.getElementById('bet-filter-min');
+            const betMaxRange = document.getElementById('bet-filter-max');
+            const betFreeInput = document.getElementById('bet-filter-free');
+            const betMinLabel = document.querySelector('[data-bet-min]');
+            const betMaxLabel = document.querySelector('[data-bet-max]');
             const filterState = {
                 gameType: 'all',
                 durak: null,
                 settingKey: '',
-                settingId: null
+                settingId: null,
+                betMin: WAGER_MIN,
+                betMax: WAGER_MAX,
+                betFree: true
             };
             let latestFilterRequestId = 0;
             let toastHideTimer = null;
@@ -171,27 +180,57 @@ const gameSettingsAnimationDurationMs = 420;
                 }
             }
 
+            // ponytail: the two bet sliders are read as a set (low, high) rather than
+            // clamped against each other, so neither thumb jumps out from under the cursor.
+            function betBounds() {
+                const first = wagerStep(betMinRange?.value ?? 0);
+                const second = wagerStep(betMaxRange?.value ?? WAGER_MAX);
+                return {min: Math.min(first, second), max: Math.max(first, second)};
+            }
+
+            function syncBetLabels() {
+                const {min, max} = betBounds();
+                // Compact ("50K P") so the widest pair still fits the sidebar on one line.
+                if (betMinLabel) betMinLabel.textContent = pointsCompactAmount(min);
+                if (betMaxLabel) betMaxLabel.textContent = pointsCompactAmount(max);
+                const lastIndex = wagerIndex(WAGER_MAX) || 1;
+                betFilter?.style.setProperty('--wager-low', String(wagerIndex(min) / lastIndex));
+                betFilter?.style.setProperty('--wager-high', String(wagerIndex(max) / lastIndex));
+            }
+
+            function describeBetFilter() {
+                const narrowed = filterState.betMin > WAGER_MIN || filterState.betMax < WAGER_MAX;
+                if (!narrowed && filterState.betFree) {
+                    return '';
+                }
+
+                const range = `${pointsText(filterState.betMin)}–${pointsText(filterState.betMax)}`;
+                return filterState.betFree ? t('lobbies.filter.betSummaryFree', range) : t('lobbies.filter.betSummary', range);
+            }
+
             function syncFilterSummary() {
                 if (!activeFilterSummary) {
                     return;
                 }
 
+                const bet = describeBetFilter();
+                const parts = [];
                 if (filterState.gameType === 'all') {
-                    activeFilterSummary.textContent = t('common.allGames');
-                    return;
+                    parts.push(t('common.allGames'));
+                } else {
+                    const gameName = getGameTypeDisplayName(filterState.gameType);
+                    parts.push(gameName);
+                    if (filterState.gameType === 'durak') {
+                        parts.push(describeDurakFilter(filterState.durak));
+                    } else {
+                        const setting = filterState.settingKey
+                            ? getGameTypeSetting(filterState.gameType, filterState.settingKey)
+                            : null;
+                        if (setting?.ui_text) parts.push(setting.ui_text);
+                    }
                 }
-
-                const gameName = getGameTypeDisplayName(filterState.gameType);
-                if (filterState.gameType === 'durak') {
-                    activeFilterSummary.textContent = `${gameName} · ${describeDurakFilter(filterState.durak)}`;
-                    return;
-                }
-                const setting = filterState.settingKey
-                    ? getGameTypeSetting(filterState.gameType, filterState.settingKey)
-                    : null;
-                activeFilterSummary.textContent = setting?.ui_text
-                    ? `${gameName} · ${setting.ui_text}`
-                    : gameName;
+                if (bet) parts.push(bet);
+                activeFilterSummary.textContent = parts.join(' · ');
             }
 
             function normalizeCode(value) {
@@ -325,10 +364,18 @@ const gameSettingsAnimationDurationMs = 420;
                 }).join('');
             }
 
+            function lobbyStake(lobby) {
+                return lobby?.wager?.enabled === true ? Number(lobby.wager.stakePoints) || 0 : 0;
+            }
+
             function renderCard(lobby) {
                 const players = Array.isArray(lobby.players) ? lobby.players : [];
                 const openSlots = Math.max((lobby.maxPlayers ?? players.length) - players.length, 0);
                 const hostId = lobby.host?.id ?? null;
+                const stake = lobbyStake(lobby);
+                const betChip = stake
+                    ? `<span class="chip lobby-card-bet">${escapeHtml(pointsCompactAmount(stake))}${escapeHtml(t('points.symbol'))} ${escapeHtml(t('points.wager.perPlayer'))}</span>`
+                    : '';
                 return `
                     <article class="card lobby-card" data-id="${escapeHtml(lobby.id)}">
                         <div class="lobby-card-head">
@@ -337,7 +384,10 @@ const gameSettingsAnimationDurationMs = 420;
                                 <h3>${escapeHtml(lobby.name || t('lobbies.lobbyFallback', lobby.id))}</h3>
                                 <p class="lobby-card-subtitle">${t('lobbies.hostLabel', escapeHtml(lobby.host?.name || t('history.unknown')))}</p>
                             </div>
-                            <span class="chip">${t('lobby.playerCount', players.length, lobby.maxPlayers ?? '')}</span>
+                            <div class="lobby-card-chips">
+                                <span class="chip">${t('lobby.playerCount', players.length, lobby.maxPlayers ?? '')}</span>
+                                ${betChip}
+                            </div>
                         </div>
 
                         <div class="lobby-card-settings">
@@ -360,27 +410,25 @@ const gameSettingsAnimationDurationMs = 420;
             }
 
             function getSelectedFilter() {
+                const bounds = betBounds();
+                const bet = {betMin: bounds.min, betMax: bounds.max, betFree: betFreeInput?.checked !== false};
                 const gameType = gameTypeSelect?.value || 'all';
                 if (gameType === 'all') {
-                    return {
-                        gameType: 'all',
-                        settingKey: '',
-                        settingId: null
-                    };
+                    return {gameType: 'all', settingKey: '', settingId: null, ...bet};
                 }
 
                 if (gameType === 'durak') {
-                    return {gameType, settingKey: '', settingId: null, durak: readDurakFilter('lobbies-')};
+                    return {gameType, settingKey: '', settingId: null, durak: readDurakFilter('lobbies-'), ...bet};
                 }
 
                 const settings = getGameTypeSettings(gameType) || {};
                 const selectedSettingKey = document.getElementById('properties')?.value || Object.keys(settings)[0] || '';
-                const selectedSettingId = getGameTypeSettingId(gameType, selectedSettingKey);
 
                 return {
                     gameType,
                     settingKey: selectedSettingKey,
-                    settingId: selectedSettingId
+                    settingId: getGameTypeSettingId(gameType, selectedSettingKey),
+                    ...bet
                 };
             }
 
@@ -399,7 +447,10 @@ const gameSettingsAnimationDurationMs = 420;
                     window.localStorage.setItem(lobbyFilterStorageKey, JSON.stringify({
                         gameType: nextFilter.gameType,
                         settingKey: nextFilter.settingKey,
-                        durak: nextFilter.durak || null
+                        durak: nextFilter.durak || null,
+                        betMin: nextFilter.betMin,
+                        betMax: nextFilter.betMax,
+                        betFree: nextFilter.betFree
                     }));
                 } catch (error) {
                     console.error('Unable to persist lobby filter', error);
@@ -414,17 +465,18 @@ const gameSettingsAnimationDurationMs = 420;
                     }
 
                     const parsedFilter = JSON.parse(rawFilter);
+                    const bet = {
+                        betMin: roundWager(parsedFilter?.betMin ?? WAGER_MIN),
+                        betMax: roundWager(parsedFilter?.betMax ?? WAGER_MAX),
+                        betFree: parsedFilter?.betFree !== false
+                    };
                     if (!parsedFilter || parsedFilter.gameType === 'all') {
-                        return {
-                            gameType: 'all',
-                            settingKey: '',
-                            settingId: null
-                        };
+                        return {gameType: 'all', settingKey: '', settingId: null, ...bet};
                     }
 
                     const gameType = String(parsedFilter.gameType || '').toLowerCase();
                     if (gameType === 'durak') {
-                        return {gameType, settingKey: '', settingId: null, durak: parsedFilter.durak || null};
+                        return {gameType, settingKey: '', settingId: null, durak: parsedFilter.durak || null, ...bet};
                     }
                     const settingKey = String(parsedFilter.settingKey || '');
                     if (!gameType || !settingKey || !getGameTypeSetting(gameType, settingKey)) {
@@ -434,7 +486,8 @@ const gameSettingsAnimationDurationMs = 420;
                     return {
                         gameType,
                         settingKey,
-                        settingId: getGameTypeSettingId(gameType, settingKey)
+                        settingId: getGameTypeSettingId(gameType, settingKey),
+                        ...bet
                     };
                 } catch (error) {
                     console.error('Unable to read saved lobby filter', error);
@@ -443,6 +496,11 @@ const gameSettingsAnimationDurationMs = 420;
             }
 
             function syncFilterControls(nextFilter) {
+                if (betMinRange) betMinRange.value = String(wagerIndex(nextFilter.betMin ?? WAGER_MIN));
+                if (betMaxRange) betMaxRange.value = String(wagerIndex(nextFilter.betMax ?? WAGER_MAX));
+                if (betFreeInput) betFreeInput.checked = nextFilter.betFree !== false;
+                syncBetLabels();
+
                 if (!gameTypeSelect) {
                     return;
                 }
@@ -460,8 +518,25 @@ const gameSettingsAnimationDurationMs = 420;
                 }
             }
 
+            function lobbyMatchesBet(lobby) {
+                const stake = lobbyStake(lobby);
+                if (!stake) {
+                    return filterState.betFree;
+                }
+
+                return stake >= filterState.betMin && stake <= filterState.betMax;
+            }
+
             function lobbyMatchesFilter(lobby) {
-                if (!lobby || filterState.gameType === 'all') {
+                if (!lobby) {
+                    return true;
+                }
+
+                if (!lobbyMatchesBet(lobby)) {
+                    return false;
+                }
+
+                if (filterState.gameType === 'all') {
                     return true;
                 }
 
@@ -495,6 +570,9 @@ const gameSettingsAnimationDurationMs = 420;
                 filterState.settingKey = nextFilter.settingKey;
                 filterState.settingId = nextFilter.settingId;
                 filterState.durak = nextFilter.durak || null;
+                filterState.betMin = nextFilter.betMin ?? WAGER_MIN;
+                filterState.betMax = nextFilter.betMax ?? WAGER_MAX;
+                filterState.betFree = nextFilter.betFree !== false;
                 persistFilter(nextFilter);
                 syncFilterSummary();
             }
@@ -542,17 +620,17 @@ const gameSettingsAnimationDurationMs = 420;
             }
 
             async function clearFilters() {
-                if (gameTypeSelect) {
-                    gameTypeSelect.value = 'all';
-                    handleGameTypeChange(gameTypeSelect);
-                }
+                syncFilterControls({gameType: 'all', betMin: WAGER_MIN, betMax: WAGER_MAX, betFree: true});
 
                 try {
                     await refreshLobbies({
                         gameType: 'all',
                         settingKey: '',
                         settingId: null,
-                        durak: null
+                        durak: null,
+                        betMin: WAGER_MIN,
+                        betMax: WAGER_MAX,
+                        betFree: true
                     });
                     setFilterPanelOpen(false);
                 } catch (error) {
@@ -708,6 +786,17 @@ const gameSettingsAnimationDurationMs = 420;
             gameTypeSelect?.addEventListener('change', (event) => {
                 handleGameTypeChange(event.currentTarget);
             });
+
+            renderWagerTicks(document.querySelector('#bet-filter .wager-ticks'));
+            [betMinRange, betMaxRange].forEach((range, index) => {
+                if (!range) return;
+                range.min = '0';
+                range.max = String(wagerIndex(WAGER_MAX));
+                range.step = '1';
+                range.value = index === 0 ? range.min : range.max;
+                range.addEventListener('input', syncBetLabels);
+            });
+            syncBetLabels();
 
             const savedFilter = readSavedFilter();
             if (savedFilter) {

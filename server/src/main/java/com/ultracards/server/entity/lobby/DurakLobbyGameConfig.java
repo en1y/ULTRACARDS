@@ -44,6 +44,9 @@ public class DurakLobbyGameConfig implements GameConfig {
     }
 
     @Override
+    public String modeKey() { return gameConfig.modeKey(); }
+
+    @Override
     public GameEntity<?, ?> createGame(UUID lobbyId, String name, UserEntity owner, List<UserEntity> users) {
         if (users.size() != gameConfig.numberOfPlayers()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,

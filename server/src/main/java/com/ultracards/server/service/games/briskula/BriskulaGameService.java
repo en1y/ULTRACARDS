@@ -18,6 +18,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.ultracards.server.service.points.PointsService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +34,7 @@ import java.util.function.Function;
 
 import static com.ultracards.gateway.dto.games.games.GameEventDTO.GameEventTypeDTO.*;
 
+@Slf4j
 @Service
 public class BriskulaGameService {
     private final GameManager gameManager;
@@ -42,6 +46,8 @@ public class BriskulaGameService {
     private final GameRecordingService gameRecordingService;
     private final TaskScheduler taskScheduler;
     private final Function<LobbyEntity, Boolean> openLobby;
+    private final TransactionTemplate transactionTemplate;
+    private final PointsService pointsService;
     private final Map<BriskulaGameConfig, BiFunction<UserEntity, BriskulaGameEntity, Void>> onCardPlayedByConfig;
 
     @Value("${app.briskula-move.timer.duration-seconds}")
@@ -56,6 +62,8 @@ public class BriskulaGameService {
             UserGamesStatsService userGamesStatsService,
             GameRecordingService gameRecordingService,
             @Qualifier("timer") TaskScheduler taskScheduler,
+            TransactionTemplate transactionTemplate,
+            PointsService pointsService,
             @Qualifier("openLobby") @Lazy Function<LobbyEntity, Boolean> openLobby) {
         this.gameManager = gameManager;
         this.eventPublisher = eventPublisher;
@@ -65,6 +73,8 @@ public class BriskulaGameService {
         this.userGamesStatsService = userGamesStatsService;
         this.gameRecordingService = gameRecordingService;
         this.taskScheduler = taskScheduler;
+        this.transactionTemplate = transactionTemplate;
+        this.pointsService = pointsService;
         this.openLobby = openLobby;
         this.onCardPlayedByConfig = createOnCardPlayedByConfig();
     }
@@ -131,6 +141,29 @@ public class BriskulaGameService {
     }
 
     private void handleEndGame(BriskulaGameEntity game) {
+        try {
+            if (!game.isFinalizationPersisted()) {
+                transactionTemplate.executeWithoutResult(status -> persistFinalization(game));
+                gameRecordingService.release(game);
+                game.setFinalizationPersisted(true);
+            }
+            if (!game.isResultPublished()) {
+                eventPublisher.publish(game, RESULTED);
+                game.setResultPublished(true);
+            }
+            if (!game.isLobbyReopened()) {
+                var lobby = lobbyManager.getLobby(game.getLobbyId());
+                if (lobby != null) openLobby.apply(lobby);
+                game.setLobbyReopened(true);
+            }
+            gameManager.deleteGame(game);
+        } catch (RuntimeException ex) {
+            log.error("Briskula finalization failed for game {}; retrying", game.getId(), ex);
+            scheduleFinishRetry(game);
+        }
+    }
+
+    private void persistFinalization(BriskulaGameEntity game) {
         var winners = game.getGame().determineGameWinners();
         var gameConfig = game.getPersistedGameConfig();
         var winnerUsers = new HashSet<UserEntity>();
@@ -143,9 +176,22 @@ public class BriskulaGameService {
         });
         updateBriskulaRelationshipStats(game.getPlayers(), winnerUsers, gameConfig);
         gameRecordingService.finish(game);
-        eventPublisher.publish(game, RESULTED);
-        gameManager.deleteGame(game);
-        openLobby.apply(lobbyManager.getLobby(game.getLobbyId()));
+        var winnerIds = new HashSet<Long>();
+        for (var winner : winnerUsers) winnerIds.add(winner.getId());
+        pointsService.completeGame(game.getId(), game.getPlayers(), winnerIds, GameType.BRISKULA, gameConfig.name());
+    }
+
+    private void scheduleFinishRetry(BriskulaGameEntity game) {
+        if (game.isFinishRetryScheduled()) return;
+        game.setFinishRetryScheduled(true);
+        var gameId = game.getId();
+        taskScheduler.schedule(() -> {
+            if (!(gameManager.getGame(gameId) instanceof BriskulaGameEntity current)) return;
+            synchronized (current) {
+                current.setFinishRetryScheduled(false);
+                if (!current.isActive()) handleEndGame(current);
+            }
+        }, Instant.now().plusSeconds(5));
     }
 
     private void updateBriskulaRelationshipStats(List<UserEntity> players, Set<UserEntity> winnerUsers,

@@ -10,10 +10,11 @@ import com.ultracards.server.entity.games.briskula.BriskulaGameEntity;
 import com.ultracards.server.entity.games.durak.DurakGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.lobby.LobbyEntity;
+import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.games.briskula.BriskulaGameService;
 import com.ultracards.server.service.games.durak.DurakGameService;
 import com.ultracards.server.service.games.treseta.TresetaGameService;
-import com.ultracards.server.service.lobby.LobbyManager;
+import com.ultracards.server.service.points.PointsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,31 +25,50 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class GameService {
     private final GameManager gameManager;
-    private final LobbyManager lobbyManager;
     private final BriskulaGameService briskulaGameService;
     private final TresetaGameService tresetaGameService;
     private final DurakGameService durakGameService;
     private final GameRecordingService gameRecordingService;
+    private final PointsService pointsService;
 
     public GameEntity<?, ?> startGame(LobbyEntity lobby) {
-        var game = gameManager.createGame(lobby.createGame());
-        lobbyManager.putGame(lobby, game);
-        if (game.getGameType().equals(GameTypeDTO.Briskula)) {
-            var briskulaGame = (BriskulaGameEntity) game;
-            gameRecordingService.start(briskulaGame);
-            briskulaGameService.onGameStarted(briskulaGame);
+        var game = lobby.createGame();
+        try {
+            pointsService.reserveWager(game.getId(), lobby.getId(), game.getWager(), game.getPlayers(),
+                    GameType.fromDTO(game.getGameType()), game.getGameConfig().modeKey());
+            gameManager.createGame(game);
+            if (game.getGameType().equals(GameTypeDTO.Briskula)) {
+                var briskulaGame = (BriskulaGameEntity) game;
+                gameRecordingService.start(briskulaGame);
+                briskulaGameService.onGameStarted(briskulaGame);
+            }
+            if (game.getGameType().equals(GameTypeDTO.Treseta)) {
+                var tresetaGame = (TresetaGameEntity) game;
+                gameRecordingService.start(tresetaGame);
+                tresetaGameService.onGameStarted(tresetaGame);
+            }
+            if (game.getGameType().equals(GameTypeDTO.Durak)) {
+                var durakGame = (DurakGameEntity) game;
+                gameRecordingService.start(durakGame);
+                durakGameService.onGameStarted(durakGame);
+            }
+            if (game.getGameType() != GameTypeDTO.Briskula
+                    && game.getGameType() != GameTypeDTO.Treseta
+                    && game.getGameType() != GameTypeDTO.Durak)
+                throw new IllegalArgumentException("Unsupported game type: " + game.getGameType());
+            return game;
+        } catch (RuntimeException ex) {
+            try {
+                pointsService.cancelWager(game.getId());
+            } catch (RuntimeException cleanupError) {
+                ex.addSuppressed(cleanupError);
+            } finally {
+                gameRecordingService.release(game);
+                gameManager.deleteGame(game);
+                lobby.setStarted(false);
+            }
+            throw ex;
         }
-        if (game.getGameType().equals(GameTypeDTO.Treseta)) {
-            var tresetaGame = (TresetaGameEntity) game;
-            gameRecordingService.start(tresetaGame);
-            tresetaGameService.onGameStarted(tresetaGame);
-        }
-        if (game.getGameType().equals(GameTypeDTO.Durak)) {
-            var durakGame = (DurakGameEntity) game;
-            gameRecordingService.start(durakGame);
-            durakGameService.onGameStarted(durakGame);
-        }
-        return game;
     }
 
     public Optional<GameEntity<?, ?>> getGameByUser(UserEntity user) {

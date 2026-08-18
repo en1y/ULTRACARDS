@@ -520,3 +520,50 @@
 #game-settings .durak-option {
     padding: 0.5rem 0.6rem;
 }
+
+/* Bet filter: one ladder track with a low/high thumb, plus the free-lobby opt-in. */
+.lobbies-bet-filter {
+    display: grid;
+    gap: 0.6rem;
+}
+
+/* Same switch the lobby and creation toggles use; only the checked state is per-scope. */
+.lobbies-bet-free {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.lobbies-bet-free input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.lobbies-bet-free input:checked + .visibility-switch {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-2));
+}
+
+.lobbies-bet-free input:checked + .visibility-switch::after {
+    transform: translateX(1.6rem);
+}
+
+.lobbies-bet-free:focus-within .visibility-switch {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 16%, transparent);
+}
+
+.lobby-card-chips {
+    display: grid;
+    justify-items: end;
+    gap: 0.35rem;
+}
+
+.lobby-card-bet {
+    color: var(--color-points);
+    border-color: color-mix(in oklab, var(--color-points) 55%, var(--color-border));
+    white-space: nowrap;
+}

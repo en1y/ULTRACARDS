@@ -10,6 +10,7 @@ import com.ultracards.server.entity.lobby.TresetaLobbyGameConfig;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.games.briskula.BriskulaGameHistoryService;
 import com.ultracards.server.service.games.durak.DurakGameHistoryService;
+import com.ultracards.server.service.points.PointsService;
 import com.ultracards.server.service.games.treseta.TresetaGameHistoryService;
 import org.junit.jupiter.api.Test;
 
@@ -29,8 +30,9 @@ class GameControllerTest {
     private final BriskulaGameHistoryService briskulaHistory = mock(BriskulaGameHistoryService.class);
     private final TresetaGameHistoryService tresetaHistory = mock(TresetaGameHistoryService.class);
     private final DurakGameHistoryService durakHistory = mock(DurakGameHistoryService.class);
+    private final PointsService pointsService = mock(PointsService.class);
     private final GameController controller = new GameController(gameManager, briskulaHistory, tresetaHistory,
-            durakHistory);
+            durakHistory, pointsService);
 
     @Test
     void returnsTypedTresetaSnapshotWithOnlyRequestingPlayersHand() {

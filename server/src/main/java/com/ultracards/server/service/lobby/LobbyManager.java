@@ -4,7 +4,6 @@ import com.ultracards.gateway.dto.games.GameTypeDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyDTO;
 import com.ultracards.gateway.dto.games.lobby.GameLobbyEventDTO;
 import com.ultracards.server.entity.UserEntity;
-import com.ultracards.server.entity.games.GameEntity;
 import com.ultracards.server.entity.lobby.LobbyCode;
 import com.ultracards.server.entity.lobby.LobbyEntity;
 import com.ultracards.server.entity.lobby.LobbyState;
@@ -20,7 +19,6 @@ public class LobbyManager {
     private final Map<UUID, LobbyEntity> lobbiesById = new ConcurrentHashMap<>();
     private final Map<Long, LobbyEntity> lobbiesByUser = new ConcurrentHashMap<>();
     private final Map<GameTypeDTO, List<LobbyEntity>> lobbiesByGameType = new ConcurrentHashMap<>();
-    private final Map<UUID, LobbyEntity> lobbyByGameId = new ConcurrentHashMap<>();
     @Getter
     private final List<LobbyEntity> lobbies = Collections.synchronizedList(new ArrayList<>());
 
@@ -54,10 +52,6 @@ public class LobbyManager {
         return lobbiesByGameType.get(gameTypeDTO);
     }
 
-    public LobbyEntity getByGame(UUID gameId) {
-        return lobbyByGameId.get(gameId);
-    }
-
     public LobbyEntity createLobby(GameLobbyDTO gameLobbyDTO, UserEntity owner) {
         var isPublic = gameLobbyDTO.getIsPublic();
         var lobby = new LobbyEntity(
@@ -70,6 +64,8 @@ public class LobbyManager {
                 isPublic != null ? (isPublic? LobbyState.PUBLIC: LobbyState.PRIVATE) : LobbyState.PUBLIC,
                 lobbyTimer
         );
+        lobby.setWager(gameLobbyDTO.getWager() == null ? com.ultracards.gateway.dto.games.lobby.WagerConfigDTO.disabled()
+                : gameLobbyDTO.getWager());
         return createLobby(lobby);
     }
 
@@ -81,10 +77,6 @@ public class LobbyManager {
         return remove(lobby);
     }
 
-    public void putGame(LobbyEntity lobby, GameEntity<?, ?> game) {
-        lobbyByGameId.put(game.getId(), lobby);
-    }
-
     private Boolean remove(LobbyEntity lobby) {
         var l = lobbiesByUser.get(lobby.getOwner().getId());
 
@@ -92,7 +84,6 @@ public class LobbyManager {
             lobbyCodeManager.removeLobbyCode(l);
             lobbiesById.remove(l.getId());
             lobbiesByGameType.get(l.getGameType()).remove(l);
-            lobbyByGameId.remove(l.getId());
             lobbies.remove(l);
             lobbiesByUser.remove(l.getOwner().getId());
             lobbyEventPublisher.publish(l, GameLobbyEventDTO.GameLobbyEventType.DELETED);

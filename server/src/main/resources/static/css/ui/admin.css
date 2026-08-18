@@ -31,6 +31,7 @@
 .admin-content { display: grid; gap: 1rem; min-width: 0; align-content: start; }
 .admin-status { min-height: 1.4rem; margin: 0 .25rem; color: var(--color-text-muted); font-size: .9rem; }
 .admin-status.is-error { color: var(--color-accent); }
+.admin-economy-settings #admin-fee-status.is-error { color: var(--color-accent); }
 .admin-panel { padding: 1.25rem; border: 1px solid var(--color-border); border-radius: var(--admin-radius); background: var(--color-surface); box-shadow: var(--shadow-card); }
 .admin-panel h2 { margin: 0; }
 .admin-panel-heading { display: flex; gap: 1rem; align-items: start; justify-content: space-between; }
@@ -53,6 +54,10 @@
 .admin-ring { --ring: 0; flex: 0 0 auto; width: 92px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--color-accent) calc(var(--ring) * 1%), var(--color-surface-2) 0); }
 .admin-ring strong { width: 72%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; background: var(--color-bg); font-size: 1.05rem; }
 .admin-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .75rem; }
+.admin-overview-group-title { margin: 0 0 .55rem; color: var(--color-text-muted); font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+/* auto-fill, not auto-fit: the groups hold different tile counts, and auto-fit would stretch a group
+   of one into a full-width bar and a group of three into oversized tiles. */
+.admin-overview-group .admin-tiles { grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
 .admin-tile { display: block; padding: .8rem 1rem; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-bg); color: var(--color-text); text-decoration: none; transition: border-color .15s ease, transform .15s ease; }
 .admin-tile:hover { border-color: var(--color-accent); transform: translateY(-1px); }
 .admin-tile strong { display: block; font-size: 1.3rem; }
@@ -84,10 +89,18 @@
 .admin-filters input, .admin-filters select, .admin-form input, .admin-form select, .admin-form textarea { min-height: 2.75rem; padding: .55rem .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); color: var(--color-text); font: inherit; }
 .admin-search { min-width: min(100%, 20rem); }
 .admin-form { display: grid; gap: .85rem; max-width: 42rem; }
+/* An input's min-content width is ~20 characters, which pushes it out of every
+   minmax(0, 1fr) column the event editor uses. Let them shrink to their track. */
+.admin-form input, .admin-form select, .admin-form textarea { min-width: 0; }
 .admin-form textarea { resize: vertical; }
 .admin-form fieldset { display: flex; flex-wrap: wrap; gap: 1rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
-.admin-check { display: flex !important; align-items: center; gap: .5rem !important; color: var(--color-text) !important; }
-.admin-check input { min-height: auto; }
+/* The shared toggle fragment against .admin-form label's grid default. */
+.admin-filters .uc-toggle, .admin-form .uc-toggle { display: flex; gap: .65rem !important; }
+.admin-form .uc-toggle input { min-height: auto; padding: 0; border: 0; }
+.admin-hint { color: var(--color-text-muted); font-size: .8rem; line-height: 1.35; }
+.admin-notes { display: grid; gap: .35rem; margin: .6rem 0 0; padding-left: 1.1rem; color: var(--color-text-muted); font-size: .85rem; }
+.admin-callout { margin: 0; padding: .65rem .75rem; border: 1px solid color-mix(in oklab, var(--color-points) 45%, var(--color-border)); border-radius: var(--radius-md); background: color-mix(in oklab, var(--color-points) 8%, var(--color-bg)); color: var(--color-text); font-size: .85rem; line-height: 1.45; }
+.admin-callout:empty { display: none; }
 
 /* Result rows and lists */
 .admin-results { display: grid; gap: .65rem; }
@@ -236,7 +249,8 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-metrics-row { grid-template-columns: 1fr; gap: .6rem; }
     .admin-hero { min-height: 7rem; }
     .admin-hero strong { font-size: 2.1rem; }
-    .admin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+    .admin-tiles,
+    .admin-overview-group .admin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
     .admin-breakdowns { grid-template-columns: 1fr; }
     .admin-row { grid-template-columns: 1fr; }
     .admin-row-link { grid-template-columns: minmax(0, 1fr) auto; }
@@ -263,4 +277,493 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-pagination > span { width: 100%; text-align: center; }
     .admin-bulk-bar .btn { width: 100%; }
     .admin-dialog { width: min(100% - .75rem, 40rem); padding: .85rem; }
+}
+
+.admin-points-chart {
+    position: relative;
+    height: 200px;
+    margin-bottom: 0.75rem;
+}
+
+/* Balance badge on a user row: the number reads normally, the P carries the colour. */
+.admin-chip-points {
+    border-color: color-mix(in oklab, var(--color-points) 55%, var(--color-border));
+    font-variant-numeric: tabular-nums;
+}
+/* Points settings and scheduled events */
+.admin-nav-points {
+    display: inline-grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    color: var(--color-points);
+    font-weight: 900;
+}
+
+.admin-economy-layout {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.admin-points-metrics { margin-top: 1rem; }
+.admin-points-dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(17rem, .8fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.admin-card-heading h3,
+.admin-card-heading p { margin: 0; }
+.admin-card-heading p { margin-top: .25rem; }
+.admin-points-series-card .admin-points-chart { height: 260px; margin: 1rem 0 0; }
+.admin-points-leaderboard { display: grid; gap: .4rem; margin-top: .75rem; }
+.admin-points-leader-row {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    gap: .65rem;
+    align-items: center;
+    min-height: 2.6rem;
+    padding: .45rem .55rem;
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    text-decoration: none;
+}
+.admin-points-leader-row:hover { background: var(--color-surface); }
+.admin-points-rank { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.admin-points-leader-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.admin-economy-settings {
+    grid-template-columns: repeat(3, minmax(7rem, .8fr)) minmax(12rem, 1.4fr) auto;
+    align-items: end;
+    max-width: none;
+    margin-top: .9rem;
+}
+
+.admin-economy-settings .admin-actions { align-items: center; }
+
+.admin-daily-goals-card { margin-top: 1rem; }
+.admin-daily-goals-form { display: grid; max-width: none; margin-top: .9rem; }
+.admin-daily-goals { display: grid; gap: .75rem; }
+.admin-daily-goals:empty { display: none; }
+
+.admin-daily-goal {
+    display: grid !important;
+    gap: .65rem;
+    padding: .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-daily-goal > legend { padding: 0 .35rem; color: var(--color-text); font-weight: 800; }
+
+.admin-daily-goal-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 6rem 8rem auto;
+    gap: .65rem;
+    align-items: end;
+}
+
+.admin-daily-goal-fields > .uc-toggle { align-self: center; }
+.admin-daily-goals-form #admin-daily-goals-status.is-error { color: var(--color-accent); }
+.admin-events-manager { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.admin-events-manager > .admin-panel-heading { margin: 0; }
+
+/* Same recessed surface as .admin-tile and .admin-event-summary-card: a card sits darker than the
+   .admin-panel behind it. --color-surface-2 read as a grey slab against the rest of the admin. */
+.admin-economy-card {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-economy-card > h3,
+.admin-event-achievements-head h4 { margin-top: 0; }
+
+/* min-width: 0 or the grid cell inherits the number input's intrinsic width and
+   the field spills over the column next to it. */
+.admin-percent-input,
+.admin-points-input {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .5rem;
+}
+
+.admin-percent-input input,
+.admin-points-input input { flex: 1; }
+
+.admin-event-editor-card {
+    overflow: hidden;
+    padding: 0;
+}
+
+.admin-event-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+}
+
+.admin-event-editor-head h3,
+.admin-event-editor-head p { margin: 0; }
+
+.admin-event-editor-card > .admin-form {
+    max-width: none;
+    gap: 0;
+}
+
+.admin-event-section {
+    display: grid;
+    gap: .85rem;
+    padding: 1rem 1.1rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.admin-event-section-head {
+    display: flex;
+    align-items: start;
+    gap: .65rem;
+}
+
+.admin-event-section-head > span {
+    display: grid;
+    flex: 0 0 auto;
+    width: 1.65rem;
+    height: 1.65rem;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 48%, var(--color-border));
+    border-radius: 50%;
+    color: var(--color-accent);
+    font-size: .78rem;
+    font-weight: 800;
+}
+
+.admin-event-section-head h4,
+.admin-event-section-head p { margin: 0; }
+
+.admin-event-section-head h4 { padding-top: .15rem; }
+.admin-event-section-head p { margin-top: .25rem; }
+
+.admin-event-fields,
+.admin-event-dates,
+.admin-event-publishing {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+}
+
+.admin-event-fields { grid-template-columns: minmax(0, 1fr); }
+
+.admin-event-games {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+    padding: .75rem;
+}
+
+.admin-event-games legend,
+.admin-event-games .admin-meta { grid-column: 1 / -1; }
+
+.admin-event-games .uc-toggle {
+    min-height: 2.9rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-event-games .uc-toggle:has(input:checked) {
+    border-color: color-mix(in oklab, var(--color-success) 60%, var(--color-border));
+    background: color-mix(in oklab, var(--color-success) 12%, var(--color-bg));
+}
+
+.admin-event-enabled {
+    align-self: end;
+    padding: .6rem .75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-event-enabled:has(input:checked) {
+    border-color: color-mix(in oklab, var(--color-success) 55%, var(--color-border));
+    background: color-mix(in oklab, var(--color-success) 10%, var(--color-bg));
+}
+
+.admin-event-achievements-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+}
+
+.admin-event-achievements {
+    display: grid;
+    gap: .75rem;
+}
+
+.admin-event-achievements:empty { display: none; }
+
+.admin-event-achievements-empty {
+    margin: 0;
+    padding: 1rem;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.admin-event-achievements-empty[hidden] { display: none; }
+
+.admin-event-achievement {
+    position: relative;
+    display: grid !important;
+    gap: .65rem;
+    padding: .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-event-achievement > legend {
+    padding: 0 .35rem;
+    color: var(--color-text);
+    font-weight: 800;
+}
+
+.admin-event-achievement-head {
+    display: flex;
+    max-width: 100%;
+    justify-content: flex-end;
+}
+
+.admin-event-achievement-head .btn {
+    max-width: 100%;
+    min-height: 2rem;
+    padding: .25rem .55rem;
+    font-size: .78rem;
+    white-space: normal;
+}
+
+.admin-event-achievement-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: .65rem;
+}
+
+.admin-event-goal-name,
+.admin-goal-markdown-editor { grid-column: 1 / -1; }
+
+.admin-event-targets {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8.5rem;
+    gap: .75rem;
+    align-items: end;
+    padding-top: .7rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.admin-event-requirements {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+.admin-event-achievement > .admin-hint { margin: 0; }
+
+.admin-event-achievement-options {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, .45fr);
+    gap: .75rem;
+    align-items: stretch;
+}
+
+.admin-event-goal-games {
+    min-width: 0;
+    margin: 0;
+    padding: .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.admin-event-goal-games > legend { padding: 0 .3rem; font-weight: 800; }
+.admin-event-goal-games > .admin-hint { margin: 0 0 .55rem; }
+.admin-event-goal-game-list { display: flex; flex-wrap: wrap; gap: .45rem; }
+.admin-event-goal-game-list .uc-toggle { flex: 0 1 auto; padding: .45rem .55rem; }
+.admin-event-goal-game-list .uc-toggle-copy { min-width: 0; }
+
+.admin-event-goal-mode {
+    min-width: 0;
+    margin: 0;
+    padding: .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.admin-event-goal-mode > legend { padding: 0 .3rem; font-weight: 800; }
+.admin-event-goal-mode > .admin-hint { margin: 0; }
+.admin-event-goal-mode-editor[hidden],
+.admin-event-goal-mode-note[hidden] { display: none; }
+.admin-event-goal-mode-editor .durak-options { gap: .55rem; }
+.admin-event-goal-mode-editor .durak-option { grid-template-columns: minmax(6rem, .4fr) minmax(0, 1fr); }
+.admin-event-mode-select { display: grid; grid-template-columns: minmax(6rem, .4fr) minmax(0, 1fr); align-items: center; gap: .75rem; }
+.admin-event-mode-select select { min-width: 0; width: 100%; }
+
+.admin-event-achievement-options > .uc-toggle {
+    min-width: 0;
+    padding: .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.admin-event-reward .admin-points-input {
+    min-width: 0;
+    padding: 0 .55rem 0 0;
+    border: 1px solid color-mix(in oklab, var(--color-points) 55%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in oklab, var(--color-points) 8%, var(--color-bg));
+}
+
+.admin-event-reward .admin-points-input input { min-width: 0; width: 100%; border: 0; background: transparent; }
+
+.admin-event-submit-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .75rem;
+    align-items: end;
+    padding: 1rem 1.1rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.admin-event-submit-bar .btn { min-height: 2.75rem; }
+.admin-event-submit-actions { display: flex; align-items: center; justify-content: end; gap: .75rem; }
+.admin-event-submit-actions .is-error { color: var(--color-accent); }
+
+.admin-event-summary-card {
+    display: grid;
+    gap: .75rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-left: .25rem solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-bg);
+}
+
+.admin-event-summary-card.is-active { border-left-color: var(--color-success); }
+.admin-event-summary-card.is-upcoming { border-left-color: orange; }
+.admin-event-summary-card.is-ended,
+.admin-event-summary-card.is-disabled { border-left-color: var(--color-accent); }
+
+.admin-event-summary-head,
+.admin-event-summary-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.admin-event-summary-head h3,
+.admin-event-summary-card p { margin: 0; }
+
+.admin-event-summary-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+.admin-event-summary-facts div {
+    min-width: 0;
+    padding: .6rem .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.admin-event-summary-facts dt {
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-event-summary-facts dd {
+    margin: .2rem 0 0;
+    overflow-wrap: anywhere;
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.admin-event-summary-card .admin-chips { margin-top: 0; }
+
+.admin-markdown-editor { display: grid; gap: .55rem; min-width: 0; }
+.admin-markdown-tabs { display: flex; gap: .4rem; }
+.admin-markdown-tabs .btn[aria-selected="true"] { border-color: var(--color-accent); color: var(--color-accent); }
+.admin-markdown-editor [role="tabpanel"][hidden] { display: none; }
+.admin-markdown-preview {
+    min-height: 9.2rem;
+    padding: .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+.admin-goal-markdown-editor .admin-markdown-preview { min-height: 5rem; }
+.admin-event-summary-card > .markdown-body { color: var(--color-text-muted); }
+
+.admin-event-summary-goals {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.admin-event-summary-goals > summary { padding: .65rem .75rem; cursor: pointer; font-weight: 800; }
+.admin-event-summary-goal-list { display: grid; gap: .4rem; padding: 0 .75rem .75rem; }
+.admin-event-summary-goal-list article { display: flex; justify-content: space-between; gap: .75rem; }
+.admin-event-summary-goal-copy { display: grid; gap: .3rem; min-width: 0; }
+.admin-event-summary-goal-copy > .markdown-body { color: var(--color-text-muted); font-weight: 400; }
+.admin-events-list-heading { padding-top: .5rem; border-top: 1px solid var(--color-border); }
+
+@media (max-width: 900px) {
+    .admin-points-dashboard-grid { grid-template-columns: 1fr; }
+    .admin-economy-settings { grid-template-columns: 1fr 1fr; }
+    .admin-economy-settings .admin-actions { grid-column: 1 / -1; justify-content: start; }
+    .admin-daily-goal-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-event-summary-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+    .admin-event-dates,
+    .admin-event-publishing,
+    .admin-event-achievement-fields,
+    .admin-event-targets,
+    .admin-event-achievement-options,
+    .admin-daily-goal-fields,
+    .admin-event-submit-bar { grid-template-columns: 1fr; }
+    .admin-economy-settings { grid-template-columns: 1fr; }
+    .admin-economy-settings .admin-actions { grid-column: auto; }
+    .admin-event-submit-actions { align-items: stretch; flex-direction: column; }
+    .admin-event-games { grid-template-columns: minmax(0, 1fr); }
+    .admin-event-requirements { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-event-achievements-head { align-items: stretch; flex-direction: column; }
+    .admin-event-achievements-head > .btn { width: 100%; }
+    .admin-event-summary-head,
+    .admin-event-summary-foot { align-items: stretch; flex-direction: column; }
+    .admin-event-summary-head .admin-chips { align-self: start; }
+    .admin-event-summary-foot .admin-actions,
+    .admin-event-summary-foot .btn { width: 100%; }
+    .admin-event-summary-facts { grid-template-columns: 1fr; }
+    .admin-event-goal-mode-editor .durak-option,
+    .admin-event-mode-select { grid-template-columns: 1fr; }
+    .admin-event-summary-goal-list article { align-items: start; flex-direction: column; }
+    .admin-points-leader-row { grid-template-columns: 2.25rem minmax(0, 1fr); }
+    .admin-points-leader-value { grid-column: 2; }
 }

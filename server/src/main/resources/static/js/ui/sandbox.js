@@ -4,7 +4,23 @@
 (() => {
     const gameEl = document.getElementById('game-container');
     if (!gameEl?.dataset.sandbox) return;
-    if (new URLSearchParams(window.location.search).get('type') === 'durak') return;
+    const params = new URLSearchParams(window.location.search);
+
+    window.UltracardsSandboxWagerDeltas = (players, winners) => {
+        const winnerIds = players.map(({id}) => String(id))
+            .filter((id) => winners.some((winner) => String(winner.id) === id));
+        if (!winnerIds.length || winnerIds.length === players.length)
+            return Object.fromEntries(players.map(({id}) => [id, 0]));
+        const distributable = Math.floor(100 * (players.length - winnerIds.length) * 0.96);
+        const share = Math.floor(distributable / winnerIds.length);
+        const remainder = distributable % winnerIds.length;
+        return Object.fromEntries(players.map(({id}) => {
+            const winnerIndex = winnerIds.indexOf(String(id));
+            return [id, winnerIndex < 0 ? -100 : share + (winnerIndex < remainder ? 1 : 0)];
+        }));
+    };
+
+    if (params.get('type') === 'durak') return;
 
     const SUITS = ['C', 'D', 'S', 'B'];
     const VALUES = [1, 2, 3, 4, 5, 6, 7, 11, 12, 13];
@@ -36,7 +52,6 @@
         }
     };
 
-    const params = new URLSearchParams(window.location.search);
     const type = params.get('type') === 'briskula' ? 'briskula' : 'treseta';
     const defaultMode = type === 'briskula' ? 'TWO_PLAYERS' : 'TWO_PLAYERS_WITH_DECLARATIONS';
     let modeName = MODES[type][params.get('mode')] ? params.get('mode') : defaultMode;
@@ -495,7 +510,11 @@
         state.played = [];
         state.ended = true;
         const winningPlayers = winners().map(publicPlayer);
-        publishState('RESULTED', {gameWinners: winningPlayers, winnerPointsNum: Math.max(...state.players.map((player) => player.points))});
+        publishState('RESULTED', {
+            gameWinners: winningPlayers,
+            winnerPointsNum: Math.max(...state.players.map((player) => player.points)),
+            wagerDeltas: window.UltracardsSandboxWagerDeltas(state.players, winningPlayers)
+        });
         showStatus('Showing the local result state. New deal resets it.');
     }
 

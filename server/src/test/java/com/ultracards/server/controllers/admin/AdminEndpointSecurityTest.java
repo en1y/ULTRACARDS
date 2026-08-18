@@ -8,6 +8,10 @@ import com.ultracards.server.service.admin.AdminGameRecordService;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.admin.AdminLobbyService;
 import com.ultracards.server.service.admin.AdminNotificationService;
+import com.ultracards.server.service.admin.AdminPointsService;
+import com.ultracards.server.service.admin.AdminEconomyService;
+import com.ultracards.server.service.points.PointsService;
+import com.ultracards.server.service.points.MarkdownRenderer;
 import com.ultracards.server.service.admin.AdminReportService;
 import com.ultracards.server.service.admin.AdminSessionService;
 import com.ultracards.server.service.admin.AdminStatsService;
@@ -39,6 +43,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
@@ -100,12 +105,22 @@ class AdminEndpointSecurityTest {
                 () -> get("/api/admin/v1/database/notifications"),
                 () -> get("/api/admin/v1/audit"),
                 () -> get("/api/admin/v1/system/status"),
+                () -> get("/api/admin/v1/economy/settings"),
+                () -> get("/api/admin/v1/economy/dashboard"),
+                () -> get("/api/admin/v1/economy/events"),
+                () -> get("/api/admin/v1/economy/daily-goals"),
+                () -> put("/api/admin/v1/economy/daily-goals")
+                        .contentType("application/json").content("{\"goals\":[],\"reason\":\"security test\"}"),
+                () -> post("/api/admin/v1/economy/events/preview")
+                        .contentType("application/json").content("{\"description\":\"**Preview**\"}"),
                 () -> post("/api/admin/v1/sessions/00000000-0000-0000-0000-000000000001/expire?reason=security-test"),
                 () -> delete("/api/admin/v1/sessions/00000000-0000-0000-0000-000000000001?reason=security-test"),
                 () -> get("/admin"),
                 () -> get("/admin/users"),
                 () -> get("/admin/stats"),
                 () -> get("/admin/database"),
+                () -> get("/admin/points"),
+                () -> get("/admin/events"),
                 () -> get("/admin/sandbox"),
                 () -> post("/api/admin/v1/notifications/users/1")
                         .contentType("application/json")
@@ -142,6 +157,10 @@ class AdminEndpointSecurityTest {
 
         @Bean AdminLobbyService adminLobbyService() { return mock(AdminLobbyService.class); }
         @Bean AdminUserService adminUserService() { return mock(AdminUserService.class); }
+        @Bean AdminPointsService adminPointsService() { return mock(AdminPointsService.class); }
+        @Bean AdminEconomyService adminEconomyService() { return mock(AdminEconomyService.class); }
+        @Bean PointsService pointsService() { return mock(PointsService.class); }
+        @Bean MarkdownRenderer markdownRenderer() { return new MarkdownRenderer(); }
         @Bean AdminGameRecordService adminGameRecordService() { return mock(AdminGameRecordService.class); }
         @Bean GameAvailabilityService gameAvailabilityService() { return mock(GameAvailabilityService.class); }
         @Bean AdminStatsService adminStatsService() { return mock(AdminStatsService.class); }
@@ -156,8 +175,9 @@ class AdminEndpointSecurityTest {
             return new AdminLobbyController(service);
         }
 
-        @Bean AdminUserController adminUserController(AdminUserService service) {
-            return new AdminUserController(service);
+        @Bean AdminUserController adminUserController(AdminUserService service, AdminPointsService pointsService,
+                                                      PointsService points) {
+            return new AdminUserController(service, pointsService, points);
         }
 
         @Bean AdminGameRecordController adminGameRecordController(AdminGameRecordService service) {
@@ -195,6 +215,11 @@ class AdminEndpointSecurityTest {
 
         @Bean AdminNotificationController adminNotificationController(AdminNotificationService service) {
             return new AdminNotificationController(service);
+        }
+
+        @Bean AdminEconomyController adminEconomyController(AdminEconomyService service,
+                                                             MarkdownRenderer markdown) {
+            return new AdminEconomyController(service, markdown);
         }
 
         @Bean AdminPageController adminPageController() {

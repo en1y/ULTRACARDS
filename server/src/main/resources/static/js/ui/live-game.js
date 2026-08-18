@@ -4,7 +4,7 @@
         /**
          * @typedef {{ cardType: string, card: string }} GameCard
          * @typedef {{ name: string, id: (string|null), cards: (number|undefined), points: (number|undefined) }} UiPlayer
-         * @typedef {{ gameWinners?: Array<{name: string}>, winnerPointsNum?: number }} GameResult
+         * @typedef {{ gameWinners?: Array<{name: string}>, winnerPointsNum?: number, draw?: boolean, wagerPayouts?: Object<string, number>, wagerDeltas?: Object<string, number> }} GameResult
          * @typedef {{
          *   id: string,
          *   lobbyId: string,
@@ -138,7 +138,8 @@
             previousRound: null,
             previousRoundReplayActive: false,
             previousRoundReplayView: null,
-            previousRoundAnimating: false
+            previousRoundAnimating: false,
+            wagerPayoutAnimated: false
         };
         state.handSort = 'suit';
         dom.sortSuit?.classList.add('is-active');
@@ -817,7 +818,10 @@
          */
         function applyGame(game, gameEvent, result, skipTableDelay = false) {
             state.gameUpdateVersion++;
-            if (gameEvent === 'STARTED') state.endState = null;
+            if (gameEvent === 'STARTED') {
+                state.endState = null;
+                state.wagerPayoutAnimated = false;
+            }
             if (gameEvent === 'RESULTED' || gameEvent === 'CLOSED') {
                 PreviousRoundStore.remove(gameId);
                 try { localStorage.removeItem('treseta-declare-skip:' + gameId); } catch (_) {}
@@ -956,13 +960,18 @@
             renderCurrentPlayer(game);
             updateTurn(game.playersTurn);
             if (gameEvent === 'RESULTED' && result && Array.isArray(result.gameWinners)) {
-                const winners = formatWinnerText(result.gameWinners, game);
+                const winners = result.draw ? t('game.result.draw') : formatWinnerText(result.gameWinners, game);
                 state.endState = {
                     title: t('briskula.matchResult'),
                     winnersText: winners,
-                    metaText: buildResultMetaText(result.gameWinners, game)
+                    metaText: result.draw ? t('briskula.gameEnded') : buildResultMetaText(result.gameWinners, game)
                 };
                 renderCenterResult(state.endState.title, state.endState.winnersText, state.endState.metaText);
+                if (!state.wagerPayoutAnimated) {
+                    state.wagerPayoutAnimated = window.UltracardsGameUi?.animateWagerPayout(
+                        result, dom.dropZone, dom.ring, currentUserId, dom.playerSummary
+                    ) === true;
+                }
                 startLobbyReturnCountdown();
                 clearTeammateHand();
             } else if (gameEvent === 'CLOSED') {
@@ -1351,6 +1360,7 @@
                 const teamNumber = getPlayerTeamNumber(teamState, player);
                 const teamTone = resolvePlayerTeamTone(teamState, player);
                 if (player.id) seat.dataset.playerId = String(player.id);
+                seat.dataset.playerName = player.name || '';
                 seat.classList.toggle('is-turn', isSamePlayer(player, game.playersTurn));
                 seat.classList.toggle('is-self', isSelf);
                 seat.classList.remove('team-seat-ally', 'team-seat-enemy', 'team-seat-neutral');

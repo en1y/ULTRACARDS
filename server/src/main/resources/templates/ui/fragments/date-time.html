@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  dd.mm.yyyy HH:mm in a hidden input, per AGENTS.md. The visible control is a plain text field so the
+  value can always be typed; the calendar and clock in js/ui/fragments/date-time.js write into it.
+  Deliberately not a native date input: browsers render that in their own locale (mm/dd/yyyy) and
+  ignore lang, which is what made these fields read wrong.
+-->
+<div th:fragment="dateTime(name, label, hint, required)" class="uc-datetime" data-date-time>
+    <span class="uc-datetime-label" th:text="${label}">Date and time</span>
+    <input th:name="${name}" type="hidden">
+    <div class="uc-datetime-field">
+        <input class="uc-datetime-input" type="text" inputmode="numeric" autocomplete="off" maxlength="16"
+               placeholder="dd.mm.yyyy HH:mm" pattern="[0-9]{2}[.][0-9]{2}[.][0-9]{4} [0-9]{2}:[0-9]{2}"
+               th:required="${required}" th:title="#{admin.dateTime.invalid}" data-date-time-input>
+        <button class="uc-datetime-trigger" type="button" data-date-time-open
+                th:attr="aria-label=#{admin.dateTime.open}" aria-haspopup="dialog" aria-expanded="false">
+            <img class="uc-icon" data-icon="calendar_month" th:src="@{/pics/light/calendar_month.svg}" alt="" aria-hidden="true">
+        </button>
+    </div>
+    <small class="admin-hint" th:if="${hint != null}" th:text="${hint}"></small>
+</div>
+</body>
+</html>

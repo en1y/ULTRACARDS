@@ -20,6 +20,7 @@ import com.ultracards.server.entity.games.treseta.TresetaGameEntity;
 import com.ultracards.server.entity.games.treseta.TresetaPlayerEntity;
 import com.ultracards.server.service.games.briskula.BriskulaGameHistoryService;
 import com.ultracards.server.service.games.durak.DurakGameHistoryService;
+import com.ultracards.server.service.points.PointsService;
 import com.ultracards.server.service.games.treseta.TresetaGameHistoryService;
 import com.ultracards.server.service.games.GameManager;
 import jakarta.validation.constraints.NotBlank;
@@ -44,6 +45,7 @@ public class GameController {
     private final BriskulaGameHistoryService briskulaGameHistoryService;
     private final TresetaGameHistoryService tresetaGameHistoryService;
     private final DurakGameHistoryService durakGameHistoryService;
+    private final PointsService pointsService;
 
     @GetMapping("/lobby/{lobbyId}")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).USER.name())")
@@ -95,7 +97,11 @@ public class GameController {
                 Comparator.nullsLast(Comparator.naturalOrder()));
         if (!"oldest".equalsIgnoreCase(timeSort) && !"asc".equalsIgnoreCase(timeSort)) comparator = comparator.reversed();
         histories.sort(comparator);
-        return ResponseEntity.ok(histories.stream().skip(Math.max(0, offset)).limit(20).toList());
+        var page = histories.stream().skip(Math.max(0, offset)).limit(20).toList();
+        // Only the page that is actually returned costs a ledger lookup.
+        var deltas = pointsService.gameDeltas(user.getId(), page.stream().map(ShortGameHistoryDTO::getId).toList());
+        page.forEach(history -> history.setPointsDelta(deltas.get(history.getId())));
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/history/{gameId}")

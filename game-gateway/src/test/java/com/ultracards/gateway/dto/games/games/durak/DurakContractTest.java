@@ -172,11 +172,11 @@ class DurakContractTest {
         assertEquals(1, entityBack.getAttackSlots().size());
         assertEquals(0, entityBack.getAttackSlots().getFirst().getSlotId());
 
-        var result = new DurakGameResultDTO(List.of(alice), bob, List.of(alice), false);
+        var result = new DurakGameResultDTO(List.of(), null, List.of(alice, bob), true);
         var resultBack = mapper.readValue(mapper.writeValueAsString(result), DurakGameResultDTO.class);
-        assertEquals(bob, resultBack.getLoser());
-        assertEquals(List.of(alice), resultBack.getGameWinners());
-        assertFalse(resultBack.isDraw());
+        assertNull(resultBack.getLoser());
+        assertEquals(List.of(), resultBack.getGameWinners());
+        assertTrue(resultBack.isDraw());
 
         var legal = new DurakLegalActionsDTO(7L, List.of(DurakActionTypeDTO.DEFEND, DurakActionTypeDTO.TAKE),
                 List.of(0), List.of(), List.of("H9"));

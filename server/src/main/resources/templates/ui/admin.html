@@ -8,8 +8,14 @@
     <script th:src="@{/js/theme-preload.js}"></script>
     <link rel="stylesheet" th:href="@{/css/theme.css}">
     <link rel="stylesheet" th:href="@{/css/ui/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/durak-options.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/fragments/date-time.css}">
+    <link rel="stylesheet" th:href="@{/css/ui/markdown.css(v=${@environment.getProperty('app.version')})}">
     <script th:src="@{/js/theme.js}" defer></script>
-    <script th:src="@{/js/ui/admin.js}" defer></script>
+    <script th:src="@{/js/ui/fragments/date-time.js(v=${@environment.getProperty('app.version')})}" defer></script>
+    <script th:src="@{/webjars/chart.js/4.4.6/dist/chart.umd.js}" defer></script>
+    <script th:src="@{/js/points-chart.js(v=${@environment.getProperty('app.version')})}" defer></script>
+    <script th:src="@{/js/ui/admin.js(v=${@environment.getProperty('app.version')},rev='point-event-goal-markdown')}" defer></script>
 </head>
 <body th:attr="data-admin-page=${adminPage}">
 <div th:replace="~{ui/fragments/header :: header}"></div>
@@ -24,6 +30,8 @@
             <nav class="admin-nav" aria-label="Administration sections">
                 <p class="admin-nav-group" th:text="#{admin.nav.general}">General</p>
                 <a th:href="@{/admin}" th:classappend="${adminPage == 'dashboard'} ? 'is-active'" th:attr="aria-current=${adminPage == 'dashboard'} ? 'page'"><img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.overview}">Overview</span></a>
+                <a th:href="@{/admin/points}" th:classappend="${adminPage == 'points'} ? 'is-active'" th:attr="aria-current=${adminPage == 'points'} ? 'page'"><span class="admin-nav-points points-symbol" aria-hidden="true">P</span><span th:text="#{admin.tab.points}">Points</span></a>
+                <a th:href="@{/admin/events}" th:classappend="${adminPage == 'events'} ? 'is-active'" th:attr="aria-current=${adminPage == 'events'} ? 'page'"><img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.events}">Events</span></a>
                 <p class="admin-nav-group" th:text="#{admin.nav.people}">People</p>
                 <a th:href="@{/admin/users}" th:classappend="${adminPage == 'users'} ? 'is-active'" th:attr="aria-current=${adminPage == 'users'} ? 'page'"><img class="uc-icon" data-icon="person" th:src="@{/pics/light/person.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.users}">Users</span></a>
                 <a th:href="@{/admin/stats}" th:classappend="${adminPage == 'stats'} ? 'is-active'" th:attr="aria-current=${adminPage == 'stats'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.stats}">Stats</span></a>
@@ -51,6 +59,119 @@
                 <div class="admin-panel-heading"><div><h2 th:text="#{admin.overview.title}">System overview</h2><p th:text="#{admin.overview.copy}">Live counts and health signals.</p></div></div>
                 <section id="admin-overview" class="admin-metrics" aria-label="System overview"></section>
                 <section id="admin-overview-breakdown" class="admin-breakdowns" aria-label="Detailed breakdowns"></section>
+            </section>
+
+            <section class="admin-panel" data-section="points" th:hidden="${adminPage != 'points'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.economy.title}">Points</h2><p th:text="#{admin.pointsAdmin.copy}">Supply, movement, wagers, and player rankings.</p></div></div>
+                <section id="admin-points-metrics" class="admin-tiles admin-points-metrics" aria-label="Points economy metrics"></section>
+                <div class="admin-points-dashboard-grid">
+                    <article class="admin-economy-card admin-points-series-card">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.pointsAdmin.series}">Account Points total · 30 days</h3><p class="admin-meta" th:text="#{admin.pointsAdmin.seriesHint}">End-of-day total held in player accounts.</p></div></div>
+                        <div class="admin-points-chart"><canvas id="admin-points-total-chart"></canvas></div>
+                    </article>
+                    <article class="admin-economy-card admin-points-leaderboard-card">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.pointsAdmin.leaderboard}">Points leaderboard</h3><p class="admin-meta" th:text="#{admin.pointsAdmin.leaderboardHint}">Top active accounts by current balance.</p></div></div>
+                        <div id="admin-points-leaderboard" class="admin-points-leaderboard"></div>
+                    </article>
+                </div>
+                <div class="admin-economy-layout">
+                    <article class="admin-economy-card">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.economy.rulesTitle}">Points rules</h3><p class="admin-meta" th:text="#{admin.economy.rulesHint}">Set how many Points new accounts receive and how many an eligible daily claim awards.</p></div></div>
+                        <form id="admin-points-settings" class="admin-form admin-economy-settings">
+                            <label><span th:text="#{admin.economy.feePercent}">Fee percentage</span><span class="admin-percent-input"><input name="wagerFeePercent" type="number" min="0" max="100" step="1" required inputmode="numeric"><span>%</span></span></label>
+                            <label><span th:text="#{admin.economy.startingBalance}">New account grant</span><span class="admin-points-input"><input name="startingBalance" type="number" min="0" step="1" required inputmode="numeric"><span class="points-symbol">P</span></span></label>
+                            <label><span th:text="#{admin.economy.dailyReward}">Daily Points award</span><span class="admin-points-input"><input name="dailyReward" type="number" min="1" step="1" required inputmode="numeric"><span class="points-symbol">P</span></span></label>
+                            <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"></label>
+                            <div class="admin-actions">
+                                <button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveRules}">Save rules</button>
+                                <span id="admin-fee-status" class="admin-meta" role="status" aria-live="polite" hidden></span>
+                            </div>
+                        </form>
+                    </article>
+                    <article class="admin-economy-card admin-fee-rules-card">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.economy.feeRules}">Bet fee per game</h3><p class="admin-meta" th:text="#{admin.economy.feeRulesHint}">A mode uses its own fee, then the game's, then the default above.</p></div></div>
+                        <div class="admin-results" data-results="fees" aria-live="polite"></div>
+                    </article>
+                </div>
+                <article class="admin-economy-card admin-daily-goals-card">
+                    <div class="admin-event-achievements-head">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.economy.dailyGoals}">Daily goals</h3><p class="admin-meta" th:text="#{admin.economy.dailyGoalsHint}">Each goal pays once per player per day, counting only games finished that day.</p></div></div>
+                        <button id="admin-daily-goal-add" class="btn" type="button" th:text="#{admin.economy.addDailyGoal}">Add goal</button>
+                    </div>
+                    <form id="admin-daily-goals-form" class="admin-form admin-daily-goals-form">
+                        <p id="admin-daily-goals-empty" class="admin-event-achievements-empty" th:text="#{admin.economy.noDailyGoals}">No daily goals. Players see an empty list.</p>
+                        <div id="admin-daily-goals" class="admin-daily-goals"></div>
+                        <footer class="admin-event-submit-bar">
+                            <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"><small class="admin-hint" th:text="#{admin.economy.reasonHint}">Stored in the audit log next to your name.</small></label>
+                            <div class="admin-event-submit-actions"><span id="admin-daily-goals-status" class="admin-meta" role="status" aria-live="polite" hidden></span><button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveDailyGoals}">Save goals</button></div>
+                        </footer>
+                    </form>
+                </article>
+            </section>
+
+            <section class="admin-panel" data-section="events" th:hidden="${adminPage != 'events'}">
+                <section class="admin-events-manager">
+                    <div class="admin-panel-heading admin-events-heading"><div><h2 th:text="#{admin.economy.events}">Events</h2><p th:text="#{admin.economy.eventsCopy}">Create and manage scheduled Point events.</p></div></div>
+                    <article class="admin-economy-card admin-event-editor-card">
+                        <div class="admin-event-editor-head"><div><p class="admin-eyebrow" th:text="#{admin.economy.events}">Events</p><h3 id="admin-event-editor-title" th:text="#{admin.economy.newEvent}">New event</h3></div><button id="admin-event-new" class="btn" type="button" th:text="#{admin.economy.clearEvent}">Clear</button></div>
+                        <form id="admin-event-form" class="admin-form">
+                            <input name="id" type="hidden">
+                            <section class="admin-event-section">
+                                <div class="admin-event-section-head"><span aria-hidden="true">1</span><div><h4 th:text="#{admin.economy.details}">Event details</h4><p class="admin-meta" th:text="#{admin.economy.detailsHint}">Players read the name and description on their Points page while the event runs.</p></div></div>
+                                <div class="admin-event-fields">
+                                    <label><span th:text="#{admin.common.name}">Name</span><input name="name" required maxlength="120"></label>
+                                    <div class="admin-markdown-editor">
+                                        <div class="admin-markdown-tabs" role="tablist" th:aria-label="#{admin.economy.descriptionMode}">
+                                            <button id="admin-event-description-edit-tab" class="btn" type="button" role="tab" aria-selected="true" aria-controls="admin-event-description-edit" data-event-description-mode="edit" th:text="#{admin.economy.descriptionEdit}">Edit</button>
+                                            <button id="admin-event-description-preview-tab" class="btn" type="button" role="tab" aria-selected="false" aria-controls="admin-event-description-preview-panel" tabindex="-1" data-event-description-mode="preview" th:text="#{admin.economy.descriptionPreview}">Preview</button>
+                                        </div>
+                                        <div id="admin-event-description-edit" role="tabpanel" aria-labelledby="admin-event-description-edit-tab">
+                                            <label><span th:text="#{admin.economy.description}">Description</span><textarea name="description" maxlength="1000" rows="6" aria-describedby="admin-event-description-hint"></textarea><small id="admin-event-description-hint" class="admin-hint" th:text="#{admin.economy.descriptionMarkdownHint}">Markdown is supported.</small></label>
+                                        </div>
+                                        <div id="admin-event-description-preview-panel" role="tabpanel" aria-labelledby="admin-event-description-preview-tab" hidden>
+                                            <div id="admin-event-description-preview" class="admin-markdown-preview markdown-body" aria-live="polite"><p class="admin-empty" th:text="#{admin.economy.descriptionPreviewEmpty}">Nothing to preview yet.</p></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                            <section class="admin-event-section">
+                                <div class="admin-event-section-head"><span aria-hidden="true">2</span><div><h4 th:text="#{admin.economy.schedule}">Schedule &amp; eligibility</h4><p class="admin-meta" th:text="#{admin.economy.scheduleHint}">Only games that finish inside this window count. Times use your browser timezone.</p></div></div>
+                                <div class="admin-event-dates">
+                                    <th:block th:replace="~{ui/fragments/date-time :: dateTime(name='startsAt', label=#{admin.economy.starts}, hint=null, required=true)}"></th:block>
+                                    <th:block th:replace="~{ui/fragments/date-time :: dateTime(name='endsAt', label=#{admin.economy.ends}, hint=#{admin.economy.endsHint}, required=false)}"></th:block>
+                                </div>
+                                <fieldset class="admin-event-games">
+                                    <legend th:text="#{admin.economy.games}">Eligible games</legend>
+                                    <p class="admin-meta" th:text="#{admin.economy.allGamesHint}">Leave every game off to count all of them.</p>
+                                    <th:block th:replace="~{ui/fragments/toggle :: toggle(name='gameTypes', value='BRISKULA', label='Briskula', hint=null, checked=false)}"></th:block>
+                                    <th:block th:replace="~{ui/fragments/toggle :: toggle(name='gameTypes', value='TRESETA', label='Treseta', hint=null, checked=false)}"></th:block>
+                                    <th:block th:replace="~{ui/fragments/toggle :: toggle(name='gameTypes', value='DURAK', label='Durak', hint=null, checked=false)}"></th:block>
+                                    <th:block th:replace="~{ui/fragments/toggle :: toggle(name='gameTypes', value='POKER', label='Poker', hint=null, checked=false)}"></th:block>
+                                </fieldset>
+                            </section>
+                            <section class="admin-event-section">
+                                <div class="admin-event-section-head"><span aria-hidden="true">3</span><div><h4 th:text="#{admin.economy.rewards}">Rewards &amp; publishing</h4><p class="admin-meta" th:text="#{admin.economy.rewardsHint}">Every reward is paid once per player. At least one goal is required.</p></div></div>
+                                <div class="admin-event-publishing">
+                                    <label><span th:text="#{admin.economy.completionReward}">All-goals bonus</span><span class="admin-points-input"><input name="completionRewardPoints" type="number" min="0" step="1" value="0" required inputmode="numeric"><span class="points-symbol">P</span></span><small class="admin-hint" th:text="#{admin.economy.completionRewardHint}">Paid on top of the goal rewards once every goal is done. 0 pays the goals only.</small></label>
+                                    <div class="admin-event-enabled">
+                                        <th:block th:replace="~{ui/fragments/toggle :: toggle(name='enabled', value=null, label=#{admin.economy.enabled}, hint=#{admin.economy.enabledHint}, checked=true)}"></th:block>
+                                    </div>
+                                </div>
+                            </section>
+                            <section class="admin-event-section admin-event-achievements-section">
+                                <div class="admin-event-achievements-head"><div class="admin-event-section-head"><span aria-hidden="true">4</span><div><h4 th:text="#{admin.economy.achievements}">Sub-achievements</h4><p class="admin-meta" th:text="#{admin.economy.achievementsHint}">A goal completes once the player's totals inside the window reach every target. Targets left at 0 are ignored.</p></div></div><button id="admin-event-add-achievement" class="btn" type="button" th:text="#{admin.economy.addAchievement}">Add goal</button></div>
+                                <p id="admin-event-achievements-empty" class="admin-event-achievements-empty" th:text="#{admin.economy.emptyAchievements}">Every event requires at least one sub-achievement.</p>
+                                <div id="admin-event-achievements" class="admin-event-achievements"></div>
+                            </section>
+                            <footer class="admin-event-submit-bar">
+                                <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"><small class="admin-hint" th:text="#{admin.economy.reasonHint}">Stored in the audit log next to your name.</small></label>
+                                <div class="admin-event-submit-actions"><span id="admin-event-status" class="admin-meta" role="status" aria-live="polite" hidden></span><button id="admin-event-submit" class="btn btn-accent" type="submit" th:text="#{admin.economy.createEvent}">Create event</button></div>
+                            </footer>
+                        </form>
+                    </article>
+                    <div class="admin-panel-heading admin-events-list-heading"><div><h3 th:text="#{admin.economy.configuredEvents}">Configured events</h3></div></div>
+                    <div class="admin-results" data-results="economy-events" aria-live="polite"><p class="admin-empty" th:text="#{admin.economy.noEvents}">None configured.</p></div>
+                </section>
             </section>
 
             <section class="admin-panel" data-section="users" th:hidden="${adminPage != 'users'}">
@@ -89,10 +210,9 @@
                             <label>Mode <select name="mode" required></select></label>
                             <label>Played <input name="played" type="number" min="0" inputmode="numeric"></label>
                             <label>Wins <input name="wins" type="number" min="0" inputmode="numeric"></label>
-                            <label>Last played <input name="lastPlayedAt" type="datetime-local"></label>
+                            <label>Last played <input name="lastPlayedAt" type="text" maxlength="16" placeholder="dd.mm.yyyy HH:mm" pattern="[0-9]{2}[.][0-9]{2}[.][0-9]{4} [0-9]{2}:[0-9]{2}" title="dd.mm.yyyy HH:mm" autocomplete="off"></label>
                             <label>Reason <input name="reason" required maxlength="250"></label>
-                            <label class="admin-check"><input name="dryRun" type="checkbox" checked> Preview only</label>
-                            <p class="admin-meta" th:text="#{admin.stats.previewHint}">Use Preview first to see the resulting totals.</p>
+                            <th:block th:replace="~{ui/fragments/toggle :: toggle(name='dryRun', value=null, label=#{admin.common.previewOnly}, hint=#{admin.stats.previewHint}, checked=true)}"></th:block>
                             <button class="btn btn-accent" type="submit" th:text="#{admin.stats.preview}">Preview stats change</button>
                             <button class="btn" type="button" data-action="rebuild-stats" th:text="#{admin.stats.rebuild}">Rebuild from game history</button>
                         </form>
@@ -139,10 +259,13 @@
         <label><span th:text="#{admin.users.username}">Username</span> <input name="username" required maxlength="30"></label>
         <label><span th:text="#{admin.users.email}">Email</span> <input name="email" required type="email" maxlength="150"></label>
         <label><span th:text="#{admin.users.status}">Status</span> <select name="status"><option>ACTIVE</option><option>DISABLED</option><option>DELETED</option></select></label>
-        <label class="admin-check"><input name="fakeAdmin" type="checkbox"> <span th:text="#{admin.user.fakeAdmin}">Fake admin</span></label>
-        <fieldset><legend th:text="#{admin.col.roles}">Roles</legend><label class="admin-check"><input name="MODERATOR" type="checkbox"> Moderator</label><label class="admin-check"><input name="ADMIN" type="checkbox"> Administrator</label></fieldset>
+        <th:block th:replace="~{ui/fragments/toggle :: toggle(name='fakeAdmin', value=null, label=#{admin.user.fakeAdmin}, hint=#{admin.user.fakeAdminCopy}, checked=false)}"></th:block>
+        <fieldset><legend th:text="#{admin.col.roles}">Roles</legend>
+            <th:block th:replace="~{ui/fragments/toggle :: toggle(name='MODERATOR', value=null, label='Moderator', hint=null, checked=false)}"></th:block>
+            <th:block th:replace="~{ui/fragments/toggle :: toggle(name='ADMIN', value=null, label='Administrator', hint=null, checked=false)}"></th:block>
+        </fieldset>
         <label><span th:text="#{admin.common.reason}">Reason</span> <input name="reason" required maxlength="250"></label>
-        <label class="admin-check"><input name="dryRun" type="checkbox"> <span th:text="#{admin.stats.preview}">Preview only</span></label>
+        <th:block th:replace="~{ui/fragments/toggle :: toggle(name='dryRun', value=null, label=#{admin.common.previewOnly}, hint=#{admin.user.previewHint}, checked=false)}"></th:block>
         <div class="admin-actions"><button class="btn btn-accent" type="button" data-action="save-user" th:text="#{admin.user.saveTitle}">Save user</button></div>
     </form>
 </dialog>

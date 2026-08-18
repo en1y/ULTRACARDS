@@ -11,6 +11,7 @@ import com.ultracards.gateway.dto.games.games.briskula.BriskulaGameConfigDTO;
 import com.ultracards.gateway.dto.games.games.treseta.TresetaGameConfigDTO;
 import com.ultracards.gateway.dto.leaderboard.LeaderboardMetricDTO;
 import com.ultracards.gateway.dto.leaderboard.LeaderboardPageDTO;
+import com.ultracards.gateway.dto.points.PointsSeriesPointDTO;
 import picocli.CommandLine.Help.Ansi;
 
 import java.beans.Introspector;
@@ -39,6 +40,11 @@ final class OutputWriter {
             }
             if (format == Format.TABLE && value instanceof String message) {
                 System.out.println(style("@|bold,green ✓|@ " + message, color));
+                return;
+            }
+            if (format == Format.TABLE && value instanceof Collection<?> collection && !collection.isEmpty()
+                    && collection.iterator().next() instanceof PointsSeriesPointDTO) {
+                printPointsSeries(collection.stream().map(PointsSeriesPointDTO.class::cast).toList(), utc, color);
                 return;
             }
             var rows = rows(value, format == Format.TABLE, utc);
@@ -102,6 +108,12 @@ final class OutputWriter {
         var flyway = status.flywayVersion() == null && database != null ? database.flywayVersion() : status.flywayVersion();
         rows.add(List.of("Flyway", flyway == null ? "" : flyway));
         rows.add(List.of("Registered users", String.valueOf(overview.users())));
+        rows.add(List.of("Points in circulation", String.format(Locale.ROOT, "%,dP", overview.totalPoints())));
+        rows.add(List.of("Points change (7d)", String.format(Locale.ROOT, "%+,dP", overview.pointsChangeLast7Days())));
+        rows.add(List.of("Points minted (7d)", String.format(Locale.ROOT, "%,dP", overview.pointsMintedLast7Days())));
+        rows.add(List.of("Bet fees (7d)", String.format(Locale.ROOT, "%,dP", overview.pointsRakedLast7Days())));
+        rows.add(List.of("Points in escrow", String.format(Locale.ROOT, "%,dP", overview.pointsEscrowed())));
+        rows.add(List.of("Daily claims today", String.valueOf(overview.dailyClaimsToday())));
         rows.add(List.of("Online now", String.valueOf(overview.onlineUsers())));
         rows.add(List.of("Active today", String.valueOf(overview.onlineUsersToday())));
         rows.add(List.of("Valid sessions", String.valueOf(overview.validSessions())));
@@ -114,20 +126,48 @@ final class OutputWriter {
         return rows;
     }
 
+    /**
+     * The Points chart, drawn in text. Eight block heights over a fixed width give
+     * the same read as the web chart without pulling a plotting library into a CLI.
+     */
+    private void printPointsSeries(List<PointsSeriesPointDTO> series, boolean utc, boolean color) {
+        var blocks = "▁▂▃▄▅▆▇█";
+        var width = Math.min(60, series.size());
+        var low = series.stream().mapToLong(PointsSeriesPointDTO::balance).min().orElse(0);
+        var high = series.stream().mapToLong(PointsSeriesPointDTO::balance).max().orElse(0);
+        var span = Math.max(1, high - low);
+        var line = new StringBuilder();
+        for (int column = 0; column < width; column++) {
+            // Sample evenly so a long ledger still fits the terminal.
+            var point = series.get((int) ((long) column * (series.size() - 1) / Math.max(1, width - 1)));
+            var level = (int) ((point.balance() - low) * (blocks.length() - 1) / span);
+            line.append(blocks.charAt(level));
+        }
+        System.out.println(style("@|yellow " + line + "|@", color));
+        System.out.println(style(String.format(Locale.ROOT, "@|faint %,dP low · %,dP high · %d entries · %s → %s|@",
+                low, high, series.size(), formatInstant(series.getFirst().at(), utc),
+                formatInstant(series.getLast().at(), utc)), color));
+    }
+
     private List<List<String>> leaderboardRows(LeaderboardPageDTO leaderboard) {
         var rows = new ArrayList<List<String>>();
-        rows.add(List.of("Rank", "Player", "Games", "Wins", "Win rate"));
+        var points = leaderboard.metric() == LeaderboardMetricDTO.POINTS;
+        rows.add(points ? List.of("Rank", "Player", "Points")
+                : List.of("Rank", "Player", "Games", "Wins", "Win rate"));
         if (leaderboard.items().isEmpty()) {
-            rows.add(List.of("—", "No ranked players", "", "", ""));
+            rows.add(points ? List.of("—", "No ranked players", "")
+                    : List.of("—", "No ranked players", "", "", ""));
             return rows;
         }
-        for (var entry : leaderboard.items()) rows.add(List.of(
-                "#" + entry.position(),
-                entry.username() + (entry.currentUser() ? " (you)" : ""),
-                String.format(Locale.ROOT, "%,d", entry.gamesPlayed()),
-                String.format(Locale.ROOT, "%,d", entry.wins()),
-                String.format(Locale.ROOT, "%.1f%%", entry.winRate())
-        ));
+        for (var entry : leaderboard.items()) {
+            var player = entry.username() + (entry.currentUser() ? " (you)" : "");
+            if (points) rows.add(List.of("#" + entry.position(), player,
+                    String.format(Locale.ROOT, "%,dP", entry.points())));
+            else rows.add(List.of("#" + entry.position(), player,
+                    String.format(Locale.ROOT, "%,d", entry.gamesPlayed()),
+                    String.format(Locale.ROOT, "%,d", entry.wins()),
+                    String.format(Locale.ROOT, "%.1f%%", entry.winRate())));
+        }
         return rows;
     }
 

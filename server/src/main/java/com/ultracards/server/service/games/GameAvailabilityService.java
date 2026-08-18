@@ -26,7 +26,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class GameAvailabilityService {
-    private static final String ALL_MODES = "*";
+    public static final String ALL_MODES = "*";
     private final GameAvailabilityRepository repository;
 
     @Transactional(readOnly = true)
@@ -84,19 +84,21 @@ public class GameAvailabilityService {
 
     private String key(GameType game, String mode) { return game.name() + ':' + mode; }
 
-    private GameType game(String value) {
+    /** Parses an admin-supplied game name. Shared with the other rules that are keyed on games. */
+    public GameType game(String value) {
         try { return GameType.valueOf(value.trim().toUpperCase()); }
         catch (RuntimeException ex) { throw badRequest("Unknown game type: " + value); }
     }
 
-    private String mode(GameType game, String value) {
+    /** Validates an admin-supplied mode. A blank value means every mode of the game. */
+    public String mode(GameType game, String value) {
         if (value == null || value.isBlank()) return ALL_MODES;
         var mode = value.trim().toUpperCase();
         if (!modes(game).contains(mode)) throw badRequest("Unknown " + game.name() + " mode: " + value);
         return mode;
     }
 
-    private List<String> modes(GameType game) {
+    public List<String> modes(GameType game) {
         return switch (game) {
             case BRISKULA -> java.util.Arrays.stream(BriskulaGameConfig.values()).map(Enum::name).toList();
             case TRESETA -> java.util.Arrays.stream(TresetaGameConfig.values()).map(Enum::name).toList();
@@ -116,7 +118,8 @@ public class GameAvailabilityService {
             for (var mode : TresetaGameConfig.values())
                 if (mode.getNumberOfPlayers() == treseta.getNumberOfPlayers()
                         && mode.getCardsInHandNum() == treseta.getCardsInHandNum()
-                        && mode.areTeamsEnabled() == treseta.getTeamsEnabled()) return mode.name();
+                        && mode.areTeamsEnabled() == treseta.getTeamsEnabled()
+                        && mode.areDeclarationsEnabled() == treseta.areDeclarationsEnabled()) return mode.name();
         }
         if (config instanceof DurakGameConfigDTO durak) {
             // The record constructor is the canonical validator; an invalid combination is not a mode.

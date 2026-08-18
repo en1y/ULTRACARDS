@@ -20,6 +20,7 @@ import com.ultracards.server.repositories.games.UserTresetaStatsRepository;
 import com.ultracards.server.repositories.notifications.NotificationRepository;
 import com.ultracards.server.service.games.GameManager;
 import com.ultracards.server.service.lobby.LobbyManager;
+import com.ultracards.server.service.points.PointsService;
 import lombok.RequiredArgsConstructor;
 import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,6 +56,7 @@ public class AdminReportService {
     private final AdminUserService adminUserService;
     private final AdminGameRecordService adminGameRecordService;
     private final Flyway flyway;
+    private final PointsService pointsService;
 
     @Value("${app.presence.online-timeout-seconds:60}")
     private long onlineTimeoutSeconds;
@@ -76,11 +78,14 @@ public class AdminReportService {
         incomplete.put("BRISKULA", briskulaGameRepository.countByEndedAtIsNull());
         incomplete.put("DURAK", durakGameRepository.countByEndedAtIsNull());
         incomplete.put("TRESETA", tresetaGameRepository.countByEndedAtIsNull());
+        var economy = pointsService.economySnapshot();
         return new AdminOverviewDTO(users.size(), status, roles, sessionRepository.countValid(now),
                 sessionRepository.countOnlineUsers(now.minusSeconds(onlineTimeoutSeconds)),
                 sessionRepository.countOnlineUsers(now.truncatedTo(java.time.temporal.ChronoUnit.DAYS)),
                 completed, incomplete,
-                lobbyManager.getLobbies().size(), gameManager.getGames().size(), flywayVersion(), now);
+                lobbyManager.getLobbies().size(), gameManager.getGames().size(), flywayVersion(), now,
+                economy.total(), economy.changeLast7Days(), economy.mintedLast7Days(),
+                economy.rakedLast7Days(), economy.escrowed(), economy.dailyClaimsToday());
     }
 
     public AdminPageDTO<AdminUserSummaryDTO> users(int page, int size) {

@@ -107,7 +107,9 @@
             done: new Set(),
             takeDeclared: false,
             bout: 1,
-            revision: 1,
+            // The board refuses states older than the one it holds, so a reset carries the
+            // revision on rather than restarting it — a fresh table is still a newer state.
+            revision: (state?.revision || 0) + 1,
             ended: false
         };
         syncDeckSizeInput();
@@ -449,7 +451,13 @@
         state.slots = [];
         state.ended = true;
         state.revision++;
-        publish('RESULTED', {draw: false, loser: publicPlayer(loser), winners: state.players.slice(0, -1).map(publicPlayer)});
+        const winners = state.players.slice(0, -1).map(publicPlayer);
+        publish('RESULTED', {
+            draw: false,
+            loser: publicPlayer(loser),
+            winners,
+            wagerDeltas: window.UltracardsSandboxWagerDeltas(state.players, winners)
+        });
         showStatus(tr('admin.sandbox.durak.result',
             `Showing a local result: ${loser.name} is the durak.`, loser.name));
     }

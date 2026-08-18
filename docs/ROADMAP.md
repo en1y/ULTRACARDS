@@ -148,25 +148,38 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ---
 
-## v0.4.1 - Add an in-game currency system
+## v0.4.1 - Add the Points economy ✅
 
-- Introduce an in-game currency that players can earn through gameplay and achievements.
-- Implement every day log in rewards
-- Allow players to spend currency on cosmetic items, card backs, or other non-gameplay affecting features.
-- Implement a currency management system in the backend with endpoints for earning, spending, and tracking currency balances.
-- Make users get 1500 currency as a base and if they have less than 1500 currency they get 1500 currency per day for logging in and clicking a separate button that is to be inside a currency page. 
-- Add a leaderboard for currency units
-- Show balance of a user in a header, use shorts like k, m, b, t for thousands, millions, billions, trillions, make it not take up too much space.
-- Add currencies into the user profile fragments when searched or accessed from other sources
-- Add info on amount of currency earned in the last 7 days, some kind of delta
-- Add that info to the admin dashboard and the admin cli
+**Core economy and rewards**
+- Name the currency Points, display it as `P`, compact large balances with K/M/B/T suffixes, and expose balances and recent changes across profiles, search results, friend lists, and the header.
+- Give every account a 1,500P starting balance and a once-per-day 1,500P reserve claim when its pre-claim balance is below 1,500P.
+- Add daily achievements for games played and won, reset their progress each day, award each reward once, and notify the player when it is completed.
+- Add scheduled Point events with game and exact-mode eligibility, visible or hidden sub-achievements for games, wins, losses, and draws, individual rewards, an all-goals bonus, and sanitized Markdown descriptions.
+- Persist every grant, deduction, refund, and adjustment in an idempotent transaction ledger with stored post-transaction balances and non-negative database constraints.
+
+**Wagers**
+- Add an optional host-selected bet to every supported lobby mode and let the host update it before the game starts.
+- Pick stakes from 100P to 1,000,000P with the logarithmic slider, presets, and compact ticks; show bets on lobby cards and filter the lobby list by stake while optionally including free lobbies.
+- Lock and deduct every player's stake when the game starts, reject unaffordable games, persist the applied fee, and settle each completed game once.
+- Return each winner's stake plus an equal share of the losing pool after the configured fee; refund draws, interrupted games, failed starts, and stranded open wagers.
+- Support audited global, per-game, and per-mode fee rules, resolving the exact mode first, then the game-wide rule, then the global default.
+- Explain each game's wager settlement in its guide and show the effective fee in lobby and Points interfaces.
+
+**Player and administration interfaces**
+- Add the responsive Points page with the daily reserve, daily achievements, active/upcoming/past events, balance history chart, paginated activity ledger, and current fee.
+- Add authenticated APIs and gateway contracts for accounts, balances, daily claims, events, transaction history, balance series, and effective wager settings.
+- Add Points to the leaderboard, game history and replay results, profile surfaces, user search, friend lists, lobby cards, and the compact header balance.
+- Add a dedicated admin Points dashboard for circulation, account and escrow totals, minting, removals, claims, wagers, rake, 30-day movement, and the highest balances.
+- Add separate admin event management with schedules, game/mode filters, sub-achievements, hidden goals, Markdown preview, enable/disable controls, and required audit reasons.
+- Extend the admin web UI, gateway, and CLI with audited balance adjustments, Point-event management, and global/game/mode wager-fee controls.
+- Keep all economy mutations server-authoritative, transactionally locked, retry-safe, and protected against duplicate rewards or settlements.
 
 ---
 
 ## v0.4.2 - Add something like githubs activity page
 
+- Allow players to spend Points on cosmetic items, card backs, and other non-gameplay-affecting features.
 - Add display for that in the profile page and in the profile pop up fragments
 - Add rewards for players that have played for 3, 7, 14, 30, 100, 200, 300, 365 days in a row. Add far-fetched achievements for 2 or 3 years too.
 - Add streak freezes that you get for playing 7 days in a row and max them out at 3 streak freezes. 
 - Make the current streak based on history but after it has been pulled from there implement a separate logic for storing it
-

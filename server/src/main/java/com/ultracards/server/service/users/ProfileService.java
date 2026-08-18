@@ -8,6 +8,7 @@ import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.auth.SessionService;
 import com.ultracards.server.service.games.UserGamesStatsService;
+import com.ultracards.server.service.points.PointsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,7 @@ public class ProfileService {
     private final SessionService sessionService;
     private final UserRepository userRepository;
     private final UserGamesStatsService userGamesStatsService;
+    private final PointsService pointsService;
 
     @Value("${app.token.update-privilege-duration-minutes:4}")
     private long updateDuration;
@@ -67,6 +69,8 @@ public class ProfileService {
         profile.setEmail(user.getEmail());
         profile.setRoles(user.getRoles().stream().map(Enum::toString).collect(Collectors.toList()));
         profile.setId(user.getId());
+        profile.setPoints(user.getPointsBalance());
+        profile.setPointsChangeLast24Hours(pointsService.changeLast24Hours(user.getId()));
 
         var gameStats = userGamesStatsService.getByUser(user);
 

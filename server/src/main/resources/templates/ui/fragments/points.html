@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* The one way Points are written on a server-rendered page: shortened amount,
+       a non-breaking space, then the symbol. */-->
+<th:block th:fragment="points(amount)"
+          th:with="text=${@pointsFormat.compact(amount)}"><span
+        th:text="${text} + '&#160;'">1.5K </span><span
+        class="points-symbol" th:text="#{points.symbol}">P</span></th:block>
+
+<!--/* Same, with an explicit sign — for deltas that read better as +/−. */-->
+<th:block th:fragment="signedPoints(amount)"
+          th:with="value=${amount != null ? amount : 0}"><span class="points-delta"
+        th:classappend="${value > 0 ? 'is-up' : (value < 0 ? 'is-down' : 'is-zero')}"><span
+        th:if="${value > 0}">+</span><span th:if="${value < 0}">−</span><th:block
+        th:replace="~{ui/fragments/points :: points(${value < 0 ? -value : value})}"></th:block></span></th:block>
+
+<th:block th:fragment="activityPoints(amount)"
+          th:with="text=${@pointsFormat.compact(amount)}"><span
+        th:text="${text} + '&#160;'">1.5K </span><span
+        class="points-symbol" th:text="#{points.symbol}">P</span></th:block>
+
+<th:block th:fragment="signedActivityPoints(amount)"
+          th:with="value=${amount != null ? amount : 0}"><span class="points-delta"
+        th:classappend="${value > 0 ? 'is-up' : (value < 0 ? 'is-down' : 'is-zero')}"><span
+        th:if="${value > 0}">+</span><span th:if="${value < 0}">−</span><th:block
+        th:replace="~{ui/fragments/points :: activityPoints(${value < 0 ? -value : value})}"></th:block></span></th:block>
+
+<!--/* One event card, called from both the default-visible list and the collapsed
+       "show more" list — `primary` just controls whether it starts expanded. */-->
+<details th:fragment="eventCard(event, pointsNow, primary)" class="points-event"
+         th:with="historyAt=${event.endsAt == null and event.completedAt != null ? event.completedAt : event.endsAt},
+                  past=${historyAt != null and historyAt.isBefore(pointsNow)},
+                  completed=${!#lists.isEmpty(event.achievements) and event.hiddenAchievementCount == 0 and #lists.isEmpty(event.achievements.?[!completed])}"
+         th:classappend="|${past ? ' is-past' : event.active ? ' is-active' : ' is-upcoming'}${completed ? ' is-complete' : (past ? ' is-failed' : '')}|"
+         th:attr="open=${(event.active or primary) ? 'open' : null}">
+    <summary>
+        <span class="points-event-heading">
+            <h4 th:text="${event.name}">Event</h4>
+            <time th:if="${past}" th:datetime="${historyAt}" th:text="#{points.events.endedOn(${#temporals.format(historyAt, 'dd.MM.yyyy HH:mm')})}">Ended 01.01.2026 12:00</time>
+            <time th:if="${!past and event.active and event.endsAt != null}" th:datetime="${event.endsAt}" th:text="#{points.events.ends(${#temporals.format(event.endsAt, 'dd.MM.yyyy HH:mm')})}">Ends 01.01.2026 12:00</time>
+            <time th:if="${!past and !event.active}" th:datetime="${event.startsAt}" th:text="#{points.events.starts(${#temporals.format(event.startsAt, 'dd.MM.yyyy HH:mm')})}">Starts 01.01.2026 12:00</time>
+            <time th:if="${!past and event.active and event.endsAt == null}" th:text="#{points.events.noEnd}">Never ends</time>
+        </span>
+        <span class="points-event-state" th:text="${completed} ? #{points.events.completed} : (${past} ? #{points.events.expired} : (${event.active} ? #{points.events.active} : #{points.events.upcoming}))">Active</span>
+        <span class="points-event-chevron" aria-hidden="true"></span>
+    </summary>
+    <div class="points-event-body">
+        <div class="points-event-description markdown-body" th:if="${!#strings.isEmpty(event.descriptionHtml)}" th:utext="${event.descriptionHtml}"></div>
+        <div class="points-event-meta">
+            <span class="points-event-games">
+                <small th:text="#{points.events.eligibleGames}">Eligible games</small>
+                <span class="points-event-game-list">
+                    <span th:if="${#lists.isEmpty(event.gameTypes)}" th:text="#{points.events.allGames}">All game types count</span>
+                    <span th:each="game : ${event.gameTypes}" th:text="${#strings.capitalize(#strings.toLowerCase(game))}">Durak</span>
+                </span>
+            </span>
+            <span class="points-event-bonus" th:if="${event.completionRewardPoints > 0}">
+                <small th:text="#{points.events.completionBonus}">All-goals bonus</small>
+                <th:block th:replace="~{ui/fragments/points :: signedPoints(${event.completionRewardPoints})}"></th:block>
+            </span>
+        </div>
+        <div class="points-event-achievements" th:if="${!#lists.isEmpty(event.achievements) or event.hiddenAchievementCount > 0}">
+            <article class="points-event-achievement" th:each="goal : ${event.achievements}"
+                     th:classappend="${goal.completed ? ' is-complete' : ''}">
+                <header>
+                    <span class="points-event-goal-state" aria-hidden="true" th:text="${goal.completed ? '✓' : '✦'}">✦</span>
+                    <div class="points-event-goal-copy">
+                        <h5 th:text="${goal.name}">Goal</h5>
+                        <small th:if="${goal.completed}" th:text="#{points.events.completed}">Completed</small>
+                    </div>
+                    <span class="points-event-reward"><th:block th:replace="~{ui/fragments/points :: signedActivityPoints(${goal.rewardPoints})}"></th:block></span>
+                </header>
+                <div class="points-event-goal-description markdown-body" th:if="${!#strings.isEmpty(goal.descriptionHtml)}"
+                     th:utext="${goal.descriptionHtml}"></div>
+                <div class="points-event-goal-games" th:if="${!#lists.isEmpty(goal.gameTypes) or !#lists.isEmpty(goal.gameModes)}">
+                    <small th:if="${!#lists.isEmpty(goal.gameTypes)}" th:text="#{points.events.eligibleGames}">Eligible games</small>
+                    <span class="points-event-game-list" th:if="${!#lists.isEmpty(goal.gameTypes)}">
+                        <span th:each="game : ${goal.gameTypes}" th:text="${#strings.capitalize(#strings.toLowerCase(game))}">Durak</span>
+                    </span>
+                    <small th:if="${!#lists.isEmpty(goal.gameModes)}" th:text="#{points.events.requiredSetup}">Required setup</small>
+                    <span class="points-event-game-list" th:if="${!#lists.isEmpty(goal.gameModes)}">
+                        <span data-game-mode-label th:attr="data-game-type=${goal.gameTypes[0]}"
+                              th:text="#{points.events.exactModeCount(${#lists.size(goal.gameModes)})}">1 exact setup</span>
+                        <i hidden data-game-mode th:each="mode : ${goal.gameModes}" th:attr="data-game-mode=${mode}"></i>
+                    </span>
+                </div>
+                <div class="points-event-targets">
+                    <div class="points-event-target" th:if="${goal.gamesRequired > 0}" th:classappend="${goal.games >= goal.gamesRequired ? ' is-complete' : ''}"><span><small th:text="#{points.events.target.games}">Games</small><strong th:text="${goal.games + ' / ' + goal.gamesRequired}">0 / 1</strong></span><span class="points-event-target-track"><span th:style="|--event-target-progress:${goal.games >= goal.gamesRequired ? 100 : goal.games * 100 / goal.gamesRequired}%|"></span></span></div>
+                    <div class="points-event-target" th:if="${goal.winsRequired > 0}" th:classappend="${goal.wins >= goal.winsRequired ? ' is-complete' : ''}"><span><small th:text="#{points.events.target.wins}">Wins</small><strong th:text="${goal.wins + ' / ' + goal.winsRequired}">0 / 1</strong></span><span class="points-event-target-track"><span th:style="|--event-target-progress:${goal.wins >= goal.winsRequired ? 100 : goal.wins * 100 / goal.winsRequired}%|"></span></span></div>
+                    <div class="points-event-target" th:if="${goal.lossesRequired > 0}" th:classappend="${goal.losses >= goal.lossesRequired ? ' is-complete' : ''}"><span><small th:text="#{points.events.target.losses}">Losses</small><strong th:text="${goal.losses + ' / ' + goal.lossesRequired}">0 / 1</strong></span><span class="points-event-target-track"><span th:style="|--event-target-progress:${goal.losses >= goal.lossesRequired ? 100 : goal.losses * 100 / goal.lossesRequired}%|"></span></span></div>
+                    <div class="points-event-target" th:if="${goal.drawsRequired > 0}" th:classappend="${goal.draws >= goal.drawsRequired ? ' is-complete' : ''}"><span><small th:text="#{points.events.target.draws}">Draws</small><strong th:text="${goal.draws + ' / ' + goal.drawsRequired}">0 / 1</strong></span><span class="points-event-target-track"><span th:style="|--event-target-progress:${goal.draws >= goal.drawsRequired ? 100 : goal.draws * 100 / goal.drawsRequired}%|"></span></span></div>
+                </div>
+            </article>
+            <article class="points-event-achievement" th:if="${event.hiddenAchievementCount > 0}">
+                <header>
+                    <span class="points-event-goal-state" aria-hidden="true">?</span>
+                    <div class="points-event-goal-copy">
+                        <h5 th:text="#{points.events.hiddenAchievements(${event.hiddenAchievementCount})}">Hidden achievements: 1</h5>
+                        <small th:text="#{points.events.hiddenAchievementHint}">Requirements and rewards stay secret until completion.</small>
+                    </div>
+                </header>
+            </article>
+        </div>
+        <p class="points-event-notice" th:if="${#lists.isEmpty(event.achievements) and event.hiddenAchievementCount == 0}" th:text="#{points.events.noGoals}">This event has no goals.</p>
+    </div>
+</details>
+</body>
+</html>

@@ -14,6 +14,7 @@ import com.ultracards.server.service.games.GameRecordingService;
 import com.ultracards.server.service.games.UserGamesStatsService;
 import com.ultracards.server.service.games.briskula.GameEventPublisher;
 import com.ultracards.server.service.lobby.LobbyManager;
+import com.ultracards.server.service.points.PointsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +48,7 @@ public class DurakGameService {
     private final TaskScheduler taskScheduler;
     private final TransactionTemplate transactionTemplate;
     private final Function<LobbyEntity, Boolean> openLobby;
+    private final PointsService pointsService;
 
     @Value("${app.durak-action.timer.duration-seconds}")
     private int timerDuration;
@@ -57,6 +59,7 @@ public class DurakGameService {
                            GameRecordingService gameRecordingService,
                            @Qualifier("timer") TaskScheduler taskScheduler,
                            TransactionTemplate transactionTemplate,
+                           PointsService pointsService,
                            @Qualifier("openLobby") @Lazy Function<LobbyEntity, Boolean> openLobby) {
         this.gameManager = gameManager;
         this.eventPublisher = eventPublisher;
@@ -66,6 +69,7 @@ public class DurakGameService {
         this.gameRecordingService = gameRecordingService;
         this.taskScheduler = taskScheduler;
         this.transactionTemplate = transactionTemplate;
+        this.pointsService = pointsService;
         this.openLobby = openLobby;
     }
 
@@ -120,11 +124,13 @@ public class DurakGameService {
             DurakActionResult result;
             try {
                 // Closes the whole throw window when one is open: every attacker shares one clock.
-                result = game.getGame().applyTimeout();
-                game.setStateRevision(game.getStateRevision() + 1);
-                game.setTurnNumber(game.getTurnNumber() + 1);
+                result = game.applyTimeout();
             } catch (RuntimeException ex) {
+                // Returning here would leave a running game with no timer at all and no way to
+                // get one back, so the clock is restarted even though the state did not move.
                 log.warn("Durak timeout action failed for game {}: {}", gameId, ex.getMessage());
+                scheduleTimeout(game);
+                eventPublisher.publish(game, UPDATED);
                 return;
             }
             if (result.resolvedBout() != null) eventPublisher.publishDurakBoutClosed(game);
@@ -184,6 +190,10 @@ public class DurakGameService {
         updateMatchupStats(users, modeKey, loser);
 
         gameRecordingService.finish(game);
+        var winnerIds = new HashSet<Long>();
+        for (var raw : winners)
+            winnerIds.add(((DurakPlayerEntity) raw).getUser().getId());
+        pointsService.completeGame(game.getId(), users, winnerIds, GameType.DURAK, modeKey);
     }
 
     private void scheduleFinishRetry(DurakGameEntity game) {

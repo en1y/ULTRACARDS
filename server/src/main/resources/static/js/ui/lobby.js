@@ -40,6 +40,10 @@
             declarationsControl: document.getElementById('lobby-declarations-control'),
             declarationsToggle: document.getElementById('lobby-declarations-toggle'),
             durakRow: document.getElementById('lobby-durak-options'),
+            wagerValue: document.getElementById('lobby-wager-value'),
+            wagerControls: document.getElementById('lobby-wager-controls'),
+            wagerToggle: document.getElementById('lobby-wager-toggle'),
+            wagerToggleControl: document.getElementById('lobby-wager-toggle-control'),
             randomize: document.getElementById('lobby-randomize'),
             status: document.getElementById('lobby-status'),
             closeWarning: document.getElementById('lobby-close-warning'),
@@ -52,6 +56,44 @@
             leave: document.getElementById('leave-button'),
             delete: document.getElementById('delete-button')
         };
+        // Only a committed change saves; dragging the slider just moves the readout.
+        const wagerControl = initWagerControl(document.getElementById('lobby-wager-editor'),
+            (stake, committed) => { if (committed) saveWager(); });
+        /**
+         * The bet is capped by the poorest player, not just the host — a stake nobody
+         * else can cover only fails at start time. Refreshed whenever the table changes.
+         */
+        let lastBalanceKey = '';
+        let playerBalances = {};
+
+        function paintPlayerBalances() {
+            let lowest = null;
+            document.querySelectorAll('[data-player-points]').forEach(slot => {
+                const points = playerBalances[slot.dataset.playerPoints];
+                if (points == null) return;
+                slot.replaceChildren(pointsCompactNode(points));
+                lowest = lowest == null ? points : Math.min(lowest, points);
+            });
+            if (lowest != null) wagerControl?.limit(lowest);
+        }
+
+        function syncPlayerBalances(lobby) {
+            const ids = (lobby?.players || []).map(player => player.id).filter(id => id != null).sort();
+            if (!ids.length) return;
+            // Repaint from cache first: every render rebuilds the player list, so the
+            // balances have to be written back even when nothing needs fetching.
+            paintPlayerBalances();
+            // Settling a bet changes balances without changing the roster, so the
+            // started flag is part of the key — coming back from a game refetches.
+            const key = `${ids.join(',')}|${lobby?.isStarted === true}`;
+            if (key === lastBalanceKey) return;
+            lastBalanceKey = key;
+            pointsBalances(ids).then(balances => {
+                playerBalances = balances;
+                paintPlayerBalances();
+            });
+        }
+        let wagerSaving = false;
         let toastHideTimer = null;
         let toastCleanupTimer = null;
         let connectionLostNotified = false;
@@ -209,12 +251,14 @@
                         credentials: 'include'
                     });
                     if (!response.ok) {
-                        throw new Error('Failed to start lobby');
+                        throw new Error(await readResponseMessage(response, t('lobbyPage.startFailed')));
                     }
                     updateStatus(t('lobbyPage.startingGame'));
                     announceGameStarted();
                 } catch (error) {
-                    updateStatus(t('lobbyPage.startFailed'));
+                    const message = error?.message || t('lobbyPage.startFailed');
+                    updateStatus(message);
+                    showToast(t('lobbyPage.toast.notReady.title'), message);
                 }
             });
 
@@ -314,6 +358,8 @@
                 }
             });
 
+            dom.wagerToggle?.addEventListener('change', saveWager);
+
             dom.randomize?.addEventListener('click', async () => {
                 if (!isCurrentUserHost()) {
                     return;
@@ -395,6 +441,8 @@
             if (dom.lobbyCode) dom.lobbyCode.textContent = lobby.lobbyCode || '------';
             if (dom.status) dom.status.textContent = buildLobbyStatus(lobby, players.length);
             syncLobbyVisibility(lobby, !!isHost);
+            syncLobbyWager(lobby, !!isHost);
+            syncPlayerBalances(lobby);
             renderConfigEditor(lobby, !!isHost);
             if (dom.randomize) {
                 dom.randomize.hidden = !(isBriskulaOrderReorderable(lobby) && isCurrentUserHost());
@@ -417,6 +465,7 @@
             }
 
             if (options.preservePlayersArea) {
+                paintPlayerBalances();
                 return;
             }
 
@@ -434,6 +483,7 @@
             } else {
                 updateRenderedTeamState(teamState);
             }
+            paintPlayerBalances();
         }
 
         function renderPlayers(
@@ -482,6 +532,7 @@
                                     ${current ? `<span class="player-self-tag">${t('lobby.you')}</span>` : ''}
                                 </div>
                                 <div class="player-role">${escapeHtml(role)}</div>
+                                <div class="player-points" data-player-points="${player.id}"></div>
                             </div>
                         </div>
                         ${renderKickAction(canKick, player.id)}
@@ -629,6 +680,51 @@
                 dom.publicToggle.disabled = !isHost;
             }
             setAnimatedVisibilityText(dom.publicToggleLabel, publicLobby ? t('lobby.visibility.public') : t('lobby.visibility.private'));
+        }
+
+        async function saveWager() {
+            if (!isCurrentUserHost()) {
+                syncLobbyWager(state.lobby, false);
+                return;
+            }
+            if (wagerSaving) return;
+            const enabled = dom.wagerToggle?.checked === true;
+            wagerSaving = true;
+            if (dom.wagerControls) dom.wagerControls.setAttribute('aria-busy', 'true');
+            if (dom.wagerToggle) dom.wagerToggle.disabled = true;
+            wagerControl?.disable(true);
+            try {
+                await updateLobbyWager({enabled, stakePoints: enabled ? wagerControl?.value() ?? WAGER_MIN : 0});
+            } catch (error) {
+                // The server explains a refused stake ("more than your balance of …"),
+                // which beats the generic line.
+                showToast(t('lobbyPage.toast.updateFailed.title'), error?.message || t('points.wager.updateFailed'));
+            } finally {
+                wagerSaving = false;
+                if (dom.wagerControls) dom.wagerControls.removeAttribute('aria-busy');
+                syncLobbyWager(state.lobby, isCurrentUserHost());
+            }
+        }
+
+        function syncLobbyWager(lobby, isHost) {
+            // Fees differ per game and mode; quote the one this lobby would actually pay.
+            window.refreshWagerFee?.(lobby.gameType, resolveGameConfigKey(lobby.gameType, lobby.gameConfig));
+            const enabled = lobby.wager?.enabled === true;
+            const stake = Number(lobby.wager?.stakePoints) || 0;
+            if (dom.wagerValue) {
+                dom.wagerValue.replaceChildren();
+                if (enabled) dom.wagerValue.append(pointsCompactNode(stake), ` ${t('points.wager.perPlayer')}`);
+                else dom.wagerValue.textContent = t('points.wager.off');
+            }
+            const editable = isHost && lobby.started !== true;
+            if (dom.wagerControls) dom.wagerControls.hidden = !editable;
+            if (dom.wagerToggleControl) dom.wagerToggleControl.hidden = !editable;
+            if (dom.wagerToggle) {
+                dom.wagerToggle.checked = enabled;
+                dom.wagerToggle.disabled = !editable;
+            }
+            if (enabled && stake) wagerControl?.set(stake);
+            wagerControl?.disable(!enabled || !editable);
         }
 
         function renderConfigEditor(lobby, isHost) {
@@ -811,6 +907,22 @@
                 state.lobby = lobby;
                 previousLobbySnapshot = lobby;
                 renderLobby(state.lobby, buildPlayerAreaRenderOptions(previousLobby, lobby));
+            }
+        }
+
+        async function updateLobbyWager(wager) {
+            const response = await fetch('/api/lobby/update', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({...state.lobby, wager})
+            });
+            if (!response.ok) throw new Error((await response.text()) || 'Failed to update the bet');
+            const lobby = await response.json();
+            if (lobby) {
+                state.lobby = lobby;
+                previousLobbySnapshot = lobby;
+                renderLobby(lobby);
             }
         }
 
@@ -1898,6 +2010,19 @@
         function updateStatus(text) {
             if (dom.status) {
                 dom.status.textContent = text;
+            }
+        }
+
+        async function readResponseMessage(response, fallback) {
+            try {
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const body = await response.json();
+                    return body?.message || fallback;
+                }
+                return (await response.text()).trim() || fallback;
+            } catch (error) {
+                return fallback;
             }
         }
 
