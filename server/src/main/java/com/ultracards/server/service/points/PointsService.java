@@ -18,6 +18,7 @@ import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,6 +58,9 @@ public class PointsService {
     private final NotificationService notifications;
     private final GameAvailabilityService gameAvailability;
     private final MarkdownRenderer markdown;
+
+    @Value("${app.points.basic-user-amount:1500}")
+    private long basicUserPoints;
 
     public PointsService(UserRepository users, JdbcTemplate jdbc, NotificationService notifications,
                          GameAvailabilityService gameAvailability, MarkdownRenderer markdown) {
@@ -615,6 +619,13 @@ public class PointsService {
                 scalar("SELECT COUNT(*) FROM point_transactions WHERE transaction_type = 'DAILY_CLAIM' AND reference_id = ?",
                         LocalDate.now(POINTS_ZONE).toString()),
                 dailyTotals, leaders);
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void applyBasicUserPointsDefault() {
+        jdbc.update("UPDATE point_settings SET starting_balance = ? WHERE id = 1 AND updated_by IS NULL",
+                basicUserPoints);
     }
 
     @EventListener(ApplicationReadyEvent.class)

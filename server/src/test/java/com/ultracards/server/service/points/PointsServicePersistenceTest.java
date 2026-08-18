@@ -39,6 +39,15 @@ class PointsServicePersistenceTest {
     @Autowired private ObjectMapper objectMapper;
 
     @Test
+    void appliesTheBasicUserPointsPropertyToUnconfiguredSettings() {
+        jdbc.update("UPDATE point_settings SET starting_balance = 900, updated_by = NULL WHERE id = 1");
+
+        points.applyBasicUserPointsDefault();
+
+        assertThat(points.summary(user("property-default")).balance()).isEqualTo(1_500);
+    }
+
+    @Test
     void initializesAndClaimsTheDailyReserveOnlyBelowTheThreshold() {
         var user = user("daily");
 
