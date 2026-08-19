@@ -106,13 +106,36 @@ public class AdminReportService {
     @Transactional(readOnly = true)
     public AdminPageDTO<AdminUserSummaryDTO> users(int page, int size, String queryValue, boolean exact, String statusValue,
                                                    String roleValue, String sortValue, String directionValue) {
+        return users(page, size, queryValue, exact, statusValue, roleValue, sortValue, directionValue,
+                null, null, null);
+    }
+
+    /** The advanced search: every non-blank criterion narrows the result further. */
+    @Transactional(readOnly = true)
+    public AdminPageDTO<AdminUserSummaryDTO> users(int page, int size, String queryValue, boolean exact, String statusValue,
+                                                   String roleValue, String sortValue, String directionValue,
+                                                   String usernameValue, String emailValue, String userIdValue) {
         var status = enumValue(UserStatus.class, statusValue, "user status");
         var role = enumValue(UserRole.class, roleValue, "role");
-        var query = queryValue == null || queryValue.isBlank() ? null : queryValue.trim();
-        var result = userRepository.findAdminReport(status, role, query, exact,
+        var result = userRepository.findAdminReport(status, role, trimmed(queryValue), exact,
+                trimmed(usernameValue), trimmed(emailValue), userId(userIdValue),
                 page(page, size, sort(sortValue, "userCreatedAt", "userCreatedAt", "email", "username", "id"), directionValue));
         return new AdminPageDTO<>(result.getContent().stream().map(adminUserService::toDto).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    private static String trimmed(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static Long userId(String value) {
+        var trimmed = trimmed(value);
+        if (trimmed == null) return null;
+        try {
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException error) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User ID must be a number: " + value);
+        }
     }
 
     @Transactional(readOnly = true)

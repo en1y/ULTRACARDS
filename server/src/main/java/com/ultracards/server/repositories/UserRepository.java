@@ -35,6 +35,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("select u from UserEntity u where u.id = :id")
     Optional<UserEntity> findByIdForUpdate(@Param("id") Long id);
 
+    /**
+     * The admin user report. `query` is the loose "any field" search the Users page has always
+     * had; `username`, `email`, and `userId` are the per-field criteria the advanced search
+     * fragment sends. Every supplied criterion is ANDed, so an admin can narrow on several at once.
+     */
     @Query(value = """
             select distinct u from UserEntity u left join u.roles r
             where (:status is null or u.status = :status)
@@ -44,6 +49,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                    or (:exact = false and (lower(u.username) like lower(concat('%', :query, '%'))
                                             or lower(u.email) like lower(concat('%', :query, '%'))))
                    or cast(u.id as string) = :query)
+              and (:username is null
+                   or (:exact = true and lower(u.username) = lower(cast(:username as string)))
+                   or (:exact = false and lower(u.username) like lower(concat('%', cast(:username as string), '%'))))
+              and (:email is null
+                   or (:exact = true and lower(u.email) = lower(cast(:email as string)))
+                   or (:exact = false and lower(u.email) like lower(concat('%', cast(:email as string), '%'))))
+              and (:userId is null or u.id = :userId)
             """, countQuery = """
             select count(distinct u.id) from UserEntity u left join u.roles r
             where (:status is null or u.status = :status)
@@ -53,11 +65,21 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                    or (:exact = false and (lower(u.username) like lower(concat('%', :query, '%'))
                                             or lower(u.email) like lower(concat('%', :query, '%'))))
                    or cast(u.id as string) = :query)
+              and (:username is null
+                   or (:exact = true and lower(u.username) = lower(cast(:username as string)))
+                   or (:exact = false and lower(u.username) like lower(concat('%', cast(:username as string), '%'))))
+              and (:email is null
+                   or (:exact = true and lower(u.email) = lower(cast(:email as string)))
+                   or (:exact = false and lower(u.email) like lower(concat('%', cast(:email as string), '%'))))
+              and (:userId is null or u.id = :userId)
             """)
     Page<UserEntity> findAdminReport(@Param("status") com.ultracards.server.enums.UserStatus status,
                                      @Param("role") com.ultracards.server.enums.UserRole role,
                                      @Param("query") String query,
                                      @Param("exact") boolean exact,
+                                     @Param("username") String username,
+                                     @Param("email") String email,
+                                     @Param("userId") Long userId,
                                      Pageable pageable);
 
     @EntityGraph(attributePaths = "roles")

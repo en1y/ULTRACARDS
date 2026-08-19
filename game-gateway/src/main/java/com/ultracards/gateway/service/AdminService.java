@@ -5,6 +5,7 @@ import com.ultracards.gateway.dto.notifications.NotificationDTO;
 import com.ultracards.gateway.dto.points.PointTransactionPageDTO;
 import com.ultracards.gateway.dto.points.PointsSeriesPointDTO;
 import com.ultracards.gateway.dto.points.PointsSettingsDTO;
+import com.ultracards.gateway.dto.points.PointsStreakDTO;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -56,9 +57,16 @@ public class AdminService {
     }
     public AdminPageDTO<AdminUserSummaryDTO> reportUsers(int page, int size, String query, Boolean exact,
                                                          String status, String role, String sort, String direction) {
+        return reportUsers(page, size, query, exact, status, role, sort, direction, null, null, null);
+    }
+    /** The advanced search: every non-null criterion narrows the result further. */
+    public AdminPageDTO<AdminUserSummaryDTO> reportUsers(int page, int size, String query, Boolean exact,
+                                                         String status, String role, String sort, String direction,
+                                                         String username, String email, String userId) {
         return get("/reports/users?page=" + page + "&size=" + size + query("status", status)
                 + query("role", role) + query("sort", sort) + query("direction", direction)
-                + query("query", query) + query("exact", exact),
+                + query("query", query) + query("exact", exact) + query("username", username)
+                + query("email", email) + query("userId", userId),
                 new ParameterizedTypeReference<>() {});
     }
     public AdminPageDTO<AdminRecordedGameDTO> games(int page, int size, String gameType, Boolean completed,
@@ -128,6 +136,32 @@ public class AdminService {
     public AdminWagerFeeDTO resetWagerFee(String game, String mode, String reason) {
         return exchange("/economy/fees/" + encode(game) + "?reason=" + encode(reason) + query("mode", mode),
                 HttpMethod.DELETE, null, AdminWagerFeeDTO.class);
+    }
+    public List<AdminDailyGoalDTO> dailyGoals() {
+        return get("/economy/daily-goals", new ParameterizedTypeReference<>() {});
+    }
+    public List<AdminDailyGoalDTO> updateDailyGoals(AdminDailyGoalsPatchDTO patch) {
+        return exchange("/economy/daily-goals", HttpMethod.PUT, patch, new ParameterizedTypeReference<>() {});
+    }
+    public List<AdminAchievementDTO> achievements() {
+        return get("/economy/achievements", new ParameterizedTypeReference<>() {});
+    }
+    public List<AdminAchievementDTO> updateAchievements(AdminAchievementsPatchDTO patch) {
+        return exchange("/economy/achievements", HttpMethod.PUT, patch, new ParameterizedTypeReference<>() {});
+    }
+    public AdminPageDTO<AdminAchievementHolderDTO> achievementHolders(String code, int page, int size) {
+        return get("/economy/achievements/" + encode(code) + "/users?page=" + page + "&size=" + size,
+                new ParameterizedTypeReference<>() {});
+    }
+    public PointsStreakDTO streak(Long userId) {
+        return get("/economy/streaks/" + userId, PointsStreakDTO.class);
+    }
+    public PointsStreakDTO updateStreak(Long userId, AdminStreakPatchDTO patch) {
+        return exchange("/economy/streaks/" + userId, HttpMethod.PATCH, patch, PointsStreakDTO.class);
+    }
+    public PointsStreakDTO resetStreak(Long userId, String reason) {
+        return exchange("/economy/streaks/" + userId + "?reason=" + encode(reason),
+                HttpMethod.DELETE, null, PointsStreakDTO.class);
     }
     public List<AdminPointEventDTO> pointEvents() {
         return get("/economy/events", new ParameterizedTypeReference<>() {});

@@ -12,7 +12,7 @@ import java.util.Set;
 
 @Controller
 public class AdminPageController {
-    private static final Set<String> PAGES = Set.of("users", "lobbies", "games", "sessions", "availability", "audit", "notifications", "stats", "database", "points", "events");
+    private static final Set<String> PAGES = Set.of("users", "lobbies", "games", "sessions", "availability", "audit", "notifications", "stats", "database", "points", "events", "achievements");
 
     @GetMapping("/admin/sandbox")
     @PreAuthorize("hasRole(T(com.ultracards.server.enums.UserRole).ADMIN.name())")

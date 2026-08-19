@@ -12,9 +12,17 @@ class AdminReportControllerTest {
 
     @Test
     void forwardsPreciseUserSearchToTheReportService() {
-        controller.users(2, 20, "en1y", true, "ACTIVE", "ADMIN", "username", "asc");
+        controller.users(2, 20, "en1y", true, "ACTIVE", "ADMIN", "username", "asc", null, null, null);
 
-        verify(service).users(2, 20, "en1y", true, "ACTIVE", "ADMIN", "username", "asc");
+        verify(service).users(2, 20, "en1y", true, "ACTIVE", "ADMIN", "username", "asc", null, null, null);
+    }
+
+    /** The advanced search sends per-field criteria alongside the loose query. */
+    @Test
+    void forwardsEveryAdvancedCriterionToTheReportService() {
+        controller.users(0, 25, null, false, "ACTIVE", null, null, null, "en1y", "example.com", "7");
+
+        verify(service).users(0, 25, null, false, "ACTIVE", null, null, null, "en1y", "example.com", "7");
     }
 
     @Test

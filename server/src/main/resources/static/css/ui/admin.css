@@ -355,6 +355,7 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     border-radius: var(--radius-md);
     background: var(--color-bg);
 }
+.admin-daily-goal[hidden] { display: none !important; }
 
 .admin-daily-goal > legend { padding: 0 .35rem; color: var(--color-text); font-weight: 800; }
 
@@ -367,6 +368,60 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
 
 .admin-daily-goal-fields > .uc-toggle { align-self: center; }
 .admin-daily-goals-form #admin-daily-goals-status.is-error { color: var(--color-accent); }
+
+.admin-achievement-toolbar {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1.5fr) repeat(3, minmax(9rem, 1fr)) auto;
+    gap: .65rem;
+    align-items: end;
+    padding: .75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: color-mix(in oklab, var(--color-surface) 78%, var(--color-bg));
+}
+
+.admin-achievement-toolbar label,
+.admin-user-search-options label {
+    display: grid;
+    gap: .3rem;
+    color: var(--color-text-muted);
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.admin-achievement-toolbar input,
+.admin-achievement-toolbar select,
+.admin-user-search-options select {
+    width: 100%;
+    min-height: 2.35rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+}
+
+.admin-achievement-bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+#admin-achievements .admin-event-achievement-head {
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.admin-achievement-identity { display: grid; gap: .2rem; min-width: 0; }
+.admin-achievement-identity strong { overflow-wrap: anywhere; }
+.admin-achievement-identity code { color: var(--color-text-muted); font-size: .7rem; }
+.admin-achievement-row-actions { display: flex; justify-content: flex-end; gap: .35rem; flex-wrap: wrap; }
+.admin-achievement-icon-button { width: 2rem; padding-inline: 0 !important; font-size: 1rem !important; }
+.admin-daily-goal.is-collapsed .admin-daily-goal-fields { display: none; }
 .admin-events-manager { display: grid; gap: 1rem; margin-top: 1.5rem; }
 .admin-events-manager > .admin-panel-heading { margin: 0; }
 
@@ -737,6 +792,8 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-economy-settings { grid-template-columns: 1fr 1fr; }
     .admin-economy-settings .admin-actions { grid-column: 1 / -1; justify-content: start; }
     .admin-daily-goal-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-achievement-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-achievement-search { grid-column: 1 / -1; }
     .admin-event-summary-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -749,6 +806,10 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-daily-goal-fields,
     .admin-event-submit-bar { grid-template-columns: 1fr; }
     .admin-economy-settings { grid-template-columns: 1fr; }
+    .admin-achievement-toolbar { grid-template-columns: 1fr; }
+    .admin-achievement-search { grid-column: auto; }
+    #admin-achievements .admin-event-achievement-head { align-items: stretch; flex-direction: column; }
+    .admin-achievement-row-actions { justify-content: flex-start; }
     .admin-economy-settings .admin-actions { grid-column: auto; }
     .admin-event-submit-actions { align-items: stretch; flex-direction: column; }
     .admin-event-games { grid-template-columns: minmax(0, 1fr); }
@@ -766,4 +827,191 @@ a.admin-db-card:hover { border-color: var(--color-accent); transform: translateY
     .admin-event-summary-goal-list article { align-items: start; flex-direction: column; }
     .admin-points-leader-row { grid-template-columns: 2.25rem minmax(0, 1fr); }
     .admin-points-leader-value { grid-column: 2; }
+}
+
+/* ---------------------------------------------------------------- shared user search */
+/* ui/fragments/admin/user-search.html — reused by the stats, notification, and streak
+   screens, so it lives here rather than beside any one of them. */
+
+.admin-user-search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+}
+
+.admin-user-search-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.admin-user-search-label {
+    font-weight: 700;
+    display: block;
+}
+
+.admin-user-search-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.admin-user-search-exact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.admin-user-search-criteria {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.admin-user-search-criterion {
+    display: grid;
+    grid-template-columns: minmax(8rem, 12rem) 1fr auto;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.admin-user-search-value {
+    display: flex;
+}
+
+.admin-user-search-field,
+.admin-user-search-input {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.85rem;
+}
+
+.admin-user-search-remove {
+    padding: 0.3rem 0.6rem;
+    line-height: 1;
+    font-size: 1rem;
+}
+
+.admin-user-search-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.admin-user-search-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(8rem, 1fr));
+    gap: .5rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.admin-user-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 17rem;
+    overflow-y: auto;
+}
+
+.admin-user-search-result {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.admin-user-search-result-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+}
+
+.admin-user-search-badge {
+    padding: .15rem .45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text-muted);
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.admin-user-search-badge.is-active {
+    border-color: color-mix(in oklab, var(--color-success) 55%, var(--color-border));
+    color: var(--color-success);
+}
+
+.admin-user-search-result-facts {
+    display: flex;
+    align-items: center;
+    gap: .35rem .65rem;
+    flex-wrap: wrap;
+}
+
+.admin-user-search-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    padding-top: .25rem;
+}
+
+.admin-user-search-pagination[hidden] { display: none; }
+
+.admin-user-search-result:hover {
+    border-color: var(--color-accent);
+}
+
+.admin-user-search-result.is-picked {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-bg));
+}
+
+.admin-user-search-result small {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+}
+
+.admin-streak-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.6rem;
+}
+
+@media (max-width: 640px) {
+    .admin-user-search-criterion {
+        grid-template-columns: 1fr auto;
+    }
+
+    .admin-user-search-field {
+        grid-column: 1 / -1;
+    }
+
+    .admin-user-search-options { grid-template-columns: 1fr; }
+    .admin-user-search-actions .btn { flex: 1 1 8rem; }
+    .admin-user-search-actions [data-user-search-status] { flex-basis: 100%; }
 }
