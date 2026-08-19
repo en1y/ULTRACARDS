@@ -464,13 +464,7 @@ function initialiseTabs() {
                 candidate.classList.toggle('is-active', candidate === tab);
             });
 
-            if (selected === 'sessions') {
-                refreshSessions();
-            } else if (selected === 'stats') {
-                refreshDetailedStats();
-            } else if (selected === 'friends') {
-                refreshFriends();
-            }
+            refreshProfileTab(selected);
 
             if (currentPanel && currentPanel !== nextPanel) {
                 currentPanel.classList.add('is-leaving');
@@ -520,25 +514,13 @@ function initialiseTabs() {
         const selected = tabs[nextIndex].getAttribute('data-profile-tab');
         updateHash(selected);
         setActiveTabState(selected);
-        if (selected === 'sessions') {
-            refreshSessions();
-        } else if (selected === 'stats') {
-            refreshDetailedStats();
-        } else if (selected === 'friends') {
-            refreshFriends();
-        }
+        refreshProfileTab(selected);
     });
 
     const initialTab = getHashTab();
     if (initialTab) {
         setActiveTabState(initialTab);
-        if (initialTab === 'sessions') {
-            refreshSessions();
-        } else if (initialTab === 'stats') {
-            refreshDetailedStats();
-        } else if (initialTab === 'friends') {
-            refreshFriends();
-        }
+        refreshProfileTab(initialTab);
     } else {
         updateHash(getActiveProfileTab());
     }
@@ -555,18 +537,29 @@ function initialiseTabs() {
         }
 
         setActiveTabState(hashTab);
-        if (hashTab === 'sessions') {
-            refreshSessions();
-        } else if (hashTab === 'stats') {
-            refreshDetailedStats();
-        } else if (hashTab === 'friends') {
-            refreshFriends();
-        }
+        refreshProfileTab(hashTab);
     });
 }
 
 function getActiveProfileTab() {
     return document.querySelector('[data-profile-tab].is-active')?.getAttribute('data-profile-tab') || 'overview';
+}
+
+/** Loads whatever the newly shown tab needs. Panels without a loader are already rendered. */
+function refreshProfileTab(selected) {
+    if (selected === 'sessions') {
+        return refreshSessions();
+    }
+    if (selected === 'stats') {
+        return refreshDetailedStats();
+    }
+    if (selected === 'friends') {
+        return refreshFriends();
+    }
+    if (selected === 'achievements') {
+        return window.loadAchievements?.(document.getElementById('profile-achievements'));
+    }
+    return undefined;
 }
 
 async function verifyRecentSession(onVerified) {
@@ -1966,17 +1959,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await refreshFriends();
                 return;
             }
+            if (getActiveProfileTab() === 'achievements') {
+                await refreshProfileTab('achievements');
+                return;
+            }
             await refresh();
+            window.loadActivityGraph?.(document.getElementById('profile-activity'));
         } finally {
             setRefreshButtonLoading(false);
         }
     });
     document.getElementById('save-profile')?.addEventListener('click', () => save());
+    // The graph lives on the overview panel, which is rendered up front on every load.
+    window.loadActivityGraph?.(document.getElementById('profile-activity'));
     await refreshSessions();
-    if (getActiveProfileTab() === 'stats') {
-        await refreshDetailedStats();
-    }
-    if (getActiveProfileTab() === 'friends') {
-        await refreshFriends();
+    const active = getActiveProfileTab();
+    if (active !== 'overview' && active !== 'sessions') {
+        await refreshProfileTab(active);
     }
 });

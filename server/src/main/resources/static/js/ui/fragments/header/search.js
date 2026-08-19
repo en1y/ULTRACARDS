@@ -927,64 +927,49 @@
       }
     };
 
-    const createProfileTabs = (statsPanel, pointsPanel, historyPanel, profile) => {
+    /**
+     * @param {Object} panels keyed by tab name; the first key is the tab shown on open.
+     * @param {Object} loaders optional per-tab loader, run once the first time its tab opens
+     */
+    const createProfileTabs = (panels, labels, loaders) => {
       const tabs = document.createElement('div');
       tabs.className = 'header-user-profile-tabs';
       tabs.setAttribute('role', 'tablist');
       tabs.setAttribute('aria-label', t('profile.tabs.aria'));
 
-      const statsButton = document.createElement('button');
-      statsButton.className = 'header-user-profile-tab is-active';
-      statsButton.type = 'button';
-      statsButton.setAttribute('role', 'tab');
-      statsButton.setAttribute('aria-selected', 'true');
-      statsButton.textContent = t('search.stats');
+      const names = Object.keys(panels);
+      const buttons = {};
+      const loaded = new Set();
 
-      const pointsButton = document.createElement('button');
-      pointsButton.className = 'header-user-profile-tab';
-      pointsButton.type = 'button';
-      pointsButton.setAttribute('role', 'tab');
-      pointsButton.setAttribute('aria-selected', 'false');
-      pointsButton.textContent = t('points.title');
-
-      const historyButton = document.createElement('button');
-      historyButton.className = 'header-user-profile-tab';
-      historyButton.type = 'button';
-      historyButton.setAttribute('role', 'tab');
-      historyButton.setAttribute('aria-selected', 'false');
-      historyButton.textContent = t('header.menu.history');
-
-      let pointsLoaded = false;
-      let historyLoaded = false;
-      const activate = (tab) => {
-        const showStats = tab === 'stats';
-        const showPoints = tab === 'points';
-        const showHistory = tab === 'history';
-        statsButton.classList.toggle('is-active', showStats);
-        pointsButton.classList.toggle('is-active', showPoints);
-        historyButton.classList.toggle('is-active', showHistory);
-        statsButton.setAttribute('aria-selected', String(showStats));
-        pointsButton.setAttribute('aria-selected', String(showPoints));
-        historyButton.setAttribute('aria-selected', String(showHistory));
-        statsPanel.hidden = !showStats;
-        pointsPanel.hidden = !showPoints;
-        historyPanel.hidden = !showHistory;
+      const activate = (selected) => {
+        names.forEach((name) => {
+          const active = name === selected;
+          buttons[name].classList.toggle('is-active', active);
+          buttons[name].setAttribute('aria-selected', String(active));
+          panels[name].hidden = !active;
+        });
         profileModal?.content.focus({ preventScroll: true });
 
-        if (showPoints && !pointsLoaded) {
-          pointsLoaded = true;
-          loadProfilePoints(profile, pointsPanel);
-        }
-        if (showHistory && !historyLoaded) {
-          historyLoaded = true;
-          loadProfileHistory(profile, historyPanel);
+        if (!loaded.has(selected)) {
+          loaded.add(selected);
+          loaders?.[selected]?.(panels[selected]);
         }
       };
 
-      statsButton.addEventListener('click', () => activate('stats'));
-      pointsButton.addEventListener('click', () => activate('points'));
-      historyButton.addEventListener('click', () => activate('history'));
-      tabs.append(statsButton, pointsButton, historyButton);
+      names.forEach((name, index) => {
+        const button = document.createElement('button');
+        button.className = `header-user-profile-tab${index === 0 ? ' is-active' : ''}`;
+        button.type = 'button';
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-selected', String(index === 0));
+        button.textContent = labels[name];
+        button.addEventListener('click', () => activate(name));
+        buttons[name] = button;
+        panels[name].hidden = index !== 0;
+        tabs.append(button);
+      });
+      loaded.add(names[0]);
+
       tabs.addEventListener('keydown', (event) => {
         if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || isTypingTarget(event.target)) {
           return;
@@ -1114,16 +1099,15 @@
         activeProfileAction = { action: profileFriendAction, profile, button: addButton, statusElement: actionStatus };
       }
 
-      const statsPanel = document.createElement('div');
-      statsPanel.className = 'header-user-profile-panel';
-
-      const pointsPanel = document.createElement('div');
-      pointsPanel.className = 'header-user-profile-panel';
-      pointsPanel.hidden = true;
-
-      const historyPanel = document.createElement('div');
-      historyPanel.className = 'header-user-profile-panel';
-      historyPanel.hidden = true;
+      const panel = () => {
+        const node = document.createElement('div');
+        node.className = 'header-user-profile-panel';
+        return node;
+      };
+      const statsPanel = panel();
+      const achievementsPanel = panel();
+      const pointsPanel = panel();
+      const historyPanel = panel();
 
       const totals = document.createElement('section');
       totals.className = 'header-user-profile-stats';
@@ -1156,13 +1140,38 @@
       }
 
       games.append(grid);
-      statsPanel.append(totals, games);
+
+      // The graph belongs with the overview, which is what the stats tab is here.
+      const activity = document.createElement('section');
+      activity.className = 'header-user-profile-activity';
+      const activityTitle = document.createElement('h3');
+      activityTitle.textContent = t('activity.title');
+      const activityGraph = document.createElement('div');
+      activityGraph.append(createProfileState(t('common.loading')));
+      activity.append(activityTitle, activityGraph);
+
+      statsPanel.append(totals, activity, games);
       if (detailedFriend) {
         statsPanel.append(createDetailedFriendStatsSection(detailedFriend));
       }
-      root.append(summary, createProfileTabs(statsPanel, pointsPanel, historyPanel, profile),
-          statsPanel, pointsPanel, historyPanel);
+
+      const tabs = createProfileTabs(
+          { stats: statsPanel, achievements: achievementsPanel, points: pointsPanel, history: historyPanel },
+          {
+            stats: t('search.stats'),
+            achievements: t('profile.tab.achievements'),
+            points: t('points.title'),
+            history: t('header.menu.history')
+          },
+          {
+            achievements: (target) => window.loadAchievements?.(target, profile?.id),
+            points: (target) => loadProfilePoints(profile, target),
+            history: (target) => loadProfileHistory(profile, target)
+          });
+
+      root.append(summary, tabs, statsPanel, achievementsPanel, pointsPanel, historyPanel);
       setProfileModalContent(root);
+      window.loadActivityGraph?.(activityGraph, profile?.id);
     };
 
     const loadDetailedFriendProfile = async (profile, profileFriendAction) => {

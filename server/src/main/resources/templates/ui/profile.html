@@ -31,6 +31,7 @@
     <nav class="profile-tabs" th:aria-label="#{profile.tabs.aria}">
         <button class="profile-tab is-active" type="button" data-profile-tab="overview" th:text="#{profile.tab.overview}">Overview</button>
         <button class="profile-tab" type="button" data-profile-tab="stats" th:text="#{profile.tab.stats}">Game stats</button>
+        <button class="profile-tab" type="button" data-profile-tab="achievements" th:text="#{profile.tab.achievements}">Achievements</button>
         <button class="profile-tab" type="button" data-profile-tab="friends" th:text="#{header.friends}">Friends</button>
         <button class="profile-tab" type="button" data-profile-tab="sessions" th:text="#{profile.tab.sessions}">Sessions</button>
     </nav>
@@ -110,6 +111,19 @@
             </div>
         </div>
 
+        <div class="profile-history">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker" th:text="#{activity.eyebrow}">Play history</p>
+                    <h2 th:text="#{activity.title}">Activity</h2>
+                    <p class="section-copy" th:text="#{activity.copy}">Every day you finished a game in the last year.</p>
+                </div>
+            </div>
+            <div id="profile-activity" data-activity-graph>
+                <p class="activity-graph-state" th:text="#{common.loading}">Loading…</p>
+            </div>
+        </div>
+
         <div id="games" class="profile-history">
             <div class="section-heading">
                 <div>
@@ -169,6 +183,21 @@
                 <article class="profile-session-card profile-session-card--placeholder">
                     <p th:text="#{profile.loadingDetailedStats}">Loading detailed stats...</p>
                 </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-panel" data-profile-panel="achievements">
+        <div class="profile-history profile-achievements-card">
+            <div class="section-heading achievement-section-heading">
+                <div>
+                    <p class="section-kicker" th:text="#{achievements.eyebrow}">Milestones</p>
+                    <h2 th:text="#{profile.tab.achievements}">Achievements</h2>
+                    <p class="section-copy" th:text="#{achievements.copy}">Keep a daily streak going and hit lifetime milestones to earn Points.</p>
+                </div>
+            </div>
+            <div id="profile-achievements" class="profile-achievements-content">
+                <p class="activity-graph-state" th:text="#{common.loading}">Loading…</p>
             </div>
         </div>
     </section>
@@ -246,6 +275,7 @@
 </div>
 
 <div th:replace="~{ui/fragments/footer :: footer}"></div>
+<script th:src="@{/js/ui/activity.js(v=${@environment.getProperty('app.version')})}"></script>
 <script th:src="@{/js/ui/profile.js}"></script>
 </body>
 </html>

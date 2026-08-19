@@ -94,7 +94,8 @@ class PointsTemplateRenderingTest {
                 "pointsCompactNode(overview.pointsRakedLast7Days), \"/admin/points\"",
                 "pointsCompactNode(overview.pointsEscrowed), \"/admin/points\"",
                 "Number(overview.dailyClaimsToday || 0).toLocaleString(), \"/admin/points\"");
-        assertThat(search).contains("pointsButton", "pointsChangeLast24Hours",
+        assertThat(search).contains("points: (target) => loadProfilePoints(profile, target)",
+                "pointsChangeLast24Hours",
                 "/api/points/users/${id}/transactions", "/api/points/users/${id}/series",
                 "renderPointsChart", "['1', '1d'], ['3', '3d'], ['7', '7d'], ['30', '30d']",
                 "fetch(`/api/points/users/${id}/series?days=3`", "drawChart(series, 3)",
