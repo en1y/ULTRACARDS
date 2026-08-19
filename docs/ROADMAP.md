@@ -178,8 +178,25 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 
 ## v0.4.2 - Add something like githubs activity page
 
+**Activity graph and achievements** ✅
+- Add a GitHub-style activity graph of one square per day for the last 53 Monday-first weeks, on the profile overview and in the header's user popup, with per-day tooltips and a horizontally scrolling mobile layout.
+- Add an Achievements tab to both the profile page and the popup, showing the current streak, the longest streak, held streak freezes, and progress toward every milestone.
+- Add one-time achievements for playing 3, 7, 14, 30, 100, 200, 300, and 365 days in a row, plus far-fetched two- and three-year milestones, and lifetime games-played and games-won milestones. Each pays Points once.
+- Track completion in its own table rather than the ledger, so a 0-Point achievement still records and an admin editing a reward never re-pays one already earned.
+- Settle achievements on read as well as on game end, so milestones passed before this shipped are still collected; viewing another player is read-only and shows their progress without granting them anything.
+
+**Streaks and freezes** ✅
+- Seed every player's streak from `point_game_results` in the migration, then own it in `user_streaks` instead of recomputing a multi-year run on every game.
+- Award one streak freeze per unbroken week, capped at three held at once, and spend them on the next play to bridge missed days rather than in a nightly job.
+- Count bridged days toward the streak, and report a streak as at risk — with the freezes the next play would cost — before it is lost.
+
+**Administration** ✅
+- Add an admin Achievements page for the milestone list (name, metric, target, reward, enabled) with audited reasons.
+- Let admins correct a streak field by field — running length, record, last played day, and freezes — or reset one outright, with every change audited.
+- Add an achievement picker that lists the players who earned it, with when they earned it and what it paid.
+- Add one advanced user-search fragment where several criteria (username, email, ID, status, role, or a loose any-field match) apply at once, and reuse it for the statistics lookup, the notification recipient picker, and the streak lookup instead of three ad-hoc boxes.
+- Reach every kind of achievement from the CLI as well as the web UI: `economy achievement list/save/delete/holders`, `economy daily-goal list/save/delete`, `economy streak`, and the existing event sub-achievements.
+
+**Remaining**
 - Allow players to spend Points on cosmetic items, card backs, and other non-gameplay-affecting features.
 - Add display for that in the profile page and in the profile pop up fragments
-- Add rewards for players that have played for 3, 7, 14, 30, 100, 200, 300, 365 days in a row. Add far-fetched achievements for 2 or 3 years too.
-- Add streak freezes that you get for playing 7 days in a row and max them out at 3 streak freezes. 
-- Make the current streak based on history but after it has been pulled from there implement a separate logic for storing it
