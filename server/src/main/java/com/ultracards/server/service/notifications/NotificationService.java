@@ -17,6 +17,7 @@ import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +27,11 @@ public class NotificationService {
 
     private static final PolicyFactory NO_HTML_POLICY = new HtmlPolicyBuilder().toFactory();
     private static final int MAX_MESSAGE_LENGTH = 512;
+    private static final EnumSet<NotificationType> REWARD_TYPES = EnumSet.of(
+            NotificationType.ACHIEVEMENT,
+            NotificationType.EVENT_ACHIEVEMENT,
+            NotificationType.EVENT_COMPLETION
+    );
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
@@ -80,6 +86,23 @@ public class NotificationService {
             dtos.add(createNotification(notification));
 
         return dtos;
+    }
+
+    public NotificationDTO createRewardNotification(Long recipientUserId, NotificationType type,
+                                                      String name, long rewardPoints) {
+        if (!REWARD_TYPES.contains(type))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown reward notification type");
+        if (rewardPoints < 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reward Points cannot be negative");
+        var recipient = userRepository.findById(recipientUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient user not found"));
+        var sanitizedName = sanitizeMessage(name);
+        if (!StringUtils.hasText(sanitizedName))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reward notification name is required");
+
+        var notification = new NotificationEntity(recipient, null, type, sanitizedName, null);
+        notification.setRewardPoints(rewardPoints);
+        return createNotification(notification);
     }
 
     public NotificationDTO createFriendInviteNotification(UserEntity sender, UserEntity recipient, UUID friendRequestId) {

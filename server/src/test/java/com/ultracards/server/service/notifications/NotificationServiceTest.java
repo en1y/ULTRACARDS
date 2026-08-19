@@ -150,6 +150,45 @@ class NotificationServiceTest {
     }
 
     @Test
+    void createsARewardNotificationWithPopupMetadata() {
+        var recipient = user(2L, "Recipient");
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(notificationRepository.save(any(NotificationEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = notificationService.createRewardNotification(
+                2L, NotificationType.EVENT_ACHIEVEMENT, "<b>Weekend</b> · First win", 250);
+
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEntity.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        var saved = notificationCaptor.getValue();
+        assertThat(saved.getRecipient()).isEqualTo(recipient);
+        assertThat(saved.getSender()).isNull();
+        assertThat(saved.getType()).isEqualTo(NotificationType.EVENT_ACHIEVEMENT);
+        assertThat(saved.getMessage()).isEqualTo("Weekend · First win");
+        assertThat(saved.getRewardPoints()).isEqualTo(250);
+        assertThat(result.getType()).isEqualTo(NotificationTypeDTO.EVENT_ACHIEVEMENT);
+        assertThat(result.getRewardPoints()).isEqualTo(250);
+        verify(eventPublisher).publish(saved);
+    }
+
+    @Test
+    void rejectsNonRewardTypesAndNegativeRewards() {
+        assertThatThrownBy(() -> notificationService.createRewardNotification(
+                2L, NotificationType.TEXT, "Not a reward", 10))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThatThrownBy(() -> notificationService.createRewardNotification(
+                2L, NotificationType.ACHIEVEMENT, "Milestone", -1))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        verifyNoInteractions(userRepository, notificationRepository, eventPublisher);
+    }
+
+    @Test
     void senderCreatesAndSanitizesTextNotification() {
         var sender = user(1L, "Moderator");
         var recipient = user(2L, "Recipient");
