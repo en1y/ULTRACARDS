@@ -14,11 +14,13 @@ import com.ultracards.gateway.dto.points.PointsClaimDTO;
 import com.ultracards.gateway.dto.points.PointsSeriesPointDTO;
 import com.ultracards.gateway.dto.points.PointsSettingsDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.enums.NotificationType;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.repositories.UserRepository;
 import com.ultracards.server.service.games.GameAvailabilityService;
 import com.ultracards.server.service.notifications.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,24 +53,29 @@ public class PointsService {
     private static final String ALL_MODES = "*";
     /** What a daily goal can count; mirrors the point_daily_goals metric check. */
     private static final List<String> DAILY_METRICS = List.of("GAMES", "WINS", "LOSSES", "DRAWS");
-    private static final ZoneId POINTS_ZONE = ZoneId.of("Europe/Zagreb");
+    /** The day boundary the whole economy uses; {@link AchievementService} counts streak days by it too. */
+    static final ZoneId POINTS_ZONE = ZoneId.of("Europe/Zagreb");
 
     private final UserRepository users;
     private final JdbcTemplate jdbc;
     private final NotificationService notifications;
     private final GameAvailabilityService gameAvailability;
     private final MarkdownRenderer markdown;
+    /** Lazy: achievements need this service to pay out, so the two reference each other. */
+    private final AchievementService achievements;
 
     @Value("${app.points.basic-user-amount:1500}")
     private long basicUserPoints;
 
     public PointsService(UserRepository users, JdbcTemplate jdbc, NotificationService notifications,
-                         GameAvailabilityService gameAvailability, MarkdownRenderer markdown) {
+                         GameAvailabilityService gameAvailability, MarkdownRenderer markdown,
+                         @Lazy AchievementService achievements) {
         this.users = users;
         this.jdbc = jdbc;
         this.notifications = notifications;
         this.gameAvailability = gameAvailability;
         this.markdown = markdown;
+        this.achievements = achievements;
     }
 
     @Transactional
@@ -311,6 +318,8 @@ public class PointsService {
                     gameType == null ? null : gameType.name(), gameMode, outcome) > 0;
             awardAchievements(user);
             awardEventAchievements(user, gameType, recorded ? gameId : null);
+            // Only a newly recorded result moves the streak; a retried finalisation must not.
+            if (recorded) achievements.recordGame(user);
         }
         settleWager(gameId, locked, winnerIds);
     }
@@ -895,26 +904,26 @@ public class PointsService {
                 allComplete &= complete;
                 if (complete && goal.rewardPoints() > 0
                         && applyOnce(user, goal.rewardPoints(), Type.EVENT_ACHIEVEMENT, goal.id().toString()))
-                    notifyAchievement(user, goal.name(), goal.rewardPoints());
+                    notifyEventAchievement(user, event.name(), goal.name(), goal.rewardPoints());
                 if (complete && goal.rewardPoints() == 0 && completedGameId != null
                         && !complete(goal, eventProgress(user.getId(), event, goal.gameTypes(), goal.gameModes(),
                         completedGameId)))
-                    notifyAchievement(user, goal.name(), 0);
+                    notifyEventAchievement(user, event.name(), goal.name(), 0);
             }
-            if (allComplete) {
-                recordEventCompletion(user.getId(), event.id());
+            if (allComplete && recordEventCompletion(user.getId(), event.id())) {
                 if (event.completionRewardPoints() > 0)
                     applyOnce(user, event.completionRewardPoints(), Type.EVENT_COMPLETION, event.id().toString());
+                notifyEventCompletion(user, event.name(), event.completionRewardPoints());
             }
         }
     }
 
-    private void recordEventCompletion(Long userId, UUID eventId) {
-        jdbc.update("""
+    private boolean recordEventCompletion(Long userId, UUID eventId) {
+        return jdbc.update("""
                 INSERT INTO point_event_completions(event_id, user_id, completed_at)
                 VALUES (?, ?, ?)
                 ON CONFLICT (event_id, user_id) DO NOTHING
-                """, eventId, userId, Timestamp.from(Instant.now()));
+                """, eventId, userId, Timestamp.from(Instant.now())) > 0;
     }
 
     private boolean complete(GoalRow goal, EventProgress progress) {
@@ -1146,7 +1155,7 @@ public class PointsService {
         var progress = todayProgress(user.getId());
         var result = new ArrayList<PointsAchievementDTO>();
         for (var goal : dailyGoalRows(true))
-            result.add(new PointsAchievementDTO(goal.code(), goal.name(), goal.rewardPoints(),
+            result.add(new PointsAchievementDTO(goal.code(), goal.name(), goal.metric(), goal.rewardPoints(),
                     Math.min(progress.of(goal.metric()), goal.target()), goal.target(),
                     transactionExists(user.getId(), Type.ACHIEVEMENT, reference(goal))));
         return result;
@@ -1202,9 +1211,27 @@ public class PointsService {
         return true;
     }
 
+    /**
+     * Pays a one-time achievement reward and tells the player. {@link AchievementService}
+     * owns the "already earned" check, so this only guards against a repeat within the
+     * ledger itself; a 0-Point achievement moves no money and still notifies.
+     */
+    void grantMilestone(UserEntity user, long reward, String code, String name) {
+        if (reward > 0) applyOnce(user, reward, Type.MILESTONE, code);
+        notifyAchievement(user, name, reward);
+    }
+
     private void notifyAchievement(UserEntity user, String name, long reward) {
-        notifications.createTextNotification(user.getId(),
-                "Achievement completed: %s (+%dP)".formatted(name, reward));
+        notifications.createRewardNotification(user.getId(), NotificationType.ACHIEVEMENT, name, reward);
+    }
+
+    private void notifyEventAchievement(UserEntity user, String eventName, String achievementName, long reward) {
+        notifications.createRewardNotification(user.getId(), NotificationType.EVENT_ACHIEVEMENT,
+                eventName + " · " + achievementName, reward);
+    }
+
+    private void notifyEventCompletion(UserEntity user, String eventName, long reward) {
+        notifications.createRewardNotification(user.getId(), NotificationType.EVENT_COMPLETION, eventName, reward);
     }
 
     private void apply(UserEntity user, long amount, Type type, String reference) {
@@ -1297,7 +1324,8 @@ public class PointsService {
         WAGER_REFUND,
         ADMIN_ADJUSTMENT,
         EVENT_ACHIEVEMENT,
-        EVENT_COMPLETION
+        EVENT_COMPLETION,
+        MILESTONE
     }
 
 }

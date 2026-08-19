@@ -3,10 +3,13 @@ package com.ultracards.server.controllers.points;
 import com.ultracards.gateway.dto.points.PointTransactionPageDTO;
 import com.ultracards.gateway.dto.points.PointTransactionDTO;
 import com.ultracards.gateway.dto.points.PointsAccountDTO;
+import com.ultracards.gateway.dto.points.PointsAchievementsDTO;
+import com.ultracards.gateway.dto.points.PointsActivityDayDTO;
 import com.ultracards.gateway.dto.points.PointsClaimDTO;
 import com.ultracards.gateway.dto.points.PointsSeriesPointDTO;
 import com.ultracards.gateway.dto.points.PointEventDTO;
 import com.ultracards.server.entity.UserEntity;
+import com.ultracards.server.service.points.AchievementService;
 import com.ultracards.server.service.points.PointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +31,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PointsController {
     private final PointsService pointsService;
+    private final AchievementService achievementService;
 
     @GetMapping
     public PointsAccountDTO account(@AuthenticationPrincipal UserEntity user) {
@@ -87,5 +91,29 @@ public class PointsController {
     public List<PointsSeriesPointDTO> userSeries(@PathVariable Long userId,
                                                  @RequestParam(defaultValue = "30") int days) {
         return pointsService.series(userId, Math.max(0, days));
+    }
+
+    /** Streak and one-time achievements. Reading your own settles anything already earned. */
+    @GetMapping("/achievements")
+    public PointsAchievementsDTO achievements(@AuthenticationPrincipal UserEntity user) {
+        return achievementService.summary(user);
+    }
+
+    @GetMapping("/users/{userId}/achievements")
+    public PointsAchievementsDTO userAchievements(@PathVariable Long userId) {
+        return achievementService.publicSummary(userId);
+    }
+
+    /** Games finished per day, for the activity graph. */
+    @GetMapping("/activity")
+    public List<PointsActivityDayDTO> activity(@AuthenticationPrincipal UserEntity user,
+                                               @RequestParam(defaultValue = "371") int days) {
+        return achievementService.activity(user.getId(), days);
+    }
+
+    @GetMapping("/users/{userId}/activity")
+    public List<PointsActivityDayDTO> userActivity(@PathVariable Long userId,
+                                                   @RequestParam(defaultValue = "371") int days) {
+        return achievementService.activity(userId, days);
     }
 }

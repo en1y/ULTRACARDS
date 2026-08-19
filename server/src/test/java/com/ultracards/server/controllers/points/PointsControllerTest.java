@@ -3,6 +3,7 @@ package com.ultracards.server.controllers.points;
 import com.ultracards.gateway.dto.points.PointTransactionDTO;
 import com.ultracards.gateway.dto.points.PointTransactionPageDTO;
 import com.ultracards.gateway.dto.points.PointsSeriesPointDTO;
+import com.ultracards.server.service.points.AchievementService;
 import com.ultracards.server.service.points.PointsService;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,8 @@ import static org.mockito.Mockito.when;
 
 class PointsControllerTest {
     private final PointsService pointsService = mock(PointsService.class);
-    private final PointsController controller = new PointsController(pointsService);
+    private final AchievementService achievementService = mock(AchievementService.class);
+    private final PointsController controller = new PointsController(pointsService, achievementService);
 
     @Test
     void exposesReadOnlyPointHistoryAndSeriesForAnotherUser() {

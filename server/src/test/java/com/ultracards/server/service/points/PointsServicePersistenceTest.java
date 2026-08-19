@@ -204,6 +204,17 @@ class PointsServicePersistenceTest {
                   AND reference_id IN (?, ?)
                 """, Long.class, user.getId(), event.id().toString(),
                 event.achievements().getFirst().id().toString())).isEqualTo(500L);
+        users.flush();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM notifications
+                WHERE recipient_user_id = ? AND type = 'EVENT_ACHIEVEMENT'
+                  AND message = ? AND reward_points = 200
+                """, Long.class, user.getId(), "Durak weekend · Durak set")).isOne();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM notifications
+                WHERE recipient_user_id = ? AND type = 'EVENT_COMPLETION'
+                  AND message = ? AND reward_points = 300
+                """, Long.class, user.getId(), "Durak weekend")).isOne();
     }
 
     @Test
@@ -630,8 +641,8 @@ class PointsServicePersistenceTest {
         users.flush();
         return jdbc.queryForObject("""
                 SELECT COUNT(*) FROM notifications
-                WHERE recipient_user_id = ? AND message LIKE ?
-                """, Long.class, user.getId(), "Achievement completed: " + name + " (%");
+                WHERE recipient_user_id = ? AND type = 'ACHIEVEMENT' AND message = ?
+                """, Long.class, user.getId(), name);
     }
 
     private List<String> achievementReferences(UserEntity user) {
