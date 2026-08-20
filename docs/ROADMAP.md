@@ -200,3 +200,15 @@ pretty similar in gameplay so there shouldn't be too much work if the game logic
 **Remaining**
 - Allow players to spend Points on cosmetic items, card backs, and other non-gameplay-affecting features.
 - Add display for that in the profile page and in the profile pop up fragments
+
+---
+
+# v0.4.2 → v0.5.0 — Fourth Game (Poker)
+
+- Implement Texas Hold'em in the empty `game-logic` -> `games` -> `poker` module on top of the existing game abstractions and the already-built `poker-cards` deck.
+- Add the hand evaluator that ranks the best five of seven cards, resolves ties by kicker, and splits a pot between equal hands.
+- Add the betting rounds — blinds, pre-flop, flop, turn, and river — with fold, check, call, raise, and all-in, a minimum-raise rule, and side pots when a short stack is all-in.
+- Add server-side Poker logic, endpoints, persistence, history, recording, and statistics through the existing game service, lobby, and `GameController` routing.
+- Decide whether a table buys in with Points once per game like the existing wager, or whether chips are a per-hand stack the economy settles at the end; the wager code assumes one stake and one settlement per game, so this fork drives the schema.
+- Create a responsive Poker UI in the `server` module from the shared Thymeleaf fragments, covering the community board, per-player stacks, the pot, and a betting control that works on mobile and desktop.
+- Add the Poker guide page, its multilingual strings, and its `/admin/sandbox` fixture so the table UI can be driven without a live game.
