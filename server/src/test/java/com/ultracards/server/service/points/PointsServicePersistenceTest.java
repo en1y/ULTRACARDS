@@ -368,8 +368,8 @@ class PointsServicePersistenceTest {
         assertThat(objectMapper.writeValueAsString(shown))
                 .doesNotContain(hiddenId.toString(), "Durak secret", "Win **at Durak**", "\"rewardPoints\":200");
         assertThat(eventRewardCount(user.getId(), hiddenId)).isZero();
-        assertThat(achievementNotificationCount(user, "Play once")).isOne();
-        assertThat(achievementNotificationCount(user, "Durak secret")).isZero();
+        assertThat(eventAchievementNotificationCount(user, "Mixed event", "Play once")).isOne();
+        assertThat(eventAchievementNotificationCount(user, "Mixed event", "Durak secret")).isZero();
 
         points.completeGame(UUID.randomUUID(), List.of(user, opponent), Set.of(user.getId()), GameType.DURAK);
         shown = points.events(user).stream().filter(item -> item.id().equals(event.id()))
@@ -380,11 +380,11 @@ class PointsServicePersistenceTest {
         assertThat(shown.achievements().get(1).completed()).isTrue();
         assertThat(shown.achievements().get(1).descriptionHtml()).contains("Win <strong>at Durak</strong>");
         assertThat(eventRewardCount(user.getId(), hiddenId)).isOne();
-        assertThat(achievementNotificationCount(user, "Durak secret")).isOne();
+        assertThat(eventAchievementNotificationCount(user, "Mixed event", "Durak secret")).isOne();
 
         points.summary(user);
-        assertThat(achievementNotificationCount(user, "Play once")).isOne();
-        assertThat(achievementNotificationCount(user, "Durak secret")).isOne();
+        assertThat(eventAchievementNotificationCount(user, "Mixed event", "Play once")).isOne();
+        assertThat(eventAchievementNotificationCount(user, "Mixed event", "Durak secret")).isOne();
     }
 
     private long eventRewardCount(Long userId, UUID achievementId) {
@@ -638,11 +638,20 @@ class PointsServicePersistenceTest {
     }
 
     private long achievementNotificationCount(UserEntity user, String name) {
+        return notificationCount(user, "ACHIEVEMENT", name);
+    }
+
+    /** Event achievements notify under their own type and name the event they belong to. */
+    private long eventAchievementNotificationCount(UserEntity user, String eventName, String name) {
+        return notificationCount(user, "EVENT_ACHIEVEMENT", eventName + " · " + name);
+    }
+
+    private long notificationCount(UserEntity user, String type, String message) {
         users.flush();
         return jdbc.queryForObject("""
                 SELECT COUNT(*) FROM notifications
-                WHERE recipient_user_id = ? AND type = 'ACHIEVEMENT' AND message = ?
-                """, Long.class, user.getId(), name);
+                WHERE recipient_user_id = ? AND type = ? AND message = ?
+                """, Long.class, user.getId(), type, message);
     }
 
     private List<String> achievementReferences(UserEntity user) {
