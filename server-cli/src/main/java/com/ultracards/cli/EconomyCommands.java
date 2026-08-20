@@ -1,8 +1,14 @@
 package com.ultracards.cli;
 
+import com.ultracards.gateway.dto.admin.AdminAchievementDTO;
+import com.ultracards.gateway.dto.admin.AdminAchievementsPatchDTO;
+import com.ultracards.gateway.dto.admin.AdminDailyGoalDTO;
+import com.ultracards.gateway.dto.admin.AdminDailyGoalsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventPatchDTO;
+import com.ultracards.gateway.dto.admin.AdminStreakPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminPointsSettingsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminWagerFeePatchDTO;
+import com.ultracards.gateway.dto.points.PointsStreakDTO;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -10,12 +16,16 @@ import picocli.CommandLine.Spec;
 import picocli.CommandLine.Model.CommandSpec;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Command(name = "economy", aliases = "points-economy", description = "Manage Points grants, bet fees, and scheduled events.",
-        subcommands = {EconomyCommands.Settings.class, EconomyCommands.Fee.class, EconomyCommands.Events.class})
+@Command(name = "economy", aliases = "points-economy",
+        description = "Manage Points grants, bet fees, achievements, streaks, and scheduled events.",
+        subcommands = {EconomyCommands.Settings.class, EconomyCommands.Fee.class, EconomyCommands.Events.class,
+                EconomyCommands.Achievements.class, EconomyCommands.Streak.class,
+                EconomyCommands.DailyGoals.class})
 class EconomyCommands implements Runnable {
     @Spec CommandSpec spec;
 
@@ -93,6 +103,245 @@ class EconomyCommands implements Runnable {
                 if (fee.game().equalsIgnoreCase(game) && java.util.Objects.equals(fee.mode(), mode == null ? null : mode.toUpperCase()))
                     return fee.feePercent() + "%" + (fee.inherited() ? " (inherited)" : "");
             return "unknown";
+        }
+    }
+
+    @Command(name = "achievement", aliases = "achievements",
+            description = "List, add, edit, or remove the one-time streak and lifetime achievements.",
+            subcommands = {ListAchievements.class, SaveAchievement.class, DeleteAchievement.class,
+                    AchievementHolders.class})
+    static class Achievements implements Runnable {
+        @Spec CommandSpec spec;
+
+        @Override public void run() { spec.commandLine().usage(System.out); }
+    }
+
+    @Command(name = "list", aliases = "ls", description = "List every configured achievement.")
+    static class ListAchievements extends CliCommand {
+        public Integer call() { return root().withClient(client -> ok(client.admin().achievements())); }
+    }
+
+    @Command(name = "save", aliases = {"add", "set"},
+            description = "Add an achievement, or edit the one already using --code.")
+    static class SaveAchievement extends CliCommand {
+        @Option(names = "--code", description = "Existing achievement code. Omit to add a new one.") String code;
+        @Option(names = "--name", description = "Shown to players. Required when adding.") String name;
+        @Option(names = "--metric", description = "STREAK, GAMES, or WINS. Required when adding.") String metric;
+        @Option(names = "--target", description = "Streak days, or lifetime games/wins. Required when adding.") Long target;
+        @Option(names = {"--reward", "--reward-points"}, description = "Points paid once, when it is earned.") Long reward;
+        @Option(names = "--enabled", negatable = true, description = "Hide it from players without deleting it.") Boolean enabled;
+        @Option(names = "--reason", required = true) String reason;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                // The API replaces the whole list, so read it, change one row, and send it back.
+                var achievements = new ArrayList<>(client.admin().achievements());
+                var index = indexOf(achievements, code);
+                if (code != null && index < 0) throw new IllegalArgumentException("No achievement with code: " + code);
+                var existing = index < 0 ? null : achievements.get(index);
+                if (existing == null && (name == null || metric == null || target == null))
+                    throw new IllegalArgumentException("--name, --metric, and --target are required when adding");
+                var updated = new AdminAchievementDTO(
+                        existing == null ? null : existing.code(),
+                        name != null ? name : existing.name(),
+                        metric != null ? metric.toUpperCase() : existing.metric(),
+                        target != null ? target : existing.target(),
+                        reward != null ? reward : existing == null ? 0L : existing.rewardPoints(),
+                        enabled != null ? enabled : existing == null || existing.enabled());
+                if (updated.target() != null && updated.target() <= 0)
+                    throw new IllegalArgumentException("--target must be above 0");
+                if (updated.rewardPoints() != null && updated.rewardPoints() < 0)
+                    throw new IllegalArgumentException("--reward cannot be negative");
+                if (!root().confirmChange(existing == null ? "new achievement" : "achievement " + code,
+                        existing == null ? "not configured" : summary(existing), summary(updated))) return 5;
+                if (index < 0) achievements.add(updated); else achievements.set(index, updated);
+                return ok(client.admin().updateAchievements(new AdminAchievementsPatchDTO(achievements, reason)));
+            });
+        }
+
+        private static int indexOf(List<AdminAchievementDTO> achievements, String code) {
+            if (code == null) return -1;
+            for (int index = 0; index < achievements.size(); index++)
+                if (code.equals(achievements.get(index).code())) return index;
+            return -1;
+        }
+
+        private static String summary(AdminAchievementDTO achievement) {
+            return "%s: %s %d for %dP%s".formatted(achievement.name(), achievement.metric(),
+                    achievement.target(), achievement.rewardPoints() == null ? 0 : achievement.rewardPoints(),
+                    achievement.enabled() != null && !achievement.enabled() ? " (disabled)" : "");
+        }
+    }
+
+    @Command(name = "delete", aliases = {"rm", "remove"}, description = "Remove an achievement.")
+    static class DeleteAchievement extends CliCommand {
+        @Parameters(index = "0", paramLabel = "CODE") String code;
+        @Option(names = "--reason", required = true) String reason;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                var remaining = new ArrayList<AdminAchievementDTO>();
+                var found = false;
+                for (var achievement : client.admin().achievements()) {
+                    if (code.equals(achievement.code())) found = true; else remaining.add(achievement);
+                }
+                if (!found) throw new IllegalArgumentException("No achievement with code: " + code);
+                if (!root().confirm("Delete achievement " + code + "? Players keep what they already earned."))
+                    return 5;
+                return ok(client.admin().updateAchievements(new AdminAchievementsPatchDTO(remaining, reason)));
+            });
+        }
+    }
+
+    @Command(name = "holders", aliases = {"who", "earned-by"},
+            description = "List the players who earned an achievement.")
+    static class AchievementHolders extends CliCommand {
+        @Parameters(index = "0", paramLabel = "CODE") String code;
+        @Option(names = "--page", defaultValue = "0") int page;
+        @Option(names = "--size", defaultValue = "25") int size;
+        @Option(names = "--all", description = "Fetch every page instead of just --page.") boolean all;
+
+        public Integer call() {
+            return root().withClient(client ->
+                    ok(pages(page, size, all, (current, pageSize) ->
+                            client.admin().achievementHolders(code, current, pageSize))));
+        }
+    }
+
+    @Command(name = "streak", description = "Show or correct a player's play streak and freezes.")
+    static class Streak extends CliCommand {
+        @Parameters(index = "0", paramLabel = "USER", description = "Numeric ID, username, or email.") String user;
+        @Option(names = "--freezes", description = "Set unspent streak freezes, from 0 to 3.") Integer freezes;
+        @Option(names = "--current", description = "Set the running streak length in days.") Integer current;
+        @Option(names = "--longest", description = "Set the longest streak on record.") Integer longest;
+        @Option(names = "--last-played", paramLabel = "YYYY-MM-DD",
+                description = "Set the day the streak last advanced.") LocalDate lastPlayed;
+        @Option(names = "--reset", description = "Clear the streak, its record, and every freeze.") boolean reset;
+        @Option(names = "--reason", description = "Audited reason; required for any change.") String reason;
+
+        public Integer call() {
+            var changing = freezes != null || current != null || longest != null || lastPlayed != null || reset;
+            if (reset && (freezes != null || current != null || longest != null || lastPlayed != null))
+                throw new IllegalArgumentException("--reset cannot be combined with other changes");
+            if (freezes != null && (freezes < 0 || freezes > 3))
+                throw new IllegalArgumentException("--freezes must be between 0 and 3");
+            if (changing && (reason == null || reason.isBlank()))
+                throw new IllegalArgumentException("--reason is required when changing a streak");
+            return root().withClient(client -> {
+                var id = UserCommands.resolveUserId(user, page -> client.admin().users(page, 100));
+                if (!changing) return ok(client.admin().streak(id));
+                var before = client.admin().streak(id);
+                if (reset) {
+                    if (!root().confirmChange("streak for user " + id, summary(before), "cleared")) return 5;
+                    return ok(client.admin().resetStreak(id, reason));
+                }
+                var patch = new AdminStreakPatchDTO(current, longest, lastPlayed, freezes, reason);
+                if (!root().confirmChange("streak for user " + id, summary(before), proposed(before, patch)))
+                    return 5;
+                return ok(client.admin().updateStreak(id, patch));
+            });
+        }
+
+        private static String summary(PointsStreakDTO streak) {
+            return "%d day streak, longest %d, %d freezes, last played %s".formatted(streak.current(),
+                    streak.longest(), streak.freezes(),
+                    streak.lastPlayedDate() == null ? "never" : streak.lastPlayedDate());
+        }
+
+        private static String proposed(PointsStreakDTO before, AdminStreakPatchDTO patch) {
+            return "%d day streak, longest %d, %d freezes, last played %s".formatted(
+                    patch.currentStreak() == null ? before.current() : patch.currentStreak(),
+                    patch.longestStreak() == null ? before.longest() : patch.longestStreak(),
+                    patch.freezes() == null ? before.freezes() : patch.freezes(),
+                    patch.lastPlayedDate() == null
+                            ? (before.lastPlayedDate() == null ? "never" : before.lastPlayedDate())
+                            : patch.lastPlayedDate());
+        }
+    }
+
+    @Command(name = "daily-goal", aliases = {"daily-goals", "daily"},
+            description = "List, add, edit, or remove the goals that reset every day.",
+            subcommands = {ListDailyGoals.class, SaveDailyGoal.class, DeleteDailyGoal.class})
+    static class DailyGoals implements Runnable {
+        @Spec CommandSpec spec;
+
+        @Override public void run() { spec.commandLine().usage(System.out); }
+    }
+
+    @Command(name = "list", aliases = "ls", description = "List every configured daily goal.")
+    static class ListDailyGoals extends CliCommand {
+        public Integer call() { return root().withClient(client -> ok(client.admin().dailyGoals())); }
+    }
+
+    @Command(name = "save", aliases = {"add", "set"},
+            description = "Add a daily goal, or edit the one already using --code.")
+    static class SaveDailyGoal extends CliCommand {
+        @Option(names = "--code", description = "Existing goal code. Omit to add a new one.") String code;
+        @Option(names = "--name", description = "Shown to players. Required when adding.") String name;
+        @Option(names = "--metric", description = "GAMES, WINS, LOSSES, or DRAWS. Required when adding.") String metric;
+        @Option(names = "--target", description = "How many are needed that day. Required when adding.") Long target;
+        @Option(names = {"--reward", "--reward-points"}, description = "Points paid once per day.") Long reward;
+        @Option(names = "--enabled", negatable = true, description = "Hide it from players without deleting it.") Boolean enabled;
+        @Option(names = "--reason", required = true) String reason;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                // The API replaces the whole list, so read it, change one row, and send it back.
+                var goals = new ArrayList<>(client.admin().dailyGoals());
+                var index = indexOf(goals, code);
+                if (code != null && index < 0) throw new IllegalArgumentException("No daily goal with code: " + code);
+                var existing = index < 0 ? null : goals.get(index);
+                if (existing == null && (name == null || metric == null || target == null))
+                    throw new IllegalArgumentException("--name, --metric, and --target are required when adding");
+                var updated = new AdminDailyGoalDTO(
+                        existing == null ? null : existing.code(),
+                        name != null ? name : existing.name(),
+                        metric != null ? metric.toUpperCase() : existing.metric(),
+                        target != null ? target : existing.target(),
+                        reward != null ? reward : existing == null ? 0L : existing.rewardPoints(),
+                        enabled != null ? enabled : existing == null || existing.enabled());
+                if (updated.target() != null && updated.target() <= 0)
+                    throw new IllegalArgumentException("--target must be above 0");
+                if (updated.rewardPoints() != null && updated.rewardPoints() < 0)
+                    throw new IllegalArgumentException("--reward cannot be negative");
+                if (!root().confirmChange(existing == null ? "new daily goal" : "daily goal " + code,
+                        existing == null ? "not configured" : summary(existing), summary(updated))) return 5;
+                if (index < 0) goals.add(updated); else goals.set(index, updated);
+                return ok(client.admin().updateDailyGoals(new AdminDailyGoalsPatchDTO(goals, reason)));
+            });
+        }
+
+        private static int indexOf(List<AdminDailyGoalDTO> goals, String code) {
+            if (code == null) return -1;
+            for (int index = 0; index < goals.size(); index++)
+                if (code.equals(goals.get(index).code())) return index;
+            return -1;
+        }
+
+        private static String summary(AdminDailyGoalDTO goal) {
+            return "%s: %s %d for %dP%s".formatted(goal.name(), goal.metric(), goal.target(),
+                    goal.rewardPoints() == null ? 0 : goal.rewardPoints(),
+                    goal.enabled() != null && !goal.enabled() ? " (disabled)" : "");
+        }
+    }
+
+    @Command(name = "delete", aliases = {"rm", "remove"}, description = "Remove a daily goal.")
+    static class DeleteDailyGoal extends CliCommand {
+        @Parameters(index = "0", paramLabel = "CODE") String code;
+        @Option(names = "--reason", required = true) String reason;
+
+        public Integer call() {
+            return root().withClient(client -> {
+                var remaining = new ArrayList<AdminDailyGoalDTO>();
+                var found = false;
+                for (var goal : client.admin().dailyGoals()) {
+                    if (code.equals(goal.code())) found = true; else remaining.add(goal);
+                }
+                if (!found) throw new IllegalArgumentException("No daily goal with code: " + code);
+                if (!root().confirm("Delete daily goal " + code + "? Players keep what they already earned today."))
+                    return 5;
+                return ok(client.admin().updateDailyGoals(new AdminDailyGoalsPatchDTO(remaining, reason)));
+            });
         }
     }
 

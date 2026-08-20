@@ -13,6 +13,7 @@ public class NotificationDTO {
     private UUID id;
     private NotificationTypeDTO type;
     private String message;
+    private Long rewardPoints;
     private UUID lobbyId;
     private UUID friendRequestId;
     private GamePlayerDTO sender;

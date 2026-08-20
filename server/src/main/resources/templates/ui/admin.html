@@ -15,6 +15,7 @@
     <script th:src="@{/js/ui/fragments/date-time.js(v=${@environment.getProperty('app.version')})}" defer></script>
     <script th:src="@{/webjars/chart.js/4.4.6/dist/chart.umd.js}" defer></script>
     <script th:src="@{/js/points-chart.js(v=${@environment.getProperty('app.version')})}" defer></script>
+    <script th:src="@{/js/ui/fragments/admin/user-search.js(v=${@environment.getProperty('app.version')})}" defer></script>
     <script th:src="@{/js/ui/admin.js(v=${@environment.getProperty('app.version')},rev='point-event-goal-markdown')}" defer></script>
 </head>
 <body th:attr="data-admin-page=${adminPage}">
@@ -32,6 +33,7 @@
                 <a th:href="@{/admin}" th:classappend="${adminPage == 'dashboard'} ? 'is-active'" th:attr="aria-current=${adminPage == 'dashboard'} ? 'page'"><img class="uc-icon" data-icon="home" th:src="@{/pics/light/home.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.overview}">Overview</span></a>
                 <a th:href="@{/admin/points}" th:classappend="${adminPage == 'points'} ? 'is-active'" th:attr="aria-current=${adminPage == 'points'} ? 'page'"><span class="admin-nav-points points-symbol" aria-hidden="true">P</span><span th:text="#{admin.tab.points}">Points</span></a>
                 <a th:href="@{/admin/events}" th:classappend="${adminPage == 'events'} ? 'is-active'" th:attr="aria-current=${adminPage == 'events'} ? 'page'"><img class="uc-icon" data-icon="history" th:src="@{/pics/light/history.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.events}">Events</span></a>
+                <a th:href="@{/admin/achievements}" th:classappend="${adminPage == 'achievements'} ? 'is-active'" th:attr="aria-current=${adminPage == 'achievements'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.achievements}">Achievements</span></a>
                 <p class="admin-nav-group" th:text="#{admin.nav.people}">People</p>
                 <a th:href="@{/admin/users}" th:classappend="${adminPage == 'users'} ? 'is-active'" th:attr="aria-current=${adminPage == 'users'} ? 'page'"><img class="uc-icon" data-icon="person" th:src="@{/pics/light/person.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.users}">Users</span></a>
                 <a th:href="@{/admin/stats}" th:classappend="${adminPage == 'stats'} ? 'is-active'" th:attr="aria-current=${adminPage == 'stats'} ? 'page'"><img class="uc-icon" data-icon="bar_chart" th:src="@{/pics/light/bar_chart.svg}" alt="" aria-hidden="true"><span th:text="#{admin.tab.stats}">Stats</span></a>
@@ -105,6 +107,59 @@
                             <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"><small class="admin-hint" th:text="#{admin.economy.reasonHint}">Stored in the audit log next to your name.</small></label>
                             <div class="admin-event-submit-actions"><span id="admin-daily-goals-status" class="admin-meta" role="status" aria-live="polite" hidden></span><button class="btn btn-accent" type="submit" th:text="#{admin.economy.saveDailyGoals}">Save goals</button></div>
                         </footer>
+                    </form>
+                </article>
+            </section>
+
+            <section class="admin-panel" data-section="achievements" th:hidden="${adminPage != 'achievements'}">
+                <div class="admin-panel-heading"><div><h2 th:text="#{admin.achievements.title}">Achievements</h2><p th:text="#{admin.achievements.copy}">One-time streak and lifetime milestones, paid once per player.</p></div></div>
+                <article class="admin-economy-card admin-daily-goals-card">
+                    <div class="admin-event-achievements-head">
+                        <div class="admin-card-heading"><div><h3 th:text="#{admin.achievements.listTitle}">Configured achievements</h3><p class="admin-meta" th:text="#{admin.achievements.listHint}">A streak counts consecutive days played; games and wins count a player's lifetime totals.</p></div></div>
+                        <button id="admin-achievement-add" class="btn" type="button" th:text="#{admin.achievements.add}">Add achievement</button>
+                    </div>
+                    <form id="admin-achievements-form" class="admin-form admin-daily-goals-form">
+                        <div class="admin-achievement-toolbar" th:aria-label="#{admin.achievements.filter}">
+                            <label class="admin-achievement-search"><span th:text="#{admin.achievements.filter}">Filter achievements</span><input id="admin-achievement-filter" type="search" autocomplete="off" th:placeholder="#{admin.achievements.searchPlaceholder}"></label>
+                            <label><span th:text="#{admin.economy.metric}">Counts</span><select id="admin-achievement-metric"><option value="" th:text="#{admin.achievements.metricAll}">All metrics</option><option value="STREAK" th:text="#{admin.achievements.metricStreak}">Days in a row</option><option value="GAMES" th:text="#{admin.achievements.metricGames}">Games played</option><option value="WINS" th:text="#{admin.achievements.metricWins}">Games won</option></select></label>
+                            <label><span th:text="#{admin.users.status}">Status</span><select id="admin-achievement-state"><option value="" th:text="#{admin.achievements.stateAll}">Any state</option><option value="enabled" th:text="#{admin.achievements.stateEnabled}">Enabled only</option><option value="disabled" th:text="#{admin.achievements.stateDisabled}">Disabled only</option></select></label>
+                            <label><span th:text="#{admin.userSearch.sortBy}">Sort</span><select id="admin-achievement-sort"><option value="configured" th:text="#{admin.achievements.sortConfigured}">Configured order</option><option value="name" th:text="#{admin.achievements.sortName}">Name</option><option value="target" th:text="#{admin.achievements.sortTarget}">Target</option><option value="reward" th:text="#{admin.achievements.sortReward}">Reward</option></select></label>
+                            <button id="admin-achievement-reset-view" class="btn" type="button" th:text="#{admin.achievements.resetView}">Reset view</button>
+                        </div>
+                        <div class="admin-achievement-bulk-bar">
+                            <span id="admin-achievement-summary" class="admin-meta" aria-live="polite"></span>
+                            <div class="admin-actions"><button class="btn" type="button" data-achievement-bulk="enable" th:text="#{admin.achievements.enableShown}">Enable shown</button><button class="btn" type="button" data-achievement-bulk="disable" th:text="#{admin.achievements.disableShown}">Disable shown</button></div>
+                        </div>
+                        <p id="admin-achievements-empty" class="admin-event-achievements-empty" th:text="#{admin.achievements.none}">No achievements. Players see an empty tab.</p>
+                        <div id="admin-achievements" class="admin-daily-goals"></div>
+                        <footer class="admin-event-submit-bar">
+                            <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"><small class="admin-hint" th:text="#{admin.achievements.deleteHint}">Removing one leaves every reward already earned in place.</small></label>
+                            <div class="admin-event-submit-actions"><span id="admin-achievements-status" class="admin-meta" role="status" aria-live="polite" hidden></span><button class="btn btn-accent" type="submit" th:text="#{admin.achievements.save}">Save achievements</button></div>
+                        </footer>
+                    </form>
+                </article>
+                <article class="admin-economy-card">
+                    <div class="admin-card-heading"><div><h3 th:text="#{admin.achievements.holdersTitle}">Who earned what</h3><p class="admin-meta" th:text="#{admin.achievements.holdersHint}">Pick an achievement to list the players who have earned it.</p></div></div>
+                    <form id="admin-holders-form" class="admin-filters">
+                        <label><span th:text="#{admin.achievements.one}">Achievement</span> <select name="code" id="admin-holders-select"></select></label>
+                        <button class="btn" type="submit" th:text="#{admin.achievements.loadHolders}">List players</button>
+                    </form>
+                    <div class="admin-results" data-results="holders" aria-live="polite"></div>
+                </article>
+                <article class="admin-economy-card">
+                    <div class="admin-card-heading"><div><h3 th:text="#{admin.achievements.streakTitle}">Player streak</h3><p class="admin-meta" th:text="#{admin.achievements.streakHint}">Look up a streak, and correct it when one was lost to an outage.</p></div></div>
+                    <th:block th:replace="~{ui/fragments/admin/user-search :: userSearch('streak', #{admin.stats.user}, #{admin.userSearch.hint})}"></th:block>
+                    <div class="admin-results" data-results="streak" aria-live="polite"></div>
+                    <form id="admin-streak-form" class="admin-form" hidden>
+                        <input name="userId" type="hidden">
+                        <div class="admin-streak-fields">
+                            <label><span th:text="#{admin.achievements.current}">Current streak</span><input name="currentStreak" type="number" min="0" step="1" inputmode="numeric"></label>
+                            <label><span th:text="#{admin.achievements.longest}">Longest streak</span><input name="longestStreak" type="number" min="0" step="1" inputmode="numeric"></label>
+                            <label><span th:text="#{admin.achievements.lastPlayed}">Last played</span><input name="lastPlayedDate" type="date"></label>
+                            <label><span th:text="#{admin.achievements.freezes}">Streak freezes</span><input name="freezes" type="number" min="0" max="3" step="1" inputmode="numeric"></label>
+                        </div>
+                        <label><span th:text="#{admin.common.reason}">Reason</span><input name="reason" required maxlength="250"></label>
+                        <div class="admin-actions"><button class="btn btn-accent" type="submit" th:text="#{admin.achievements.saveStreak}">Save streak</button><button class="btn btn-danger" type="button" data-action="reset-streak" th:text="#{admin.achievements.resetStreak}">Reset streak</button><span id="admin-streak-status" class="admin-meta" role="status" aria-live="polite" hidden></span></div>
                     </form>
                 </article>
             </section>
@@ -192,10 +247,7 @@
 
             <section class="admin-panel" data-section="stats" th:hidden="${adminPage != 'stats'}">
                 <div class="admin-panel-heading"><div><h2 th:text="#{admin.stats.title}">User statistics</h2><p th:text="#{admin.stats.copy}">Inspect and correct one user’s stats with an audit reason.</p></div></div>
-                <form class="admin-filters" id="admin-stats-lookup">
-                    <label><span th:text="#{admin.stats.user}">User</span> <input name="userQuery" required placeholder="Username, email, or ID" autocomplete="off"></label>
-                    <button class="btn" type="submit" th:text="#{admin.stats.load}">Load stats</button>
-                </form>
+                <th:block th:replace="~{ui/fragments/admin/user-search :: userSearch('stats', #{admin.stats.user}, #{admin.userSearch.hint})}"></th:block>
                 <p id="admin-stats-context" class="admin-meta" th:text="#{admin.stats.context}">Load a user to inspect every game mode and add missing stat rows.</p>
                 <div class="admin-stats-layout">
                     <div class="admin-stats-main">
@@ -242,7 +294,10 @@
             </section>
             <section class="admin-panel" data-section="notifications" th:hidden="${adminPage != 'notifications'}"><div class="admin-panel-heading"><div><h2 th:text="#{admin.notify.title}">Send notification</h2><p th:text="#{admin.notify.copy}">Use a specific user ID, or deliberately notify everyone.</p></div></div><form id="admin-notification-form" class="admin-form">
         <label><span th:text="#{admin.notify.recipient}">Recipient</span> <select name="mode"><option value="all" th:text="#{admin.notify.everyone}">Everyone</option><option value="user" th:text="#{admin.notify.oneUser}">Specific user</option></select></label>
-        <label id="admin-notify-user" hidden><span th:text="#{admin.stats.user}">User</span> <input name="userRef" list="admin-user-options" th:placeholder="#{admin.notify.userSearchPlaceholder}" placeholder="Type a username, email, or ID" autocomplete="off"><datalist id="admin-user-options"></datalist></label>
+        <div id="admin-notify-user" hidden>
+            <th:block th:replace="~{ui/fragments/admin/user-search :: userSearch('notify', #{admin.stats.user}, #{admin.userSearch.hint})}"></th:block>
+        </div>
+        <input name="userRef" type="hidden">
         <p id="admin-notify-picked" class="admin-meta" hidden></p>
         <label><span th:text="#{admin.notify.message}">Message</span> <textarea name="message" required maxlength="500" rows="4"></textarea></label>
         <label><span th:text="#{admin.notify.reason}">Reason</span> <input name="reason" required maxlength="250"></label>

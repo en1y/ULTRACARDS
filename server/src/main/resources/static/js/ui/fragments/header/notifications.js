@@ -52,9 +52,13 @@
     const badge = root.querySelector('[data-notification-badge]');
     const notificationsById = new Map();
     const toastEntriesByKey = new Map();
+    const rewardPopupQueue = [];
+    const rewardPopupIds = new Set();
+    const rewardTypes = new Set(['ACHIEVEMENT', 'EVENT_ACHIEVEMENT', 'EVENT_COMPLETION']);
     const popupStorageKey = 'uc-notification-popups-enabled';
     let receivedSequence = 0;
     let reconnectTimer = null;
+    let activeRewardPopup = null;
     let popupsEnabled = localStorage.getItem(popupStorageKey) !== 'false';
 
     const notificationId = (notification) => notification?.id ? String(notification.id) : '';
@@ -67,6 +71,7 @@
         ? notification.groupId
         : notificationId(notification);
     const isMessageNotification = (notification) => notificationType(notification) === 'TEXT' && !!senderId(notification);
+    const isRewardNotification = (notification) => rewardTypes.has(notificationType(notification));
     const notificationTime = (notification) => {
       const time = Date.parse(notification?.createdAt || '');
       if (Number.isFinite(time)) {
@@ -110,6 +115,13 @@
       return img;
     };
 
+    const element = (tag, text, className) => {
+      const node = document.createElement(tag);
+      if (text != null) node.textContent = text;
+      if (className) node.className = className;
+      return node;
+    };
+
     const setIcon = (button, icon) => {
       const image = button?.querySelector('[data-icon]');
       if (!image) {
@@ -147,6 +159,15 @@
       if (type === 'FRIEND_INVITE') {
         return t('notifications.friendRequest');
       }
+      if (type === 'ACHIEVEMENT') {
+        return t('notifications.reward.achievementTitle');
+      }
+      if (type === 'EVENT_ACHIEVEMENT') {
+        return t('notifications.reward.eventGoalTitle');
+      }
+      if (type === 'EVENT_COMPLETION') {
+        return t('notifications.reward.eventTitle');
+      }
       if (isGroupedNotification(notification)) {
         return t('notifications.messages');
       }
@@ -161,6 +182,15 @@
       if (type === 'FRIEND_INVITE') {
         return 'notification-kind-friend';
       }
+      if (type === 'ACHIEVEMENT') {
+        return 'notification-kind-achievement';
+      }
+      if (type === 'EVENT_ACHIEVEMENT') {
+        return 'notification-kind-event-goal';
+      }
+      if (type === 'EVENT_COMPLETION') {
+        return 'notification-kind-event-completion';
+      }
       return 'notification-kind-text';
     };
 
@@ -173,6 +203,9 @@
       }
 
       if (notification?.message) {
+        if (isRewardNotification(notification) && Number(notification.rewardPoints) > 0) {
+          return t('notifications.reward.summary', notification.message, Number(notification.rewardPoints));
+        }
         return notification.message;
       }
 
@@ -593,11 +626,122 @@
       }, 220);
     }
 
+    const rewardPresentation = (notification) => {
+      const type = notificationType(notification);
+      if (type === 'EVENT_COMPLETION') {
+        return {
+          className: 'reward-kind-event-completion',
+          eyebrow: t('notifications.reward.eventEyebrow'),
+          title: t('notifications.reward.eventTitle'),
+          copy: t('notifications.reward.eventCopy'),
+          symbol: '◆'
+        };
+      }
+      if (type === 'EVENT_ACHIEVEMENT') {
+        return {
+          className: 'reward-kind-event-goal',
+          eyebrow: t('notifications.reward.eventGoalEyebrow'),
+          title: t('notifications.reward.eventGoalTitle'),
+          copy: t('notifications.reward.eventGoalCopy'),
+          symbol: '★'
+        };
+      }
+      return {
+        className: 'reward-kind-achievement',
+        eyebrow: t('notifications.reward.achievementEyebrow'),
+        title: t('notifications.reward.achievementTitle'),
+        copy: t('notifications.reward.achievementCopy'),
+        symbol: '✓'
+      };
+    };
+
+    const createRewardPopup = (notification, onDismiss) => {
+      const presentation = rewardPresentation(notification);
+      const dialog = document.createElement('dialog');
+      dialog.className = `reward-celebration ${presentation.className}`;
+      dialog.setAttribute('aria-labelledby', `reward-title-${notificationId(notification)}`);
+      dialog.setAttribute('aria-describedby', `reward-copy-${notificationId(notification)}`);
+
+      const card = element('article', null, 'reward-celebration-card');
+      const close = element('button', '×', 'reward-celebration-close');
+      close.type = 'button';
+      close.setAttribute('aria-label', t('notifications.dismiss'));
+
+      const burst = element('div', presentation.symbol, 'reward-celebration-burst');
+      burst.setAttribute('aria-hidden', 'true');
+      const eyebrow = element('p', presentation.eyebrow, 'reward-celebration-eyebrow');
+      const title = element('h2', presentation.title, 'reward-celebration-title');
+      title.id = `reward-title-${notificationId(notification)}`;
+      const name = element('p', notification.message || presentation.title, 'reward-celebration-name');
+      const copy = element('p', presentation.copy, 'reward-celebration-copy');
+      copy.id = `reward-copy-${notificationId(notification)}`;
+      const reward = element('strong', Number(notification.rewardPoints) > 0
+        ? t('notifications.reward.points', Number(notification.rewardPoints))
+        : t('notifications.reward.completed'), 'reward-celebration-points points-value');
+      const continueButton = element('button', t('notifications.reward.continue'), 'btn btn-accent reward-celebration-continue');
+      continueButton.type = 'button';
+
+      card.append(close, burst, eyebrow, title, name, copy, reward, continueButton);
+      dialog.append(card);
+      document.body.append(dialog);
+
+      let settled = false;
+      const dismiss = (markAsRead = true) => {
+        if (settled) return;
+        settled = true;
+        dialog.classList.remove('is-visible');
+        window.setTimeout(() => {
+          if (dialog.open) dialog.close();
+          dialog.remove();
+          onDismiss(markAsRead);
+        }, 180);
+      };
+      close.addEventListener('click', () => dismiss(true));
+      continueButton.addEventListener('click', () => dismiss(true));
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        dismiss(true);
+      });
+
+      dialog.showModal();
+      window.syncThemeUi?.();
+      window.requestAnimationFrame(() => {
+        dialog.classList.add('is-visible');
+        close.focus();
+      });
+      return { dialog, dismiss };
+    };
+
+    const showNextRewardPopup = () => {
+      if (activeRewardPopup || !popupsEnabled || !rewardPopupQueue.length) return;
+      const notification = rewardPopupQueue.shift();
+      activeRewardPopup = createRewardPopup(notification, (markAsRead) => {
+        rewardPopupIds.delete(notificationId(notification));
+        activeRewardPopup = null;
+        if (markAsRead) {
+          markReadIfPossible(notification);
+          removeNotification(notification);
+        }
+        showNextRewardPopup();
+      });
+    };
+
+    const queueRewardPopup = (notification) => {
+      const id = notificationId(notification);
+      if (!id || rewardPopupIds.has(id)) return;
+      rewardPopupIds.add(id);
+      rewardPopupQueue.push(notification);
+      showNextRewardPopup();
+    };
+
     const setPopupsEnabled = (enabled) => {
       popupsEnabled = enabled;
       localStorage.setItem(popupStorageKey, String(enabled));
       syncPopupToggle();
       if (!enabled) {
+        rewardPopupQueue.splice(0);
+        rewardPopupIds.clear();
+        activeRewardPopup?.dismiss(false);
         for (const [key, entry] of toastEntriesByKey.entries()) {
           window.clearTimeout(entry.timer);
           entry.element.classList.remove('is-visible');
@@ -621,7 +765,9 @@
         receivedSequence: receivedSequence += 1
       });
       renderNotifications();
-      if (showPopup && popupsEnabled && !root.classList.contains('open')) {
+      if (showPopup && popupsEnabled && isRewardNotification(notification)) {
+        queueRewardPopup(notification);
+      } else if (showPopup && popupsEnabled && !root.classList.contains('open')) {
         if (isMessageNotification(notification)) {
           const grouped = createToastMessageGroup();
           showToast(grouped || notification);
@@ -647,7 +793,9 @@
         notificationsById.clear();
         if (Array.isArray(notifications)) {
           for (const notification of notifications) {
-            addNotification(notification);
+            // A reward stays unread until the player acknowledges its celebration. This also
+            // recovers a reward earned while the WebSocket or browser was offline.
+            addNotification(notification, isRewardNotification(notification));
           }
         }
         renderNotifications();

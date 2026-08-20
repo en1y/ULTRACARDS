@@ -834,6 +834,221 @@
 
     const loadDailyGoals = async () => renderDailyGoals(await request("/economy/daily-goals"));
 
+    const achievementMetricLabels = () => ({
+        STREAK: tr("admin.achievements.metricStreak", "Days in a row"),
+        GAMES: tr("admin.achievements.metricGames", "Games played (lifetime)"),
+        WINS: tr("admin.achievements.metricWins", "Games won (lifetime)")
+    });
+
+    const applyAchievementView = () => {
+        const rows = [...document.querySelectorAll("#admin-achievements > .admin-daily-goal")];
+        const filter = (document.querySelector("#admin-achievement-filter")?.value || "").trim().toLowerCase();
+        const metric = document.querySelector("#admin-achievement-metric")?.value || "";
+        const stateFilter = document.querySelector("#admin-achievement-state")?.value || "";
+        const sort = document.querySelector("#admin-achievement-sort")?.value || "configured";
+        const value = (node, selector) => node.querySelector(selector)?.value || "";
+        const visible = [];
+        rows.forEach((node, index) => {
+            const enabled = Boolean(node.querySelector('[name="enabled"]')?.checked);
+            const searchText = `${value(node, '[name="achievementName"]')} ${node.dataset.code || ""}`.toLowerCase();
+            const shown = (!filter || searchText.includes(filter))
+                && (!metric || value(node, '[name="metric"]') === metric)
+                && (!stateFilter || (stateFilter === "enabled") === enabled);
+            node.hidden = !shown;
+            node.dataset.configuredOrder = String(index);
+            if (shown) visible.push(node);
+        });
+        const number = (node, name) => Number(value(node, `[name="${name}"]`)) || 0;
+        const sorted = [...visible].sort((left, right) => {
+            if (sort === "name") return value(left, '[name="achievementName"]').localeCompare(value(right, '[name="achievementName"]'));
+            if (sort === "target") return number(left, "target") - number(right, "target");
+            if (sort === "reward") return number(left, "rewardPoints") - number(right, "rewardPoints");
+            return Number(left.dataset.configuredOrder) - Number(right.dataset.configuredOrder);
+        });
+        rows.forEach(node => { node.style.order = sort === "configured" ? "" : String(sorted.indexOf(node)); });
+        rows.forEach((node, index) => node.querySelectorAll('[data-achievement-move]').forEach(button => {
+            const boundary = button.dataset.achievementMove === "up" ? index === 0 : index === rows.length - 1;
+            button.disabled = sort !== "configured" || boundary;
+        }));
+        const summary = document.querySelector("#admin-achievement-summary");
+        if (summary) summary.textContent = tr("admin.achievements.shownSummary",
+            `${visible.length} shown of ${rows.length}`, visible.length, rows.length);
+    };
+
+    const syncAchievementEditors = () => {
+        const rows = [...document.querySelectorAll("#admin-achievements > .admin-daily-goal")];
+        const emptyState = document.querySelector("#admin-achievements-empty");
+        if (emptyState) emptyState.hidden = rows.length > 0;
+        rows.forEach((node, index) => {
+            node.querySelector(":scope > legend").textContent =
+                `${tr("admin.achievements.one", "Achievement")} ${index + 1}`;
+            const up = node.querySelector('[data-achievement-move="up"]');
+            const down = node.querySelector('[data-achievement-move="down"]');
+            if (up) up.disabled = index === 0;
+            if (down) down.disabled = index === rows.length - 1;
+        });
+        applyAchievementView();
+    };
+
+    const achievementEditor = (achievement = {}) => {
+        const node = element("fieldset", null, "admin-daily-goal");
+        node.dataset.code = achievement.code || "";
+        node.append(element("legend", tr("admin.achievements.one", "Achievement")));
+        const head = element("div", null, "admin-event-achievement-head");
+        const identity = element("div", null, "admin-achievement-identity");
+        identity.append(element("strong", achievement.name || tr("admin.achievements.one", "Achievement")));
+        if (achievement.code) identity.append(element("code", `${tr("admin.achievements.code", "Code")}: ${achievement.code}`));
+        const actions = element("div", null, "admin-achievement-row-actions");
+        const move = (direction, label) => {
+            const button = element("button", direction === "up" ? "↑" : "↓", "btn admin-achievement-icon-button");
+            button.type = "button"; button.dataset.achievementMove = direction; button.title = label;
+            button.setAttribute("aria-label", label);
+            button.addEventListener("click", () => {
+                const sibling = direction === "up" ? node.previousElementSibling : node.nextElementSibling;
+                if (!sibling) return;
+                if (direction === "up") node.parentElement.insertBefore(node, sibling);
+                else node.parentElement.insertBefore(sibling, node);
+                syncAchievementEditors();
+            });
+            return button;
+        };
+        const duplicate = element("button", tr("admin.achievements.duplicate", "Duplicate"), "btn");
+        duplicate.type = "button";
+        duplicate.addEventListener("click", () => {
+            const copy = achievementEditor({
+                name: `${node.querySelector('[name="achievementName"]').value} (${tr("admin.achievements.copySuffix", "copy")})`,
+                metric: node.querySelector('[name="metric"]').value,
+                target: Number(node.querySelector('[name="target"]').value),
+                rewardPoints: Number(node.querySelector('[name="rewardPoints"]').value),
+                enabled: node.querySelector('[name="enabled"]').checked
+            });
+            node.after(copy); syncAchievementEditors();
+            copy.querySelector('[name="achievementName"]').focus();
+        });
+        const collapse = element("button", tr("admin.achievements.collapse", "Collapse"), "btn");
+        collapse.type = "button";
+        collapse.setAttribute("aria-expanded", "true");
+        collapse.addEventListener("click", () => {
+            const collapsed = node.classList.toggle("is-collapsed");
+            collapse.textContent = collapsed
+                ? tr("admin.achievements.expand", "Expand")
+                : tr("admin.achievements.collapse", "Collapse");
+            collapse.setAttribute("aria-expanded", String(!collapsed));
+        });
+        const remove = element("button", tr("admin.common.delete", "Delete"), "btn btn-danger");
+        remove.type = "button";
+        remove.addEventListener("click", () => { node.remove(); syncAchievementEditors(); });
+        actions.append(
+            move("up", tr("admin.achievements.moveUp", "Move up")),
+            move("down", tr("admin.achievements.moveDown", "Move down")),
+            duplicate, collapse, remove
+        );
+        head.append(identity, actions);
+
+        const fields = element("div", null, "admin-daily-goal-fields");
+        const name = element("label", null, "admin-daily-goal-name");
+        const nameInput = document.createElement("input");
+        nameInput.name = "achievementName"; nameInput.required = true; nameInput.maxLength = 120;
+        nameInput.value = achievement.name || "";
+        nameInput.addEventListener("input", () => {
+            identity.querySelector("strong").textContent = nameInput.value || tr("admin.achievements.one", "Achievement");
+            applyAchievementView();
+        });
+        name.append(element("span", tr("admin.common.name", "Name")), nameInput);
+
+        const metric = element("label");
+        const metricSelect = document.createElement("select");
+        metricSelect.name = "metric";
+        metricSelect.append(...Object.entries(achievementMetricLabels()).map(([value, label]) => {
+            const option = element("option", label); option.value = value; return option;
+        }));
+        metricSelect.value = achievement.metric || "STREAK";
+        metric.append(element("span", tr("admin.economy.metric", "Counts")), metricSelect);
+
+        const number = (field, label, value, min, suffix) => {
+            const wrapper = element("label");
+            wrapper.append(element("span", label));
+            const input = document.createElement("input");
+            input.name = field; input.type = "number"; input.min = String(min); input.step = "1";
+            input.inputMode = "numeric"; input.required = true; input.value = value;
+            if (!suffix) { wrapper.append(input); return wrapper; }
+            const shell = element("span", null, "admin-points-input");
+            shell.append(input, element("span", suffix, "points-symbol"));
+            wrapper.append(shell);
+            return wrapper;
+        };
+
+        fields.append(name, metric,
+            number("target", tr("admin.achievements.target", "Target"), achievement.target ?? 1, 1, null),
+            number("rewardPoints", tr("admin.economy.reward", "Reward").replace(/\s*\(P\)\s*$/, ""),
+                achievement.rewardPoints ?? 0, 0, "P"),
+            toggleField("enabled", "true", tr("admin.economy.enabled", "Enabled"), achievement.enabled !== false));
+        fields.querySelectorAll("input, select").forEach(control => {
+            if (control !== nameInput) control.addEventListener("input", applyAchievementView);
+            control.addEventListener("change", applyAchievementView);
+        });
+        node.append(head, fields);
+        return node;
+    };
+
+    const renderAchievementEditors = achievements => {
+        document.querySelector("#admin-achievements").replaceChildren(...achievements.map(achievementEditor));
+        syncAchievementEditors();
+    };
+
+    const loadAchievements = async () => {
+        const achievements = await request("/economy/achievements");
+        renderAchievementEditors(achievements);
+        const select = document.querySelector("#admin-holders-select");
+        if (select) {
+            const previous = select.value;
+            select.replaceChildren(...achievements.map(achievement => {
+                const option = element("option", `${achievement.name} (${achievement.metric} ${achievement.target})`);
+                option.value = achievement.code;
+                return option;
+            }));
+            if (previous) select.value = previous;
+        }
+    };
+
+    const renderStreak = (userId, streak) => {
+        clear("streak");
+        row("streak", `${tr("admin.common.user", "User")} #${userId}`,
+            [`${tr("admin.achievements.current", "Current")}: ${streak.current}`,
+                ` · ${tr("admin.achievements.longest", "Longest")}: ${streak.longest}`,
+                ` · ${tr("admin.achievements.freezes", "Streak freezes")}: ${streak.freezes} / 3`,
+                ` · ${tr("admin.achievements.lastPlayed", "Last played")}: ${streak.lastPlayedDate || "—"}`],
+            [], streak.atRisk ? [chip(tr("admin.achievements.atRisk", "At risk"), "is-warn")] : []);
+        const form = document.querySelector("#admin-streak-form");
+        form.hidden = false;
+        form.elements.userId.value = userId;
+        // Prefilled with what is stored, so submitting an untouched form changes nothing.
+        form.elements.currentStreak.value = String(streak.current);
+        form.elements.longestStreak.value = String(streak.longest);
+        form.elements.freezes.value = String(streak.freezes);
+        form.elements.lastPlayedDate.value = streak.lastPlayedDate || "";
+    };
+
+    const loadStreak = async userId => renderStreak(userId, await request(`/economy/streaks/${userId}`));
+
+    const loadHolders = async code => {
+        clear("holders");
+        if (!code) return empty("holders", tr("admin.achievements.pickAchievement", "Pick an achievement first."));
+        const data = await request(`/economy/achievements/${encodeURIComponent(code)}/users${query({ page: 0, size: 50 })}`);
+        if (!data.items.length)
+            return empty("holders", tr("admin.achievements.noHolders", "Nobody has earned this yet."));
+        results("holders").append(table(
+            [tr("admin.common.user", "User"), tr("admin.users.email", "Email"),
+                tr("admin.achievements.earnedAt", "Earned"), tr("admin.economy.reward", "Reward")],
+            data.items.map(holder => [
+                userLink(holder.userId, `${holder.username} · #${holder.userId}`),
+                holder.email || "—",
+                formatTime(holder.earnedAt),
+                pointsCompactNode(holder.rewardPoints)
+            ]), true));
+        setStatus(tr("admin.achievements.holderCount", `Players: ${data.totalElements}`, data.totalElements));
+    };
+
     const loadPoints = async () => {
         renderPointsSettings(await request("/economy/settings"));
         await loadFees();
@@ -1392,23 +1607,14 @@
     };
     const loadStats = async userId => {
         const data = await request(`/stats/users/${userId}`); state.stats = data; renderStats(data);
-        const lookup = document.querySelector("#admin-stats-lookup"); lookup.elements.userQuery.value = userId;
         const form = document.querySelector("#admin-stats-edit"); form.hidden = false; form.elements.userId.value = userId;
-    };
-    const loadStatsForQuery = async value => {
-        if (/^\d+$/.test(value.trim())) return loadStats(value.trim());
-        const data = await request(`/reports/users${query({ page: 0, size: 10, query: value.trim(), exact: true })}`);
-        clear("stats");
-        if (!data.items.length) return empty("stats", "No exact username or email match. Try the Users page for a contains search.");
-        if (data.items.length === 1) return loadStats(data.items[0].id);
-        data.items.forEach(user => row("stats", `${user.username} · #${user.id}`, user.email, [button(tr("admin.stats.load", "Load stats"), "load-stats", String(user.id))]));
-        setStatus("Choose the user whose stats you want to load.");
     };
 
     const loaders = {
         dashboard: loadOverview,
         points: loadPoints,
         events: loadEvents,
+        achievements: loadAchievements,
         users: currentPage => state.userDetailId ? loadUserDetail(state.userDetailId) : loadUsers(currentPage),
         lobbies: loadLobbies, games: loadGames, sessions: loadSessions, availability: loadAvailability,
         database: loadDatabase, audit: loadAudit, stats: () => {}, notifications: () => {}
@@ -1468,6 +1674,124 @@
         } finally {
             button.disabled = false;
             form.removeAttribute("aria-busy");
+        }
+    });
+    document.querySelector("#admin-holders-form")?.addEventListener("submit", event => {
+        event.preventDefault();
+        loadHolders(formValues(event.currentTarget).code).catch(error => setStatus(error.message, true));
+    });
+    document.querySelector('[data-action="reset-streak"]')?.addEventListener("click", async () => {
+        const form = document.querySelector("#admin-streak-form");
+        const values = formValues(form);
+        const streakStatus = document.querySelector("#admin-streak-status");
+        if (!values.reason) {
+            streakStatus.textContent = tr("admin.achievements.resetNeedsReason", "A reason is required to reset a streak.");
+            streakStatus.hidden = false; streakStatus.classList.add("is-error");
+            return;
+        }
+        if (!await confirmAction(tr("admin.achievements.resetStreak", "Reset streak"),
+            tr("admin.achievements.resetCopy", `Clear the streak, its record, and every freeze for user #${values.userId}?`, values.userId), true)) return;
+        try {
+            const streak = await request(`/economy/streaks/${values.userId}${query({ reason: values.reason })}`,
+                { method: "DELETE" });
+            renderStreak(values.userId, streak);
+            form.elements.reason.value = "";
+            const message = tr("admin.achievements.streakReset", "Streak reset.");
+            streakStatus.textContent = message; streakStatus.hidden = false;
+            streakStatus.classList.remove("is-error");
+            setStatus(message);
+        } catch (error) {
+            streakStatus.textContent = error.message; streakStatus.hidden = false;
+            streakStatus.classList.add("is-error");
+            setStatus(error.message, true);
+        }
+    });
+    document.querySelector("#admin-achievement-add")?.addEventListener("click", () => {
+        const achievement = achievementEditor();
+        document.querySelector("#admin-achievements").append(achievement);
+        syncAchievementEditors();
+        achievement.querySelector('[name="achievementName"]').focus();
+    });
+    document.querySelector("#admin-achievement-filter")?.addEventListener("input", applyAchievementView);
+    ["#admin-achievement-metric", "#admin-achievement-state", "#admin-achievement-sort"].forEach(selector =>
+        document.querySelector(selector)?.addEventListener("change", applyAchievementView));
+    document.querySelector("#admin-achievement-reset-view")?.addEventListener("click", () => {
+        document.querySelector("#admin-achievement-filter").value = "";
+        document.querySelector("#admin-achievement-metric").value = "";
+        document.querySelector("#admin-achievement-state").value = "";
+        document.querySelector("#admin-achievement-sort").value = "configured";
+        applyAchievementView();
+    });
+    document.querySelectorAll("[data-achievement-bulk]").forEach(button => button.addEventListener("click", () => {
+        const enabled = button.dataset.achievementBulk === "enable";
+        document.querySelectorAll("#admin-achievements > .admin-daily-goal:not([hidden])").forEach(node => {
+            const checkbox = node.querySelector('[name="enabled"]');
+            if (checkbox) checkbox.checked = enabled;
+        });
+        applyAchievementView();
+    }));
+    document.querySelector("#admin-achievements-form")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector('button[type="submit"]');
+        const achievementStatus = document.querySelector("#admin-achievements-status");
+        button.disabled = true;
+        form.setAttribute("aria-busy", "true");
+        try {
+            const achievements = [...document.querySelectorAll("#admin-achievements > .admin-daily-goal")].map(node => ({
+                code: node.dataset.code || null,
+                name: node.querySelector('[name="achievementName"]').value.trim(),
+                metric: node.querySelector('[name="metric"]').value,
+                target: Number(node.querySelector('[name="target"]').value || 0),
+                rewardPoints: Number(node.querySelector('[name="rewardPoints"]').value || 0),
+                enabled: node.querySelector('[name="enabled"]').checked
+            }));
+            renderAchievementEditors(await request("/economy/achievements", {
+                method: "PUT",
+                body: JSON.stringify({ achievements, reason: form.elements.reason.value.trim() })
+            }));
+            form.elements.reason.value = "";
+            const message = tr("admin.achievements.saved", "Achievements updated.");
+            achievementStatus.textContent = message; achievementStatus.hidden = false;
+            achievementStatus.classList.remove("is-error");
+            setStatus(message);
+        } catch (error) {
+            achievementStatus.textContent = error.message; achievementStatus.hidden = false;
+            achievementStatus.classList.add("is-error");
+            setStatus(error.message, true);
+        } finally {
+            button.disabled = false;
+            form.removeAttribute("aria-busy");
+        }
+    });
+    document.querySelector("#admin-streak-form")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        // currentTarget is null once the handler resumes after an await.
+        const form = event.currentTarget;
+        const values = formValues(form);
+        const streakStatus = document.querySelector("#admin-streak-status");
+        try {
+            const number = value => value === "" || value == null ? null : Number(value);
+            const streak = await request(`/economy/streaks/${values.userId}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    currentStreak: number(values.currentStreak),
+                    longestStreak: number(values.longestStreak),
+                    freezes: number(values.freezes),
+                    lastPlayedDate: values.lastPlayedDate || null,
+                    reason: values.reason
+                })
+            });
+            renderStreak(values.userId, streak);
+            form.elements.reason.value = "";
+            const message = tr("admin.achievements.streakSaved", "Streak updated.");
+            streakStatus.textContent = message; streakStatus.hidden = false;
+            streakStatus.classList.remove("is-error");
+            setStatus(message);
+        } catch (error) {
+            streakStatus.textContent = error.message; streakStatus.hidden = false;
+            streakStatus.classList.add("is-error");
+            setStatus(error.message, true);
         }
     });
     document.querySelector("#admin-daily-goal-add")?.addEventListener("click", () => {
@@ -1536,7 +1860,14 @@
             form.removeAttribute("aria-busy");
         }
     });
-    document.querySelector("#admin-stats-lookup")?.addEventListener("submit", event => { event.preventDefault(); loadStatsForQuery(formValues(event.currentTarget).userQuery).catch(error => setStatus(error.message, true)); });
+    // One listener per host screen: the shared user-search fragment reports its pick and
+    // each screen decides what that means.
+    document.querySelector('[data-user-search="stats"]')?.addEventListener("uc:admin-user-picked", event => {
+        loadStats(event.detail.id).catch(error => setStatus(error.message, true));
+    });
+    document.querySelector('[data-user-search="streak"]')?.addEventListener("uc:admin-user-picked", event => {
+        loadStreak(event.detail.id).catch(error => setStatus(error.message, true));
+    });
     document.querySelector("#admin-stats-edit")?.addEventListener("submit", async event => {
         event.preventDefault(); const values = formValues(event.currentTarget);
         try { const body = { played: values.played === "" ? null : Number(values.played), wins: values.wins === "" ? null : Number(values.wins), lastPlayedAt: values.lastPlayedAt ? parseDateTime(values.lastPlayedAt).toISOString() : null, reason: values.reason, dryRun: values.dryRun === "on" }; const result = await request(`/stats/users/${values.userId}/${encodeURIComponent(values.gameType)}/${encodeURIComponent(values.mode)}`, { method: "PATCH", body: JSON.stringify(body) }); if (result.dryRun) { renderStats(result.after); renderStatsDiff(result.before, result.after); } else await loadStats(values.userId); setStatus(result.warning || (result.dryRun ? "Stats preview is ready; nothing changed." : "Stats updated.")); } catch (error) { setStatus(error.message, true); }
@@ -1734,55 +2065,28 @@
     });
     const notifyForm = document.querySelector("#admin-notification-form");
     if (notifyForm) {
-        const userLabel = document.querySelector("#admin-notify-user");
+        const userBlock = document.querySelector("#admin-notify-user");
         const picked = document.querySelector("#admin-notify-picked");
-        const options = document.querySelector("#admin-user-options");
         const userField = notifyForm.elements.userRef;
-        let matches = [];
         const syncMode = () => {
             const oneUser = notifyForm.elements.mode.value === "user";
-            userLabel.hidden = !oneUser; userField.required = oneUser;
+            userBlock.hidden = !oneUser; userField.required = oneUser;
             if (!oneUser) { picked.hidden = true; }
         };
         notifyForm.elements.mode.addEventListener("change", syncMode);
-        const showPicked = user => { picked.textContent = `${user.username} · #${user.id} · ${user.email}`; picked.hidden = false; };
-        const findPicked = value => matches.find(user => value.includes(`#${user.id}`) || value === user.username || value === user.email);
-        let searchTimer;
-        userField?.addEventListener("input", () => {
-            picked.hidden = true;
-            clearTimeout(searchTimer);
-            const value = userField.value.trim();
-            const exact = findPicked(value);
-            if (exact) return showPicked(exact);
-            if (value.length < 2) return;
-            searchTimer = setTimeout(async () => {
-                try {
-                    const data = await request(`/reports/users${query({ query: value, size: 8 })}`);
-                    matches = data.items;
-                    options.replaceChildren(...data.items.map(user => {
-                        const option = element("option");
-                        option.value = `${user.username} · #${user.id}`;
-                        option.label = user.email;
-                        return option;
-                    }));
-                    const match = findPicked(userField.value.trim());
-                    if (match) showPicked(match);
-                } catch { /* suggestions are best-effort */ }
-            }, 250);
+        // The shared user-search fragment does the finding; this only records the pick.
+        userBlock.addEventListener("uc:admin-user-picked", event => {
+            userField.value = String(event.detail.id);
+            picked.textContent = `${event.detail.username} · #${event.detail.id} · ${event.detail.email}`;
+            picked.hidden = false;
         });
-        const resolveUserId = async value => {
-            const ref = /#(\d+)/.exec(value);
-            if (ref) return ref[1];
-            if (/^\d+$/.test(value)) return value;
-            const data = await request(`/reports/users${query({ query: value, exact: true, size: 2 })}`);
-            if (data.items.length === 1) return String(data.items[0].id);
-            throw new Error(tr("admin.notify.pickUser", "Pick a user from the list or enter an ID."));
-        };
         notifyForm.addEventListener("submit", async event => {
             event.preventDefault();
             const values = formValues(notifyForm);
             try {
-                const userId = values.mode === "user" ? await resolveUserId(values.userRef.trim()) : null;
+                if (values.mode === "user" && !values.userRef)
+                    throw new Error(tr("admin.notify.pickUser", "Search for a user and pick one from the results."));
+                const userId = values.mode === "user" ? values.userRef : null;
                 if (!await confirmAction(tr("admin.notify.send", "Send notification"), userId ? tr("admin.notifications.sendOneCopy", `Send this notification to user #${userId}?`, userId) : tr("admin.notifications.sendAllCopy", "Send this notification to every user?"), !userId)) return;
                 await request(`/notifications${userId ? `/users/${userId}` : "/all"}`, { method: "POST", body: JSON.stringify({ message: values.message, reason: values.reason }) });
                 notifyForm.reset(); syncMode(); picked.hidden = true;
@@ -1800,12 +2104,15 @@
     if (page === "events") resetEventForm();
     if (page === "notifications" && params.get("userId")) {
         notifyForm.elements.mode.value = "user";
-        notifyForm.elements.userRef.value = `#${params.get("userId")}`;
+        notifyForm.elements.userRef.value = params.get("userId");
+        // `picked` is scoped to the notifyForm block above, so re-query it here.
+        const preselected = document.querySelector("#admin-notify-picked");
+        preselected.textContent = `#${params.get("userId")}`;
+        preselected.hidden = false;
         notifyForm.elements.mode.dispatchEvent(new Event("change"));
     }
     const statsUser = params.get("userId");
     if (page === "stats" && statsUser) {
-        document.querySelector("#admin-stats-lookup").elements.userQuery.value = statsUser;
         loadStats(statsUser).then(() => setStatus(tr("admin.updated", `Updated ${formatClock(new Date())}.`, formatClock(new Date())))).catch(error => setStatus(error.message, true));
     } else refresh();
 })();

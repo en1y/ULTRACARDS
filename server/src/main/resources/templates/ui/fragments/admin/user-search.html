@@ -1,0 +1,44 @@
+<th:block th:fragment="userSearch(name, label, hint)" xmlns:th="http://www.thymeleaf.org">
+  <!--
+    Advanced user lookup, reused wherever an admin screen needs to pick a player.
+    js/ui/fragments/admin/user-search.js wires every [data-user-search] block on the page
+    and fires uc:admin-user-picked with the chosen user, so each host screen only listens.
+  -->
+  <div class="admin-user-search" th:attr="data-user-search=${name}">
+    <div class="admin-user-search-head">
+      <div>
+        <span class="admin-user-search-label" th:text="${label}">Find a user</span>
+        <small class="admin-hint" th:if="${hint != null}" th:text="${hint}"></small>
+      </div>
+      <div class="admin-user-search-head-actions">
+        <label class="admin-user-search-exact">
+          <input type="checkbox" data-user-search-exact>
+          <span th:text="#{admin.userSearch.exact}">Exact match</span>
+        </label>
+        <button class="btn" type="button" data-user-search-add th:text="#{admin.userSearch.addCriterion}">Add criterion</button>
+      </div>
+    </div>
+
+    <div class="admin-user-search-criteria" data-user-search-criteria></div>
+
+    <div class="admin-user-search-options">
+      <label><span th:text="#{admin.userSearch.sortBy}">Sort by</span><select data-user-search-sort><option value="userCreatedAt" th:text="#{admin.userSearch.sortNewest}">Joined date</option><option value="username" th:text="#{admin.userSearch.sortUsername}">Username</option><option value="email" th:text="#{admin.userSearch.sortEmail}">Email</option><option value="id" th:text="#{admin.userSearch.sortId}">User ID</option></select></label>
+      <label><span th:text="#{admin.userSearch.direction}">Direction</span><select data-user-search-direction><option value="desc" th:text="#{admin.userSearch.descending}">Descending</option><option value="asc" th:text="#{admin.userSearch.ascending}">Ascending</option></select></label>
+      <label><span th:text="#{admin.userSearch.resultsPerPage}">Results per page</span><select data-user-search-size><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label>
+    </div>
+
+    <div class="admin-user-search-actions">
+      <button class="btn btn-accent" type="button" data-user-search-submit th:text="#{admin.userSearch.search}">Search</button>
+      <button class="btn" type="button" data-user-search-browse th:text="#{admin.userSearch.browseAll}">Browse users</button>
+      <button class="btn" type="button" data-user-search-clear th:text="#{admin.userSearch.clear}">Clear</button>
+      <span class="admin-meta" data-user-search-status role="status" aria-live="polite"></span>
+    </div>
+
+    <div class="admin-user-search-results" data-user-search-results aria-live="polite"></div>
+    <nav class="admin-user-search-pagination" data-user-search-pagination aria-label="Pagination" hidden>
+      <button class="btn" type="button" data-user-search-previous th:text="#{admin.userSearch.previous}">Previous</button>
+      <span class="admin-meta" data-user-search-page></span>
+      <button class="btn" type="button" data-user-search-next th:text="#{admin.userSearch.next}">Next</button>
+    </nav>
+  </div>
+</th:block>

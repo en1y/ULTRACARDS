@@ -1,4 +1,7 @@
 @import url("./ui/fragments/header.css");
+/* The activity graph and achievements render on the profile page and inside the
+   header's user popup, so their styles ship with the theme rather than one page. */
+@import url("./ui/activity.css");
 
 :root {
   color-scheme: light;

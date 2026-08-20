@@ -134,7 +134,10 @@ public class UltracardsAdminCli implements Callable<Integer> {
     }
 
     RestTemplate restTemplateWithImmediateTokenPersistence() {
-        var template = new org.springframework.web.client.RestTemplate();
+        // The default HttpURLConnection factory rejects PATCH, which every audited
+        // settings/fee/streak/event-toggle command uses.
+        var template = new org.springframework.web.client.RestTemplate(
+                new org.springframework.http.client.JdkClientHttpRequestFactory());
         template.getInterceptors().add((request, body, execution) -> {
             var response = execution.execute(request, body);
             var cookies = response.getHeaders().get(org.springframework.http.HttpHeaders.SET_COOKIE);

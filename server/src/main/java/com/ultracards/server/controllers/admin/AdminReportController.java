@@ -24,8 +24,12 @@ public class AdminReportController {
                                                    @RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String role,
                                                    @RequestParam(required = false) String sort,
-                                                   @RequestParam(required = false) String direction) {
-        return adminReportService.users(page, size, query, exact, status, role, sort, direction);
+                                                   @RequestParam(required = false) String direction,
+                                                   @RequestParam(required = false) String username,
+                                                   @RequestParam(required = false) String email,
+                                                   @RequestParam(required = false) String userId) {
+        return adminReportService.users(page, size, query, exact, status, role, sort, direction,
+                username, email, userId);
     }
 
     @GetMapping("/database")

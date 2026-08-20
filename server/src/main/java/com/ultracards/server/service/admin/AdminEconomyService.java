@@ -1,5 +1,10 @@
 package com.ultracards.server.service.admin;
 
+import com.ultracards.gateway.dto.admin.AdminAchievementDTO;
+import com.ultracards.gateway.dto.admin.AdminAchievementHolderDTO;
+import com.ultracards.gateway.dto.admin.AdminAchievementsPatchDTO;
+import com.ultracards.gateway.dto.admin.AdminPageDTO;
+import com.ultracards.gateway.dto.admin.AdminStreakPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminDailyGoalDTO;
 import com.ultracards.gateway.dto.admin.AdminDailyGoalsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventDTO;
@@ -9,9 +14,11 @@ import com.ultracards.gateway.dto.admin.AdminPointsSettingsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminWagerFeeDTO;
 import com.ultracards.gateway.dto.admin.AdminWagerFeePatchDTO;
 import com.ultracards.gateway.dto.points.PointsSettingsDTO;
+import com.ultracards.gateway.dto.points.PointsStreakDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.enums.games.GameType;
 import com.ultracards.server.service.games.GameAvailabilityService;
+import com.ultracards.server.service.points.AchievementService;
 import com.ultracards.server.service.points.PointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +34,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminEconomyService {
     private final PointsService points;
+    private final AchievementService achievements;
     private final GameAvailabilityService availability;
     private final AdminAuditService audit;
 
@@ -55,6 +63,53 @@ public class AdminEconomyService {
 
     public List<AdminDailyGoalDTO> dailyGoals() {
         return points.adminDailyGoals();
+    }
+
+    public List<AdminAchievementDTO> achievements() {
+        return achievements.adminAchievements();
+    }
+
+    public PointsStreakDTO streak(Long userId) {
+        return achievements.streak(userId);
+    }
+
+    @Transactional
+    public List<AdminAchievementDTO> updateAchievements(UserEntity actor, AdminAchievementsPatchDTO patch) {
+        requireReason(patch == null ? null : patch.reason());
+        var updated = achievements.replaceAchievements(patch.achievements());
+        audit.record(actor.getId(), "UPDATE_ACHIEVEMENTS", "POINTS", "ACHIEVEMENTS", patch.reason().trim(),
+                updated.size() + " achievements", "SUCCESS");
+        return updated;
+    }
+
+    public AdminPageDTO<AdminAchievementHolderDTO> achievementHolders(String code, int page, int size) {
+        return achievements.holders(code, page, size);
+    }
+
+    @Transactional
+    public PointsStreakDTO updateStreak(UserEntity actor, Long userId, AdminStreakPatchDTO patch) {
+        requireReason(patch == null ? null : patch.reason());
+        var previous = achievements.streak(userId);
+        var updated = achievements.updateStreak(userId, patch);
+        audit.record(actor.getId(), "UPDATE_STREAK", "USER", String.valueOf(userId), patch.reason().trim(),
+                describe(previous) + " -> " + describe(updated), "SUCCESS");
+        return updated;
+    }
+
+    @Transactional
+    public PointsStreakDTO resetStreak(UserEntity actor, Long userId, String reason) {
+        requireReason(reason);
+        var previous = achievements.streak(userId);
+        var updated = achievements.resetStreak(userId);
+        audit.record(actor.getId(), "RESET_STREAK", "USER", String.valueOf(userId), reason.trim(),
+                describe(previous) + " -> cleared", "SUCCESS");
+        return updated;
+    }
+
+    private static String describe(PointsStreakDTO streak) {
+        return "streak %d, longest %d, %d freezes, last played %s".formatted(streak.current(),
+                streak.longest(), streak.freezes(),
+                streak.lastPlayedDate() == null ? "never" : streak.lastPlayedDate());
     }
 
     @Transactional

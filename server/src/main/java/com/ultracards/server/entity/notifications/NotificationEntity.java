@@ -57,6 +57,9 @@ public class NotificationEntity {
     @Column(length = 512)
     private String message;
 
+    @Column(name = "reward_points")
+    private Long rewardPoints;
+
     @Column(name = "lobby_id")
     private UUID lobbyId;
 
@@ -110,7 +113,7 @@ public class NotificationEntity {
     }
 
     public NotificationDTO toDto() {
-        return new NotificationDTO(
+        var notification = new NotificationDTO(
                 id,
                 type.toDto(),
                 message,
@@ -122,6 +125,8 @@ public class NotificationEntity {
                 createdAt,
                 readAt
         );
+        notification.setRewardPoints(rewardPoints);
+        return notification;
     }
 
     private GamePlayerDTO toUserDto(UserEntity user) {

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 import java.util.TreeSet;
@@ -34,6 +36,30 @@ class I18nBundleTest {
                     file + " must define exactly the same keys as messages.properties");
             assertNoBlankValues(file, properties);
         }
+    }
+
+    /**
+     * The ledger renders each row as points.transaction.&lt;type lowercased&gt;, so a new
+     * transaction type without its label ships as a literal ??key?? in the activity table.
+     */
+    @Test
+    void everyTransactionTypeHasALabel() throws IOException {
+        // Type is package-private to PointsService, so read the constants from source.
+        var source = Files.readString(
+                Path.of("src/main/java/com/ultracards/server/service/points/PointsService.java"),
+                StandardCharsets.UTF_8);
+        var enumBody = source.substring(source.indexOf("private enum Type {") + "private enum Type {".length());
+        enumBody = enumBody.substring(0, enumBody.indexOf('}'));
+
+        var properties = load("messages.properties");
+        var missing = new TreeSet<String>();
+        for (var constant : enumBody.split(",")) {
+            var name = constant.replaceAll("(?s)//.*?\n", "").trim();
+            if (name.isEmpty()) continue;
+            var key = "points.transaction." + name.toLowerCase();
+            if (!properties.containsKey(key)) missing.add(key);
+        }
+        assertEquals(new TreeSet<String>(), missing, "transaction types missing a label");
     }
 
     private void assertNoBlankValues(String file, Properties properties) {

@@ -5,6 +5,9 @@ import com.ultracards.gateway.dto.notifications.NotificationTypeDTO;
 public enum NotificationType {
     GAME_INVITE,
     FRIEND_INVITE,
+    ACHIEVEMENT,
+    EVENT_ACHIEVEMENT,
+    EVENT_COMPLETION,
     TEXT;
 
     public NotificationTypeDTO toDto() {

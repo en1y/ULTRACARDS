@@ -1,5 +1,10 @@
 package com.ultracards.server.controllers.admin;
 
+import com.ultracards.gateway.dto.admin.AdminAchievementDTO;
+import com.ultracards.gateway.dto.admin.AdminAchievementHolderDTO;
+import com.ultracards.gateway.dto.admin.AdminAchievementsPatchDTO;
+import com.ultracards.gateway.dto.admin.AdminPageDTO;
+import com.ultracards.gateway.dto.admin.AdminStreakPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminDailyGoalDTO;
 import com.ultracards.gateway.dto.admin.AdminDailyGoalsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminPointEventDTO;
@@ -9,6 +14,7 @@ import com.ultracards.gateway.dto.admin.AdminPointsSettingsPatchDTO;
 import com.ultracards.gateway.dto.admin.AdminWagerFeeDTO;
 import com.ultracards.gateway.dto.admin.AdminWagerFeePatchDTO;
 import com.ultracards.gateway.dto.points.PointsSettingsDTO;
+import com.ultracards.gateway.dto.points.PointsStreakDTO;
 import com.ultracards.server.entity.UserEntity;
 import com.ultracards.server.service.admin.AdminEconomyService;
 import com.ultracards.server.service.points.MarkdownRenderer;
@@ -54,6 +60,41 @@ public class AdminEconomyController {
     public List<AdminDailyGoalDTO> updateDailyGoals(@AuthenticationPrincipal UserEntity actor,
                                                     @RequestBody AdminDailyGoalsPatchDTO patch) {
         return economy.updateDailyGoals(actor, patch);
+    }
+
+    @GetMapping("/achievements")
+    public List<AdminAchievementDTO> achievements() {
+        return economy.achievements();
+    }
+
+    @PutMapping("/achievements")
+    public List<AdminAchievementDTO> updateAchievements(@AuthenticationPrincipal UserEntity actor,
+                                                        @RequestBody AdminAchievementsPatchDTO patch) {
+        return economy.updateAchievements(actor, patch);
+    }
+
+    @GetMapping("/achievements/{code}/users")
+    public AdminPageDTO<AdminAchievementHolderDTO> achievementHolders(@PathVariable String code,
+                                                                      @RequestParam(defaultValue = "0") int page,
+                                                                      @RequestParam(defaultValue = "25") int size) {
+        return economy.achievementHolders(code, page, size);
+    }
+
+    @GetMapping("/streaks/{userId}")
+    public PointsStreakDTO streak(@PathVariable Long userId) {
+        return economy.streak(userId);
+    }
+
+    @PatchMapping("/streaks/{userId}")
+    public PointsStreakDTO updateStreak(@AuthenticationPrincipal UserEntity actor, @PathVariable Long userId,
+                                        @RequestBody AdminStreakPatchDTO patch) {
+        return economy.updateStreak(actor, userId, patch);
+    }
+
+    @DeleteMapping("/streaks/{userId}")
+    public PointsStreakDTO resetStreak(@AuthenticationPrincipal UserEntity actor, @PathVariable Long userId,
+                                       @RequestParam String reason) {
+        return economy.resetStreak(actor, userId, reason);
     }
 
     @GetMapping("/fees")

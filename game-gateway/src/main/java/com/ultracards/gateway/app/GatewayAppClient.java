@@ -25,6 +25,7 @@ import com.ultracards.gateway.service.ServerService;
 import com.ultracards.gateway.service.StompGatewayService;
 import com.ultracards.gateway.service.UiPageService;
 import com.ultracards.gateway.service.UserSearchService;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -57,7 +58,17 @@ public class GatewayAppClient implements AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean();
 
     public GatewayAppClient(String serverUrl, String wsUrl) {
-        this(new RestTemplate(), serverUrl, wsUrl, new ClientTokenHolder(), GatewayAsync.cached(Runnable::run));
+        this(defaultRestTemplate(), serverUrl, wsUrl, new ClientTokenHolder(), GatewayAsync.cached(Runnable::run));
+    }
+
+    /**
+     * RestTemplate's default factory is built on HttpURLConnection, which rejects PATCH
+     * outright — every PATCH endpoint (Point settings, bet fees, streak freezes, event
+     * toggles) failed with "Invalid HTTP method: PATCH". The JDK HttpClient factory
+     * supports it and needs no extra dependency.
+     */
+    private static RestTemplate defaultRestTemplate() {
+        return new RestTemplate(new JdkClientHttpRequestFactory());
     }
 
     public GatewayAppClient(
