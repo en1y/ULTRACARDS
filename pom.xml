@@ -64,15 +64,15 @@
         <java.version>25</java.version>
 
         <!-- spring versions -->
-        <spring.version>7.0.9</spring.version>
-        <spring-boot.version>4.1.1</spring-boot.version>
+        <spring.version>7.0.10</spring.version>
+        <spring-boot.version>4.1.2</spring-boot.version>
 
         <!-- jakarta versions -->
         <jakarta-validation.version>3.1.1</jakarta-validation.version>
         <jakarta-annotation.version>3.0.0</jakarta-annotation.version>
 
         <!-- jackson versions -->
-        <jackson.version>2.22.3</jackson.version>
+        <jackson.version>2.22.4</jackson.version>
 
         <!-- Lombok -->
         <projectlombok.version>1.18.48</projectlombok.version>
