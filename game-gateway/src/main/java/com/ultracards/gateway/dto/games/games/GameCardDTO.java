@@ -1,6 +1,11 @@
 package com.ultracards.gateway.dto.games.games;
 
-import com.ultracards.cards.*;
+import com.ultracards.cards.italian.ItalianCard;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
+import com.ultracards.cards.poker.PokerCard;
+import com.ultracards.cards.poker.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardValue;
 import com.ultracards.templates.cards.AbstractCard;
 import lombok.AllArgsConstructor;
 import lombok.Data;

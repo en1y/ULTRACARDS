@@ -1,9 +1,9 @@
 package com.ultracards.cardtopng;
 
-import com.ultracards.cards.ItalianCard;
-import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.PokerCard;
-import com.ultracards.cards.PokerCardSuit;
+import com.ultracards.cards.italian.ItalianCard;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.poker.PokerCard;
+import com.ultracards.cards.poker.PokerCardSuit;
 import com.ultracards.templates.cards.AbstractCard;
 
 import javax.imageio.ImageIO;

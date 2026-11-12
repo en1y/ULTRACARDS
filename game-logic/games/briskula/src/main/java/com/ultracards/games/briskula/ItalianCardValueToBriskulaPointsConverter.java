@@ -1,6 +1,6 @@
 package com.ultracards.games.briskula;
 
-import com.ultracards.cards.ItalianCardValue;
+import com.ultracards.cards.italian.ItalianCardValue;
 
 public class ItalianCardValueToBriskulaPointsConverter {
     public static int convertToBriskulaPoints(ItalianCardValue value) {

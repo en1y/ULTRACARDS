@@ -1,8 +1,8 @@
 package com.ultracards.games.durak;
 
-import com.ultracards.cards.PokerCardFactoryInterface;
-import com.ultracards.cards.PokerCardSuit;
-import com.ultracards.cards.PokerCardValue;
+import com.ultracards.cards.poker.PokerCardFactoryInterface;
+import com.ultracards.cards.poker.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardValue;
 
 import java.util.ArrayList;
 import java.util.List;

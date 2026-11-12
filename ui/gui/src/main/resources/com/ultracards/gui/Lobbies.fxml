@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.ultracards.gui.Controllers.LobbiesController"
+            styleClass="app-shell">
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="topbar">
+            <padding><Insets top="12" right="18" bottom="12" left="18"/></padding>
+            <Button text="♠  ULTRACARDS" styleClass="brand-button" onAction="#goHome"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Games" styleClass="nav-button" onAction="#openGames"/>
+            <Button text="Open lobbies" styleClass="nav-button, nav-active" onAction="#refreshLobbies"/>
+            <Button text="How to play" styleClass="nav-button" onAction="#openGuides"/>
+            <Button text="Leaderboards" styleClass="nav-button" onAction="#openLeaderboards"/>
+        </HBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <VBox spacing="22" styleClass="page-content">
+                <padding><Insets top="40" right="34" bottom="44" left="34"/></padding>
+                <VBox spacing="8" styleClass="hero">
+                    <Label text="OPEN ROOMS" styleClass="eyebrow"/>
+                    <Label text="Find an ULTRAlobby" styleClass="hero-title"/>
+                    <Label text="Join a table that is waiting for players, or start a new one." styleClass="hero-copy" wrapText="true"/>
+                </VBox>
+
+                <VBox spacing="12" styleClass="lobby-toolbar">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Button text="＋   Create lobby" styleClass="primary-action" onAction="#createLobby"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="↻  Refresh" styleClass="secondary-action" onAction="#refreshLobbies"/>
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <TextField fx:id="codeInput" promptText="Six-character invite code" HBox.hgrow="ALWAYS" styleClass="code-input"/>
+                        <Button text="Join by code" styleClass="secondary-action" onAction="#joinByCode"/>
+                        <Button text="Join selected" styleClass="secondary-action" onAction="#joinSelected"/>
+                    </HBox>
+                </VBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Available lobbies" styleClass="section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lobbyCountLabel" text="0 open" styleClass="section-meta"/>
+                </HBox>
+                <ListView fx:id="lobbyList" prefHeight="360" styleClass="lobby-list"/>
+                <Label fx:id="statusLabel" text="Loading open lobbies…" styleClass="status-label" wrapText="true"/>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

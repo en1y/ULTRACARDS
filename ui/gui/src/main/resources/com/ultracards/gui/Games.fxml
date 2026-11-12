@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.ultracards.gui.Controllers.GamesController"
+            styleClass="app-shell">
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="topbar">
+            <padding><Insets top="12" right="18" bottom="12" left="18"/></padding>
+            <Button text="♠  ULTRACARDS" styleClass="brand-button" onAction="#goHome"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Games" styleClass="nav-button, nav-active" onAction="#openGames"/>
+            <Button text="Open lobbies" styleClass="nav-button" onAction="#openLobbies"/>
+            <Button text="How to play" styleClass="nav-button" onAction="#openGuides"/>
+            <Button text="Leaderboards" styleClass="nav-button" onAction="#openLeaderboards"/>
+        </HBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <VBox spacing="26" styleClass="page-content">
+                <padding><Insets top="44" right="34" bottom="44" left="34"/></padding>
+                <VBox spacing="8" styleClass="hero">
+                    <Label text="THE GAME LIBRARY" styleClass="eyebrow"/>
+                    <Label text="Choose your game" styleClass="hero-title"/>
+                    <Label text="Pick a table favorite, then create a lobby or find an open one." styleClass="hero-copy" wrapText="true"/>
+                </VBox>
+
+                <TilePane fx:id="gameGrid" hgap="16" vgap="16" prefColumns="3" tileAlignment="TOP_LEFT" styleClass="game-grid">
+                    <VBox spacing="16" styleClass="game-card durak-card">
+                        <HBox alignment="CENTER_LEFT"><Label text="♜" styleClass="game-symbol"/><Region HBox.hgrow="ALWAYS"/><Label text="NEW" styleClass="badge"/></HBox>
+                        <VBox spacing="7"><Label text="Durak" styleClass="game-title"/><Label text="Attack, defend, and be the first to empty your hand." styleClass="game-copy" wrapText="true"/></VBox>
+                        <Label text="2–6 players · Several deck and rule options" styleClass="game-tagline" wrapText="true"/>
+                        <Button text="Create Durak lobby   →" maxWidth="Infinity" styleClass="card-action" onAction="#createDurakLobby"/>
+                    </VBox>
+                    <VBox spacing="16" styleClass="game-card">
+                        <HBox alignment="CENTER_LEFT"><Label text="♥" styleClass="game-symbol red-symbol"/><Region HBox.hgrow="ALWAYS"/><Label text="2–4 PLAYERS" styleClass="badge muted-badge"/></HBox>
+                        <VBox spacing="7"><Label text="Briskula" styleClass="game-title"/><Label text="Read the table, save your trump, and win the most points." styleClass="game-copy" wrapText="true"/></VBox>
+                        <Label text="Solo or team play" styleClass="game-tagline" wrapText="true"/>
+                        <Button text="Create Briskula lobby   →" maxWidth="Infinity" styleClass="card-action" onAction="#createBriskulaLobby"/>
+                    </VBox>
+                    <VBox spacing="16" styleClass="game-card">
+                        <HBox alignment="CENTER_LEFT"><Label text="♦" styleClass="game-symbol red-symbol"/><Region HBox.hgrow="ALWAYS"/><Label text="2–4 PLAYERS" styleClass="badge muted-badge"/></HBox>
+                        <VBox spacing="7"><Label text="Treseta" styleClass="game-title"/><Label text="Plan your rounds and take the final trick for a bonus point." styleClass="game-copy" wrapText="true"/></VBox>
+                        <Label text="Solo or team play · Optional declarations" styleClass="game-tagline" wrapText="true"/>
+                        <Button text="Create Treseta lobby   →" maxWidth="Infinity" styleClass="card-action" onAction="#createTresetaLobby"/>
+                    </VBox>
+                </TilePane>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

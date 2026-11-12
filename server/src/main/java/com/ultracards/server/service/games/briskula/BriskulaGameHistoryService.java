@@ -1,6 +1,11 @@
 package com.ultracards.server.service.games.briskula;
 
-import com.ultracards.cards.*;
+import com.ultracards.cards.italian.ItalianCard;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
+import com.ultracards.cards.poker.PokerCard;
+import com.ultracards.cards.poker.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardValue;
 import com.ultracards.games.briskula.*;
 import com.ultracards.gateway.dto.games.*;
 import com.ultracards.gateway.dto.games.games.*;

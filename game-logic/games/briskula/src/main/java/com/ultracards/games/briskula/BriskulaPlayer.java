@@ -1,7 +1,7 @@
 package com.ultracards.games.briskula;
 
-import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.ItalianCardValue;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
 import com.ultracards.templates.game.model.AbstractPlayer;
 
 import java.util.ArrayList;

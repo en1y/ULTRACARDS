@@ -1,7 +1,7 @@
 package com.ultracards.games.treseta;
 
-import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.ItalianCardValue;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
 
 import java.util.ArrayList;
 import java.util.EnumSet;

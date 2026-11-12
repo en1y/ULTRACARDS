@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.ultracards.gui.Controllers.HomeController"
+            styleClass="app-shell">
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="topbar">
+            <padding><Insets top="12" right="18" bottom="12" left="18"/></padding>
+            <Label text="♠  ULTRACARDS" styleClass="brand"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Games" styleClass="nav-button, nav-active" onAction="#openGames"/>
+            <Button text="How to play" styleClass="nav-button" onAction="#openGuides"/>
+            <Button text="Leaderboards" styleClass="nav-button" onAction="#openLeaderboards"/>
+            <Button text="Sign in" styleClass="sign-in-button" onAction="#signIn"/>
+        </HBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <VBox spacing="30" styleClass="page-content">
+                <padding><Insets top="46" right="34" bottom="48" left="34"/></padding>
+                <VBox spacing="8" styleClass="hero">
+                    <Label text="YOUR TABLE IS READY" styleClass="eyebrow"/>
+                    <Label text="Welcome to ULTRACARDS" styleClass="hero-title"/>
+                    <Label text="Play classic card games with friends, wherever you are." styleClass="hero-copy" wrapText="true"/>
+                </VBox>
+
+                <HBox spacing="14" styleClass="action-row">
+                    <Button text="＋   Create lobby" styleClass="primary-action" onAction="#createGame"/>
+                    <Button text="Join by code   →" styleClass="secondary-action" onAction="#joinByCode"/>
+                    <Button text="Browse open lobbies" styleClass="secondary-action" onAction="#browseGames"/>
+                </HBox>
+
+                <VBox spacing="14">
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Choose your game" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label text="3 GAMES" styleClass="section-meta"/>
+                    </HBox>
+                    <TilePane fx:id="gameGrid" hgap="16" vgap="16" prefColumns="3" tileAlignment="TOP_LEFT" styleClass="game-grid">
+                        <VBox spacing="16" styleClass="game-card durak-card">
+                            <HBox alignment="CENTER_LEFT"><Label text="♜" styleClass="game-symbol"/><Region HBox.hgrow="ALWAYS"/><Label text="NEW" styleClass="badge"/></HBox>
+                            <VBox spacing="7"><Label text="Durak" styleClass="game-title"/><Label text="Attack, defend, and be the first to empty your hand." styleClass="game-copy" wrapText="true"/></VBox>
+                            <Label text="Attack · Defend · Shed your hand" styleClass="game-tagline" wrapText="true"/>
+                        </VBox>
+                        <VBox spacing="16" styleClass="game-card">
+                            <HBox alignment="CENTER_LEFT"><Label text="♥" styleClass="game-symbol red-symbol"/><Region HBox.hgrow="ALWAYS"/><Label text="2–4 PLAYERS" styleClass="badge muted-badge"/></HBox>
+                            <VBox spacing="7"><Label text="Briskula" styleClass="game-title"/><Label text="Read the table, save your trump, and win the most points." styleClass="game-copy" wrapText="true"/></VBox>
+                            <Label text="2–4 players · Team or solo play" styleClass="game-tagline" wrapText="true"/>
+                        </VBox>
+                        <VBox spacing="16" styleClass="game-card">
+                            <HBox alignment="CENTER_LEFT"><Label text="♦" styleClass="game-symbol red-symbol"/><Region HBox.hgrow="ALWAYS"/><Label text="2–4 PLAYERS" styleClass="badge muted-badge"/></HBox>
+                            <VBox spacing="7"><Label text="Treseta" styleClass="game-title"/><Label text="Plan your rounds and take the final trick for a bonus point." styleClass="game-copy" wrapText="true"/></VBox>
+                            <Label text="2–4 players · Win the final trick" styleClass="game-tagline" wrapText="true"/>
+                        </VBox>
+                    </TilePane>
+                </VBox>
+
+                <HBox spacing="12" styleClass="footer-note">
+                    <Label text="♧" styleClass="footer-mark"/>
+                    <Label text="More games are on the way." styleClass="footer-copy"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="statusLabel" text="Ready when you are" styleClass="status-label"/>
+                </HBox>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

@@ -1,7 +1,7 @@
 package com.ultracards.games.durak;
 
-import com.ultracards.cards.PokerCardSuit;
-import com.ultracards.cards.PokerCardValue;
+import com.ultracards.cards.poker.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardValue;
 import com.ultracards.templates.game.model.AbstractGame;
 
 import java.util.ArrayList;

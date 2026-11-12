@@ -1,8 +1,8 @@
 package com.ultracards.games.treseta;
 
-import com.ultracards.cards.ItalianCard;
-import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.ItalianCardValue;
+import com.ultracards.cards.italian.ItalianCard;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
 
 public class TresetaCard extends ItalianCard<TresetaCard> {
     private final int points; // points multiplied by three to avoid floating point

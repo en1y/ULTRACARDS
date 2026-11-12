@@ -1,4 +1,4 @@
-package com.ultracards.cards;
+package com.ultracards.cards.italian;
 
 import com.ultracards.templates.cards.CardSuitInterface;
 

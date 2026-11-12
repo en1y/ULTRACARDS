@@ -1,8 +1,8 @@
 package com.ultracards.games.briskula;
 
-import com.ultracards.cards.ItalianCard;
-import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.ItalianCardValue;
+import com.ultracards.cards.italian.ItalianCard;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
 
 
 public class BriskulaCard extends ItalianCard<BriskulaCard> {

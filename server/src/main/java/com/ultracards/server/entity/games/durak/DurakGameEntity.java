@@ -1,6 +1,6 @@
 package com.ultracards.server.entity.games.durak;
 
-import com.ultracards.cards.PokerCard;
+import com.ultracards.cards.poker.PokerCard;
 import com.ultracards.games.durak.*;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;
 import com.ultracards.gateway.dto.games.GameTypeDTO;

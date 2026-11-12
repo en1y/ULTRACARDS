@@ -1,7 +1,7 @@
 package com.ultracards.server.service.games.durak;
 
-import com.ultracards.cards.PokerCardSuit;
-import com.ultracards.cards.PokerCardValue;
+import com.ultracards.cards.poker.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardValue;
 import com.ultracards.games.durak.DurakCard;
 import com.ultracards.games.durak.DurakGameConfig;
 import com.ultracards.gateway.dto.games.GamePlayerDTO;

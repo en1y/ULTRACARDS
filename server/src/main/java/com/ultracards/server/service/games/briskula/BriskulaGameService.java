@@ -1,6 +1,6 @@
 package com.ultracards.server.service.games.briskula;
 
-import com.ultracards.cards.ItalianCard;
+import com.ultracards.cards.italian.ItalianCard;
 import com.ultracards.games.briskula.BriskulaGameConfig;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.server.entity.UserEntity;

@@ -1,8 +1,8 @@
 package com.ultracards.server.service.games;
 
-import com.ultracards.cards.ItalianCard;
-import com.ultracards.cards.ItalianCardSuit;
-import com.ultracards.cards.ItalianCardValue;
+import com.ultracards.cards.italian.ItalianCard;
+import com.ultracards.cards.italian.ItalianCardSuit;
+import com.ultracards.cards.italian.ItalianCardValue;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;
 import com.ultracards.recorder.BriskulaGameRecorder;
 import com.ultracards.recorder.DurakGameRecorder;

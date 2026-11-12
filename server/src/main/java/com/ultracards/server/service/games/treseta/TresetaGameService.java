@@ -1,6 +1,6 @@
 package com.ultracards.server.service.games.treseta;
 
-import com.ultracards.cards.ItalianCard;
+import com.ultracards.cards.italian.ItalianCard;
 import com.ultracards.games.treseta.TresetaGameConfig;
 import com.ultracards.games.treseta.TresetaCard;
 import com.ultracards.gateway.dto.games.games.GameCardDTO;

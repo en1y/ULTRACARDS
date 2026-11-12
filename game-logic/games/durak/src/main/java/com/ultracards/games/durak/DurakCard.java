@@ -1,8 +1,8 @@
 package com.ultracards.games.durak;
 
-import com.ultracards.cards.PokerCard;
-import com.ultracards.cards.PokerCardSuit;
-import com.ultracards.cards.PokerCardValue;
+import com.ultracards.cards.poker.PokerCard;
+import com.ultracards.cards.poker.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardValue;
 
 import java.util.Objects;
 

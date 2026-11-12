@@ -1,6 +1,6 @@
 package com.ultracards.games.durak;
 
-import com.ultracards.cards.PokerCardSuit;
+import com.ultracards.cards.poker.PokerCardSuit;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
