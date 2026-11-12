@@ -60,7 +60,7 @@ public class AuthController {
     @PostMapping("/email/send")
     public ResponseEntity<Void> sendVerificationEmail(
             @AuthenticationPrincipal UserEntity user,
-            @RequestBody(required = false) EmailDTO emailDTO,
+            @RequestBody(required = false) @Valid EmailDTO emailDTO,
             BindingResult errors
     ) {
         if (errors.hasErrors() || (emailDTO == null && user == null)) {

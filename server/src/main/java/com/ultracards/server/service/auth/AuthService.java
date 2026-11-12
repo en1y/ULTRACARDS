@@ -104,11 +104,11 @@ public class AuthService {
         }
     }
 
-    public Boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO) {
+    public boolean verifyCode(@Valid VerificationCodeDTO verificationCodeDTO) {
 
         var code = verificationCodeService.getVerificationCodeByEmail(verificationCodeDTO.getEmail());
 
-        if (code == null || !code.isValid()) return null;
+        if (code == null || !code.isValid()) return false;
 
         var res = code.getCode().equals(verificationCodeDTO.getCode());
 
