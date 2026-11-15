@@ -4,10 +4,11 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx"
+<StackPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.ultracards.gui.Controllers.HomeController"
             styleClass="app-shell">
+  <BorderPane>
     <top>
         <HBox alignment="CENTER_LEFT" spacing="10" styleClass="topbar">
             <padding><Insets top="12" right="18" bottom="12" left="18"/></padding>
@@ -69,4 +70,6 @@
             </VBox>
         </ScrollPane>
     </center>
-</BorderPane>
+  </BorderPane>
+  <fx:include fx:id="auth" source="Auth.fxml"/>
+</StackPane>

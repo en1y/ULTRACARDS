@@ -116,7 +116,7 @@ public class LobbiesController implements ScreenController {
 
     private void createLobby(String requestedGame) {
 
-        if (AuthDialogs.notSignedIn(gateway)) {
+        if (requireSignIn()) {
             return;
         }
 
@@ -196,7 +196,7 @@ public class LobbiesController implements ScreenController {
 
     @FXML
     private void joinByCode() {
-        if (AuthDialogs.notSignedIn(gateway)) {
+        if (requireSignIn()) {
             return;
         }
         String code = codeInput.getText().trim();
@@ -225,7 +225,7 @@ public class LobbiesController implements ScreenController {
             showError("Choose a lobby", "Select a lobby from the list first.");
             return;
         }
-        if (AuthDialogs.notSignedIn(gateway)) {
+        if (requireSignIn()) {
             return;
         }
         try {
@@ -243,6 +243,14 @@ public class LobbiesController implements ScreenController {
         navigation.show("Home.fxml");
     }
 
+    private boolean requireSignIn() {
+        if (gateway.tokenHolder().getToken() != null) {
+            return false;
+        }
+        navigation.show("Home.fxml", "signin");
+        return true;
+    }
+
     @FXML
     private void openGames() {
         navigation.show("Games.fxml");
@@ -250,9 +258,12 @@ public class LobbiesController implements ScreenController {
 
     @FXML
     private void openGuides() {
-        showInfo("How to play", "Durak: attack with cards and defend with a higher card or trump.\n\n"
-                + "Briskula: follow the trump suit when you can and collect high-value cards.\n\n"
-                + "Treseta: win tricks with a strong card, and take the final trick for a bonus point.");
+        showInfo("How to play", """
+                Durak: attack with cards and defend with a higher card or trump.
+                
+                Briskula: follow the trump suit when you can and collect high-value cards.
+                
+                Treseta: win tricks with a strong card, and take the final trick for a bonus point.""");
     }
 
     @FXML

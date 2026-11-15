@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane fx:id="overlay" managed="false" onMouseClicked="#closeOnBackdrop" styleClass="auth-overlay" visible="false" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ultracards.gui.Controllers.AuthController">
+    <VBox maxHeight="300.0" maxWidth="430" onMouseClicked="#consumeClick" styleClass="auth-card">
+        <HBox alignment="TOP_LEFT" spacing="12">
+            <VBox spacing="6" HBox.hgrow="ALWAYS">
+                <Label styleClass="auth-title" text="Welcome to ULTRACARDS" />
+                <Label fx:id="subtitle" styleClass="auth-subtitle" text="Use your email to sign in or finish setting up your account." wrapText="true" />
+            </VBox>
+            <Button accessibleText="Close" onAction="#close" styleClass="auth-close" text="×" />
+        </HBox>
+        <VBox fx:id="emailStep" spacing="12" styleClass="auth-step">
+            <Label styleClass="auth-label" text="Email" />
+            <TextField fx:id="emailInput" onAction="#sendCode" promptText="you@example.com" styleClass="auth-input" />
+            <Label styleClass="auth-help" text="A 6-digit code will be sent to your email." wrapText="true" />
+            <Label fx:id="emailError" styleClass="auth-error" wrapText="true" />
+            <Button maxWidth="Infinity" onAction="#sendCode" styleClass="auth-submit" text="✉   Send code" />
+        </VBox>
+        <VBox fx:id="codeStep" managed="false" spacing="12" styleClass="auth-step" visible="false">
+            <Label styleClass="auth-label" text="Enter 6-digit code" />
+            <HBox alignment="CENTER" spacing="8" styleClass="code-inputs">
+                <TextField fx:id="code0" onKeyPressed="#onCodeKeyPressed" onKeyTyped="#onCodeTyped" styleClass="code-box" />
+                <TextField fx:id="code1" onKeyPressed="#onCodeKeyPressed" onKeyTyped="#onCodeTyped" styleClass="code-box" />
+                <TextField fx:id="code2" onKeyPressed="#onCodeKeyPressed" onKeyTyped="#onCodeTyped" styleClass="code-box" />
+                <TextField fx:id="code3" onKeyPressed="#onCodeKeyPressed" onKeyTyped="#onCodeTyped" styleClass="code-box" />
+                <TextField fx:id="code4" onKeyPressed="#onCodeKeyPressed" onKeyTyped="#onCodeTyped" styleClass="code-box" />
+                <TextField fx:id="code5" onKeyPressed="#onCodeKeyPressed" onKeyTyped="#onCodeTyped" styleClass="code-box" />
+            </HBox>
+            <Label fx:id="codeError" styleClass="auth-error" wrapText="true" />
+            <HBox alignment="CENTER_RIGHT" spacing="10">
+                <Button onAction="#close" styleClass="auth-secondary" text="Cancel" />
+                <Button onAction="#verifyCode" styleClass="auth-submit" text="Verify" />
+            </HBox>
+        </VBox>
+        <VBox fx:id="usernameStep" managed="false" spacing="12" styleClass="auth-step" visible="false">
+            <Label styleClass="auth-label" text="Choose a username" />
+            <TextField fx:id="usernameInput" onAction="#saveUsername" promptText="Your name" styleClass="auth-input" />
+            <Label fx:id="usernameError" styleClass="auth-error" wrapText="true" />
+            <HBox alignment="CENTER_RIGHT" spacing="10">
+                <Button onAction="#close" styleClass="auth-secondary" text="Cancel" />
+                <Button onAction="#saveUsername" styleClass="auth-submit" text="Save" />
+            </HBox>
+        </VBox>
+    </VBox>
+</StackPane>

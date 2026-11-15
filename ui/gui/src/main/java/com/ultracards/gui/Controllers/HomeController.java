@@ -4,6 +4,7 @@ import com.ultracards.gateway.app.GatewayAppClient;
 import com.ultracards.gateway.dto.leaderboard.LeaderboardMetricDTO;
 import com.ultracards.gui.ScreenNavigation;
 import javafx.fxml.FXML;
+import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
@@ -19,6 +20,8 @@ public class HomeController implements ScreenController {
     @FXML
     private TilePane gameGrid;
 
+    @FXML private AuthController authController;
+
     private GatewayAppClient gateway;
 
     private ScreenNavigation navigation;
@@ -26,11 +29,19 @@ public class HomeController implements ScreenController {
     @Override
     public void setGateway(GatewayAppClient gateway) {
         this.gateway = gateway;
+        authController.configure(gateway, this::showStatus);
     }
 
     @Override
     public void setNavigation(ScreenNavigation navigation) {
         this.navigation = navigation;
+    }
+
+    @Override
+    public void setRoute(String route) {
+        if ("signin".equals(route)) {
+            Platform.runLater(this::signIn);
+        }
     }
 
     @FXML
@@ -87,11 +98,7 @@ public class HomeController implements ScreenController {
 
     @FXML
     private void signIn() {
-
-        if (AuthDialogs.notSignedIn(gateway)) {
-            showStatus("Signed in");
-        }
-        showStatus("Signed");
+        authController.open();
     }
 
     private void showStatus(String message) {
