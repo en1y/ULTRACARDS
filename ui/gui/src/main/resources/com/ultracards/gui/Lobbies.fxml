@@ -1,55 +1,118 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.ultracards.gui.Controllers.LobbiesController"
-            styleClass="app-shell">
+<StackPane styleClass="app-shell" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ultracards.gui.Controllers.LobbiesController">
+    <BorderPane>
     <top>
         <HBox alignment="CENTER_LEFT" spacing="10" styleClass="topbar">
-            <padding><Insets top="12" right="18" bottom="12" left="18"/></padding>
-            <Button text="♠  ULTRACARDS" styleClass="brand-button" onAction="#goHome"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Games" styleClass="nav-button" onAction="#openGames"/>
-            <Button text="Open lobbies" styleClass="nav-button, nav-active" onAction="#refreshLobbies"/>
-            <Button text="How to play" styleClass="nav-button" onAction="#openGuides"/>
-            <Button text="Leaderboards" styleClass="nav-button" onAction="#openLeaderboards"/>
+            <padding><Insets bottom="12" left="18" right="18" top="12" /></padding>
+            <Button onAction="#goHome" styleClass="brand-button" text="♠  ULTRACARDS" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button onAction="#openGames" styleClass="nav-button" text="Games" />
+            <Button onAction="#refreshLobbies" styleClass="nav-button, nav-active" text="Open lobbies" />
+            <Button onAction="#openGuides" styleClass="nav-button" text="How to play" />
+            <Button onAction="#openLeaderboards" styleClass="nav-button" text="Leaderboards" />
         </HBox>
     </top>
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <VBox spacing="22" styleClass="page-content">
-                <padding><Insets top="40" right="34" bottom="44" left="34"/></padding>
+                <padding><Insets bottom="44" left="34" right="34" top="40" /></padding>
                 <VBox spacing="8" styleClass="hero">
-                    <Label text="OPEN ROOMS" styleClass="eyebrow"/>
-                    <Label text="Find an ULTRAlobby" styleClass="hero-title"/>
-                    <Label text="Join a table that is waiting for players, or start a new one." styleClass="hero-copy" wrapText="true"/>
+                    <Label styleClass="eyebrow" text="OPEN ROOMS" />
+                    <Label styleClass="hero-title" text="Find an ULTRAlobby" />
+                    <Label styleClass="hero-copy" text="Join a table that is waiting for players, or start a new one." wrapText="true" />
                 </VBox>
 
                 <VBox spacing="12" styleClass="lobby-toolbar">
                     <HBox alignment="CENTER_LEFT" spacing="10">
-                        <Button text="＋   Create lobby" styleClass="primary-action" onAction="#createLobby"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="↻  Refresh" styleClass="secondary-action" onAction="#refreshLobbies"/>
+                        <Button onAction="#createLobby" styleClass="primary-action" text="＋   Create lobby" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button onAction="#refreshLobbies" styleClass="secondary-action" text="↻  Refresh" />
                     </HBox>
                     <HBox alignment="CENTER_LEFT" spacing="10">
-                        <TextField fx:id="codeInput" promptText="Six-character invite code" HBox.hgrow="ALWAYS" styleClass="code-input"/>
-                        <Button text="Join by code" styleClass="secondary-action" onAction="#joinByCode"/>
-                        <Button text="Join selected" styleClass="secondary-action" onAction="#joinSelected"/>
+                        <TextField fx:id="codeInput" promptText="Six-character invite code" styleClass="code-input" HBox.hgrow="ALWAYS" />
+                        <Button onAction="#joinByCode" styleClass="secondary-action" text="Join by code" />
+                        <Button onAction="#joinSelected" styleClass="secondary-action" text="Join selected" />
                     </HBox>
                 </VBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="Available lobbies" styleClass="section-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="lobbyCountLabel" text="0 open" styleClass="section-meta"/>
+                    <Label styleClass="section-title" text="Available lobbies" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Label fx:id="lobbyCountLabel" styleClass="section-meta" text="0 open" />
                 </HBox>
-                <ListView fx:id="lobbyList" prefHeight="360" styleClass="lobby-list"/>
-                <Label fx:id="statusLabel" text="Loading open lobbies…" styleClass="status-label" wrapText="true"/>
+                <ListView fx:id="lobbyList" prefHeight="360" styleClass="lobby-list" />
+                <Label fx:id="statusLabel" styleClass="status-label" text="Loading open lobbies…" wrapText="true" />
             </VBox>
         </ScrollPane>
     </center>
-</BorderPane>
+    </BorderPane>
+    <StackPane fx:id="createOverlay" managed="false" onMouseClicked="#closeCreateOnBackdrop" styleClass="create-overlay" visible="false">
+        <VBox fx:id="createCard" maxHeight="680" maxWidth="640" spacing="0" styleClass="create-card">
+            <HBox alignment="CENTER_LEFT" styleClass="create-header">
+                <Label styleClass="create-title" text="Create lobby" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button onAction="#closeCreateLobby" styleClass="create-close" text="×" />
+            </HBox>
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="create-scroll" VBox.vgrow="ALWAYS">
+                <VBox spacing="16" styleClass="create-body">
+                    <VBox spacing="7" styleClass="create-field">
+                        <Label styleClass="create-label" text="Lobby name" />
+                        <TextField fx:id="createNameInput" promptText="ULTRAlobby" styleClass="create-input" />
+                    </VBox>
+                    <VBox spacing="8" styleClass="create-field">
+                        <Label styleClass="create-label" text="Game type" />
+                        <FlowPane fx:id="gameChoicePane" hgap="7" styleClass="create-choice-group" vgap="7" />
+                    </VBox>
+                    <VBox fx:id="gameSettingsBox" managed="false" spacing="10" styleClass="create-settings" visible="false" />
+                    <HBox spacing="12" styleClass="create-meta-grid">
+                        <HBox alignment="CENTER_LEFT" spacing="8" styleClass="create-meta-card" HBox.hgrow="ALWAYS">
+                            <VBox minWidth="-Infinity" spacing="4" HBox.hgrow="ALWAYS">
+                                <Label minWidth="-Infinity" styleClass="create-muted-label" text="Visibility" />
+                                <Label fx:id="visibilityValue" minWidth="-Infinity" styleClass="create-meta-value" text="Public lobby" />
+                               <CheckBox fx:id="publicCheck" minWidth="-Infinity" prefHeight="33.0" prefWidth="100.0" selected="true" styleClass="create-toggle" text="Public" />
+                            </VBox>
+                        </HBox>
+                        <VBox spacing="10" styleClass="create-meta-card" HBox.hgrow="ALWAYS">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label styleClass="create-meta-value" text="Bet Points" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <CheckBox fx:id="wagerEnabledCheck" selected="true" styleClass="create-toggle" />
+                            </HBox>
+                            <VBox fx:id="wagerEditor" spacing="8">
+                                <HBox alignment="CENTER_LEFT">
+                                    <Label styleClass="create-muted-label" text="Your bet" />
+                                    <Region HBox.hgrow="ALWAYS" />
+                                    <Label fx:id="wagerAmountLabel" styleClass="create-meta-value" text="100 P" />
+                                </HBox>
+                                <Slider fx:id="wagerSlider" blockIncrement="1" max="36" min="0" value="0" />
+                                <FlowPane fx:id="wagerPresets" hgap="5" vgap="5" />
+                                <Label styleClass="create-help" text="Everyone bets this. Winners split the pot." wrapText="true" />
+                            </VBox>
+                        </VBox>
+                    </HBox>
+                    <Label fx:id="createStatusLabel" styleClass="create-status" text="Pick a game to continue." wrapText="true" />
+                </VBox>
+            </ScrollPane>
+            <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="create-actions">
+                <Button onAction="#closeCreateLobby" styleClass="secondary-action" text="Cancel" />
+                <Button fx:id="createSubmitButton" disable="true" onAction="#submitCreateLobby" styleClass="primary-action" text="Create Lobby" />
+            </HBox>
+        </VBox>
+    </StackPane>
+</StackPane>

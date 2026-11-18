@@ -89,3 +89,56 @@
 .lobby-list .list-cell:filled:selected { -fx-background-color: #482426; -fx-text-fill: #ffffff; }
 .lobby-list .placeholder .label { -fx-text-fill: #85858b; }
 
+.create-overlay { -fx-background-color: rgba(0, 0, 0, 0.72); -fx-padding: 16px; }
+.create-card {
+    -fx-background-color: #1c1c1e;
+    -fx-background-radius: 14px;
+    -fx-border-color: #38383b;
+    -fx-border-radius: 14px;
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 28, 0.15, 0, 10);
+}
+.create-header { -fx-padding: 20 20 14 20; -fx-background-color: #1c1c1e; -fx-background-radius: 14 14 0 0; }
+.create-title { -fx-text-fill: #f5f5f5; -fx-font-size: 22px; -fx-font-weight: 800; }
+.create-close { -fx-background-color: transparent; -fx-text-fill: #a8a8ad; -fx-font-size: 25px; -fx-padding: 0 5 3 5; -fx-cursor: hand; }
+.create-close:hover { -fx-text-fill: white; }
+.create-scroll, .create-scroll > .viewport { -fx-background-color: #1c1c1e; }
+.create-scroll { -fx-background-insets: 0; -fx-padding: 0; }
+.create-scroll .scroll-bar:vertical { -fx-background-color: #1c1c1e; -fx-pref-width: 9px; }
+.create-scroll .scroll-bar:vertical .thumb { -fx-background-color: #38383b; -fx-background-radius: 8px; }
+.create-body { -fx-padding: 8 20 18 20; }
+.create-field { -fx-padding: 0 0 2 0; }
+.create-label { -fx-text-fill: #e9e9eb; -fx-font-size: 13px; -fx-font-weight: 800; }
+.create-input { -fx-background-color: #111113; -fx-background-radius: 8px; -fx-border-color: #3a3a3d; -fx-border-radius: 8px; -fx-text-fill: #f1f1f2; -fx-prompt-text-fill: #77777d; -fx-padding: 11px; }
+.create-input:focused { -fx-border-color: #c62828; }
+.create-choice-group, .create-settings { -fx-padding: 1 0 0 0; }
+.create-game-choice, .create-option {
+    -fx-background-color: #252527;
+    -fx-background-radius: 8px;
+    -fx-border-color: #38383b;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-text-fill: #dcdce0;
+    -fx-padding: 9 12;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.create-game-choice:selected, .create-option:selected { -fx-background-color: #482426; -fx-border-color: #c94b4b; -fx-text-fill: white; }
+.create-game-choice:hover, .create-option:hover { -fx-background-color: #303033; -fx-border-color: #55555a; }
+.create-meta-grid { -fx-alignment: top-left; }
+.create-meta-card { -fx-background-color: #202022; -fx-background-radius: 10px; -fx-border-color: #333336; -fx-border-radius: 10px; -fx-padding: 13px; }
+.create-muted-label, .create-help { -fx-text-fill: #a8a8ad; -fx-font-size: 12px; }
+.create-meta-value { -fx-text-fill: #e9e9eb; -fx-font-weight: bold; }
+.create-toggle { -fx-text-fill: #e9e9eb; -fx-font-weight: bold; }
+.create-toggle .box { -fx-background-color: #343437; -fx-background-radius: 999px; -fx-border-color: #56565b; -fx-border-radius: 999px; }
+.create-toggle:selected .box { -fx-background-color: #6a292b; -fx-border-color: #c62828; }
+.create-toggle:selected .mark { -fx-background-color: #ff8b8b; }
+.create-meta-card .slider .track { -fx-background-color: #414145; }
+.create-meta-card .slider .thumb { -fx-background-color: #df3434; }
+.wager-preset { -fx-background-color: #29292c; -fx-background-radius: 6px; -fx-text-fill: #dcdce0; -fx-padding: 5 8; -fx-font-size: 10px; -fx-cursor: hand; }
+.wager-preset:hover { -fx-background-color: #3a3a3d; }
+.create-status { -fx-text-fill: #a8a8ad; -fx-font-size: 12px; }
+.create-error { -fx-text-fill: #ff8585; }
+.create-actions { -fx-padding: 0 20 18 20; }
+.create-actions .button:disabled { -fx-opacity: 0.55; }
+

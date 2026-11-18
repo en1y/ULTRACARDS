@@ -13,7 +13,7 @@ import javafx.scene.layout.VBox;
 
 import java.util.function.Consumer;
 
-/** Controls the in-window, multi-step email authentication flow. */
+/** Controls the in-window, multistep email authentication flow. */
 public class AuthController {
     @FXML private StackPane overlay;
     @FXML private VBox emailStep;

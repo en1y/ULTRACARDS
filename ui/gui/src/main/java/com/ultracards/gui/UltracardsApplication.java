@@ -17,7 +17,8 @@ public class UltracardsApplication extends Application {
         stage.setMinWidth(640);
         stage.setMinHeight(520);
         stage.setResizable(true);
-        stage.setFullScreen(true);
+        stage.centerOnScreen();
+        //stage.setFullScreen(true);
         navigation.show("Home.fxml");
         stage.show();
     }
